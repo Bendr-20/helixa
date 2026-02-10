@@ -28,14 +28,14 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 
 /* ---- NAV ---- */
 nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(20px); background: rgba(8,6,14,0.7); border-bottom: 1px solid rgba(179,136,255,0.08); }
-.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .logo span { color: var(--text2); font-weight: 400; }
 nav .links { display: flex; gap: 2rem; align-items: center; }
 nav .links { text-align: center; }
 nav .links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
 nav .links a:hover { color: var(--text); }
-.btn-mint { padding: 8px 20px; background: var(--accent2); color: #fff; border: none; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-.btn-mint:hover { background: var(--accent); box-shadow: 0 0 30px rgba(179,136,255,0.3); }
+.btn-mint { padding: 8px 20px; background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); color: #fff; border: none; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.btn-mint:hover { box-shadow: 0 0 30px rgba(179,136,255,0.3); transform: translateY(-1px); }
 
 /* ---- HERO ---- */
 .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; padding: 6rem 2rem 4rem; }
@@ -47,7 +47,7 @@ nav .links a:hover { color: var(--text); }
 .hero p { font-size: 1.15rem; color: var(--text2); max-width: 540px; margin: 0 auto 2.5rem; line-height: 1.6; }
 .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 .btn-hero { padding: 14px 32px; border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; }
-.btn-hero.primary { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #fff; box-shadow: 0 4px 30px rgba(124,77,255,0.3); }
+.btn-hero.primary { background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); color: #fff; box-shadow: 0 4px 30px rgba(124,77,255,0.3); }
 .btn-hero.primary:hover { box-shadow: 0 4px 40px rgba(179,136,255,0.5); transform: translateY(-2px); }
 .btn-hero.secondary { background: var(--surface); color: var(--text); border: 1px solid rgba(179,136,255,0.2); }
 .btn-hero.secondary:hover { border-color: var(--accent); background: var(--surface2); }
