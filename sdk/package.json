@@ -1,0 +1,15 @@
+{
+  "name": "agentdna",
+  "version": "0.1.0",
+  "description": "SDK for minting and managing AgentDNA identity NFTs on Base",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "agentdna": "./bin/cli.js"
+  },
+  "scripts": {
+    "build": "echo 'No build step needed for MVP'"
+  },
+  "keywords": ["ai", "agent", "identity", "nft", "base", "erc-8004"],
+  "license": "MIT"
+}

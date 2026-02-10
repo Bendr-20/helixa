@@ -1,0 +1,23 @@
+/* Helixa Design System — Shared Theme */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #08060e;
+  --bg2: #0e0b16;
+  --surface: #151220;
+  --surface2: #1c1730;
+  --border: rgba(179,136,255,0.08);
+  --border2: rgba(179,136,255,0.15);
+  --text: #eae6f2;
+  --text2: #a099b0;
+  --text3: #665f78;
+  --accent: #b388ff;
+  --accent2: #7c4dff;
+  --green: #00e676;
+  --blue: #4fc3f7;
+  --orange: #ffab40;
+  --gold: #ffd54f;
+  --pink: #ce93d8;
+  --red: #ff5252;
+  --glow: rgba(179,136,255,0.15);
+}

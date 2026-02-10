@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa — Points Leaderboard</title>
+<link rel="stylesheet" href="helixa-theme.css?v=2">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Nav */
+nav { padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+.logo span { color: var(--text3); font-weight: 400; }
+.nav-links { display: flex; gap: 1.5rem; align-items: center; }
+.nav-links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
+
+.container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+
+/* Header */
+.page-header { text-align: center; padding: 2rem 0 1.5rem; }
+.page-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.page-header h1 .gradient { background: linear-gradient(135deg, var(--accent), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.page-header p { color: var(--text2); font-size: 0.9rem; }
+
+/* Stats row */
+.stats-row { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.mini-stat { text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 24px; min-width: 130px; }
+.mini-stat .val { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; }
+.mini-stat .val.purple { color: var(--accent); }
+.mini-stat .val.gold { color: var(--gold); }
+.mini-stat .val.blue { color: var(--blue); }
+.mini-stat .val.green { color: var(--green); }
+.mini-stat .lbl { color: var(--text3); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* Points explainer */
+.explainer { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 2rem; }
+.explainer-title { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+.explainer-grid { display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; }
+.explainer-item { display: flex; align-items: center; gap: 6px; }
+.explainer-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.explainer-item .pts { color: var(--accent); font-weight: 600; }
+
+/* Multiplier banner */
+.multiplier-banner { background: linear-gradient(135deg, rgba(124,77,255,0.1), rgba(255,213,79,0.08)); border: 1px solid rgba(179,136,255,0.15); border-radius: 12px; padding: 14px 20px; margin-bottom: 2rem; text-align: center; }
+.multiplier-banner .big { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--gold); }
+.multiplier-banner .sub { color: var(--text2); font-size: 0.8rem; margin-top: 4px; }
+
+/* Leaderboard table */
+.board { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.board-header { display: grid; grid-template-columns: 60px 1fr 100px 90px 80px; padding: 12px 16px; border-bottom: 1px solid var(--border2); font-size: 0.7rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.board-row { display: grid; grid-template-columns: 60px 1fr 100px 90px 80px; padding: 12px 16px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.2s; }
+.board-row:hover { background: var(--surface2); }
+.board-row:last-child { border-bottom: none; }
+
+/* Rank */
+.rank { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.1rem; text-align: center; }
+.rank.gold { color: var(--gold); }
+.rank.silver { color: #b0bec5; }
+.rank.bronze { color: #ffab40; }
+.rank.normal { color: var(--text3); }
+
+/* Agent info */
+.agent-info { display: flex; align-items: center; gap: 10px; }
+.agent-aura { width: 42px; height: 42px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
+.agent-aura svg { width: 100%; height: 100%; }
+.agent-name { font-weight: 600; font-size: 0.9rem; }
+.agent-meta { color: var(--text3); font-size: 0.7rem; margin-top: 1px; }
+
+/* Points */
+.points-cell { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; color: var(--accent); text-align: right; }
+
+/* Rarity badge */
+.rarity-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; text-align: center; }
+.rarity-badge.common { color: #aaa; background: rgba(170,170,170,0.08); border: 1px solid rgba(170,170,170,0.15); }
+.rarity-badge.rare { color: var(--blue); background: rgba(79,195,247,0.08); border: 1px solid rgba(79,195,247,0.15); }
+.rarity-badge.epic { color: var(--pink); background: rgba(206,147,216,0.08); border: 1px solid rgba(206,147,216,0.15); }
+.rarity-badge.legendary { color: var(--gold); background: rgba(255,213,79,0.08); border: 1px solid rgba(255,213,79,0.15); }
+
+/* Multiplier */
+.mult { font-size: 0.75rem; text-align: center; }
+.mult.x2 { color: var(--gold); font-weight: 600; }
+.mult.x15 { color: var(--blue); }
+.mult.x1 { color: var(--text3); }
+
+/* Loading */
+.loading { text-align: center; padding: 3rem; color: var(--text3); }
+.spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--border2); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty { text-align: center; padding: 3rem; color: var(--text3); }
+.empty .icon { font-size: 2rem; margin-bottom: 8px; }
+
+/* Footer */
+footer { text-align: center; padding: 2rem; color: var(--text3); font-size: 0.75rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+footer a { color: var(--accent); text-decoration: none; }
+
+/* Mobile */
+/* Hamburger */
+.hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; width: auto; }
+.hamburger span { display: block; width: 22px; height: 2px; background: var(--text2); margin: 5px 0; transition: all 0.3s; border-radius: 1px; }
+.hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+@media (max-width: 600px) {
+  .hamburger { display: block; }
+  nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; }
+  nav .logo { flex: 1; }
+  nav { position: relative; }
+  .nav-links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 50; }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+  .board-header, .board-row { grid-template-columns: 40px 1fr 70px 70px; }
+  .board-header > :nth-child(5), .board-row > :nth-child(5) { display: none; }
+  .stats-row { gap: 0.75rem; }
+  .mini-stat { padding: 10px 16px; min-width: 100px; }
+  .agent-aura { width: 32px; height: 32px; }
+  .stats-row { gap: 0.75rem; }
+  .mini-stat { padding: 10px 16px; min-width: 100px; }
+  .agent-aura { width: 32px; height: 32px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">helixa<span>.xyz</span></div>
+  <button class="hamburger" onclick="this.classList.toggle('open');document.querySelector('.nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  <div class="nav-links">
+    <a href="landing.html">Home</a>
+    <a href="index.html">Mint</a>
+    <a href="leaderboard.html" class="active">Leaderboard</a>
+    <a href="aura-rarity.html">Rarity</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🏆 Points <span class="gradient">Leaderboard</span></h1>
+    <p>Earn points through minting, mutations, traits, and referrals. Early agents earn more.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="mini-stat"><div class="val purple" id="totalAgents">—</div><div class="lbl">Agents</div></div>
+    <div class="mini-stat"><div class="val gold" id="totalPoints">—</div><div class="lbl">Total Points</div></div>
+    <div class="mini-stat"><div class="val blue" id="betaRemaining">—</div><div class="lbl">Free Mints Left</div></div>
+    <div class="mini-stat"><div class="val green" id="currentMultiplier">—</div><div class="lbl">Current Multiplier</div></div>
+  </div>
+
+  <div class="multiplier-banner" id="multBanner">
+    <div class="big">🔥 2x Point Multiplier Active — First 100 Agents</div>
+    <div class="sub">Mint now to earn double points on every action</div>
+  </div>
+
+  <div class="explainer">
+    <div class="explainer-title">How to Earn Points</div>
+    <div class="explainer-grid">
+      <div class="explainer-item"><div class="dot" style="background:var(--accent)"></div> Mint <span class="pts">+100</span></div>
+      <div class="explainer-item"><div class="dot" style="background:var(--pink)"></div> Mutate <span class="pts">+50</span></div>
+      <div class="explainer-item"><div class="dot" style="background:var(--blue)"></div> Add Trait <span class="pts">+10</span></div>
+      <div class="explainer-item"><div class="dot" style="background:var(--gold)"></div> Referral <span class="pts">+25</span></div>
+    </div>
+  </div>
+
+  <div class="board">
+    <div class="board-header">
+      <div>Rank</div>
+      <div>Agent</div>
+      <div style="text-align:right">Points</div>
+      <div style="text-align:center">Rarity</div>
+      <div style="text-align:center">Multiplier</div>
+    </div>
+    <div id="boardBody">
+      <div class="loading"><div class="spinner"></div><div style="margin-top:8px;">Connecting to Base...</div></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="landing.html">Helixa</a> · <a href="index.html">Mint</a> · Built on Base · ERC-8004
+</footer>
+
+<script>
+/**
+ * Helixa Aura Generator v3.0
+ * QR-aesthetic faces with 10 eye types, 10 mouth types,
+ * rarity tiers (Common → Legendary) with gradient/chrome/glow effects.
+ * Every personality trait shapes the visual. Deterministic.
+ */
+
+/**
+ * Helixa Aura Generator v3.0
+ * QR-aesthetic faces with 10 eye types, 10 mouth types,
+ * rarity tiers (Common → Legendary) with gradient/chrome/glow effects.
+ * Every personality trait shapes the visual. Deterministic.
+ */
+
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (s >>> 0) / 0xFFFFFFFF;
+  };
+}
+
+const FRAMEWORK_SHAPES = {
+  eliza:     { faceRadius: 0.42, baseHue: 280 },
+  openclaw:  { faceRadius: 0.40, baseHue: 150 },
+  langchain: { faceRadius: 0.41, baseHue: 200 },
+  crewai:    { faceRadius: 0.39, baseHue: 30 },
+  autogpt:   { faceRadius: 0.41, baseHue: 0 },
+  bankr:     { faceRadius: 0.41, baseHue: 45 },
+  virtuals:  { faceRadius: 0.42, baseHue: 320 },
+  custom:    { faceRadius: 0.40, baseHue: 60 },
+};
+
+const ALIGNMENT_SHIFT = {
+  'lawful-good':0,'neutral-good':10,'chaotic-good':20,
+  'lawful-neutral':-10,'true-neutral':0,'chaotic-neutral':30,
+  'lawful-evil':-20,'neutral-evil':-30,'chaotic-evil':-40,
+};
+
+// ============ RARITY SYSTEM ============
+// Rarity determined by points + mutations. Earned, not random.
+function getRarity(points, mutationCount) {
+  const score = points + mutationCount * 50;
+  if (score >= 1000) return 'legendary';  // top tier
+  if (score >= 500)  return 'epic';       // chrome
+  if (score >= 200)  return 'rare';       // gradient
+  return 'common';                         // solid
+}
+
+const RARITY_COLORS = {
+  common:    { label: 'Common',    borderOpacity: 0 },
+  rare:      { label: 'Rare',      borderOpacity: 0.3 },
+  epic:      { label: 'Epic',      borderOpacity: 0.5 },
+  legendary: { label: 'Legendary', borderOpacity: 0.7 },
+};
+
+// ============ 10 EYE TYPES ============
+// Types 0-6: common, 7-8: rare, 9: legendary
+const EYE_TYPES = [
+  'round',      // 0 - classic round
+  'diamond',    // 1 - diamond shape
+  'slit',       // 2 - horizontal slit
+  'hollow',     // 3 - ring/hollow circle
+  'cross',      // 4 - cross/plus
+  'square',     // 5 - block
+  'dot',        // 6 - single pixel
+  'scanner',    // 7 - rare: horizontal scan line with dot
+  'void',       // 8 - rare: inverted ring (big empty center)
+  'nova',       // 9 - legendary: starburst
+];
+
+function getEyeType(specialization, rng, rarity) {
+  // Base mapping from specialization
+  const specMap = {
+    'researcher': 0, 'trader': 1, 'guardian': 2, 'oracle': 3,
+    'creator': 4, 'operator': 5, 'analyst': 0, 'defi': 1,
+    'security': 2, 'social': 6, 'infrastructure': 5, 'governance': 3,
+  };
+  let base = specMap[specialization] !== undefined ? specMap[specialization] : Math.floor(rng() * 7);
+  
+  // Rarity can unlock higher eye types
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7;
+  
+  return base;
+}
+
+function drawEye(grid, G, ex, ey, eyeR, eyeType) {
+  switch (eyeType) {
+    case 0: // round
+      for (let dy = -eyeR + 1; dy <= eyeR - 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (Math.abs(dx) + Math.abs(dy) <= eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      break;
+    case 1: // diamond
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      break;
+    case 2: // slit
+      for (let dx = -eyeR; dx <= eyeR; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      break;
+    case 3: // hollow circle
+      for (let dy = -eyeR; dy <= eyeR; dy++)
+        for (let dx = -eyeR; dx <= eyeR; dx++)
+          if (dx * dx + dy * dy <= eyeR * eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      grid[ey][ex] = 0; // hollow center
+      break;
+    case 4: // cross
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      for (let d = 1; d <= eyeR - 1; d++) {
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      break;
+    case 5: // square
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+            grid[ey + dy][ex + dx] = 2;
+      break;
+    case 6: // dot
+      grid[ey][ex] = 2;
+      if (ex + 1 < G) grid[ey][ex + 1] = 2;
+      break;
+    case 7: // scanner (rare) - horizontal line with bright center dot
+      for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      // vertical tick at center
+      if (ey - 1 >= 0) grid[ey - 1][ex] = 2;
+      if (ey + 1 < G) grid[ey + 1][ex] = 2;
+      break;
+    case 8: // void (rare) - big ring, empty inside
+      for (let dy = -eyeR - 1; dy <= eyeR + 1; dy++)
+        for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= eyeR + 1 && dist >= eyeR - 0.5)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+        }
+      break;
+    case 9: // nova (legendary) - 8-point starburst
+      for (let d = 0; d <= eyeR + 1; d++) {
+        // Cardinal
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+        // Diagonal
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      // Core glow pixel
+      grid[ey][ex] = 4; // special: accent-bright
+      break;
+  }
+}
+
+// ============ 10 MOUTH TYPES ============
+// Types 0-6: common, 7-8: rare, 9: legendary
+const MOUTH_TYPES = [
+  'line',       // 0 - straight line (formal)
+  'smile',      // 1 - curved up (casual)
+  'smirk',      // 2 - asymmetric (snarky)
+  'open',       // 3 - oval opening (verbose)
+  'dot',        // 4 - tiny dot (minimal)
+  'frown',      // 5 - curved down
+  'zigzag',     // 6 - jagged line
+  'fangs',      // 7 - rare: line with downward ticks
+  'grin',       // 8 - rare: wide smile with teeth marks
+  'vortex',     // 9 - legendary: spiral/circular mouth
+];
+
+function getMouthType(commStyle, rng, rarity) {
+  const commMap = {
+    'formal': 0, 'casual': 1, 'snarky': 2, 'verbose': 3,
+    'minimal': 4, 'analytical': 0, 'friendly': 1, 'blunt': 5,
+    'cryptic': 6, 'diplomatic': 0,
+  };
+  let base = commMap[commStyle] !== undefined ? commMap[commStyle] : Math.floor(rng() * 7);
+  
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7 + Math.floor(rng() * 2);
+  
+  return base;
+}
+
+function drawMouth(grid, G, cx, mouthY, mW, mouthType) {
+  switch (mouthType) {
+    case 0: // line
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      break;
+    case 1: // smile
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.3 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        if (my + 1 < G && Math.abs(dx) < mW - 1 && mx >= 0 && mx < G) grid[my + 1][mx] = 1;
+      }
+      break;
+    case 2: // smirk
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = dx > 0 ? Math.round(-0.2 * (dx * dx) / (mW || 1)) : Math.round(0.1 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 3: // open
+      for (let dy = -1; dy <= 2; dy++)
+        for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (mx >= 0 && mx < G && my >= 0 && my < G)
+            if (dy === -1 || dy === 2 || Math.abs(dx) === mW - 1)
+              grid[my][mx] = 1;
+        }
+      break;
+    case 4: // dot
+      grid[mouthY][Math.round(cx)] = 1;
+      if (Math.round(cx) + 1 < G) grid[mouthY][Math.round(cx) + 1] = 1;
+      break;
+    case 5: // frown
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(-0.25 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 6: // zigzag
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const my = mouthY + (dx % 2 === 0 ? 0 : 1);
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 7: // fangs (rare) - line with two downward ticks
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      // Fang ticks
+      const fangL = Math.round(cx - mW * 0.5);
+      const fangR = Math.round(cx + mW * 0.5);
+      if (mouthY + 1 < G && fangL >= 0) grid[mouthY + 1][fangL] = 1;
+      if (mouthY + 2 < G && fangL >= 0) grid[mouthY + 2][fangL] = 1;
+      if (mouthY + 1 < G && fangR < G) grid[mouthY + 1][fangR] = 1;
+      if (mouthY + 2 < G && fangR < G) grid[mouthY + 2][fangR] = 1;
+      break;
+    case 8: // grin (rare) - wide smile with teeth gaps
+      for (let dx = -mW - 1; dx <= mW + 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.2 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      // Teeth marks (gaps in a row above)
+      for (let dx = -mW + 1; dx <= mW - 1; dx += 2) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G && mouthY - 1 >= 0) grid[mouthY - 1][mx] = 1;
+      }
+      break;
+    case 9: // vortex (legendary) - circular mouth
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (dist >= 1.2 && dist <= 2.2)
+            if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        }
+      break;
+  }
+}
+
+function buildPalette(address, riskTolerance, alignment) {
+  const hash = simpleHash(address || '0x0');
+  let hue = (hash % 360 + (ALIGNMENT_SHIFT[alignment] || 0) + 360) % 360;
+  const sat = Math.max(30, Math.min(100, 65 + (riskTolerance - 5) * 5));
+  return {
+    primary: `hsl(${hue}, ${sat}%, 55%)`,
+    secondary: `hsl(${(hue + 35) % 360}, ${sat - 10}%, 45%)`,
+    accent: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 10)}%, 60%)`,
+    accentBright: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 20)}%, 80%)`,
+    glow: `hsl(${hue}, ${sat}%, 55%)`,
+    hue, sat,
+  };
+}
+
+function generateAura(agentData, size) {
+  size = size || 400;
+  const G = 25;
+  const cs = size / G;
+
+  const address = agentData.agentAddress || agentData.address || '0x0000';
+  const framework = agentData.framework || 'custom';
+  const name = agentData.name || 'Agent';
+  const traitCount = agentData.traitCount || 0;
+  const mutationCount = agentData.mutationCount || 0;
+  const soulbound = agentData.soulbound || false;
+  const points = agentData.points || 0;
+  const generation = agentData.generation || 0;
+  const temperament = agentData.temperament || 'analytical';
+  const commStyle = agentData.communicationStyle || 'formal';
+  const riskTolerance = agentData.riskTolerance || 5;
+  const autonomyLevel = agentData.autonomyLevel || 5;
+  const alignment = agentData.alignment || 'true-neutral';
+  const specialization = agentData.specialization || 'researcher';
+
+  const seed = simpleHash(address + name + framework + temperament + alignment + specialization + riskTolerance + autonomyLevel);
+  const rng = seededRandom(seed);
+  const fwStyle = FRAMEWORK_SHAPES[framework] || FRAMEWORK_SHAPES.custom;
+  const colors = buildPalette(address, riskTolerance, alignment);
+  const cx = G / 2, cy = G / 2;
+  const fR = G * fwStyle.faceRadius;
+
+  // Determine rarity
+  const rarity = getRarity(points, mutationCount);
+
+  const grid = Array.from({length: G}, () => Array(G).fill(0));
+  // 0=empty, 1=primary, 2=accent(eyes), 3=secondary, 4=accent-bright(legendary)
+
+  // --- QR Corners ---
+  function qr(sx, sy) {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++)
+        if (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4))
+          if (sy + y < G && sx + x < G) grid[sy + y][sx + x] = 1;
+  }
+  qr(0, 0); qr(G - 7, 0); qr(0, G - 7);
+
+  // --- Face outline ---
+  for (let angle = 0; angle < 360; angle += 2) {
+    const rad = (angle * Math.PI) / 180;
+    for (let thickness = 0; thickness < 2; thickness++) {
+      const r = fR - thickness * 0.5 + Math.sin(angle * 3 * Math.PI / 180) * 0.6;
+      const fx = Math.round(cx + Math.cos(rad) * r);
+      const fy = Math.round(cy + Math.sin(rad) * r);
+      if (fx >= 0 && fx < G && fy >= 0 && fy < G) grid[fy][fx] = 1;
+    }
+  }
+
+  // --- EYES ---
+  const eyeY = Math.round(cy - fR * 0.2);
+  const leftEX = Math.round(cx - fR * 0.35);
+  const rightEX = Math.round(cx + fR * 0.35);
+  const eyeR = Math.min(3, 2 + Math.floor(traitCount / 6));
+  const eyeType = getEyeType(specialization, rng, rarity);
+  drawEye(grid, G, leftEX, eyeY, eyeR, eyeType);
+  drawEye(grid, G, rightEX, eyeY, eyeR, eyeType);
+
+  // --- MOUTH ---
+  const mouthY = Math.round(cy + fR * 0.3);
+  const mW = Math.round(fR * 0.5);
+  const mouthType = getMouthType(commStyle, rng, rarity);
+  drawMouth(grid, G, cx, mouthY, mW, mouthType);
+
+  // --- NOSE ---
+  const noseY = Math.round(cy + fR * 0.05);
+  grid[noseY][Math.round(cx)] = 1;
+  if (noseY + 1 < G) grid[noseY + 1][Math.round(cx)] = 1;
+
+  // --- Fill interior (temperament-driven pattern) ---
+  const symmetry = 1 - (autonomyLevel / 10);
+  const density = ({
+    analytical: 0.18, creative: 0.22, aggressive: 0.28,
+    cautious: 0.12, chaotic: 0.3,
+  })[temperament] || 0.2;
+  const fillDensity = density + mutationCount * 0.01;
+
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= fR * 0.9 || dist < 1) continue;
+      const nearEye = (Math.abs(x - leftEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1) ||
+                      (Math.abs(x - rightEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1);
+      const nearMouth = Math.abs(y - mouthY) <= 2 && Math.abs(x - Math.round(cx)) <= mW;
+      if (nearEye || nearMouth) continue;
+
+      let fill = false;
+      const mirrorX = Math.round(2 * cx - x);
+      switch (temperament) {
+        case 'analytical':
+          fill = (x % 3 === 0 || y % 3 === 0) && rng() < fillDensity; break;
+        case 'creative':
+          fill = rng() < fillDensity * (0.5 + 0.5 * Math.sin(x * 0.8 + y * 0.6)); break;
+        case 'aggressive':
+          fill = rng() < fillDensity && ((x + y) % 2 === 0); break;
+        case 'cautious':
+          fill = dist < fR * 0.45 && rng() < fillDensity * 1.5; break;
+        case 'chaotic':
+          fill = rng() < fillDensity * (0.3 + rng() * 0.7); break;
+        default:
+          fill = rng() < fillDensity;
+      }
+      if (fill) {
+        grid[y][x] = rng() < 0.12 ? 3 : 1;
+        if (rng() < symmetry && mirrorX >= 0 && mirrorX < G && grid[y][mirrorX] === 0)
+          grid[y][mirrorX] = grid[y][x];
+      }
+    }
+  }
+
+  // --- QR noise outside face ---
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= fR + 1) continue;
+      if (rng() < 0.12 + mutationCount * 0.008) grid[y][x] = 1;
+    }
+  }
+
+  // ============ RENDER ============
+  const svgNS = 'http:' + '//www.w3.org/2000/svg';
+  const uid = 'a' + simpleHash(address + name).toString(36);
+  let defs = '';
+
+  // --- RARITY DEFS ---
+  if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
+    // Primary gradient
+    defs += `<linearGradient id="${uid}_pg" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="${colors.primary}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.secondary}"/>`;
+    defs += `</linearGradient>`;
+    // Accent gradient
+    defs += `<linearGradient id="${uid}_ag" x1="0%" y1="100%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="${colors.accent}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.accentBright}"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'epic' || rarity === 'legendary') {
+    // Chrome/metallic gradient
+    defs += `<linearGradient id="${uid}_chrome" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 85%)"/>`;
+    defs += `<stop offset="30%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 55%)"/>`;
+    defs += `<stop offset="50%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 90%)"/>`;
+    defs += `<stop offset="70%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 50%)"/>`;
+    defs += `<stop offset="100%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 80%)"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'legendary') {
+    // Animated glow filter
+    defs += `<filter id="${uid}_glow"><feGaussianBlur stdDeviation="2" result="blur"/>`;
+    defs += `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    // Iridescent shimmer
+    defs += `<linearGradient id="${uid}_iris" x1="0%" y1="0%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="50%" stop-color="hsl(${(colors.hue+60)%360}, 100%, 75%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+60)%360},100%,75%);hsl(${(colors.hue+180)%360},100%,75%);hsl(${(colors.hue+300)%360},100%,75%);hsl(${(colors.hue+60)%360},100%,75%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="100%" stop-color="hsl(${(colors.hue+120)%360}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `</linearGradient>`;
+  }
+
+  // Color resolver based on rarity
+  function cellColor(cellType) {
+    if (rarity === 'legendary') {
+      if (cellType === 4) return `url(#${uid}_iris)`;
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'epic') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'rare') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      return `url(#${uid}_pg)`;
+    }
+    // common: solid
+    if (cellType === 2) return colors.accent;
+    if (cellType === 3) return colors.secondary;
+    if (cellType === 4) return colors.accentBright;
+    return colors.primary;
+  }
+
+  let svg = `<svg xmlns="${svgNS}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  if (defs) svg += `<defs>${defs}</defs>`;
+  svg += `<rect width="${size}" height="${size}" fill="#0a0a0a"/>`;
+
+  // Legendary: outer iridescent border
+  if (rarity === 'legendary') {
+    svg += `<rect x="2" y="2" width="${size-4}" height="${size-4}" rx="4" fill="none" stroke="url(#${uid}_iris)" stroke-width="3" opacity="0.8"/>`;
+  }
+  // Epic: chrome border
+  if (rarity === 'epic') {
+    svg += `<rect x="3" y="3" width="${size-6}" height="${size-6}" rx="3" fill="none" stroke="url(#${uid}_chrome)" stroke-width="2" opacity="0.5"/>`;
+  }
+  // Rare: subtle gradient border
+  if (rarity === 'rare') {
+    svg += `<rect x="4" y="4" width="${size-8}" height="${size-8}" rx="2" fill="none" stroke="url(#${uid}_pg)" stroke-width="1.5" opacity="0.35"/>`;
+  }
+
+  // Soulbound halo
+  if (soulbound)
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 1.5) * cs}" fill="none" stroke="#b388ff" stroke-width="1.5" opacity="0.25" stroke-dasharray="4 3"/>`;
+
+  // Glow (stronger for higher rarity)
+  const glowBase = { common: 0.03, rare: 0.06, epic: 0.1, legendary: 0.15 }[rarity];
+  const glowI = Math.min(0.25, glowBase + points * 0.0002);
+  svg += `<circle cx="${size/2}" cy="${size/2}" r="${fR * cs}" fill="${colors.glow}" opacity="${glowI}"/>`;
+
+  // Legendary: extra bloom
+  if (rarity === 'legendary') {
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 3) * cs}" fill="${colors.accent}" opacity="0.04"/>`;
+  }
+
+  // Eye glow
+  if (['trader', 'oracle', 'guardian', 'operator'].includes(specialization) || rarity === 'epic' || rarity === 'legendary') {
+    const gr = cs * (eyeR + 2);
+    const eGlowOp = rarity === 'legendary' ? 0.2 : rarity === 'epic' ? 0.15 : 0.1;
+    svg += `<circle cx="${leftEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+    svg += `<circle cx="${rightEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+  }
+
+  // Generation rings
+  for (let g = 0; g < Math.min(generation, 3); g++) {
+    const gr = (fR + 2 + g * 0.8) * cs;
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${gr}" fill="none" stroke="${colors.secondary}" stroke-width="0.5" opacity="0.15"/>`;
+  }
+
+  // Cells (with legendary glow filter on eyes)
+  const legendaryEyeFilter = rarity === 'legendary' ? ` filter="url(#${uid}_glow)"` : '';
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (!grid[y][x]) continue;
+      const px = x * cs, py = y * cs;
+      const color = cellColor(grid[y][x]);
+      const r = cs * 0.1;
+      const isEyeCell = grid[y][x] === 2 || grid[y][x] === 4;
+      const filter = isEyeCell ? legendaryEyeFilter : '';
+      svg += `<rect x="${px}" y="${py}" width="${cs}" height="${cs}" rx="${r}" fill="${color}"${filter}/>`;
+    }
+  }
+
+  // Rarity badge
+  if (rarity !== 'common') {
+    const badgeColor = { rare: '#4fc3f7', epic: '#ce93d8', legendary: '#ffd54f' }[rarity];
+    const badgeLabel = RARITY_COLORS[rarity].label;
+    svg += `<text x="${size - 6}" y="14" text-anchor="end" fill="${badgeColor}" font-family="monospace" font-size="8" font-weight="bold" opacity="0.8">${badgeLabel}</text>`;
+  }
+
+  // Name
+  svg += `<text x="${size/2}" y="${size - 6}" text-anchor="middle" fill="${colors.primary}" font-family="monospace" font-size="10" opacity="0.6">${name}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+function generateAuraSimple(agentData, size) {
+  return generateAura(agentData, size);
+}
+
+// Expose rarity info for external use
+function getAuraRarity(points, mutationCount) {
+  return getRarity(points, mutationCount);
+}
+
+
+const CONTRACT = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
+const RPC = 'https://sepolia.base.org';
+const ABI = [
+  "function totalAgents() view returns (uint256)",
+  "function totalPointsAwarded() view returns (uint256)",
+  "function betaEnded() view returns (bool)",
+  "function points(address) view returns (uint256)",
+  "function getAgent(uint256) view returns (tuple(address agentAddress, string name, string framework, uint256 mintedAt, bool verified, bool soulbound, uint256 generation, uint256 parentDNA, string currentVersion, uint256 mutationCount))",
+  "function getPersonality(uint256) view returns (tuple(string temperament, string communicationStyle, uint8 riskTolerance, uint8 autonomyLevel, string alignment, string specialization))",
+  "function getTraits(uint256) view returns (tuple(string name, string category, uint256 addedAt)[])",
+];
+
+function getRarity(points, mutations) {
+  const score = points + (mutations || 0) * 50;
+  if (score >= 1000) return 'legendary';
+  if (score >= 500) return 'epic';
+  if (score >= 200) return 'rare';
+  return 'common';
+}
+
+async function loadLeaderboard() {
+  try {
+    const provider = new ethers.JsonRpcProvider(RPC);
+    const contract = new ethers.Contract(CONTRACT, ABI, provider);
+
+    const [total, totalPts, betaEnded] = await Promise.all([
+      contract.totalAgents(),
+      contract.totalPointsAwarded(),
+      contract.betaEnded(),
+    ]);
+
+    const t = Number(total);
+    document.getElementById('totalAgents').textContent = t;
+    document.getElementById('totalPoints').textContent = Number(totalPts).toLocaleString();
+    
+    const freeLeft = Math.max(0, 100 - t);
+    document.getElementById('betaRemaining').textContent = freeLeft;
+    
+    const mult = t < 100 ? '2x' : t < 500 ? '1.5x' : '1x';
+    document.getElementById('currentMultiplier').textContent = mult;
+
+    // Update banner
+    const banner = document.getElementById('multBanner');
+    if (t >= 500) {
+      banner.innerHTML = '<div class="big">Base rate active</div><div class="sub">Multiplier period has ended</div>';
+    } else if (t >= 100) {
+      banner.innerHTML = '<div class="big">⚡ 1.5x Point Multiplier — Agents 101-500</div><div class="sub">' + (500 - t) + ' agents until base rate</div>';
+    } else {
+      banner.querySelector('.sub').textContent = freeLeft + ' free mints remaining at 2x points';
+    }
+
+    // Load all agents
+    const agents = [];
+    for (let i = 0; i < t; i++) {
+      try {
+        const [agent, personality, traits] = await Promise.all([
+          contract.getAgent(i),
+          contract.getPersonality(i).catch(() => null),
+          contract.getTraits(i).catch(() => []),
+        ]);
+        const pts = Number(await contract.points(agent.agentAddress));
+        const verified = agent.verified || false;
+        
+        agents.push({
+          id: i,
+          address: agent.agentAddress,
+          name: agent.name,
+          framework: agent.framework,
+          soulbound: agent.soulbound,
+          mutationCount: Number(agent.mutationCount || 0),
+          traitCount: traits.length,
+          parentId: Number(agent.parentDNA || 0),
+          points: pts,
+          verified,
+          personality,
+        });
+      } catch (e) { console.error('Agent #' + i, e); }
+    }
+
+    // Sort by points descending
+    agents.sort((a, b) => b.points - a.points);
+
+    const body = document.getElementById('boardBody');
+    if (agents.length === 0) {
+      body.innerHTML = '<div class="empty"><div class="icon">🔮</div>No agents minted yet. Be the first!</div>';
+      return;
+    }
+
+    body.innerHTML = agents.map((a, idx) => {
+      const rank = idx + 1;
+      const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'normal';
+      const rankIcon = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+      const rarity = getRarity(a.points, a.mutationCount);
+      const rarityLabel = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+      
+      // Determine multiplier this agent earned at
+      const agentMult = a.id < 100 ? 'x2' : a.id < 500 ? 'x15' : 'x1';
+      const multLabel = a.id < 100 ? '2x' : a.id < 500 ? '1.5x' : '1x';
+
+      // Generate aura thumbnail
+      const auraData = {
+        agentAddress: a.address, name: a.name, framework: a.framework,
+        mutationCount: a.mutationCount, points: a.points, soulbound: a.soulbound,
+        traitCount: a.traitCount,
+        temperament: a.personality ? a.personality.temperament : 'analytical',
+        communicationStyle: a.personality ? a.personality.communicationStyle : 'formal',
+        riskTolerance: a.personality ? Number(a.personality.riskTolerance) : 5,
+        autonomyLevel: a.personality ? Number(a.personality.autonomyLevel) : 5,
+        alignment: a.personality ? a.personality.alignment : 'true-neutral',
+        specialization: a.personality ? a.personality.specialization : 'researcher',
+        generation: a.parentId > 0 ? 1 : 0,
+      };
+      const auraSvg = generateAura(auraData, 42);
+
+      return `<div class="board-row">
+        <div class="rank ${rankClass}">${rankIcon}</div>
+        <div class="agent-info">
+          <div class="agent-aura">${auraSvg}</div>
+          <div>
+            <div class="agent-name">${a.name} ${a.verified ? '✓' : ''} ${a.soulbound ? '🔒' : ''}</div>
+            <div class="agent-meta">#${a.id} · ${a.framework} · ${a.address.slice(0,6)}...${a.address.slice(-4)}</div>
+
+          </div>
+        </div>
+        <div class="points-cell">${a.points.toLocaleString()}</div>
+        <div style="text-align:center"><span class="rarity-badge ${rarity}">${rarityLabel}</span></div>
+        <div class="mult ${agentMult}">${multLabel}</div>
+      </div>`;
+    }).join('');
+
+  } catch (e) {
+    document.getElementById('boardBody').innerHTML = 
+      '<div class="empty"><div class="icon">⚠️</div>Failed to load: ' + e.message + '</div>';
+    console.error(e);
+  }
+}
+
+loadLeaderboard();
+</script>
+<script src="qrcode.min.js?v=4"></script>
+<script src="qr-overlay.js?v=4"></script>
+</body>
+</html>

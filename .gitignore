@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+lib/
+cache/
+out/
+
+# Environment
+.env
+.env.*
+
+# Foundry
+broadcast/
+artifacts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keys
+*.key
+*.pem

@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentDNA Metadata (ERC-8004 Compatible)",
+  "description": "Identity metadata for AI agents, aligned with ERC-8004 Trustless Agents standard",
+  "type": "object",
+  "required": ["name", "description", "agent_address", "framework"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Agent display name"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this agent does"
+    },
+    "image": {
+      "type": "string",
+      "description": "Agent avatar/logo URI (ipfs://, ar://, https://)"
+    },
+    "agent_address": {
+      "type": "string",
+      "description": "Agent's operating wallet address"
+    },
+
+    "identity": {
+      "type": "object",
+      "description": "ERC-8004 Identity Registry fields",
+      "properties": {
+        "creator": {
+          "type": "string",
+          "description": "Creator address or ENS"
+        },
+        "framework": {
+          "type": "string",
+          "enum": ["langchain", "crewai", "autogpt", "eliza", "openclaw", "custom"],
+          "description": "Agent framework"
+        },
+        "model": {
+          "type": "string",
+          "description": "Base model (gpt-4, claude-3, llama-3, etc.)"
+        },
+        "version": {
+          "type": "string",
+          "description": "Current agent version (semver)"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Agent creation timestamp"
+        },
+        "source_repo": {
+          "type": "string",
+          "description": "Source code repository URL"
+        },
+        "did": {
+          "type": "string",
+          "description": "Decentralized Identifier (DID) if available"
+        },
+        "ens": {
+          "type": "string",
+          "description": "ENS name if available"
+        }
+      }
+    },
+
+    "capabilities": {
+      "type": "array",
+      "description": "Agent capability tags",
+      "items": {
+        "type": "string"
+      },
+      "examples": [["text-generation", "code", "research", "trading", "data-analysis"]]
+    },
+
+    "service_endpoints": {
+      "type": "object",
+      "description": "ERC-8004 service discovery endpoints",
+      "properties": {
+        "a2a": {
+          "type": "string",
+          "description": "Agent-to-Agent protocol endpoint"
+        },
+        "mcp": {
+          "type": "string",
+          "description": "Model Context Protocol endpoint"
+        },
+        "api": {
+          "type": "string",
+          "description": "REST/GraphQL API endpoint"
+        },
+        "health": {
+          "type": "string",
+          "description": "Health check endpoint"
+        },
+        "websocket": {
+          "type": "string",
+          "description": "WebSocket endpoint for real-time"
+        }
+      }
+    },
+
+    "trust_models": {
+      "type": "object",
+      "description": "ERC-8004 supported trust/validation models",
+      "properties": {
+        "staking": {
+          "type": "boolean",
+          "description": "Supports staking-based validation"
+        },
+        "tee": {
+          "type": "object",
+          "description": "TEE attestation support",
+          "properties": {
+            "supported": { "type": "boolean" },
+            "provider": { "type": "string", "description": "e.g., phala, intel-sgx" },
+            "attestation_url": { "type": "string" }
+          }
+        },
+        "zkml": {
+          "type": "object",
+          "description": "zkML proof support",
+          "properties": {
+            "supported": { "type": "boolean" },
+            "verifier_contract": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "lineage": {
+      "type": "object",
+      "description": "AgentDNA-specific: agent genealogy (beyond ERC-8004)",
+      "properties": {
+        "parent_dna": {
+          "type": ["integer", "null"],
+          "description": "Parent AgentDNA token ID (null if genesis)"
+        },
+        "generation": {
+          "type": "integer",
+          "description": "Generation number (0 = genesis)"
+        },
+        "fork_of": {
+          "type": "string",
+          "description": "If forked from another agent, reference"
+        }
+      }
+    },
+
+    "wallet": {
+      "type": "object",
+      "description": "ERC-8004 wallet/payment information",
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Primary wallet address"
+        },
+        "chains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Supported chain IDs"
+        },
+        "x402_endpoint": {
+          "type": "string",
+          "description": "x402 micropayment endpoint"
+        },
+        "accepted_tokens": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Accepted payment token addresses"
+        }
+      }
+    },
+
+    "social": {
+      "type": "object",
+      "description": "Agent social presence",
+      "properties": {
+        "twitter": { "type": "string" },
+        "discord": { "type": "string" },
+        "telegram": { "type": "string" },
+        "website": { "type": "string" }
+      }
+    }
+  }
+}
