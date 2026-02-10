@@ -20,6 +20,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
     uint256 private _nextTokenId;
     uint256 public mintPrice;
     mapping(address => bool) public hasFreeMinted; // one free mint per wallet
+    address public treasury; // where mint fees go
 
     // --- ERC-8004 Identity Registry ---
 
@@ -148,6 +149,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
         mintPrice = _mintPrice;
         mutationFee = _mutationFee;
         traitFee = _traitFee;
+        treasury = msg.sender; // default to deployer, update post-deploy
     }
 
     // ============================================================
@@ -631,8 +633,13 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
     }
 
     function withdraw() external onlyOwner {
-        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
+        (bool success, ) = payable(treasury).call{value: address(this).balance}("");
         require(success, "Withdraw failed");
+    }
+
+    function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Invalid treasury");
+        treasury = _treasury;
     }
 
     // ============================================================
