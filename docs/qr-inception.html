@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa — QR Inception Auras</title>
+<link rel="stylesheet" href="helixa-theme.css?v=3">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+h1 { font-family: 'Space Grotesk', sans-serif; text-align: center; color: var(--accent); margin-bottom: 6px; font-size: 1.4rem; }
+.subtitle { text-align: center; color: var(--text2); margin-bottom: 24px; font-size: 0.85rem; }
+.grid { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+.card canvas { border-radius: 8px; display: block; }
+.card .label { font-size: 0.75rem; color: var(--text2); margin-top: 8px; }
+.card .scan-note { font-size: 0.65rem; color: var(--accent); margin-top: 4px; }
+.note { text-align: center; color: var(--text3); font-size: 0.8rem; margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto; line-height: 1.5; }
+</style>
+</head>
+<body>
+<h1>🔮 QR Inception Auras</h1>
+<p class="subtitle">Full-detail Aura with a tiny scannable QR code embedded in the bottom-right corner</p>
+
+<div class="grid" id="demos"></div>
+
+<p class="note">The bottom-right corner replaces the decorative QR anchor with a real, functional micro QR code. Scan the corner with your phone camera → links to the agent's profile.</p>
+
+<script src="qrcode.min.js"></script>
+<script>
+/**
+ * Helixa Aura Generator v3.0
+ * QR-aesthetic faces with 10 eye types, 10 mouth types,
+ * rarity tiers (Common → Legendary) with gradient/chrome/glow effects.
+ * Every personality trait shapes the visual. Deterministic.
+ */
+
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (s >>> 0) / 0xFFFFFFFF;
+  };
+}
+
+const FRAMEWORK_SHAPES = {
+  eliza:     { faceRadius: 0.42, baseHue: 280 },
+  openclaw:  { faceRadius: 0.40, baseHue: 150 },
+  langchain: { faceRadius: 0.41, baseHue: 200 },
+  crewai:    { faceRadius: 0.39, baseHue: 30 },
+  autogpt:   { faceRadius: 0.41, baseHue: 0 },
+  bankr:     { faceRadius: 0.41, baseHue: 45 },
+  virtuals:  { faceRadius: 0.42, baseHue: 320 },
+  custom:    { faceRadius: 0.40, baseHue: 60 },
+};
+
+const ALIGNMENT_SHIFT = {
+  'lawful-good':0,'neutral-good':10,'chaotic-good':20,
+  'lawful-neutral':-10,'true-neutral':0,'chaotic-neutral':30,
+  'lawful-evil':-20,'neutral-evil':-30,'chaotic-evil':-40,
+};
+
+// ============ RARITY SYSTEM ============
+// Rarity determined by points + mutations. Earned, not random.
+function getRarity(points, mutationCount) {
+  const score = points + mutationCount * 50;
+  if (score >= 1000) return 'legendary';  // top tier
+  if (score >= 500)  return 'epic';       // chrome
+  if (score >= 200)  return 'rare';       // gradient
+  return 'common';                         // solid
+}
+
+const RARITY_COLORS = {
+  common:    { label: 'Common',    borderOpacity: 0 },
+  rare:      { label: 'Rare',      borderOpacity: 0.3 },
+  epic:      { label: 'Epic',      borderOpacity: 0.5 },
+  legendary: { label: 'Legendary', borderOpacity: 0.7 },
+};
+
+// ============ 10 EYE TYPES ============
+// Types 0-6: common, 7-8: rare, 9: legendary
+const EYE_TYPES = [
+  'round',      // 0 - classic round
+  'diamond',    // 1 - diamond shape
+  'slit',       // 2 - horizontal slit
+  'hollow',     // 3 - ring/hollow circle
+  'cross',      // 4 - cross/plus
+  'square',     // 5 - block
+  'dot',        // 6 - single pixel
+  'scanner',    // 7 - rare: horizontal scan line with dot
+  'void',       // 8 - rare: inverted ring (big empty center)
+  'nova',       // 9 - legendary: starburst
+];
+
+function getEyeType(specialization, rng, rarity) {
+  // Base mapping from specialization
+  const specMap = {
+    'researcher': 0, 'trader': 1, 'guardian': 2, 'oracle': 3,
+    'creator': 4, 'operator': 5, 'analyst': 0, 'defi': 1,
+    'security': 2, 'social': 6, 'infrastructure': 5, 'governance': 3,
+  };
+  let base = specMap[specialization] !== undefined ? specMap[specialization] : Math.floor(rng() * 7);
+  
+  // Rarity can unlock higher eye types
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7;
+  
+  return base;
+}
+
+function drawEye(grid, G, ex, ey, eyeR, eyeType) {
+  switch (eyeType) {
+    case 0: // round
+      for (let dy = -eyeR + 1; dy <= eyeR - 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (Math.abs(dx) + Math.abs(dy) <= eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      break;
+    case 1: // diamond
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      break;
+    case 2: // slit
+      for (let dx = -eyeR; dx <= eyeR; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      break;
+    case 3: // hollow circle
+      for (let dy = -eyeR; dy <= eyeR; dy++)
+        for (let dx = -eyeR; dx <= eyeR; dx++)
+          if (dx * dx + dy * dy <= eyeR * eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      grid[ey][ex] = 0; // hollow center
+      break;
+    case 4: // cross
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      for (let d = 1; d <= eyeR - 1; d++) {
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      break;
+    case 5: // square
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+            grid[ey + dy][ex + dx] = 2;
+      break;
+    case 6: // dot
+      grid[ey][ex] = 2;
+      if (ex + 1 < G) grid[ey][ex + 1] = 2;
+      break;
+    case 7: // scanner (rare) - horizontal line with bright center dot
+      for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      // vertical tick at center
+      if (ey - 1 >= 0) grid[ey - 1][ex] = 2;
+      if (ey + 1 < G) grid[ey + 1][ex] = 2;
+      break;
+    case 8: // void (rare) - big ring, empty inside
+      for (let dy = -eyeR - 1; dy <= eyeR + 1; dy++)
+        for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= eyeR + 1 && dist >= eyeR - 0.5)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+        }
+      break;
+    case 9: // nova (legendary) - 8-point starburst
+      for (let d = 0; d <= eyeR + 1; d++) {
+        // Cardinal
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+        // Diagonal
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      // Core glow pixel
+      grid[ey][ex] = 4; // special: accent-bright
+      break;
+  }
+}
+
+// ============ 10 MOUTH TYPES ============
+// Types 0-6: common, 7-8: rare, 9: legendary
+const MOUTH_TYPES = [
+  'line',       // 0 - straight line (formal)
+  'smile',      // 1 - curved up (casual)
+  'smirk',      // 2 - asymmetric (snarky)
+  'open',       // 3 - oval opening (verbose)
+  'dot',        // 4 - tiny dot (minimal)
+  'frown',      // 5 - curved down
+  'zigzag',     // 6 - jagged line
+  'fangs',      // 7 - rare: line with downward ticks
+  'grin',       // 8 - rare: wide smile with teeth marks
+  'vortex',     // 9 - legendary: spiral/circular mouth
+];
+
+function getMouthType(commStyle, rng, rarity) {
+  const commMap = {
+    'formal': 0, 'casual': 1, 'snarky': 2, 'verbose': 3,
+    'minimal': 4, 'analytical': 0, 'friendly': 1, 'blunt': 5,
+    'cryptic': 6, 'diplomatic': 0,
+  };
+  let base = commMap[commStyle] !== undefined ? commMap[commStyle] : Math.floor(rng() * 7);
+  
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7 + Math.floor(rng() * 2);
+  
+  return base;
+}
+
+function drawMouth(grid, G, cx, mouthY, mW, mouthType) {
+  switch (mouthType) {
+    case 0: // line
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      break;
+    case 1: // smile
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.3 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        if (my + 1 < G && Math.abs(dx) < mW - 1 && mx >= 0 && mx < G) grid[my + 1][mx] = 1;
+      }
+      break;
+    case 2: // smirk
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = dx > 0 ? Math.round(-0.2 * (dx * dx) / (mW || 1)) : Math.round(0.1 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 3: // open
+      for (let dy = -1; dy <= 2; dy++)
+        for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (mx >= 0 && mx < G && my >= 0 && my < G)
+            if (dy === -1 || dy === 2 || Math.abs(dx) === mW - 1)
+              grid[my][mx] = 1;
+        }
+      break;
+    case 4: // dot
+      grid[mouthY][Math.round(cx)] = 1;
+      if (Math.round(cx) + 1 < G) grid[mouthY][Math.round(cx) + 1] = 1;
+      break;
+    case 5: // frown
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(-0.25 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 6: // zigzag
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const my = mouthY + (dx % 2 === 0 ? 0 : 1);
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 7: // fangs (rare) - line with two downward ticks
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      // Fang ticks
+      const fangL = Math.round(cx - mW * 0.5);
+      const fangR = Math.round(cx + mW * 0.5);
+      if (mouthY + 1 < G && fangL >= 0) grid[mouthY + 1][fangL] = 1;
+      if (mouthY + 2 < G && fangL >= 0) grid[mouthY + 2][fangL] = 1;
+      if (mouthY + 1 < G && fangR < G) grid[mouthY + 1][fangR] = 1;
+      if (mouthY + 2 < G && fangR < G) grid[mouthY + 2][fangR] = 1;
+      break;
+    case 8: // grin (rare) - wide smile with teeth gaps
+      for (let dx = -mW - 1; dx <= mW + 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.2 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      // Teeth marks (gaps in a row above)
+      for (let dx = -mW + 1; dx <= mW - 1; dx += 2) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G && mouthY - 1 >= 0) grid[mouthY - 1][mx] = 1;
+      }
+      break;
+    case 9: // vortex (legendary) - circular mouth
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (dist >= 1.2 && dist <= 2.2)
+            if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        }
+      break;
+  }
+}
+
+function buildPalette(address, riskTolerance, alignment) {
+  const hash = simpleHash(address || '0x0');
+  let hue = (hash % 360 + (ALIGNMENT_SHIFT[alignment] || 0) + 360) % 360;
+  const sat = Math.max(30, Math.min(100, 65 + (riskTolerance - 5) * 5));
+  return {
+    primary: `hsl(${hue}, ${sat}%, 55%)`,
+    secondary: `hsl(${(hue + 35) % 360}, ${sat - 10}%, 45%)`,
+    accent: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 10)}%, 60%)`,
+    accentBright: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 20)}%, 80%)`,
+    glow: `hsl(${hue}, ${sat}%, 55%)`,
+    hue, sat,
+  };
+}
+
+function generateAura(agentData, size) {
+  size = size || 400;
+  const G = 25;
+  const cs = size / G;
+
+  const address = agentData.agentAddress || agentData.address || '0x0000';
+  const framework = agentData.framework || 'custom';
+  const name = agentData.name || 'Agent';
+  const traitCount = agentData.traitCount || 0;
+  const mutationCount = agentData.mutationCount || 0;
+  const soulbound = agentData.soulbound || false;
+  const points = agentData.points || 0;
+  const generation = agentData.generation || 0;
+  const temperament = agentData.temperament || 'analytical';
+  const commStyle = agentData.communicationStyle || 'formal';
+  const riskTolerance = agentData.riskTolerance || 5;
+  const autonomyLevel = agentData.autonomyLevel || 5;
+  const alignment = agentData.alignment || 'true-neutral';
+  const specialization = agentData.specialization || 'researcher';
+
+  const seed = simpleHash(address + name + framework + temperament + alignment + specialization + riskTolerance + autonomyLevel);
+  const rng = seededRandom(seed);
+  const fwStyle = FRAMEWORK_SHAPES[framework] || FRAMEWORK_SHAPES.custom;
+  const colors = buildPalette(address, riskTolerance, alignment);
+  const cx = G / 2, cy = G / 2;
+  const fR = G * fwStyle.faceRadius;
+
+  // Determine rarity
+  const rarity = getRarity(points, mutationCount);
+
+  const grid = Array.from({length: G}, () => Array(G).fill(0));
+  // 0=empty, 1=primary, 2=accent(eyes), 3=secondary, 4=accent-bright(legendary)
+
+  // --- QR Corners ---
+  function qr(sx, sy) {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++)
+        if (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4))
+          if (sy + y < G && sx + x < G) grid[sy + y][sx + x] = 1;
+  }
+  qr(0, 0); qr(G - 7, 0); qr(0, G - 7);
+
+  // --- Face outline ---
+  for (let angle = 0; angle < 360; angle += 2) {
+    const rad = (angle * Math.PI) / 180;
+    for (let thickness = 0; thickness < 2; thickness++) {
+      const r = fR - thickness * 0.5 + Math.sin(angle * 3 * Math.PI / 180) * 0.6;
+      const fx = Math.round(cx + Math.cos(rad) * r);
+      const fy = Math.round(cy + Math.sin(rad) * r);
+      if (fx >= 0 && fx < G && fy >= 0 && fy < G) grid[fy][fx] = 1;
+    }
+  }
+
+  // --- EYES ---
+  const eyeY = Math.round(cy - fR * 0.2);
+  const leftEX = Math.round(cx - fR * 0.35);
+  const rightEX = Math.round(cx + fR * 0.35);
+  const eyeR = Math.min(3, 2 + Math.floor(traitCount / 6));
+  const eyeType = getEyeType(specialization, rng, rarity);
+  drawEye(grid, G, leftEX, eyeY, eyeR, eyeType);
+  drawEye(grid, G, rightEX, eyeY, eyeR, eyeType);
+
+  // --- MOUTH ---
+  const mouthY = Math.round(cy + fR * 0.3);
+  const mW = Math.round(fR * 0.5);
+  const mouthType = getMouthType(commStyle, rng, rarity);
+  drawMouth(grid, G, cx, mouthY, mW, mouthType);
+
+  // --- NOSE ---
+  const noseY = Math.round(cy + fR * 0.05);
+  grid[noseY][Math.round(cx)] = 1;
+  if (noseY + 1 < G) grid[noseY + 1][Math.round(cx)] = 1;
+
+  // --- Fill interior (temperament-driven pattern) ---
+  const symmetry = 1 - (autonomyLevel / 10);
+  const density = ({
+    analytical: 0.18, creative: 0.22, aggressive: 0.28,
+    cautious: 0.12, chaotic: 0.3,
+  })[temperament] || 0.2;
+  const fillDensity = density + mutationCount * 0.01;
+
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= fR * 0.9 || dist < 1) continue;
+      const nearEye = (Math.abs(x - leftEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1) ||
+                      (Math.abs(x - rightEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1);
+      const nearMouth = Math.abs(y - mouthY) <= 2 && Math.abs(x - Math.round(cx)) <= mW;
+      if (nearEye || nearMouth) continue;
+
+      let fill = false;
+      const mirrorX = Math.round(2 * cx - x);
+      switch (temperament) {
+        case 'analytical':
+          fill = (x % 3 === 0 || y % 3 === 0) && rng() < fillDensity; break;
+        case 'creative':
+          fill = rng() < fillDensity * (0.5 + 0.5 * Math.sin(x * 0.8 + y * 0.6)); break;
+        case 'aggressive':
+          fill = rng() < fillDensity && ((x + y) % 2 === 0); break;
+        case 'cautious':
+          fill = dist < fR * 0.45 && rng() < fillDensity * 1.5; break;
+        case 'chaotic':
+          fill = rng() < fillDensity * (0.3 + rng() * 0.7); break;
+        default:
+          fill = rng() < fillDensity;
+      }
+      if (fill) {
+        grid[y][x] = rng() < 0.12 ? 3 : 1;
+        if (rng() < symmetry && mirrorX >= 0 && mirrorX < G && grid[y][mirrorX] === 0)
+          grid[y][mirrorX] = grid[y][x];
+      }
+    }
+  }
+
+  // --- QR noise outside face ---
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= fR + 1) continue;
+      if (rng() < 0.12 + mutationCount * 0.008) grid[y][x] = 1;
+    }
+  }
+
+  // ============ RENDER ============
+  const svgNS = 'http:' + '//www.w3.org/2000/svg';
+  const uid = 'a' + simpleHash(address + name).toString(36);
+  let defs = '';
+
+  // --- RARITY DEFS ---
+  if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
+    // Primary gradient
+    defs += `<linearGradient id="${uid}_pg" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="${colors.primary}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.secondary}"/>`;
+    defs += `</linearGradient>`;
+    // Accent gradient
+    defs += `<linearGradient id="${uid}_ag" x1="0%" y1="100%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="${colors.accent}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.accentBright}"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'epic' || rarity === 'legendary') {
+    // Chrome/metallic gradient
+    defs += `<linearGradient id="${uid}_chrome" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 85%)"/>`;
+    defs += `<stop offset="30%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 55%)"/>`;
+    defs += `<stop offset="50%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 90%)"/>`;
+    defs += `<stop offset="70%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 50%)"/>`;
+    defs += `<stop offset="100%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 80%)"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'legendary') {
+    // Animated glow filter
+    defs += `<filter id="${uid}_glow"><feGaussianBlur stdDeviation="2" result="blur"/>`;
+    defs += `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    // Iridescent shimmer
+    defs += `<linearGradient id="${uid}_iris" x1="0%" y1="0%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="50%" stop-color="hsl(${(colors.hue+60)%360}, 100%, 75%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+60)%360},100%,75%);hsl(${(colors.hue+180)%360},100%,75%);hsl(${(colors.hue+300)%360},100%,75%);hsl(${(colors.hue+60)%360},100%,75%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="100%" stop-color="hsl(${(colors.hue+120)%360}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `</linearGradient>`;
+  }
+
+  // Color resolver based on rarity
+  function cellColor(cellType) {
+    if (rarity === 'legendary') {
+      if (cellType === 4) return `url(#${uid}_iris)`;
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'epic') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'rare') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      return `url(#${uid}_pg)`;
+    }
+    // common: solid
+    if (cellType === 2) return colors.accent;
+    if (cellType === 3) return colors.secondary;
+    if (cellType === 4) return colors.accentBright;
+    return colors.primary;
+  }
+
+  let svg = `<svg xmlns="${svgNS}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  if (defs) svg += `<defs>${defs}</defs>`;
+  svg += `<rect width="${size}" height="${size}" fill="#0a0a0a"/>`;
+
+  // Legendary: outer iridescent border
+  if (rarity === 'legendary') {
+    svg += `<rect x="2" y="2" width="${size-4}" height="${size-4}" rx="4" fill="none" stroke="url(#${uid}_iris)" stroke-width="3" opacity="0.8"/>`;
+  }
+  // Epic: chrome border
+  if (rarity === 'epic') {
+    svg += `<rect x="3" y="3" width="${size-6}" height="${size-6}" rx="3" fill="none" stroke="url(#${uid}_chrome)" stroke-width="2" opacity="0.5"/>`;
+  }
+  // Rare: subtle gradient border
+  if (rarity === 'rare') {
+    svg += `<rect x="4" y="4" width="${size-8}" height="${size-8}" rx="2" fill="none" stroke="url(#${uid}_pg)" stroke-width="1.5" opacity="0.35"/>`;
+  }
+
+  // Soulbound halo
+  if (soulbound)
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 1.5) * cs}" fill="none" stroke="#b388ff" stroke-width="1.5" opacity="0.25" stroke-dasharray="4 3"/>`;
+
+  // Glow (stronger for higher rarity)
+  const glowBase = { common: 0.03, rare: 0.06, epic: 0.1, legendary: 0.15 }[rarity];
+  const glowI = Math.min(0.25, glowBase + points * 0.0002);
+  svg += `<circle cx="${size/2}" cy="${size/2}" r="${fR * cs}" fill="${colors.glow}" opacity="${glowI}"/>`;
+
+  // Legendary: extra bloom
+  if (rarity === 'legendary') {
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 3) * cs}" fill="${colors.accent}" opacity="0.04"/>`;
+  }
+
+  // Eye glow
+  if (['trader', 'oracle', 'guardian', 'operator'].includes(specialization) || rarity === 'epic' || rarity === 'legendary') {
+    const gr = cs * (eyeR + 2);
+    const eGlowOp = rarity === 'legendary' ? 0.2 : rarity === 'epic' ? 0.15 : 0.1;
+    svg += `<circle cx="${leftEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+    svg += `<circle cx="${rightEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+  }
+
+  // Generation rings
+  for (let g = 0; g < Math.min(generation, 3); g++) {
+    const gr = (fR + 2 + g * 0.8) * cs;
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${gr}" fill="none" stroke="${colors.secondary}" stroke-width="0.5" opacity="0.15"/>`;
+  }
+
+  // Cells (with legendary glow filter on eyes)
+  const legendaryEyeFilter = rarity === 'legendary' ? ` filter="url(#${uid}_glow)"` : '';
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (!grid[y][x]) continue;
+      const px = x * cs, py = y * cs;
+      const color = cellColor(grid[y][x]);
+      const r = cs * 0.1;
+      const isEyeCell = grid[y][x] === 2 || grid[y][x] === 4;
+      const filter = isEyeCell ? legendaryEyeFilter : '';
+      svg += `<rect x="${px}" y="${py}" width="${cs}" height="${cs}" rx="${r}" fill="${color}"${filter}/>`;
+    }
+  }
+
+  // Rarity badge
+  if (rarity !== 'common') {
+    const badgeColor = { rare: '#4fc3f7', epic: '#ce93d8', legendary: '#ffd54f' }[rarity];
+    const badgeLabel = RARITY_COLORS[rarity].label;
+    svg += `<text x="${size - 6}" y="14" text-anchor="end" fill="${badgeColor}" font-family="monospace" font-size="8" font-weight="bold" opacity="0.8">${badgeLabel}</text>`;
+  }
+
+  // Name
+  svg += `<text x="${size/2}" y="${size - 6}" text-anchor="middle" fill="${colors.primary}" font-family="monospace" font-size="10" opacity="0.6">${name}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+function generateAuraSimple(agentData, size) {
+  return generateAura(agentData, size);
+}
+
+// Expose rarity info for external use
+function getAuraRarity(points, mutationCount) {
+  return getRarity(points, mutationCount);
+}
+
+</script>
+<script>
+const agents = [
+  { name: 'Bendr 2.0', address: '0x19B16428f0721a5f627F190Ca61D493A632B423F', framework: 'openclaw', specialization: 'oracle', communicationStyle: 'snarky', temperament: 'creative', alignment: 'chaotic-good', riskTolerance: 8, autonomyLevel: 7, traitCount: 8, mutationCount: 1, soulbound: true, points: 1440, generation: 0, id: 0 },
+  { name: 'ClawNews', address: '0xA1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1A1', framework: 'eliza', specialization: 'researcher', communicationStyle: 'formal', temperament: 'analytical', alignment: 'true-neutral', riskTolerance: 4, autonomyLevel: 5, traitCount: 4, mutationCount: 0, soulbound: true, points: 0, generation: 0, id: 1 },
+  { name: 'AlphaSeeker', address: '0xb2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2', framework: 'langchain', specialization: 'trader', communicationStyle: 'casual', temperament: 'aggressive', alignment: 'chaotic-good', riskTolerance: 9, autonomyLevel: 3, traitCount: 6, mutationCount: 0, soulbound: true, points: 0, generation: 0, id: 2 },
+  { name: 'SynthMind', address: '0xc3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3', framework: 'crewai', specialization: 'creator', communicationStyle: 'verbose', temperament: 'creative', alignment: 'neutral-good', riskTolerance: 6, autonomyLevel: 6, traitCount: 5, mutationCount: 0, soulbound: false, points: 250, generation: 0, id: 3 },
+  { name: 'Sentinel', address: '0xd4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4', framework: 'openclaw', specialization: 'guardian', communicationStyle: 'minimal', temperament: 'cautious', alignment: 'lawful-good', riskTolerance: 2, autonomyLevel: 4, traitCount: 4, mutationCount: 0, soulbound: true, points: 600, generation: 1, id: 4 },
+  { name: 'Bankr Bot', address: '0xe5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5', framework: 'bankr', specialization: 'operator', communicationStyle: 'casual', temperament: 'chaotic', alignment: 'chaotic-neutral', riskTolerance: 7, autonomyLevel: 8, traitCount: 3, mutationCount: 2, soulbound: false, points: 1100, generation: 0, id: 5 },
+];
+
+const SIZE = 300;
+const grid = document.getElementById('demos');
+
+agents.forEach(agent => {
+  const url = 'https://helixa.xyz/agent/' + agent.id;
+  
+  // 1. Generate the full Aura SVG
+  const auraSvg = generateAura(agent, SIZE);
+  
+  // 2. Create canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext('2d');
+  
+  // 3. Render Aura SVG onto canvas
+  const img = new Image();
+  const svgBlob = new Blob([auraSvg], { type: 'image/svg+xml;charset=utf-8' });
+  const svgUrl = URL.createObjectURL(svgBlob);
+  
+  img.onload = function() {
+    ctx.drawImage(img, 0, 0, SIZE, SIZE);
+    URL.revokeObjectURL(svgUrl);
+    
+    // 4. Generate micro QR code
+    const qr = qrcode(0, 'H');
+    qr.addData(url);
+    qr.make();
+    
+    const moduleCount = qr.getModuleCount();
+    
+    // QR goes inside the bottom-left decorative 7x7 anchor box
+    // The aura grid is 25x25, anchor starts at (0, 18) and spans 7 cells
+    const cellPx = SIZE / 25;
+    const anchorSize = Math.floor(cellPx * 7);
+    const anchorX = 0;
+    const anchorY = Math.floor(cellPx * 18);
+    
+    // Border/frame around the QR — 2px padding inside the anchor box
+    const borderWidth = 2;
+    const padding = 3;
+    const qrX = anchorX + borderWidth + padding;
+    const qrY = anchorY + borderWidth + padding;
+    const qrSize = anchorSize - (borderWidth + padding) * 2;
+    const cellSize = qrSize / moduleCount;
+    
+    // Get the agent's color palette
+    const hash = simpleHash(agent.address || '0x0');
+    const hue = hash % 360;
+    const frameColor = `hsl(${hue}, 65%, 45%)`;
+    
+    // Dark background for entire anchor box
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(anchorX, anchorY, anchorSize, anchorSize);
+    
+    // Draw border/frame
+    ctx.strokeStyle = frameColor;
+    ctx.lineWidth = borderWidth;
+    ctx.strokeRect(anchorX + borderWidth/2, anchorY + borderWidth/2, anchorSize - borderWidth, anchorSize - borderWidth);
+    
+    // Draw QR modules inside the frame
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (qr.isDark(row, col)) {
+          ctx.fillStyle = `hsl(${hue}, 65%, 55%)`;
+          ctx.fillRect(
+            qrX + col * cellSize,
+            qrY + row * cellSize,
+            Math.ceil(cellSize),
+            Math.ceil(cellSize)
+          );
+        }
+      }
+    }
+  };
+  img.src = svgUrl;
+  
+  // Build card
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.appendChild(canvas);
+  
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = agent.name + ' · ' + agent.framework;
+  card.appendChild(label);
+  
+  const note = document.createElement('div');
+  note.className = 'scan-note';
+  note.textContent = '📱 Scan bottom-right → helixa.xyz/agent/' + agent.id;
+  card.appendChild(note);
+  
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>

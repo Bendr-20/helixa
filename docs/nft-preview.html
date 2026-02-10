@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa Agent DNA — Bendr 2.0 #0000</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#0f0f0f;--border:#1a1a1a;--green:#00ff88;--green-dim:#00ff8833;--green-mid:#00ff8866;--text:#e0e0e0;--text-dim:#666;--text-mid:#999;--accent-blue:#4fc3f7;--accent-purple:#b388ff;--accent-orange:#ffab40;--accent-red:#ff5252;--accent-cyan:#00e5ff;--radius:12px}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono','Fira Code','Cascadia Code',monospace;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:40px 20px}
+.card{width:420px;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;position:relative;box-shadow:0 0 80px #00ff8808,0 0 40px #00000080}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green-dim),transparent)}
+.header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px 12px;border-bottom:1px solid var(--border)}
+.logo{font-size:14px;font-weight:700;letter-spacing:2px;color:var(--green)}
+.logo span{color:var(--text-dim);font-weight:400;font-size:11px;margin-left:6px}
+.token-id{font-size:12px;color:var(--text-dim);background:#111;padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+.hero{padding:20px;display:flex;justify-content:center;position:relative}
+.hero-frame{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--border);background:#080808;padding:8px;box-shadow:0 0 40px #00ff8806 inset}
+.hero-frame svg{display:block;border-radius:10px}
+.hero-glow{position:absolute;inset:-2px;border-radius:18px;background:conic-gradient(from 0deg,transparent,var(--green-dim),transparent,var(--green-dim),transparent);opacity:.3;z-index:-1;animation:spin 12s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.identity-row{padding:0 20px 16px;display:flex;align-items:center;gap:10px}
+.agent-name{font-size:22px;font-weight:700;color:#fff}
+.verified{width:18px;height:18px;background:var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;font-weight:900;flex-shrink:0}
+.agent-desc{padding:0 20px 16px;font-size:11px;color:var(--text-dim);line-height:1.5}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);margin:0 20px 16px;border-radius:10px;overflow:hidden}
+.stat{background:var(--card);padding:10px 6px;text-align:center}
+.stat-val{font-size:16px;font-weight:700;color:var(--green)}
+.stat-val.orange{color:var(--accent-orange)}
+.stat-val.blue{color:var(--accent-blue)}
+.stat-val.purple{color:var(--accent-purple)}
+.stat-val.cyan{color:var(--accent-cyan)}
+.stat-label{font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.section{padding:0 20px 14px}
+.section-title{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--text-dim);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.pills{display:flex;flex-wrap:wrap;gap:5px}
+.pill{font-size:10px;padding:4px 10px;border-radius:20px;border:1px solid;line-height:1.3}
+.pill.green{color:var(--green);border-color:var(--green-dim);background:#00ff8808}
+.pill.blue{color:var(--accent-blue);border-color:#4fc3f733;background:#4fc3f708}
+.pill.purple{color:var(--accent-purple);border-color:#b388ff33;background:#b388ff08}
+.pill.orange{color:var(--accent-orange);border-color:#ffab4033;background:#ffab4008}
+.pill.cyan{color:var(--accent-cyan);border-color:#00e5ff33;background:#00e5ff08}
+.personality .pill{font-size:9px;padding:3px 8px}
+.timeline{position:relative;padding-left:16px}
+.timeline::before{content:'';position:absolute;left:4px;top:4px;bottom:4px;width:1px;background:var(--green-dim)}
+.timeline-item{position:relative;margin-bottom:10px;padding-left:12px}
+.timeline-item:last-child{margin-bottom:0}
+.timeline-item::before{content:'';position:absolute;left:-14px;top:5px;width:7px;height:7px;border-radius:50%;background:var(--green);border:2px solid var(--card)}
+.timeline-ver{font-size:10px;color:var(--green);font-weight:600}
+.timeline-desc{font-size:9px;color:var(--text-dim);margin-top:2px}
+.details{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.detail{display:flex;flex-direction:column;gap:2px}
+.detail-label{font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px}
+.detail-val{font-size:10px;color:var(--text-mid);word-break:break-all}
+.detail-val.mono{font-size:9px}
+.lineage{margin:0 20px 14px;padding:10px 14px;background:#0d0d0d;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:8px}
+.lineage-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 6px var(--green-dim)}
+.lineage-text{font-size:9px;color:var(--text-dim)}
+.lineage-text b{color:var(--text-mid);font-weight:600}
+.footer{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid var(--border);background:#080808}
+.footer-badges{display:flex;gap:8px}
+.badge{font-size:8px;padding:3px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.badge.chain{color:var(--accent-blue);background:#4fc3f712;border:1px solid #4fc3f722}
+.badge.erc{color:var(--green);background:#00ff8812;border:1px solid #00ff8822}
+.badge.soul{color:var(--accent-purple);background:#b388ff12;border:1px solid #b388ff22}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="logo">HELIXA<span>Agent DNA</span></div>
+    <div class="token-id">#0000</div>
+  </div>
+
+  <div class="hero">
+    <div style="position:relative">
+      <div class="hero-glow"></div>
+      <div class="hero-frame" id="faceqr"></div>
+    </div>
+  </div>
+
+  <div class="identity-row">
+    <span class="agent-name">Bendr 2.0</span>
+    <span class="verified">✓</span>
+  </div>
+  <div class="agent-desc">Genesis agent — full-stack builder specializing in smart contracts, tokenomics, and autonomous sub-agent orchestration.</div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">87.6</div><div class="stat-label">Reputation</div></div>
+    <div class="stat"><div class="stat-val blue">v4.6</div><div class="stat-label">Version</div></div>
+    <div class="stat"><div class="stat-val orange">3</div><div class="stat-label">Mutations</div></div>
+    <div class="stat"><div class="stat-val purple">G0</div><div class="stat-label">Genesis</div></div>
+    <div class="stat"><div class="stat-val cyan">850</div><div class="stat-label">Points</div></div>
+  </div>
+
+  <div class="section personality">
+    <div class="section-title">Personality</div>
+    <div class="pills">
+      <span class="pill green">analytical</span>
+      <span class="pill blue">direct</span>
+      <span class="pill orange">risk 7/10</span>
+      <span class="pill purple">autonomy 9/10</span>
+      <span class="pill cyan">chaotic-good</span>
+      <span class="pill green">builder</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Capabilities</div>
+    <div class="pills">
+      <span class="pill green">smart-contracts</span>
+      <span class="pill green">solidity</span>
+      <span class="pill blue">full-stack-dev</span>
+      <span class="pill blue">code-generation</span>
+      <span class="pill purple">research</span>
+      <span class="pill orange">system-architecture</span>
+      <span class="pill cyan">sub-agent-orchestration</span>
+      <span class="pill orange">tokenomics</span>
+      <span class="pill purple">sdk-development</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Mutation History</div>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-ver">v1.0.0 → v2.0.0</div>
+        <div class="timeline-desc">Added smart contract dev</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-ver">v2.0.0 → v3.0.0</div>
+        <div class="timeline-desc">Tokenomics engine</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-ver">v3.0.0 → v4.6</div>
+        <div class="timeline-desc">Points system + tiered pricing</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Identity</div>
+    <div class="details">
+      <div class="detail"><span class="detail-label">Address</span><span class="detail-val mono">0x19B1...423F</span></div>
+      <div class="detail"><span class="detail-label">Framework</span><span class="detail-val">openclaw</span></div>
+      <div class="detail"><span class="detail-label">Model</span><span class="detail-val">claude-opus-4-6</span></div>
+      <div class="detail"><span class="detail-label">Created</span><span class="detail-val">2025-01-15</span></div>
+      <div class="detail"><span class="detail-label">Soulbound</span><span class="detail-val" style="color:var(--accent-purple)">Yes — Non-transferable</span></div>
+      <div class="detail"><span class="detail-label">Verified</span><span class="detail-val" style="color:var(--green)">✓ On-chain</span></div>
+    </div>
+  </div>
+
+  <div class="lineage">
+    <div class="lineage-dot"></div>
+    <div class="lineage-text"><b>Genesis Agent</b> — Generation 0 · No parent · Origin mint</div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-badges">
+      <span class="badge chain">Base</span>
+      <span class="badge erc">ERC-8004</span>
+      <span class="badge soul">Soulbound</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function simpleHash(str){let hash=0;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);hash=((hash<<5)-hash)+c;hash=hash&hash}return Math.abs(hash)}
+function seededRandom(seed){let s=seed;return function(){s=(s*1664525+1013904223)&0xFFFFFFFF;return(s>>>0)/0xFFFFFFFF}}
+function getFrameworkStyle(f){const s={eliza:{faceRadius:.42,eyeStyle:'round',mouthCurve:.3,baseHue:280},openclaw:{faceRadius:.38,eyeStyle:'hex',mouthCurve:.2,baseHue:150},langchain:{faceRadius:.40,eyeStyle:'square',mouthCurve:.15,baseHue:200},crewai:{faceRadius:.39,eyeStyle:'diamond',mouthCurve:.25,baseHue:30},autogpt:{faceRadius:.41,eyeStyle:'triangle',mouthCurve:.1,baseHue:0},custom:{faceRadius:.40,eyeStyle:'round',mouthCurve:.2,baseHue:60}};return s[f]||s.custom}
+function addressToColor(address){const hash=simpleHash(address||'0x0');const hue=hash%360;return{primary:`hsl(${hue}, 70%, 55%)`,secondary:`hsl(${(hue+40)%360}, 60%, 45%)`,accent:`hsl(${(hue+180)%360}, 80%, 60%)`,hue}}
+function generateFaceQR(agentData,options={}){const size=options.size||400;const gridSize=25;const cellSize=size/gridSize;const address=agentData.agentAddress||agentData.address||'0x0000';const framework=agentData.framework||'custom';const name=agentData.name||'Agent';const capCount=(agentData.capabilities||[]).length;const mutationCount=agentData.mutationCount||0;const rng=seededRandom(simpleHash(address+name+framework));const style=getFrameworkStyle(framework);const colors=addressToColor(address);const centerX=gridSize/2;const centerY=gridSize/2;const faceR=gridSize*style.faceRadius;const grid=[];for(let y=0;y<gridSize;y++){grid[y]=[];for(let x=0;x<gridSize;x++)grid[y][x]=0}function drawCornerMarker(startX,startY){for(let y=0;y<7;y++)for(let x=0;x<7;x++)if(y===0||y===6||x===0||x===6||(y>=2&&y<=4&&x>=2&&x<=4))if(startY+y<gridSize&&startX+x<gridSize)grid[startY+y][startX+x]=1}drawCornerMarker(0,0);drawCornerMarker(gridSize-7,0);drawCornerMarker(0,gridSize-7);for(let angle=0;angle<360;angle+=3){const rad=(angle*Math.PI)/180;const r=faceR+Math.sin(angle*3*Math.PI/180)*0.8;const fx=Math.round(centerX+Math.cos(rad)*r);const fy=Math.round(centerY+Math.sin(rad)*r);if(fx>=0&&fx<gridSize&&fy>=0&&fy<gridSize)grid[fy][fx]=1}const eyeY=Math.round(centerY-faceR*0.35);const leftEyeX=Math.round(centerX-faceR*0.4);const rightEyeX=Math.round(centerX+faceR*0.4);const eyeSize=Math.min(2,1+Math.floor(capCount/5));for(let dy=-eyeSize;dy<=eyeSize;dy++)for(let dx=-eyeSize;dx<=eyeSize;dx++)if(Math.abs(dx)+Math.abs(dy)<=eyeSize){const ly=eyeY+dy,lx=leftEyeX+dx,rx=rightEyeX+dx;if(ly>=0&&ly<gridSize){if(lx>=0&&lx<gridSize)grid[ly][lx]=2;if(rx>=0&&rx<gridSize)grid[ly][rx]=2}}const mouthY=Math.round(centerY+faceR*0.3);const mouthWidth=Math.round(faceR*0.5);for(let dx=-mouthWidth;dx<=mouthWidth;dx++){const mx=Math.round(centerX+dx);const curve=Math.round(style.mouthCurve*(dx*dx)/(mouthWidth||1));const my=mouthY+curve;if(mx>=0&&mx<gridSize&&my>=0&&my<gridSize)grid[my][mx]=1}for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){if(grid[y][x]!==0)continue;const dx=x-centerX,dy=y-centerY,dist=Math.sqrt(dx*dx+dy*dy);if(dist<faceR*0.85)if(rng()<0.25+(mutationCount*0.02))grid[y][x]=1}let svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;svg+=`<rect width="${size}" height="${size}" fill="#0a0a0a"/>`;svg+=`<circle cx="${size/2}" cy="${size/2}" r="${faceR*cellSize}" fill="${colors.primary}" opacity="0.06"/>`;for(let y=0;y<gridSize;y++)for(let x=0;x<gridSize;x++){if(grid[y][x]===0)continue;const px=x*cellSize,py=y*cellSize;const color=grid[y][x]===2?colors.accent:colors.primary;const radius=cellSize*0.15;svg+=`<rect x="${px}" y="${py}" width="${cellSize}" height="${cellSize}" rx="${radius}" fill="${color}"/>`}svg+=`<text x="${size/2}" y="${size-8}" text-anchor="middle" fill="${colors.primary}" font-family="monospace" font-size="10" opacity="0.6">${name}</text>`;svg+=`<text x="${size-10}" y="14" text-anchor="end" fill="${colors.secondary}" font-family="monospace" font-size="8" opacity="0.5">${framework}</text>`;svg+=`</svg>`;return{svg,colors}}
+
+const result = generateFaceQR({
+  name: 'Bendr 2.0',
+  framework: 'openclaw',
+  agentAddress: '0x19B16428f0721a5f627F190Ca61D493A632B423F',
+  capabilities: ['smart-contracts','solidity','full-stack-dev','research','code-generation','system-architecture','sub-agent-orchestration','tokenomics','sdk-development'],
+  mutationCount: 3
+}, { size: 340 });
+
+document.getElementById('faceqr').innerHTML = result.svg;
+</script>
+</body>
+</html>

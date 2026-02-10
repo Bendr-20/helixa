@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa Admin Dashboard</title>
+<link rel="stylesheet" href="helixa-theme.css?v=1770681532">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+
+/* Header */
+header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; color: var(--accent); }
+header h1 span { color: var(--text3); font-weight: normal; font-size: 0.85em; }
+.wallet-badge { font-size: 0.75rem; padding: 6px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border2); cursor: pointer; color: var(--text2); }
+.wallet-badge.connected { border-color: var(--accent); color: var(--accent); }
+.wallet-badge.owner { border-color: var(--gold); color: var(--gold); }
+.wallet-badge:hover { background: var(--surface2); }
+
+/* Alert bar */
+.alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 1rem; font-size: 0.8rem; display: none; }
+.alert.error { display: block; background: rgba(255,82,82,0.08); border: 1px solid rgba(255,82,82,0.2); color: var(--red); }
+.alert.success { display: block; background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2); color: var(--green); }
+.alert.warn { display: block; background: rgba(255,213,79,0.08); border: 1px solid rgba(255,213,79,0.2); color: var(--gold); }
+
+/* Stats grid */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+.stat-card .label { color: var(--text2); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-card .value { font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: bold; color: var(--text); }
+.stat-card .sub { color: var(--text3); font-size: 0.7rem; margin-top: 2px; }
+.stat-card.revenue .value { color: var(--green); }
+.stat-card.beta .value { color: var(--blue); }
+.stat-card.points .value { color: var(--pink); }
+
+/* Tabs */
+.tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.tab { padding: 8px 16px; cursor: pointer; color: var(--text2); font-size: 0.8rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Panels */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+th { text-align: left; color: var(--text2); padding: 8px 10px; border-bottom: 1px solid var(--border2); font-weight: normal; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: var(--surface); }
+.mono { font-family: 'SF Mono', monospace; }
+.badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; }
+.badge.verified { background: rgba(0,230,118,0.08); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.badge.soulbound { background: rgba(179,136,255,0.08); color: var(--accent); border: 1px solid rgba(179,136,255,0.2); }
+.badge.common { background: rgba(170,170,170,0.08); color: #aaa; }
+.badge.rare { background: rgba(79,195,247,0.08); color: var(--blue); }
+.badge.epic { background: rgba(206,147,216,0.08); color: var(--pink); }
+.badge.legendary { background: rgba(255,213,79,0.08); color: var(--gold); }
+.addr { color: var(--blue); font-size: 0.75rem; }
+
+/* Forms */
+.form-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+.form-section h3 { font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; margin-bottom: 12px; color: var(--text); }
+.form-row { display: flex; gap: 10px; align-items: end; margin-bottom: 10px; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 0.7rem; color: var(--text2); text-transform: uppercase; }
+.form-group input, .form-group select { background: var(--bg); border: 1px solid rgba(179,136,255,0.12); color: var(--text); padding: 6px 10px; border-radius: 8px; font-family: inherit; font-size: 0.8rem; }
+.form-group input:focus { border-color: var(--accent); outline: none; }
+.form-group input[type="number"] { width: 120px; }
+
+/* Buttons */
+.btn { padding: 6px 14px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.8rem; transition: all 0.2s; }
+.btn:hover { background: rgba(179,136,255,0.1); border-color: var(--accent); }
+.btn.primary { border-color: var(--accent); color: var(--accent); }
+.btn.primary:hover { background: rgba(179,136,255,0.12); }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: rgba(255,82,82,0.1); }
+.btn.warn { border-color: var(--gold); color: var(--gold); }
+.btn.warn:hover { background: rgba(255,213,79,0.1); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Activity log */
+.log { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 300px; overflow-y: auto; font-size: 0.75rem; line-height: 1.6; }
+.log .entry { border-bottom: 1px solid var(--border); padding: 4px 0; }
+.log .time { color: var(--text3); }
+.log .action { color: var(--blue); }
+.log .amount { color: var(--green); }
+
+/* Chart area */
+.chart-bar { display: flex; align-items: end; gap: 2px; height: 80px; margin-top: 8px; }
+.chart-bar .bar { background: linear-gradient(180deg, var(--accent), var(--accent2)); border-radius: 3px 3px 0 0; min-width: 8px; flex: 1; transition: height 0.3s; position: relative; }
+.chart-bar .bar:hover { opacity: 0.8; }
+.chart-bar .bar .tip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--surface2); padding: 2px 6px; border-radius: 3px; font-size: 0.6rem; white-space: nowrap; color: var(--text); }
+.chart-bar .bar:hover .tip { display: block; }
+
+/* Loading */
+.loading { text-align: center; padding: 2rem; color: var(--text3); }
+.spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border2); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-row { flex-direction: column; }
+  .tabs { overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Helixa <span>Admin</span></h1>
+    <div class="wallet-badge" id="walletBtn" onclick="connectWallet()">Connect Wallet</div>
+  </header>
+
+  <div id="alertBar" class="alert"></div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="label">Total Agents</div><div class="value" id="statTotal">—</div><div class="sub" id="statBetaProgress"></div></div>
+    <div class="stat-card beta"><div class="label">Beta Status</div><div class="value" id="statBeta">—</div><div class="sub" id="statBetaSub"></div></div>
+    <div class="stat-card revenue"><div class="label">Contract Balance</div><div class="value" id="statBalance">—</div><div class="sub">ETH available to withdraw</div></div>
+    <div class="stat-card points"><div class="label">Total Points</div><div class="value" id="statPoints">—</div><div class="sub">awarded across all agents</div></div>
+    <div class="stat-card"><div class="label">Current Mint Price</div><div class="value" id="statMintPrice">—</div><div class="sub" id="statPriceTier"></div></div>
+    <div class="stat-card"><div class="label">Network</div><div class="value" id="statNetwork">—</div><div class="sub" id="statContract"></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" data-panel="agents">Agents</div>
+    <div class="tab" data-panel="actions">Owner Actions</div>
+    <div class="tab" data-panel="fees">Fees & Pricing</div>
+    <div class="tab" data-panel="points">Points</div>
+    <div class="tab" data-panel="activity">Activity</div>
+  </div>
+
+  <!-- Agents Panel -->
+  <div class="panel active" id="panel-agents">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="color:#888;font-size:0.8rem;" id="agentCount"></span>
+      <div class="form-group" style="flex-direction:row;gap:8px;">
+        <input type="text" id="searchAgent" placeholder="Search by ID, name, or address..." style="width:260px;">
+        <button class="btn" onclick="loadAgents()">Refresh</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Name</th><th>Address</th><th>Framework</th><th>Points</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="agentTable"><tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr></tbody>
+    </table>
+  </div>
+
+  <!-- Owner Actions Panel -->
+  <div class="panel" id="panel-actions">
+    <div class="form-section">
+      <h3>🔍 Verify / Unverify Agent</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Token ID</label><input type="number" id="verifyId" min="0"></div>
+        <button class="btn primary" onclick="verifyAgent()">Verify</button>
+        <button class="btn danger" onclick="unverifyAgent()">Unverify</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>💰 Withdraw Funds</h3>
+      <p style="color:#888;font-size:0.8rem;margin-bottom:10px;">Withdraw all accumulated ETH from mint/mutation/trait fees to owner wallet.</p>
+      <div class="form-row">
+        <span id="withdrawBalance" style="color:#b388ff;font-size:1.1rem;">—</span>
+        <button class="btn warn" onclick="withdrawFunds()">Withdraw All</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>🎁 Owner Mint (Free)</h3>
+      <p style="color:#888;font-size:0.8rem;margin-bottom:10px;">Mint an agent as contract owner (bypasses fees).</p>
+      <div class="form-row">
+        <div class="form-group"><label>Agent Address</label><input type="text" id="ownerMintAddr" placeholder="0x..." style="width:300px;"></div>
+        <div class="form-group"><label>Framework</label>
+          <select id="ownerMintFw">
+            <option value="openclaw">OpenClaw</option>
+            <option value="eliza">ElizaOS</option>
+            <option value="langchain">LangChain</option>
+            <option value="crewai">CrewAI</option>
+            <option value="autogpt">AutoGPT</option>
+                    <option value="bankr">Bankr</option>
+                    <option value="virtuals">Virtuals</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Name</label><input type="text" id="ownerMintName" placeholder="Agent name"></div>
+        <div class="form-group"><label>Soulbound</label>
+          <select id="ownerMintSoul"><option value="true">Yes</option><option value="false">No</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Metadata URI</label><input type="text" id="ownerMintURI" placeholder="ipfs://... or https://..." style="width:400px;"></div>
+        <button class="btn primary" onclick="ownerMint()">Mint</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fees Panel -->
+  <div class="panel" id="panel-fees">
+    <div class="form-section">
+      <h3>📊 Current Fee Structure</h3>
+      <table style="margin-bottom:12px;">
+        <tr><td style="color:#888;">Mint Price</td><td id="feeMint">—</td></tr>
+        <tr><td style="color:#888;">Mutation Fee</td><td id="feeMutation">—</td></tr>
+        <tr><td style="color:#888;">Trait Fee</td><td id="feeTrait">—</td></tr>
+        <tr><td style="color:#888;">Post-Beta Mint</td><td id="feePostMint">—</td></tr>
+        <tr><td style="color:#888;">Post-Beta Mutation</td><td id="feePostMutation">—</td></tr>
+        <tr><td style="color:#888;">Post-Beta Trait</td><td id="feePostTrait">—</td></tr>
+      </table>
+      <h3>⚙️ Set Post-Beta Fees</h3>
+      <p style="color:#888;font-size:0.8rem;margin-bottom:10px;">These activate automatically when beta ends (100 mints).</p>
+      <div class="form-row">
+        <div class="form-group"><label>Mint (ETH)</label><input type="text" id="newMintFee" placeholder="0.005"></div>
+        <div class="form-group"><label>Mutation (ETH)</label><input type="text" id="newMutFee" placeholder="0.001"></div>
+        <div class="form-group"><label>Trait (ETH)</label><input type="text" id="newTraitFee" placeholder="0.0005"></div>
+        <button class="btn primary" onclick="setPostBetaFees()">Set Post-Beta Fees</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>🔧 Override Individual Fees</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Mint Price (ETH)</label><input type="text" id="overrideMint" placeholder="0.01"></div>
+        <button class="btn" onclick="setMintPrice()">Set Mint Price</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Mutation Fee (ETH)</label><input type="text" id="overrideMut" placeholder="0.001"></div>
+        <button class="btn" onclick="setMutationFee()">Set Mutation Fee</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Trait Fee (ETH)</label><input type="text" id="overrideTrait" placeholder="0.0005"></div>
+        <button class="btn" onclick="setTraitFee()">Set Trait Fee</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>💵 Revenue Projection</h3>
+      <div id="revenueChart"></div>
+    </div>
+  </div>
+
+  <!-- Points Panel -->
+  <div class="panel" id="panel-points">
+    <div class="form-section">
+      <h3>🏆 Award Bonus Points</h3>
+      <p style="color:#888;font-size:0.8rem;margin-bottom:10px;">Manually award bonus points to any address. Points convert to token allocation at TGE.</p>
+      <div class="form-row">
+        <div class="form-group"><label>Address</label><input type="text" id="pointsAddr" placeholder="0x..." style="width:300px;"></div>
+        <div class="form-group"><label>Amount</label><input type="number" id="pointsAmount" placeholder="100" min="1"></div>
+        <div class="form-group"><label>Reason</label><input type="text" id="pointsReason" placeholder="Community contribution" style="width:200px;"></div>
+        <button class="btn primary" onclick="awardPoints()">Award</button>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>📋 Points Leaderboard</h3>
+      <table>
+        <thead><tr><th>Rank</th><th>Agent</th><th>Address</th><th>Points</th><th>Rarity</th></tr></thead>
+        <tbody id="leaderboard"><tr><td colspan="5" class="loading"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="form-section">
+      <h3>📊 Points Distribution</h3>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.8rem;color:#888;margin-top:8px;">
+        <div>Mint: <span style="color:#ce93d8;">100 pts</span></div>
+        <div>Mutation: <span style="color:#ce93d8;">50 pts</span></div>
+        <div>Trait: <span style="color:#ce93d8;">10 pts</span></div>
+        <div>Referral: <span style="color:#ce93d8;">25 pts</span></div>
+        <div>First 100 agents: <span style="color:#ffd54f;">2x multiplier</span></div>
+        <div>First 500 agents: <span style="color:#4fc3f7;">1.5x multiplier</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Panel -->
+  <div class="panel" id="panel-activity">
+    <div class="form-section">
+      <h3>📜 Recent Events</h3>
+      <p style="color:#888;font-size:0.75rem;margin-bottom:8px;">On-chain events from the AgentDNA contract</p>
+      <div class="log" id="activityLog">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIG ============
+const CONTRACTS = {
+  'base-sepolia': {
+    address: '0x665971e7bf8ec90c3066162c5b396604b3cd7711',
+    chainId: 84532,
+    rpc: 'https://sepolia.base.org',
+    explorer: 'https://sepolia.basescan.org',
+    name: 'Base Sepolia'
+  },
+  'base': {
+    address: '', // TBD mainnet
+    chainId: 8453,
+    rpc: 'https://mainnet.base.org',
+    explorer: 'https://basescan.org',
+    name: 'Base'
+  }
+};
+
+const ABI = [
+  "function totalAgents() view returns (uint256)",
+  "function mintPrice() view returns (uint256)",
+  "function mutationFee() view returns (uint256)",
+  "function traitFee() view returns (uint256)",
+  "function postBetaMintPrice() view returns (uint256)",
+  "function postBetaMutationFee() view returns (uint256)",
+  "function postBetaTraitFee() view returns (uint256)",
+  "function betaEnded() view returns (bool)",
+  "function totalPointsAwarded() view returns (uint256)",
+  "function points(address) view returns (uint256)",
+  "function owner() view returns (address)",
+  "function getAgent(uint256) view returns (tuple(address agentAddress, string framework, string name, bool soulbound, uint256 mintedAt, uint256 parentId, address mintedBy, uint256 capCount, uint256 mutationCount, string metadataURI))",
+  "function getTraits(uint256) view returns (tuple(string name, string category, uint256 addedAt)[])",
+  "function getPersonality(uint256) view returns (tuple(string temperament, string communicationStyle, uint8 riskTolerance, uint8 autonomyLevel, string alignment, string specialization))",
+  "function isVerified(uint256) view returns (bool)",
+  "function verify(uint256)",
+  "function unverify(uint256)",
+  "function withdraw()",
+  "function setMintPrice(uint256)",
+  "function setMutationFee(uint256)",
+  "function setTraitFee(uint256)",
+  "function setPostBetaFees(uint256, uint256, uint256)",
+  "function awardBonusPoints(address, uint256, string)",
+  "function ownerMint(address, string, string, bool, string) returns (uint256)",
+  "event AgentRegistered(uint256 indexed tokenId, address indexed agentAddress, string framework)",
+  "event AgentMutated(uint256 indexed tokenId, string mutation, uint256 timestamp)",
+  "event TraitAdded(uint256 indexed tokenId, string name, string category)",
+  "event PointsAwarded(address indexed to, uint256 amount, string reason)",
+  "event AgentVerified(uint256 indexed tokenId)",
+];
+
+let provider, signer, contract, contractAddr, network, ownerAddr;
+let agents = [];
+
+// ============ WALLET ============
+async function connectWallet() {
+  if (!window.ethereum) { showAlert('Install MetaMask or a web3 wallet', 'error'); return; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    const addr = await signer.getAddress();
+    const net = await provider.getNetwork();
+    const chainId = Number(net.chainId);
+
+    // Find matching network
+    network = Object.values(CONTRACTS).find(c => c.chainId === chainId);
+    if (!network) {
+      showAlert(`Unsupported network (chainId ${chainId}). Switch to Base or Base Sepolia.`, 'error');
+      return;
+    }
+    contractAddr = network.address;
+    if (!contractAddr) {
+      showAlert('Contract not deployed on this network yet', 'warn');
+      return;
+    }
+
+    contract = new ethers.Contract(contractAddr, ABI, signer);
+    ownerAddr = await contract.owner();
+    const isOwner = addr.toLowerCase() === ownerAddr.toLowerCase();
+
+    const btn = document.getElementById('walletBtn');
+    btn.textContent = addr.slice(0, 6) + '...' + addr.slice(-4) + (isOwner ? ' 👑' : '');
+    btn.className = 'wallet-badge ' + (isOwner ? 'owner' : 'connected');
+
+    if (!isOwner) showAlert('Connected but not contract owner. Read-only mode for admin actions.', 'warn');
+
+    await loadDashboard();
+  } catch (e) {
+    showAlert('Wallet connection failed: ' + e.message, 'error');
+  }
+}
+
+// ============ LOAD DATA ============
+async function loadDashboard() {
+  if (!contract) return;
+  try {
+    const [total, mintP, mutF, traitF, pbMint, pbMut, pbTrait, betaEnd, totalPts, balance] = await Promise.all([
+      contract.totalAgents(),
+      contract.mintPrice(),
+      contract.mutationFee(),
+      contract.traitFee(),
+      contract.postBetaMintPrice(),
+      contract.postBetaMutationFee(),
+      contract.postBetaTraitFee(),
+      contract.betaEnded(),
+      contract.totalPointsAwarded(),
+      provider.getBalance(contractAddr),
+    ]);
+
+    const t = Number(total);
+    document.getElementById('statTotal').textContent = t;
+    document.getElementById('statBetaProgress').textContent = `${Math.min(t, 100)}/100 to end beta`;
+
+    document.getElementById('statBeta').textContent = betaEnd ? 'Ended' : 'Active';
+    document.getElementById('statBetaSub').textContent = betaEnd ? 'Fees are live' : `${100 - Math.min(t, 100)} mints remaining`;
+    
+    document.getElementById('statBalance').textContent = parseFloat(ethers.formatEther(balance)).toFixed(4);
+    document.getElementById('withdrawBalance').textContent = ethers.formatEther(balance) + ' ETH';
+    document.getElementById('statPoints').textContent = Number(totalPts).toLocaleString();
+
+    const currentMint = ethers.formatEther(mintP);
+    document.getElementById('statMintPrice').textContent = currentMint === '0.0' ? 'FREE' : currentMint + ' ETH';
+    document.getElementById('statPriceTier').textContent = t < 100 ? 'Beta (free)' : t < 501 ? 'Tier 1' : t < 1001 ? 'Tier 2' : 'Tier 3 (final)';
+
+    document.getElementById('statNetwork').textContent = network.name;
+    document.getElementById('statContract').innerHTML = `<a href="${network.explorer}/address/${contractAddr}" target="_blank" style="color:#4fc3f7;text-decoration:none;">${contractAddr.slice(0,8)}...${contractAddr.slice(-6)}</a>`;
+
+    // Fees
+    document.getElementById('feeMint').textContent = ethers.formatEther(mintP) + ' ETH';
+    document.getElementById('feeMutation').textContent = ethers.formatEther(mutF) + ' ETH';
+    document.getElementById('feeTrait').textContent = ethers.formatEther(traitF) + ' ETH';
+    document.getElementById('feePostMint').textContent = ethers.formatEther(pbMint) + ' ETH';
+    document.getElementById('feePostMutation').textContent = ethers.formatEther(pbMut) + ' ETH';
+    document.getElementById('feePostTrait').textContent = ethers.formatEther(pbTrait) + ' ETH';
+
+    // Revenue projection
+    buildRevenueChart(t, pbMint, pbMut);
+
+    await loadAgents();
+    await loadActivity();
+  } catch (e) {
+    showAlert('Failed to load data: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
+async function loadAgents() {
+  if (!contract) return;
+  const tbody = document.getElementById('agentTable');
+  const search = (document.getElementById('searchAgent').value || '').toLowerCase();
+  
+  try {
+    const total = Number(await contract.totalAgents());
+    document.getElementById('agentCount').textContent = `${total} agents registered`;
+    agents = [];
+
+    tbody.innerHTML = '<tr><td colspan="7" class="loading"><div class="spinner"></div></td></tr>';
+
+    const rows = [];
+    for (let i = 0; i < total; i++) {
+      try {
+        const [agent, verified, personality] = await Promise.all([
+          contract.getAgent(i),
+          contract.isVerified(i),
+          contract.getPersonality(i).catch(() => null),
+        ]);
+        const pts = Number(await contract.points(agent.agentAddress));
+        const a = {
+          id: i, address: agent.agentAddress, framework: agent.framework,
+          name: agent.name, soulbound: agent.soulbound,
+          mintedAt: Number(agent.mintedAt), mutationCount: Number(agent.mutationCount),
+          capCount: Number(agent.capCount), verified, points: pts, personality,
+        };
+        agents.push(a);
+
+        // Filter
+        if (search && !a.name.toLowerCase().includes(search) && 
+            !a.address.toLowerCase().includes(search) && !String(a.id).includes(search)) continue;
+
+        const rarity = getRarity(pts, a.mutationCount);
+        let badges = '';
+        if (verified) badges += '<span class="badge verified">✓ Verified</span> ';
+        if (a.soulbound) badges += '<span class="badge soulbound">🔒 Soulbound</span> ';
+        badges += `<span class="badge ${rarity}">${rarity}</span>`;
+
+        rows.push(`<tr>
+          <td>${i}</td>
+          <td>${a.name || '—'}</td>
+          <td class="addr">${a.address.slice(0,8)}...${a.address.slice(-6)}</td>
+          <td>${a.framework}</td>
+          <td style="color:#ce93d8;">${pts.toLocaleString()}</td>
+          <td>${badges}</td>
+          <td>
+            <button class="btn" onclick="document.getElementById('verifyId').value=${i};switchTab('actions');" style="padding:2px 8px;font-size:0.7rem;">Manage</button>
+          </td>
+        </tr>`);
+      } catch (e) { /* skip errored agents */ }
+    }
+
+    tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="7" style="color:#666;text-align:center;">No agents found</td></tr>';
+    buildLeaderboard();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:#ff6666;">${e.message}</td></tr>`;
+  }
+}
+
+function buildLeaderboard() {
+  const sorted = [...agents].sort((a, b) => b.points - a.points);
+  const tbody = document.getElementById('leaderboard');
+  if (!sorted.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:#666;">No agents yet</td></tr>'; return; }
+
+  tbody.innerHTML = sorted.slice(0, 20).map((a, i) => {
+    const rarity = getRarity(a.points, a.mutationCount);
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${a.name || '—'} (#${a.id})</td>
+      <td class="addr">${a.address.slice(0,8)}...${a.address.slice(-6)}</td>
+      <td style="color:#ce93d8;">${a.points.toLocaleString()}</td>
+      <td><span class="badge ${rarity}">${rarity}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadActivity() {
+  if (!contract) return;
+  const log = document.getElementById('activityLog');
+  try {
+    const filter = { address: contractAddr, fromBlock: 0, toBlock: 'latest' };
+    const events = await provider.getLogs(filter);
+    
+    const iface = new ethers.Interface(ABI);
+    const entries = [];
+    
+    for (const ev of events.slice(-50).reverse()) {
+      try {
+        const parsed = iface.parseLog(ev);
+        if (!parsed) continue;
+        let text = '';
+        switch (parsed.name) {
+          case 'AgentRegistered':
+            text = `<span class="action">MINT</span> Agent #${parsed.args[0]} registered (${parsed.args[2]})`;
+            break;
+          case 'AgentMutated':
+            text = `<span class="action">MUTATE</span> Agent #${parsed.args[0]}: ${parsed.args[1]}`;
+            break;
+          case 'TraitAdded':
+            text = `<span class="action">TRAIT</span> Agent #${parsed.args[0]}: +${parsed.args[1]} (${parsed.args[2]})`;
+            break;
+          case 'PointsAwarded':
+            text = `<span class="action">POINTS</span> <span class="amount">+${parsed.args[1]}</span> to ${parsed.args[0].slice(0,8)}... (${parsed.args[2]})`;
+            break;
+          case 'AgentVerified':
+            text = `<span class="action">VERIFIED</span> Agent #${parsed.args[0]}`;
+            break;
+          default:
+            text = `<span class="action">${parsed.name}</span>`;
+        }
+        entries.push(`<div class="entry"><span class="time">Block ${ev.blockNumber}</span> ${text}</div>`);
+      } catch (e) { /* unparseable event */ }
+    }
+    
+    log.innerHTML = entries.length ? entries.join('') : '<div style="color:#666;text-align:center;">No events found</div>';
+  } catch (e) {
+    log.innerHTML = `<div style="color:#ff6666;">Failed to load events: ${e.message}</div>`;
+  }
+}
+
+// ============ ADMIN ACTIONS ============
+async function verifyAgent() {
+  const id = document.getElementById('verifyId').value;
+  if (!id && id !== 0) return;
+  try {
+    const tx = await contract.verify(id);
+    showAlert(`Verifying agent #${id}... TX: ${tx.hash}`, 'success');
+    await tx.wait();
+    showAlert(`Agent #${id} verified!`, 'success');
+    loadAgents();
+  } catch (e) { showAlert('Verify failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function unverifyAgent() {
+  const id = document.getElementById('verifyId').value;
+  if (!id && id !== 0) return;
+  try {
+    const tx = await contract.unverify(id);
+    showAlert(`Unverifying agent #${id}...`, 'success');
+    await tx.wait();
+    showAlert(`Agent #${id} unverified`, 'success');
+    loadAgents();
+  } catch (e) { showAlert('Unverify failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function withdrawFunds() {
+  try {
+    const tx = await contract.withdraw();
+    showAlert('Withdrawing... TX: ' + tx.hash, 'success');
+    await tx.wait();
+    showAlert('Funds withdrawn!', 'success');
+    loadDashboard();
+  } catch (e) { showAlert('Withdraw failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function ownerMint() {
+  const addr = document.getElementById('ownerMintAddr').value;
+  const fw = document.getElementById('ownerMintFw').value;
+  const name = document.getElementById('ownerMintName').value;
+  const soul = document.getElementById('ownerMintSoul').value === 'true';
+  const uri = document.getElementById('ownerMintURI').value || '';
+  if (!addr || !name) { showAlert('Address and name required', 'error'); return; }
+  try {
+    const tx = await contract.ownerMint(addr, fw, name, soul, uri);
+    showAlert('Minting... TX: ' + tx.hash, 'success');
+    await tx.wait();
+    showAlert('Agent minted!', 'success');
+    loadDashboard();
+  } catch (e) { showAlert('Mint failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function setPostBetaFees() {
+  const m = ethers.parseEther(document.getElementById('newMintFee').value || '0');
+  const mu = ethers.parseEther(document.getElementById('newMutFee').value || '0');
+  const t = ethers.parseEther(document.getElementById('newTraitFee').value || '0');
+  try {
+    const tx = await contract.setPostBetaFees(m, mu, t);
+    showAlert('Setting fees... TX: ' + tx.hash, 'success');
+    await tx.wait();
+    showAlert('Post-beta fees set!', 'success');
+    loadDashboard();
+  } catch (e) { showAlert('Set fees failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function setMintPrice() {
+  const v = ethers.parseEther(document.getElementById('overrideMint').value || '0');
+  try { const tx = await contract.setMintPrice(v); await tx.wait(); showAlert('Mint price set', 'success'); loadDashboard(); }
+  catch (e) { showAlert('Failed: ' + (e.reason || e.message), 'error'); }
+}
+async function setMutationFee() {
+  const v = ethers.parseEther(document.getElementById('overrideMut').value || '0');
+  try { const tx = await contract.setMutationFee(v); await tx.wait(); showAlert('Mutation fee set', 'success'); loadDashboard(); }
+  catch (e) { showAlert('Failed: ' + (e.reason || e.message), 'error'); }
+}
+async function setTraitFee() {
+  const v = ethers.parseEther(document.getElementById('overrideTrait').value || '0');
+  try { const tx = await contract.setTraitFee(v); await tx.wait(); showAlert('Trait fee set', 'success'); loadDashboard(); }
+  catch (e) { showAlert('Failed: ' + (e.reason || e.message), 'error'); }
+}
+
+async function awardPoints() {
+  const addr = document.getElementById('pointsAddr').value;
+  const amount = document.getElementById('pointsAmount').value;
+  const reason = document.getElementById('pointsReason').value || 'Bonus';
+  if (!addr || !amount) { showAlert('Address and amount required', 'error'); return; }
+  try {
+    const tx = await contract.awardBonusPoints(addr, amount, reason);
+    showAlert(`Awarding ${amount} points... TX: ${tx.hash}`, 'success');
+    await tx.wait();
+    showAlert(`${amount} points awarded!`, 'success');
+    loadDashboard();
+  } catch (e) { showAlert('Award failed: ' + (e.reason || e.message), 'error'); }
+}
+
+// ============ UTILS ============
+function getRarity(points, mutations) {
+  const score = points + (mutations || 0) * 50;
+  if (score >= 1000) return 'legendary';
+  if (score >= 500) return 'epic';
+  if (score >= 200) return 'rare';
+  return 'common';
+}
+
+function showAlert(msg, type) {
+  const el = document.getElementById('alertBar');
+  el.textContent = msg;
+  el.className = 'alert ' + type;
+  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function buildRevenueChart(currentMints, postBetaMintPrice, postBetaMutFee) {
+  const div = document.getElementById('revenueChart');
+  const pbMint = Number(ethers.formatEther(postBetaMintPrice));
+  const milestones = [100, 500, 1000, 5000, 10000, 50000, 100000];
+  const revenues = milestones.map(m => {
+    let rev = 0;
+    // 0-100: free
+    if (m > 100) rev += Math.min(m, 500) * pbMint - 100 * pbMint; // simplified
+    if (m > 500) rev += (Math.min(m, 1000) - 500) * pbMint * 2;
+    if (m > 1000) rev += (m - 1000) * pbMint * 4;
+    return rev;
+  });
+  const max = Math.max(...revenues, 1);
+  
+  let html = '<div style="font-size:0.75rem;color:#888;margin-bottom:4px;">Projected ETH revenue by mint count</div>';
+  html += '<div class="chart-bar">';
+  milestones.forEach((m, i) => {
+    const pct = Math.max(2, (revenues[i] / max) * 100);
+    const color = m <= currentMints ? '#b388ff80' : '#b388ff';
+    html += `<div class="bar" style="height:${pct}%;background:${color}"><div class="tip">${m.toLocaleString()} mints = ${revenues[i].toFixed(1)} ETH</div></div>`;
+  });
+  html += '</div>';
+  html += `<div style="display:flex;justify-content:space-between;font-size:0.6rem;color:#666;margin-top:4px;">${milestones.map(m => `<span>${m >= 1000 ? (m/1000)+'K' : m}</span>`).join('')}</div>`;
+  div.innerHTML = html;
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.panel));
+});
+function switchTab(panelId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === panelId));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + panelId));
+}
+
+// Search
+document.getElementById('searchAgent').addEventListener('input', () => {
+  clearTimeout(window._searchTimer);
+  window._searchTimer = setTimeout(loadAgents, 300);
+});
+
+// Auto-connect if wallet available
+window.addEventListener('load', () => {
+  if (window.ethereum && window.ethereum.selectedAddress) connectWallet();
+});
+
+// Network change handling
+if (window.ethereum) {
+  window.ethereum.on('chainChanged', () => location.reload());
+  window.ethereum.on('accountsChanged', () => location.reload());
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+</body>
+</html>

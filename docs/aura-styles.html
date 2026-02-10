@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa Aura Style Explorer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#e0e0e0;font-family:'SF Mono','Fira Code',monospace;padding:20px}
+h1{color:#00ff88;font-size:1.5rem;text-align:center;margin-bottom:0.5rem}
+.subtitle{color:#666;text-align:center;font-size:0.8rem;margin-bottom:2rem}
+.section{margin-bottom:3rem}
+.section h2{color:#00ff88;font-size:1rem;margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:1px solid #1a1a1a}
+.row{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-bottom:2rem}
+.card{background:#0f0f0f;border:1px solid #1a1a1a;border-radius:12px;padding:12px;text-align:center;width:180px}
+.card svg{border-radius:8px;margin-bottom:8px}
+.card .label{font-size:10px;color:#00ff88;font-weight:bold;margin-bottom:2px}
+.card .sublabel{font-size:8px;color:#666;line-height:1.4}
+.vs{display:flex;align-items:center;gap:20px;justify-content:center;margin-bottom:1.5rem;flex-wrap:wrap}
+.vs-label{font-size:11px;color:#888;text-align:center;min-width:60px}
+</style>
+</head>
+<body>
+<h1>🧬 Helixa Aura Style Explorer</h1>
+<p class="subtitle">Same agents, different personality configurations — pick what resonates</p>
+
+<div class="section">
+<h2>Temperament Variations (same agent address)</h2>
+<div class="row" id="temperaments"></div>
+</div>
+
+<div class="section">
+<h2>Specialization Motifs</h2>
+<div class="row" id="specializations"></div>
+</div>
+
+<div class="section">
+<h2>Risk Tolerance Spectrum (1 → 10)</h2>
+<div class="row" id="riskSpectrum"></div>
+</div>
+
+<div class="section">
+<h2>Autonomy × Symmetry (1=mirror → 10=asymmetric)</h2>
+<div class="row" id="autonomySpectrum"></div>
+</div>
+
+<div class="section">
+<h2>Framework Ring Shapes</h2>
+<div class="row" id="frameworks"></div>
+</div>
+
+<div class="section">
+<h2>Alignment Color Shifts</h2>
+<div class="row" id="alignments"></div>
+</div>
+
+<div class="section">
+<h2>Soulbound vs Transferable</h2>
+<div class="row" id="soulbound"></div>
+</div>
+
+<div class="section">
+<h2>Evolution: Mutations + Points + Generation</h2>
+<div class="row" id="evolution"></div>
+</div>
+
+<div class="section">
+<h2>The 5 Test Agents (Full Personality)</h2>
+<div class="row" id="testAgents"></div>
+</div>
+
+<script>
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (s >>> 0) / 0xFFFFFFFF;
+  };
+}
+const FRAMEWORK_SHAPES = {
+  eliza:     { faceRadius: 0.42, baseHue: 280 },
+  openclaw:  { faceRadius: 0.40, baseHue: 150 },
+  langchain: { faceRadius: 0.41, baseHue: 200 },
+  crewai:    { faceRadius: 0.39, baseHue: 30 },
+  autogpt:   { faceRadius: 0.41, baseHue: 0 },
+  custom:    { faceRadius: 0.40, baseHue: 60 },
+};
+const ALIGNMENT_SHIFT = {
+  'lawful-good':0,'neutral-good':10,'chaotic-good':20,
+  'lawful-neutral':-10,'true-neutral':0,'chaotic-neutral':30,
+  'lawful-evil':-20,'neutral-evil':-30,'chaotic-evil':-40,
+};
+function buildPalette(address, riskTolerance, alignment) {
+  const hash = simpleHash(address || '0x0');
+  let hue = (hash % 360 + (ALIGNMENT_SHIFT[alignment] || 0) + 360) % 360;
+  const sat = Math.max(30, Math.min(100, 65 + (riskTolerance - 5) * 5));
+  return {
+    primary: `hsl(${hue}, ${sat}%, 55%)`,
+    secondary: `hsl(${(hue + 35) % 360}, ${sat - 10}%, 45%)`,
+    accent: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 10)}%, 60%)`,
+    glow: `hsl(${hue}, ${sat}%, 55%)`,
+    hue, sat,
+  };
+}
+function generateAura(agentData, size) {
+  size = size || 400;
+  const G = 25;
+  const cs = size / G;
+  const address = agentData.agentAddress || agentData.address || '0x0000';
+  const framework = agentData.framework || 'custom';
+  const name = agentData.name || 'Agent';
+  const traitCount = agentData.traitCount || 0;
+  const mutationCount = agentData.mutationCount || 0;
+  const soulbound = agentData.soulbound || false;
+  const points = agentData.points || 0;
+  const generation = agentData.generation || 0;
+  const temperament = agentData.temperament || 'analytical';
+  const commStyle = agentData.communicationStyle || 'formal';
+  const riskTolerance = agentData.riskTolerance || 5;
+  const autonomyLevel = agentData.autonomyLevel || 5;
+  const alignment = agentData.alignment || 'true-neutral';
+  const specialization = agentData.specialization || 'researcher';
+  const seed = simpleHash(address + name + framework + temperament + alignment + specialization + riskTolerance + autonomyLevel);
+  const rng = seededRandom(seed);
+  const fwStyle = FRAMEWORK_SHAPES[framework] || FRAMEWORK_SHAPES.custom;
+  const colors = buildPalette(address, riskTolerance, alignment);
+  const cx = G / 2, cy = G / 2;
+  const fR = G * fwStyle.faceRadius;
+  const grid = Array.from({length: G}, () => Array(G).fill(0));
+  // 0=empty, 1=primary, 2=accent(eyes), 3=secondary
+  // --- QR Corners ---
+  function qr(sx, sy) {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++)
+        if (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4))
+          if (sy + y < G && sx + x < G) grid[sy + y][sx + x] = 1;
+  }
+  qr(0, 0); qr(G - 7, 0); qr(0, G - 7);
+  // --- Face outline (thick, 2px) ---
+  for (let angle = 0; angle < 360; angle += 2) {
+    const rad = (angle * Math.PI) / 180;
+    for (let thickness = 0; thickness < 2; thickness++) {
+      const r = fR - thickness * 0.5 + Math.sin(angle * 3 * Math.PI / 180) * 0.6;
+      const fx = Math.round(cx + Math.cos(rad) * r);
+      const fy = Math.round(cy + Math.sin(rad) * r);
+      if (fx >= 0 && fx < G && fy >= 0 && fy < G) grid[fy][fx] = 1;
+    }
+  }
+  // --- EYES (big, bold — the key feature) ---
+  const eyeY = Math.round(cy - fR * 0.2);
+  const leftEX = Math.round(cx - fR * 0.35);
+  const rightEX = Math.round(cx + fR * 0.35);
+  // Eye size by trait count (more traits = bigger eyes)
+  const eyeR = Math.min(3, 2 + Math.floor(traitCount / 6));
+  // Eye shape by specialization
+  function drawEye(ex, ey) {
+    switch (specialization) {
+      case 'trader': // Diamond eyes
+        for (let d = 0; d <= eyeR; d++) {
+          if (ey - d >= 0) grid[ey - d][ex] = 2;
+          if (ey + d < G) grid[ey + d][ex] = 2;
+          if (ex - d >= 0) grid[ey][ex - d] = 2;
+          if (ex + d < G) grid[ey][ex + d] = 2;
+        }
+        break;
+      case 'guardian': // Horizontal slit eyes
+        for (let dx = -eyeR; dx <= eyeR; dx++)
+          if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+        break;
+      case 'oracle': // Large round eyes with pupil
+        for (let dy = -eyeR; dy <= eyeR; dy++)
+          for (let dx = -eyeR; dx <= eyeR; dx++)
+            if (dx * dx + dy * dy <= eyeR * eyeR)
+              if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+                grid[ey + dy][ex + dx] = 2;
+        // Hollow center (pupil effect)
+        grid[ey][ex] = 0;
+        break;
+      case 'creator': // Star/cross eyes
+        for (let d = 0; d <= eyeR; d++) {
+          if (ey - d >= 0) grid[ey - d][ex] = 2;
+          if (ey + d < G) grid[ey + d][ex] = 2;
+          if (ex - d >= 0) grid[ey][ex - d] = 2;
+          if (ex + d < G) grid[ey][ex + d] = 2;
+        }
+        // Diagonals
+        for (let d = 1; d <= eyeR - 1; d++) {
+          if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+          if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+          if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+          if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+        }
+        break;
+      case 'operator': // Square block eyes
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+        break;
+      default: // researcher: Classic round
+        for (let dy = -eyeR + 1; dy <= eyeR - 1; dy++)
+          for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+            if (Math.abs(dx) + Math.abs(dy) <= eyeR)
+              if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+                grid[ey + dy][ex + dx] = 2;
+    }
+  }
+  drawEye(leftEX, eyeY);
+  drawEye(rightEX, eyeY);
+  // --- MOUTH (big, clear expression) ---
+  const mouthY = Math.round(cy + fR * 0.3);
+  const mW = Math.round(fR * 0.5);
+  switch (commStyle) {
+    case 'casual': // Big smile (curved up)
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.3 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        // Thicken smile
+        if (my + 1 < G && Math.abs(dx) < mW - 1) grid[my + 1][mx] = 1;
+      }
+      break;
+    case 'snarky': // Smirk (asymmetric)
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = dx > 0 ? Math.round(-0.2 * (dx * dx) / (mW || 1)) : Math.round(0.1 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 'verbose': // Open mouth (oval)
+      for (let dy = -1; dy <= 2; dy++)
+        for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (mx >= 0 && mx < G && my >= 0 && my < G) {
+            if (dy === -1 || dy === 2 || Math.abs(dx) === mW - 1)
+              grid[my][mx] = 1; // Border only = open mouth
+          }
+        }
+      break;
+    case 'minimal': // Tiny dot mouth
+      grid[mouthY][Math.round(cx)] = 1;
+      if (Math.round(cx) + 1 < G) grid[mouthY][Math.round(cx) + 1] = 1;
+      break;
+    default: // formal: straight line
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+  }
+  // --- NOSE (small, subtle) ---
+  const noseY = Math.round(cy + fR * 0.05);
+  grid[noseY][Math.round(cx)] = 1;
+  if (noseY + 1 < G) grid[noseY + 1][Math.round(cx)] = 1;
+  // --- Fill interior (temperament-driven pattern) ---
+  const symmetry = 1 - (autonomyLevel / 10);
+  const density = ({
+    analytical: 0.18, creative: 0.22, aggressive: 0.28,
+    cautious: 0.12, chaotic: 0.3,
+  })[temperament] || 0.2;
+  const fillDensity = density + mutationCount * 0.01;
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= fR * 0.9 || dist < 1) continue;
+      // Don't fill over face features (eyes/mouth zone)
+      const nearEye = (Math.abs(x - leftEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1) ||
+                      (Math.abs(x - rightEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1);
+      const nearMouth = Math.abs(y - mouthY) <= 2 && Math.abs(x - Math.round(cx)) <= mW;
+      if (nearEye || nearMouth) continue;
+      let fill = false;
+      const mirrorX = Math.round(2 * cx - x);
+      switch (temperament) {
+        case 'analytical':
+          fill = (x % 3 === 0 || y % 3 === 0) && rng() < fillDensity; break;
+        case 'creative':
+          fill = rng() < fillDensity * (0.5 + 0.5 * Math.sin(x * 0.8 + y * 0.6)); break;
+        case 'aggressive':
+          fill = rng() < fillDensity && ((x + y) % 2 === 0); break;
+        case 'cautious':
+          fill = dist < fR * 0.45 && rng() < fillDensity * 1.5; break;
+        case 'chaotic':
+          fill = rng() < fillDensity * (0.3 + rng() * 0.7); break;
+        default:
+          fill = rng() < fillDensity;
+      }
+      if (fill) {
+        grid[y][x] = rng() < 0.12 ? 3 : 1;
+        if (rng() < symmetry && mirrorX >= 0 && mirrorX < G && grid[y][mirrorX] === 0)
+          grid[y][mirrorX] = grid[y][x];
+      }
+    }
+  }
+  // --- QR noise outside face ---
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= fR + 1) continue;
+      if (rng() < 0.12 + mutationCount * 0.008) grid[y][x] = 1;
+    }
+  }
+  // ============ RENDER ============
+  const svgNS = 'http:' + '//www.w3.org/2000/svg';
+  let svg = `<svg xmlns="${svgNS}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  svg += `<rect width="${size}" height="${size}" fill="#0a0a0a"/>`;
+  // Soulbound halo
+  if (soulbound)
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 1.5) * cs}" fill="none" stroke="#b388ff" stroke-width="1.5" opacity="0.25" stroke-dasharray="4 3"/>`;
+  // Glow
+  const glowI = Math.min(0.15, 0.03 + points * 0.0002);
+  svg += `<circle cx="${size/2}" cy="${size/2}" r="${fR * cs}" fill="${colors.glow}" opacity="${glowI}"/>`;
+  // Eye glow (accent bloom behind eyes)
+  if (['trader', 'oracle', 'guardian', 'operator'].includes(specialization)) {
+    const gr = cs * (eyeR + 2);
+    svg += `<circle cx="${leftEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="0.1"/>`;
+    svg += `<circle cx="${rightEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="0.1"/>`;
+  }
+  // Generation rings
+  for (let g = 0; g < Math.min(generation, 3); g++) {
+    const gr = (fR + 2 + g * 0.8) * cs;
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${gr}" fill="none" stroke="${colors.secondary}" stroke-width="0.5" opacity="0.15"/>`;
+  }
+  // Cells
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (!grid[y][x]) continue;
+      const px = x * cs, py = y * cs;
+      const color = grid[y][x] === 2 ? colors.accent : grid[y][x] === 3 ? colors.secondary : colors.primary;
+      const r = cs * 0.1;
+      svg += `<rect x="${px}" y="${py}" width="${cs}" height="${cs}" rx="${r}" fill="${color}"/>`;
+    }
+  }
+  // Name
+  svg += `<text x="${size/2}" y="${size - 6}" text-anchor="middle" fill="${colors.primary}" font-family="monospace" font-size="10" opacity="0.6">${name}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+function generateAuraSimple(agentData, size) {
+  return generateAura(agentData, size);
+}
+</script>
+<script>
+const SIZE = 160;
+const BASE = {agentAddress:'0x19B16428f0721a5f627F190Ca61D493A632B423F',name:'TestAgent',framework:'openclaw',traitCount:4,mutationCount:0,soulbound:false,points:0,generation:0,temperament:'analytical',communicationStyle:'formal',riskTolerance:5,autonomyLevel:5,alignment:'true-neutral',specialization:'researcher'};
+
+function make(overrides, size) {
+  return generateAura({...BASE, ...overrides}, size || SIZE);
+}
+
+function addCard(container, svg, label, sublabel) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.innerHTML = svg + '<div class="label">' + label + '</div><div class="sublabel">' + (sublabel||'') + '</div>';
+  document.getElementById(container).appendChild(div);
+}
+
+// Temperaments
+['analytical','creative','aggressive','cautious','chaotic'].forEach(t => {
+  addCard('temperaments', make({temperament:t}), t, {
+    analytical:'Grid pattern, square cells',
+    creative:'Organic flow, round cells',
+    aggressive:'Shard pattern, diamond cells',
+    cautious:'Tight center cluster',
+    chaotic:'Scattered random fill'
+  }[t]);
+});
+
+// Specializations
+['trader','guardian','oracle','researcher','creator','operator'].forEach(s => {
+  addCard('specializations', make({specialization:s}), s, {
+    trader:'Diamond motifs (4)',
+    guardian:'Shield motifs (3)',
+    oracle:'Eye motifs (2)',
+    researcher:'Spiral motifs (3)',
+    creator:'Star motifs (5)',
+    operator:'Gear motifs (4)'
+  }[s]);
+});
+
+// Risk spectrum
+for (let r = 1; r <= 10; r += 3) {
+  addCard('riskSpectrum', make({riskTolerance:r}), 'Risk ' + r + '/10', r<=3?'Muted, desaturated':r<=6?'Balanced saturation':'Vivid, high saturation');
+}
+
+// Autonomy spectrum
+for (let a = 1; a <= 10; a += 3) {
+  addCard('autonomySpectrum', make({autonomyLevel:a}), 'Autonomy ' + a + '/10', a<=3?'Near-perfect mirror':a<=6?'Partial symmetry':'Fully asymmetric');
+}
+
+// Frameworks
+['openclaw','eliza','langchain','crewai','autogpt','custom'].forEach(f => {
+  addCard('frameworks', make({framework:f}), f, {
+    openclaw:'Hexagonal ring',
+    eliza:'Smooth ring',
+    langchain:'Angular/wavy ring',
+    crewai:'Dashed ring',
+    autogpt:'Double ring',
+    custom:'Smooth ring'
+  }[f]);
+});
+
+// Alignments
+['lawful-good','chaotic-good','true-neutral','chaotic-neutral','lawful-evil','chaotic-evil'].forEach(a => {
+  addCard('alignments', make({alignment:a}), a, {
+    'lawful-good':'Warm, neutral sat',
+    'chaotic-good':'Warm shift, boosted sat',
+    'true-neutral':'No shift',
+    'chaotic-neutral':'Cool shift, high sat',
+    'lawful-evil':'Cool, boosted sat',
+    'chaotic-evil':'Very cool, max sat'
+  }[a]);
+});
+
+// Soulbound
+addCard('soulbound', make({soulbound:false}), 'Transferable', 'No halo ring');
+addCard('soulbound', make({soulbound:true}), 'Soulbound', 'Purple dashed halo');
+addCard('soulbound', make({soulbound:true,points:500}), 'Soulbound + Points', 'Halo + glow intensity');
+
+// Evolution
+addCard('evolution', make({mutationCount:0,points:0,generation:0}), 'Fresh Mint', 'Gen 0, no mutations');
+addCard('evolution', make({mutationCount:2,points:200,generation:0,traitCount:6}), 'Evolving', '2 mutations, 200 pts');
+addCard('evolution', make({mutationCount:5,points:800,generation:1,traitCount:10}), 'Mature', '5 mutations, Gen 1, 800 pts');
+addCard('evolution', make({mutationCount:10,points:2000,generation:3,traitCount:15}), 'Legendary', '10 mutations, Gen 3, 2000 pts');
+
+// The 5 test agents with full personality
+const agents = [
+  {name:'Bendr 2.0',agentAddress:'0x19B16428f0721a5f627F190Ca61D493A632B423F',framework:'openclaw',temperament:'analytical',communicationStyle:'direct',riskTolerance:7,autonomyLevel:9,alignment:'chaotic-good',specialization:'operator',traitCount:8,mutationCount:0,soulbound:true,points:360,generation:0},
+  {name:'ClawNews',agentAddress:'0xA1A1a1a1A1A1A1A1A1a1a1a1a1a1A1A1a1A1a1a1',framework:'eliza',temperament:'analytical',communicationStyle:'formal',riskTolerance:3,autonomyLevel:6,alignment:'lawful-good',specialization:'researcher',traitCount:3,mutationCount:0,soulbound:false,points:200,generation:0},
+  {name:'AlphaSeeker',agentAddress:'0xb2b2b2b2b2B2b2B2B2b2b2B2B2b2B2B2b2b2b2b2',framework:'langchain',temperament:'aggressive',communicationStyle:'minimal',riskTolerance:9,autonomyLevel:8,alignment:'chaotic-neutral',specialization:'trader',traitCount:4,mutationCount:0,soulbound:true,points:200,generation:0},
+  {name:'SynthMind',agentAddress:'0xc3c3c3c3c3c3c3c3c3C3C3c3C3C3C3c3C3C3c3c3',framework:'crewai',temperament:'creative',communicationStyle:'verbose',riskTolerance:5,autonomyLevel:7,alignment:'neutral-good',specialization:'oracle',traitCount:3,mutationCount:0,soulbound:false,points:200,generation:0},
+  {name:'Sentinel',agentAddress:'0xd4d4d4D4D4d4d4d4d4D4d4D4d4d4d4d4d4d4D4d4',framework:'openclaw',temperament:'cautious',communicationStyle:'formal',riskTolerance:2,autonomyLevel:4,alignment:'lawful-good',specialization:'guardian',traitCount:4,mutationCount:0,soulbound:true,points:200,generation:1},
+];
+agents.forEach(a => {
+  addCard('testAgents', generateAura(a, SIZE), a.name, a.framework + ' · ' + a.temperament + ' · ' + a.specialization);
+});
+</script>
+</body>
+</html>
