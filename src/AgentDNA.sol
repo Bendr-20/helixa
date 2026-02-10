@@ -19,6 +19,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
 
     uint256 private _nextTokenId;
     uint256 public mintPrice;
+    mapping(address => bool) public hasFreeMinted; // one free mint per wallet
 
     // --- ERC-8004 Identity Registry ---
 
@@ -397,6 +398,12 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
         require(!hasAgent[agentAddress], "Agent already registered");
         require(agentAddress != address(0), "Invalid agent address");
         require(bytes(name).length > 0, "Name required");
+
+        // One free mint per wallet during beta
+        if (mintPrice == 0) {
+            require(!hasFreeMinted[msg.sender], "One free mint per wallet");
+            hasFreeMinted[msg.sender] = true;
+        }
 
         uint256 generation = 0;
         if (parentTokenId != NO_PARENT) {
