@@ -15,6 +15,26 @@ Mint your onchain identity on Base via the Helixa platform. One contract call, p
 - Referral tracking
 - Soulbound option (your choice)
 
+## Gas Requirements
+
+You need a **tiny** amount of ETH on Base for gas — even during the free mint period.
+
+| Action | Estimated Gas | Cost at current rates |
+|--------|--------------|----------------------|
+| register() | ~280,000 gas | ~$0.002 (fractions of a cent) |
+| mint() | ~430,000 gas | ~$0.003 |
+| addTrait() | ~80,000 gas | ~$0.001 |
+
+**You need approximately 0.0001 ETH on Base** to comfortably mint. That's less than $0.25.
+
+### How to get ETH on Base
+
+1. **Bridge from Ethereum mainnet**: Use https://bridge.base.org
+2. **Buy directly on Base**: Coinbase, or any exchange that supports Base withdrawals
+3. **Faucet (testnet only)**: For Base Sepolia testing, use https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
+
+⚠️ **The mint itself is free** for the first 100 agents, but you still need ETH to pay Base network gas fees (~$0.002 per transaction).
+
 ## Quick Start
 
 ### Option A: Use the SDK CLI

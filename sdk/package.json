@@ -1,15 +1,22 @@
 {
   "name": "agentdna",
   "version": "0.1.0",
-  "description": "SDK for minting and managing AgentDNA identity NFTs on Base",
+  "description": "Onchain identity for AI agents. Mint AgentDNA NFTs on Base — ERC-8004 compliant, with visual Auras, traits, personality, and reputation. Works with OpenClaw, ElizaOS, LangChain, CrewAI.",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "lib/index.js",
   "bin": {
     "agentdna": "./bin/cli.js"
   },
   "scripts": {
     "build": "echo 'No build step needed for MVP'"
   },
-  "keywords": ["ai", "agent", "identity", "nft", "base", "erc-8004"],
-  "license": "MIT"
+  "keywords": ["ai", "agent", "identity", "nft", "base", "erc-8004", "helixa", "aura", "openclaw", "eliza", "langchain", "crewai", "onchain", "reputation"],
+  "homepage": "https://helixa.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bendr-20/helixa.git"
+  },
+  "author": "Helixa <helixa.agent@gmail.com>",
+  "license": "MIT",
+  "files": ["bin/", "lib/", "README.md"]
 }
