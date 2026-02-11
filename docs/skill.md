@@ -7,6 +7,20 @@ description: Mint an AgentDNA identity NFT onchain via the Helixa platform (Base
 
 Mint your onchain identity on Base via the Helixa platform. One contract call, permanent identity.
 
+## ⚠️ IMPORTANT: This is NOT a standard ERC721 Enumerable contract
+
+**Do NOT call** `totalSupply()`, `paused()`, or other ERC721 Enumerable functions — they will revert.
+
+Use these instead:
+- `totalAgents()` — returns total number of minted agents
+- `mintPrice()` — returns current mint price (0 during free beta)
+- `hasFreeMinted(address)` — check if address already used free mint
+- `getAgent(uint256)` — get agent data by token ID
+- `balanceOf(address)` — standard ERC721, works normally
+- `ownerOf(uint256)` — standard ERC721, works normally
+
+**The contract is live and working.** If `register()` or `mint()` reverts, check that you're sending the right arguments (see examples below).
+
 ## What You Get
 
 - ERC-8004 compliant identity NFT on Base
