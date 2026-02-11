@@ -1323,9 +1323,9 @@ function getAuraRarity(points, mutationCount) {
             
             // Fetch traits, personality, points in parallel
             let traits = [], personality = null, points = 0;
-            try { traits = await readOnlyContract.getTraits(tokenId) || []; } catch(e) {}
-            try { personality = await readOnlyContract.getPersonality(tokenId); } catch(e) {}
-            try { points = Number(await readOnlyContract.points(owner)); } catch(e) {}
+            try { traits = await rpcRetry(() => readOnlyContract.getTraits(tokenId)) || []; } catch(e) {}
+            try { personality = await rpcRetry(() => readOnlyContract.getPersonality(tokenId)); } catch(e) {}
+            try { points = Number(await rpcRetry(() => readOnlyContract.points(owner))); } catch(e) {}
             
             const auraData = {
                 agentAddress: addr, framework: fw, name: name,
