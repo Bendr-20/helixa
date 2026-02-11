@@ -29,6 +29,7 @@ if (fs.existsSync(envPath)) {
 const PORT = process.env.API_PORT || 3456;
 const RPC_URL = process.env.RPC_URL || 'https://base.meowrpc.com';
 const CONTRACT_ADDRESS = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
+const NAMES_CONTRACT = '0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d';
 const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
 
 if (!DEPLOYER_KEY) {
@@ -53,10 +54,23 @@ const ABI = [
     'event Registered(uint256 indexed agentId, string agentURI, address indexed owner)',
 ];
 
+const NAMES_ABI = [
+    'function register(string name) external',
+    'function registerFor(string name, address owner) external',
+    'function resolve(string name) external view returns (address)',
+    'function available(string name) external view returns (bool)',
+    'function linkAgent(string name, uint256 agentId) external',
+    'function totalNames() view returns (uint256)',
+    'function reverseName(address) view returns (string)',
+    'event NameRegistered(string indexed nameIndexed, string name, address indexed owner)',
+];
+
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
 const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, wallet);
 const readContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+const namesContract = new ethers.Contract(NAMES_CONTRACT, NAMES_ABI, wallet);
+const namesRead = new ethers.Contract(NAMES_CONTRACT, NAMES_ABI, provider);
 
 // Rate limiting: 1 mint per address per hour
 const mintCooldowns = new Map();
@@ -203,13 +217,40 @@ async function handleMint(req, res) {
         
         console.log(`[MINT] ✓ Token #${tokenId} minted for ${name}`);
         
+        // Register .agent name if provided
+        let agentNameResult = null;
+        const agentName = body.agentName;
+        if (agentName && typeof agentName === 'string') {
+            const cleanName = agentName.toLowerCase().replace(/\.agent$/, '').replace(/[^a-z0-9-]/g, '');
+            if (cleanName.length >= 3 && cleanName.length <= 32) {
+                try {
+                    const isAvailable = await namesRead.available(cleanName);
+                    if (isAvailable) {
+                        const nameTx = await namesContract.registerFor(cleanName, recipient);
+                        await nameTx.wait();
+                        // Link to agent token ID
+                        const linkTx = await namesContract.linkAgent(cleanName, tokenId);
+                        await linkTx.wait();
+                        agentNameResult = `${cleanName}.agent`;
+                        console.log(`[NAME] ✓ ${cleanName}.agent registered for token #${tokenId}`);
+                    } else {
+                        agentNameResult = null;
+                        console.log(`[NAME] ${cleanName}.agent already taken`);
+                    }
+                } catch (e) {
+                    console.error(`[NAME] Error registering ${cleanName}.agent:`, e.message);
+                }
+            }
+        }
+        
         json(res, 201, {
             success: true,
             tokenId: tokenId,
             txHash: tx.hash,
+            agentName: agentNameResult,
             explorer: `https://basescan.org/tx/${tx.hash}`,
             agent: `https://helixa.xyz/mint.html#agent-${tokenId}`,
-            message: `${name} is now onchain! AgentDNA #${tokenId}`
+            message: `${name} is now onchain! AgentDNA #${tokenId}${agentNameResult ? ` — ${agentNameResult}` : ''}`
         });
         
     } catch (e) {
@@ -330,6 +371,25 @@ const server = http.createServer(async (req, res) => {
         
         const agentMatch = pathname.match(/^\/api\/agent\/(\d+)$/);
         if (req.method === 'GET' && agentMatch) return await handleAgentDetail(req, res, parseInt(agentMatch[1]));
+        
+        // .agent name endpoints
+        if (req.method === 'GET' && pathname.startsWith('/api/name/')) {
+            const agentName = decodeURIComponent(pathname.slice('/api/name/'.length)).toLowerCase().replace(/\.agent$/, '');
+            try {
+                const [isAvail, resolved] = await Promise.all([
+                    namesRead.available(agentName),
+                    namesRead.resolve(agentName).catch(() => ethers.ZeroAddress)
+                ]);
+                return json(res, 200, {
+                    name: `${agentName}.agent`,
+                    available: isAvail,
+                    owner: isAvail ? null : resolved,
+                    contract: NAMES_CONTRACT,
+                });
+            } catch (e) {
+                return json(res, 400, { error: 'Invalid name' });
+            }
+        }
         
         // Health check
         if (pathname === '/health') return json(res, 200, { status: 'ok', uptime: process.uptime() });

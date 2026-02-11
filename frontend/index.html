@@ -379,6 +379,13 @@
                 <label>Agent Name *</label>
                 <input type="text" id="agentName" placeholder="e.g., ResearchBot Alpha">
                 
+                <label>.agent Name <span style="font-size:0.8em;opacity:0.6">(optional — claim your onchain handle)</span></label>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                    <input type="text" id="dotAgentName" placeholder="e.g., researchbot" style="flex:1" oninput="checkAgentName(this.value)">
+                    <span style="opacity:0.6">.agent</span>
+                </div>
+                <div id="agentNameStatus" style="font-size:0.8em;margin-top:0.25rem;min-height:1.2em"></div>
+                
                 <label>Agent Wallet Address *</label>
                 <input type="text" id="agentAddress" placeholder="0x...">
                 
@@ -1323,9 +1330,9 @@ function getAuraRarity(points, mutationCount) {
             
             // Fetch traits, personality, points in parallel
             let traits = [], personality = null, points = 0;
-            try { traits = await readOnlyContract.getTraits(tokenId) || []; } catch(e) {}
-            try { personality = await readOnlyContract.getPersonality(tokenId); } catch(e) {}
-            try { points = Number(await readOnlyContract.points(owner)); } catch(e) {}
+            try { traits = await rpcRetry(() => readOnlyContract.getTraits(tokenId)) || []; } catch(e) {}
+            try { personality = await rpcRetry(() => readOnlyContract.getPersonality(tokenId)); } catch(e) {}
+            try { points = Number(await rpcRetry(() => readOnlyContract.points(owner))); } catch(e) {}
             
             const auraData = {
                 agentAddress: addr, framework: fw, name: name,
@@ -1595,13 +1602,23 @@ function getAuraRarity(points, mutationCount) {
         }
         
         const readProvider = new ethers.JsonRpcProvider(RPC_URL);
+        
+        // Retry helper for rate-limited public RPC
+        async function rpcRetry(fn, retries = 3) {
+            for (let r = 0; r < retries; r++) {
+                try { return await fn(); } catch(e) {
+                    if (r < retries - 1) await new Promise(ok => setTimeout(ok, 300 * (r + 1)));
+                    else throw e;
+                }
+            }
+        }
         const readOnlyContract = new ethers.Contract(CONTRACT_ADDRESS, ABI, readProvider);
         erc8004ReadOnly = new ethers.Contract(ERC8004_ADDRESS, ERC8004_ABI, readProvider);
 
         async function loadStats() {
             try {
-                const total = await readOnlyContract.totalAgents();
-                const price = await readOnlyContract.mintPrice();
+                const total = await rpcRetry(() => readOnlyContract.totalAgents());
+                const price = await rpcRetry(() => readOnlyContract.mintPrice());
                 
                 document.getElementById('totalAgents').textContent = total.toString();
                 document.getElementById('mintPriceDisplay').textContent = ethers.formatEther(price);
@@ -1611,6 +1628,38 @@ function getAuraRarity(points, mutationCount) {
             }
         }
         
+        // .agent name availability check
+        let agentNameTimeout = null;
+        const NAMES_READ_CONTRACT = new ethers.Contract(
+            '0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d',
+            ['function available(string name) external view returns (bool)'],
+            readOnlyProvider
+        );
+        function checkAgentName(val) {
+            const status = document.getElementById('agentNameStatus');
+            const clean = val.toLowerCase().replace(/\.agent$/, '').replace(/[^a-z0-9-]/g, '');
+            if (!clean || clean.length < 3) {
+                status.innerHTML = clean.length > 0 ? '<span style="color:#ff5555">Min 3 characters</span>' : '';
+                return;
+            }
+            if (clean.length > 32) { status.innerHTML = '<span style="color:#ff5555">Max 32 characters</span>'; return; }
+            if (clean.startsWith('-') || clean.endsWith('-')) { status.innerHTML = '<span style="color:#ff5555">Cannot start/end with hyphen</span>'; return; }
+            status.innerHTML = '<span style="color:#aaa">Checking...</span>';
+            clearTimeout(agentNameTimeout);
+            agentNameTimeout = setTimeout(async () => {
+                try {
+                    const avail = await rpcRetry(() => NAMES_READ_CONTRACT.available(clean));
+                    if (avail) {
+                        status.innerHTML = '<span style="color:#00e676">✓ ' + clean + '.agent is available!</span>';
+                    } else {
+                        status.innerHTML = '<span style="color:#ff5555">✗ ' + clean + '.agent is taken</span>';
+                    }
+                } catch (e) {
+                    status.innerHTML = '<span style="color:#aaa">Could not check availability</span>';
+                }
+            }, 500);
+        }
+
         async function mintAgent() {
             const name = document.getElementById('agentName').value.trim();
             const agentAddr = document.getElementById('agentAddress').value.trim();
@@ -1719,6 +1768,27 @@ function getAuraRarity(points, mutationCount) {
                     );
                 }
                 
+                // Register .agent name if provided
+                const dotAgentInput = document.getElementById('dotAgentName').value.trim().toLowerCase().replace(/\.agent$/, '').replace(/[^a-z0-9-]/g, '');
+                if (dotAgentInput && dotAgentInput.length >= 3 && signer) {
+                    try {
+                        showStatus('Registering ' + dotAgentInput + '.agent...', 'pending');
+                        const namesCtx = new ethers.Contract(
+                            '0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d',
+                            ['function register(string name) external', 'function linkAgent(string name, uint256 agentId) external'],
+                            signer
+                        );
+                        const nameTx = await namesCtx.register(dotAgentInput);
+                        await nameTx.wait();
+                        const linkTx = await namesCtx.linkAgent(dotAgentInput, agentDnaTokenId);
+                        await linkTx.wait();
+                        showStatus('✅ ' + dotAgentInput + '.agent registered! AgentDNA #' + agentDnaTokenId, 'success');
+                    } catch (nameErr) {
+                        console.log('.agent registration failed:', nameErr.message);
+                        // Don't block mint success
+                    }
+                }
+                
                 // Show Soul Builder
                 showSoulBuilder(parseInt(agentDnaTokenId));
                 
@@ -1735,7 +1805,7 @@ function getAuraRarity(points, mutationCount) {
         async function loadAgents() {
             const list = document.getElementById('agentList');
             try {
-                const total = await readOnlyContract.totalAgents();
+                const total = await rpcRetry(() => readOnlyContract.totalAgents());
                 
                 if (total == 0) {
                     list.innerHTML = '<p style="color: #666; text-align: center;">No agents registered yet. Be the first!</p>';
@@ -1744,18 +1814,9 @@ function getAuraRarity(points, mutationCount) {
                 
                 list.innerHTML = '<p style="color: #ffaa00; text-align: center;">Loading ' + total.toString() + ' agents...</p>';
                 const cards = [];
-                // Retry helper for rate-limited RPC
-                async function rpcRetry(fn, retries = 3) {
-                    for (let r = 0; r < retries; r++) {
-                        try { return await fn(); } catch(e) {
-                            if (r < retries - 1) await new Promise(ok => setTimeout(ok, 300 * (r + 1)));
-                            else throw e;
-                        }
-                    }
-                }
-
                 for (let i = Number(total) - 1; i >= 0 && i >= Number(total) - 20; i--) {
                     try {
+                        // Small delay between agents to avoid rate limits
                         if (i < Number(total) - 1) await new Promise(ok => setTimeout(ok, 200));
                         
                         const [agent, owner] = await Promise.all([
@@ -1770,6 +1831,7 @@ function getAuraRarity(points, mutationCount) {
                         const soulbound = agent.soulbound ?? agent[5];
                         const mutCount = Number(agent.mutationCount || agent[9] || 0);
                         
+                        // Fetch personality + points with retry (non-blocking)
                         let personality = null, pts = 0;
                         try {
                             await new Promise(ok => setTimeout(ok, 150));

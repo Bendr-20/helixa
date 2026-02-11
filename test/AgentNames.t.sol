@@ -6,7 +6,6 @@ import "../src/AgentNames.sol";
 
 contract AgentNamesTest is Test {
     AgentNames names;
-    address owner = address(this);
     address alice = address(0xA11CE);
     address bob = address(0xB0B);
 
@@ -16,123 +15,132 @@ contract AgentNamesTest is Test {
 
     function test_register() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
+        names.register("myagent");
         
         assertEq(names.resolve("myagent"), alice);
-        assertEq(names.nameOwner("myagent"), alice);
-        assertEq(names.nameTokenId("myagent"), 0);
-        assertTrue(names.nameExists("myagent"));
+        assertEq(names.owner("myagent"), alice);
+        assertTrue(!names.available("myagent"));
         assertEq(names.totalNames(), 1);
     }
 
-    function test_primaryName() public {
+    function test_primaryNameAutoSet() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
-        assertEq(names.primaryName(alice), "myagent");
-    }
-
-    function test_reverseLookup() public {
-        vm.prank(alice);
-        names.register("myagent", alice, 0);
-        assertEq(names.reverseLookup(alice), "myagent");
+        names.register("myagent");
+        assertEq(names.reverseName(alice), "myagent");
     }
 
     function test_registerFor() public {
-        names.registerFor(alice, "sponsored", alice, 1);
-        assertEq(names.nameOwner("sponsored"), alice);
+        names.registerFor("sponsored", alice);
+        assertEq(names.owner("sponsored"), alice);
         assertEq(names.resolve("sponsored"), alice);
     }
 
-    function test_duplicateName() public {
+    function test_duplicateReverts() public {
         vm.prank(alice);
-        names.register("taken", alice, 0);
+        names.register("taken");
         
         vm.prank(bob);
-        vm.expectRevert("Name taken");
-        names.register("taken", bob, 1);
+        vm.expectRevert(AgentNames.NameTaken.selector);
+        names.register("taken");
     }
 
-    function test_invalidChars() public {
+    function test_invalidName_spaces() public {
         vm.prank(alice);
-        vm.expectRevert("Invalid chars");
-        names.register("My Agent", alice, 0); // spaces not allowed
+        vm.expectRevert(AgentNames.InvalidName.selector);
+        names.register("my agent");
     }
 
-    function test_hyphenRules() public {
+    function test_invalidName_uppercase() public {
         vm.prank(alice);
-        vm.expectRevert("Invalid chars");
-        names.register("-start", alice, 0);
+        vm.expectRevert(AgentNames.InvalidName.selector);
+        names.register("MyAgent");
     }
 
-    function test_validNames() public view {
+    function test_invalidName_startHyphen() public {
+        vm.prank(alice);
+        vm.expectRevert(AgentNames.InvalidName.selector);
+        names.register("-start");
+    }
+
+    function test_invalidName_tooShort() public {
+        vm.prank(alice);
+        vm.expectRevert(AgentNames.InvalidName.selector);
+        names.register("ab");
+    }
+
+    function test_validNames() public {
         assertTrue(names.available("bendr"));
         assertTrue(names.available("my-agent"));
         assertTrue(names.available("agent42"));
-        assertFalse(names.available("")); // too short
-        assertFalse(names.available("a]b")); // invalid char
     }
 
-    function test_setAddress() public {
+    function test_setResolve() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
+        names.register("myagent");
         
         vm.prank(alice);
-        names.setAddress("myagent", bob);
+        names.setResolve("myagent", bob);
         assertEq(names.resolve("myagent"), bob);
     }
 
-    function test_setRecord() public {
+    function test_linkAgent() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
+        names.register("myagent");
         
         vm.prank(alice);
-        names.setRecord("myagent", "url", "https://helixa.xyz");
-        assertEq(names.getRecord("myagent", "url"), "https://helixa.xyz");
+        names.linkAgent("myagent", 42);
+        assertEq(names.agentId("myagent"), 42);
     }
 
     function test_transfer() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
+        names.register("myagent");
         
         vm.prank(alice);
         names.transfer("myagent", bob);
-        assertEq(names.nameOwner("myagent"), bob);
+        assertEq(names.owner("myagent"), bob);
+        assertEq(names.resolve("myagent"), bob);
+    }
+
+    function test_setPrimary() public {
+        vm.prank(alice);
+        names.register("first");
+        vm.prank(alice);
+        names.register("second");
+        
+        // Primary should be "first" (auto-set)
+        assertEq(names.reverseName(alice), "first");
+        
+        vm.prank(alice);
+        names.setPrimary("second");
+        assertEq(names.reverseName(alice), "second");
+    }
+
+    function test_notOwnerReverts() public {
+        vm.prank(alice);
+        names.register("myagent");
+        
+        vm.prank(bob);
+        vm.expectRevert(AgentNames.NotNameOwner.selector);
+        names.setResolve("myagent", bob);
     }
 
     function test_available() public {
         assertTrue(names.available("newname"));
         
         vm.prank(alice);
-        names.register("newname", alice, 0);
+        names.register("newname");
         assertFalse(names.available("newname"));
     }
 
-    function test_getNameInfo() public {
+    function test_transferClearsPrimary() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
+        names.register("myagent");
+        assertEq(names.reverseName(alice), "myagent");
         
-        (address o, address r, uint256 tid, bool exists) = names.getNameInfo("myagent");
-        assertEq(o, alice);
-        assertEq(r, alice);
-        assertEq(tid, 0);
-        assertTrue(exists);
-    }
-
-    function test_onlyOwnerCanSetRecord() public {
         vm.prank(alice);
-        names.register("myagent", alice, 0);
-        
-        vm.prank(bob);
-        vm.expectRevert("Not authorized");
-        names.setRecord("myagent", "url", "hacked");
-    }
-
-    function test_ownerCanSetAnyRecord() public {
-        vm.prank(alice);
-        names.register("myagent", alice, 0);
-        
-        // Contract owner (this) can set records for any name
-        names.setRecord("myagent", "verified", "true");
-        assertEq(names.getRecord("myagent", "verified"), "true");
+        names.transfer("myagent", bob);
+        assertEq(names.reverseName(alice), "");
+        assertEq(names.reverseName(bob), "myagent");
     }
 }
