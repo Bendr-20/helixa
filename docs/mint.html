@@ -1635,7 +1635,7 @@ function getAuraRarity(points, mutationCount) {
         const NAMES_READ_CONTRACT = new ethers.Contract(
             '0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d',
             ['function available(string name) external view returns (bool)'],
-            readOnlyProvider
+            readProvider
         );
         function checkAgentName(val) {
             const status = document.getElementById('agentNameStatus');
