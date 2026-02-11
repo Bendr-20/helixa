@@ -1744,11 +1744,24 @@ function getAuraRarity(points, mutationCount) {
                 
                 list.innerHTML = '<p style="color: #ffaa00; text-align: center;">Loading ' + total.toString() + ' agents...</p>';
                 const cards = [];
+                // Retry helper for rate-limited RPC
+                async function rpcRetry(fn, retries = 3) {
+                    for (let r = 0; r < retries; r++) {
+                        try { return await fn(); } catch(e) {
+                            if (r < retries - 1) await new Promise(ok => setTimeout(ok, 300 * (r + 1)));
+                            else throw e;
+                        }
+                    }
+                }
+
                 for (let i = Number(total) - 1; i >= 0 && i >= Number(total) - 20; i--) {
                     try {
-                        const agent = await readOnlyContract.getAgent(i);
-                        const owner = await readOnlyContract.ownerOf(i);
-                        // Access by index as fallback (ethers struct)
+                        if (i < Number(total) - 1) await new Promise(ok => setTimeout(ok, 200));
+                        
+                        const [agent, owner] = await Promise.all([
+                            rpcRetry(() => readOnlyContract.getAgent(i)),
+                            rpcRetry(() => readOnlyContract.ownerOf(i))
+                        ]);
                         const addr = agent.agentAddress || agent[0];
                         const name = agent.name || agent[1];
                         const fw = agent.framework || agent[2];
@@ -1757,11 +1770,11 @@ function getAuraRarity(points, mutationCount) {
                         const soulbound = agent.soulbound ?? agent[5];
                         const mutCount = Number(agent.mutationCount || agent[9] || 0);
                         
-                        // Fetch personality + points for accurate thumbnail
                         let personality = null, pts = 0;
                         try {
-                            personality = await readOnlyContract.getPersonality(i);
-                            pts = Number(await readOnlyContract.points(addr));
+                            await new Promise(ok => setTimeout(ok, 150));
+                            personality = await rpcRetry(() => readOnlyContract.getPersonality(i));
+                            pts = Number(await rpcRetry(() => readOnlyContract.points(addr)));
                         } catch(e) {}
                         
                         const card = document.createElement('div');
