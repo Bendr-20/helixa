@@ -656,7 +656,7 @@
         const CONTRACT_ADDRESS = "0x665971e7bf8ec90c3066162c5b396604b3cd7711"; // Base mainnet
         const CHAIN_ID = 8453; // Base
         const CHAIN_NAME = "Base";
-        const RPC_URL = "https://mainnet.base.org";
+        const RPC_URL = "https://base.meowrpc.com";
         
         const ABI = [
             "function mint(address agentAddress, string name, string framework, string tokenURI_, bool soulbound, string version, uint256 parentTokenId) external payable returns (uint256)",
@@ -1561,7 +1561,7 @@ function getAuraRarity(points, mutationCount) {
                                 chainId: '0x' + CHAIN_ID.toString(16),
                                 chainName: CHAIN_NAME,
                                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-                                rpcUrls: [RPC_URL],
+                                rpcUrls: ["https://mainnet.base.org"],
                                 blockExplorerUrls: ['https://basescan.org']
                             }]
                         });
