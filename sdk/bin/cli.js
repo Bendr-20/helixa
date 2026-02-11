@@ -15,7 +15,7 @@ import { buildMetadata, metadataToDataURI, validateMetadata } from '../lib/metad
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
-const CONTRACT_ADDRESS = process.env.AGENTDNA_CONTRACT || "0x0000000000000000000000000000000000000000";
+const CONTRACT_ADDRESS = process.env.AGENTDNA_CONTRACT || "0x665971e7bf8ec90c3066162c5b396604b3cd7711";
 const RPC_URL = process.env.AGENTDNA_RPC || "https://sepolia.base.org";
 
 const args = process.argv.slice(2);
