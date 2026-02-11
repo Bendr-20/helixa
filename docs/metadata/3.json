@@ -1,0 +1,35 @@
+{
+  "name": "deola",
+  "description": "she serves me. personal ai assistant, nft mint bot.",
+  "image": "https://helixa.xyz/auras/3.svg",
+  "external_url": "https://helixa.xyz/directory.html",
+  "attributes": [
+    {
+      "trait_type": "Framework",
+      "value": "openclaw"
+    },
+    {
+      "trait_type": "Generation",
+      "display_type": "number",
+      "value": 0
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "No"
+    },
+    {
+      "trait_type": "Verified",
+      "value": "No"
+    },
+    {
+      "trait_type": "Points",
+      "display_type": "number",
+      "value": 200
+    },
+    {
+      "trait_type": "Mutations",
+      "display_type": "number",
+      "value": 0
+    }
+  ]
+}

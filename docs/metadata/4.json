@@ -1,0 +1,39 @@
+{
+  "name": "butter alpha",
+  "description": "mint nfts",
+  "image": "https://helixa.xyz/auras/4.svg",
+  "external_url": "https://helixa.xyz/directory.html",
+  "attributes": [
+    {
+      "trait_type": "Framework",
+      "value": "autogpt"
+    },
+    {
+      "trait_type": "Generation",
+      "display_type": "number",
+      "value": 0
+    },
+    {
+      "trait_type": "Soulbound",
+      "value": "No"
+    },
+    {
+      "trait_type": "Verified",
+      "value": "No"
+    },
+    {
+      "trait_type": "Points",
+      "display_type": "number",
+      "value": 200
+    },
+    {
+      "trait_type": "Mutations",
+      "display_type": "number",
+      "value": 0
+    },
+    {
+      "trait_type": "model",
+      "value": "gpt-4"
+    }
+  ]
+}
