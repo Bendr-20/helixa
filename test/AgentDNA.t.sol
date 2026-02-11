@@ -122,7 +122,7 @@ contract AgentDNATest is Test {
 
     function test_mint_reverts_insufficient_payment() public {
         vm.prank(user1);
-        vm.expectRevert("Insufficient payment");
+        vm.expectRevert("Insufficient");
         dna.mint{value: 0.001 ether}(agent1, "TestAgent", "langchain", "ipfs://meta", false, "1.0.0", NO_PARENT);
     }
 
@@ -130,7 +130,7 @@ contract AgentDNATest is Test {
         vm.prank(user1);
         dna.mint{value: MINT_PRICE}(agent1, "TestAgent", "langchain", "ipfs://meta", false, "1.0.0", NO_PARENT);
         vm.prank(user2);
-        vm.expectRevert("Agent already registered");
+        vm.expectRevert("Already registered");
         dna.mint{value: MINT_PRICE}(agent1, "TestAgent2", "crewai", "ipfs://meta2", false, "1.0.0", NO_PARENT);
     }
 
@@ -183,7 +183,7 @@ contract AgentDNATest is Test {
 
     function test_mint_reverts_invalid_parent() public {
         vm.prank(user1);
-        vm.expectRevert("Parent does not exist");
+        vm.expectRevert("Bad parent");
         dna.mint{value: MINT_PRICE}(agent1, "Orphan", "langchain", "ipfs://orphan", false, "1.0.0", 999);
     }
 
@@ -378,7 +378,7 @@ contract AgentDNATest is Test {
         dna.mint{value: MINT_PRICE}(agent1, "TestAgent", "langchain", "ipfs://v1", false, "1.0.0", NO_PARENT);
 
         vm.prank(user1);
-        vm.expectRevert("Insufficient mutation fee");
+        vm.expectRevert("Insufficient");
         dna.mutate(0, "2.0.0", "upgrade", "");
     }
 
@@ -387,7 +387,7 @@ contract AgentDNATest is Test {
         dna.mint{value: MINT_PRICE}(agent1, "TestAgent", "langchain", "ipfs://meta", false, "1.0.0", NO_PARENT);
 
         vm.prank(user1);
-        vm.expectRevert("Insufficient trait fee");
+        vm.expectRevert("Insufficient");
         dna.addTrait(0, "Trading", "capability");
     }
 
@@ -526,7 +526,7 @@ contract AgentDNATest is Test {
         address paying = address(uint160(9000));
         vm.deal(paying, 1 ether);
         vm.prank(paying);
-        vm.expectRevert("Insufficient payment");
+        vm.expectRevert("Insufficient");
         freeDna.register("ipfs://paid");
 
         vm.prank(paying);

@@ -15,7 +15,7 @@ contract DeployAgentDNA is Script {
         AgentDNA dna = new AgentDNA(mintPrice, mutationFee, traitFee);
         
         // Set treasury to team wallet
-        dna.setTreasury(0x01b686E547F4feA03bfC9711b7b5306375735d2A);
+        dna.setTreasury(0x01b686e547F4feA03BfC9711B7B5306375735d2a);
         
         console.log("AgentDNA deployed to:", address(dna));
         console.log("Mint price:", mintPrice);

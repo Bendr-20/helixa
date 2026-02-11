@@ -598,10 +598,10 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
     <script>
         // CONTRACT CONFIG — UPDATE AFTER DEPLOYMENT
-        const CONTRACT_ADDRESS = "0x665971e7bf8ec90c3066162c5b396604b3cd7711"; // Base Sepolia testnet
-        const CHAIN_ID = 84532; // Base Sepolia
-        const CHAIN_NAME = "Base Sepolia";
-        const RPC_URL = "https://sepolia.base.org";
+        const CONTRACT_ADDRESS = "0x665971e7bf8ec90c3066162c5b396604b3cd7711"; // Base testnet
+        const CHAIN_ID = 8453; // Base
+        const CHAIN_NAME = "Base";
+        const RPC_URL = "https://mainnet.base.org";
         
         const ABI = [
             "function mint(address agentAddress, string name, string framework, string tokenURI_, bool soulbound) external payable returns (uint256)",
@@ -1400,7 +1400,7 @@ function getAuraRarity(points, mutationCount) {
                         ${has8004 ? '<span class="nft-bdg link8004">8004.org #' + has8004.tokenId + '</span>' : ''}
                         ${traits.some(t => (t.name || t[0]) === 'x402-compatible') ? '<span class="nft-bdg" style="background:rgba(0,200,83,0.15); color:#00c853; border-color:#00c853;">x402</span>' : ''}
                     </div>
-                    <a href="https://sepolia.basescan.org/token/${CONTRACT_ADDRESS}?a=${tokenId}" target="_blank">BaseScan ↗</a>
+                    <a href="https://basescan.org/token/${CONTRACT_ADDRESS}?a=${tokenId}" target="_blank">BaseScan ↗</a>
                 </div>
             `;
 
@@ -1507,7 +1507,7 @@ function getAuraRarity(points, mutationCount) {
                                 chainName: CHAIN_NAME,
                                 nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
                                 rpcUrls: [RPC_URL],
-                                blockExplorerUrls: ['https://sepolia.basescan.org']
+                                blockExplorerUrls: ['https://basescan.org']
                             }]
                         });
                     }

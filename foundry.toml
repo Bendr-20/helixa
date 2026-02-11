@@ -5,4 +5,4 @@ libs = ["lib"]
 solc = "0.8.28"
 via_ir = true
 optimizer = true
-optimizer_runs = 50
+optimizer_runs = 10

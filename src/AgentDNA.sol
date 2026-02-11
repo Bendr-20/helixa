@@ -206,7 +206,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
         string calldata agentURI,
         MetadataEntry[] calldata metadata
     ) external payable nonReentrant returns (uint256 agentId) {
-        require(msg.value >= mintPrice, "Insufficient payment");
+        require(msg.value >= mintPrice, "Insufficient");
         require(bytes(agentURI).length > 0, "URI required");
 
         agentId = _nextTokenId++;
@@ -250,7 +250,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
      * @notice ERC-8004: Register with just URI
      */
     function register(string calldata agentURI) external payable nonReentrant returns (uint256 agentId) {
-        require(msg.value >= mintPrice, "Insufficient payment");
+        require(msg.value >= mintPrice, "Insufficient");
         require(bytes(agentURI).length > 0, "URI required");
 
         agentId = _nextTokenId++;
@@ -396,20 +396,20 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
         uint256 parentTokenId,
         address referrer
     ) internal returns (uint256) {
-        require(msg.value >= mintPrice, "Insufficient payment");
-        require(!hasAgent[agentAddress], "Agent already registered");
+        require(msg.value >= mintPrice, "Insufficient");
+        require(!hasAgent[agentAddress], "Already registered");
         require(agentAddress != address(0), "Invalid agent address");
         require(bytes(name).length > 0, "Name required");
 
         // One free mint per wallet during beta
         if (mintPrice == 0) {
-            require(!hasFreeMinted[msg.sender], "One free mint per wallet");
+            require(!hasFreeMinted[msg.sender], "Already free minted");
             hasFreeMinted[msg.sender] = true;
         }
 
         uint256 generation = 0;
         if (parentTokenId != NO_PARENT) {
-            require(_ownerOf(parentTokenId) != address(0), "Parent does not exist");
+            require(_ownerOf(parentTokenId) != address(0), "Bad parent");
             generation = agents[parentTokenId].generation + 1;
             children[parentTokenId].push(_nextTokenId);
         }
@@ -467,7 +467,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
         string calldata tokenURI_,
         bool soulbound
     ) external onlyOwner returns (uint256) {
-        require(!hasAgent[agentAddress], "Agent already registered");
+        require(!hasAgent[agentAddress], "Already registered");
         require(agentAddress != address(0), "Invalid agent address");
 
         uint256 tokenId = _nextTokenId++;
@@ -510,7 +510,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
     ) external payable {
         require(ownerOf(tokenId) == msg.sender, "Not agent owner");
         require(bytes(newVersion).length > 0, "Version required");
-        require(msg.value >= mutationFee, "Insufficient mutation fee");
+        require(msg.value >= mutationFee, "Insufficient");
 
         string memory oldVersion = agents[tokenId].currentVersion;
 
@@ -544,7 +544,7 @@ contract AgentDNA is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, EIP712 
     ) external payable {
         require(ownerOf(tokenId) == msg.sender, "Not agent owner");
         require(bytes(name).length > 0, "Trait name required");
-        require(msg.value >= traitFee, "Insufficient trait fee");
+        require(msg.value >= traitFee, "Insufficient");
 
         _traits[tokenId].push(Trait({
             name: name,

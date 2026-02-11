@@ -293,12 +293,12 @@ tr:hover td { background: var(--surface); }
 <script>
 // ============ CONFIG ============
 const CONTRACTS = {
-  'base-sepolia': {
+  'base': {
     address: '0x665971e7bf8ec90c3066162c5b396604b3cd7711',
-    chainId: 84532,
-    rpc: 'https://sepolia.base.org',
-    explorer: 'https://sepolia.basescan.org',
-    name: 'Base Sepolia'
+    chainId: 8453,
+    rpc: 'https://mainnet.base.org',
+    explorer: 'https://basescan.org',
+    name: 'Base'
   },
   'base': {
     address: '', // TBD mainnet
@@ -357,7 +357,7 @@ async function connectWallet() {
     // Find matching network
     network = Object.values(CONTRACTS).find(c => c.chainId === chainId);
     if (!network) {
-      showAlert(`Unsupported network (chainId ${chainId}). Switch to Base or Base Sepolia.`, 'error');
+      showAlert(`Unsupported network (chainId ${chainId}). Switch to Base or Base.`, 'error');
       return;
     }
     contractAddr = network.address;
