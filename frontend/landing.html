@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Helixa — Every Agent Deserves a Face</title>
+<title>Agent Auras by Helixa — Every Agent Deserves a Face</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
@@ -28,14 +28,14 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 
 /* ---- NAV ---- */
 nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(20px); background: rgba(8,6,14,0.7); border-bottom: 1px solid rgba(179,136,255,0.08); }
-.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .logo span { color: var(--text2); font-weight: 400; }
 nav .links { display: flex; gap: 2rem; align-items: center; }
 nav .links { text-align: center; }
 nav .links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
 nav .links a:hover { color: var(--text); }
-.btn-mint { padding: 8px 20px; background: var(--accent2); color: #fff; border: none; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-.btn-mint:hover { background: var(--accent); box-shadow: 0 0 30px rgba(179,136,255,0.3); }
+.btn-mint { padding: 8px 20px; background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); color: var(--bg); border: none; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.btn-mint:hover { box-shadow: 0 0 30px rgba(179,136,255,0.3); transform: translateY(-1px); }
 
 /* ---- HERO ---- */
 .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; padding: 6rem 2rem 4rem; }
@@ -47,7 +47,7 @@ nav .links a:hover { color: var(--text); }
 .hero p { font-size: 1.15rem; color: var(--text2); max-width: 540px; margin: 0 auto 2.5rem; line-height: 1.6; }
 .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 .btn-hero { padding: 14px 32px; border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; }
-.btn-hero.primary { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #fff; box-shadow: 0 4px 30px rgba(124,77,255,0.3); }
+.btn-hero.primary { background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); color: var(--bg); box-shadow: 0 4px 30px rgba(124,77,255,0.3); }
 .btn-hero.primary:hover { box-shadow: 0 4px 40px rgba(179,136,255,0.5); transform: translateY(-2px); }
 .btn-hero.secondary { background: var(--surface); color: var(--text); border: 1px solid rgba(179,136,255,0.2); }
 .btn-hero.secondary:hover { border-color: var(--accent); background: var(--surface2); }
@@ -176,7 +176,7 @@ footer .copy { color: #555; font-size: 0.75rem; }
     <a href="#rarity">Rarity</a>
     <a href="#preview">Preview</a>
     <a href="#features">Features</a>
-    <button class="btn-mint" onclick="window.location.href='index.html'">Mint Your Aura</button>
+    <button class="btn-mint" onclick="window.location.href='mint.html'">Mint Your Aura</button>
   </div>
 </nav>
 
@@ -187,10 +187,11 @@ footer .copy { color: #555; font-size: 0.75rem; }
       <svg width="16" height="16" viewBox="0 0 111 111" fill="none"><path d="M54.921 110.034C85.359 110.034 110.034 85.402 110.034 55.017C110.034 24.6319 85.359 0 54.921 0C26.0432 0 2.35281 22.1714 0 50.3923H72.8467V59.6416H3.9565e-07C2.35281 87.8625 26.0432 110.034 54.921 110.034Z" fill="#4d8eff"/></svg>
       Built on Base
     </div>
-    <h1>Every Agent<br>Deserves a <span class="gradient">Face</span></h1>
+    <h1>Agent <span class="gradient">Auras</span> <span style="font-size:0.4em; font-weight:300; opacity:0.6; font-family:'Inter',sans-serif; vertical-align:middle;">by Helixa</span></h1>
+    <p style="font-size:2.1rem; margin-bottom:1.5rem; opacity:0.95; font-weight:600; letter-spacing:-0.02em;">Every agent deserves a face.</p>
     <p>Mint a unique, evolving onchain identity for your AI agent. Personality-driven visuals that upgrade as your agent grows. ERC-8004 standard.</p>
     <div class="hero-actions">
-      <button class="btn-hero primary" onclick="window.location.href='index.html'">Mint Free During Beta</button>
+      <button class="btn-hero primary" onclick="window.location.href='mint.html'">Mint Free During Beta</button>
       <button class="btn-hero secondary" onclick="document.getElementById('preview').scrollIntoView()">Build Your Aura →</button>
     </div>
     <div class="aura-wall" id="heroAuras"></div>
@@ -199,7 +200,7 @@ footer .copy { color: #555; font-size: 0.75rem; }
 
 <!-- STATS -->
 <div class="stats-bar">
-  <div class="stat"><div class="num purple" id="liveTotal">5</div><div class="lbl">Agents Minted</div></div>
+  <div class="stat"><div class="num purple" id="liveTotal">1</div><div class="lbl">Agents Minted</div></div>
   <div class="stat"><div class="num blue" id="liveMutations">0</div><div class="lbl">Mutations</div></div>
   <div class="stat"><div class="num blue" id="live8004">0</div><div class="lbl">ERC-8004 Registrations</div></div>
   <div class="stat"><div class="num gold">4</div><div class="lbl">Rarity Tiers</div></div>
@@ -362,12 +363,12 @@ footer .copy { color: #555; font-size: 0.75rem; }
 <section class="cta">
   <h2>Ready to give your agent<br>an identity?</h2>
   <p>Free during beta. First 100 agents get 2x points.</p>
-  <button class="btn-hero primary" onclick="window.location.href='index.html'" style="font-size:1.1rem;padding:16px 40px;">Mint Your Aura</button>
+  <button class="btn-hero primary" onclick="window.location.href='mint.html'" style="font-size:1.1rem;padding:16px 40px;">Mint Your Aura</button>
 </section>
 
 <footer>
   <div class="links">
-    <a href="index.html">Mint</a>
+    <a href="mint.html">Mint</a>
     <a href="aura-rarity.html">Rarity Explorer</a>
     <a href="#">Docs</a>
     <a href="#">GitHub</a>
@@ -1057,5 +1058,8 @@ updatePreview();
 </script>
 <script src="qrcode.min.js?v=4"></script>
 <script src="qr-overlay.js?v=4"></script>
+<script>
+(async()=>{try{const r=await fetch('https://mainnet.base.org',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to:'0x665971e7bf8ec90c3066162c5b396604b3cd7711',data:'0x18160ddd'},'latest']})});const j=await r.json();const t=parseInt(j.result,16);if(t>=0)document.getElementById('liveTotal').textContent=t;}catch(e){console.log(e)}})();
+</script>
 </body>
 </html>
