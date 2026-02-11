@@ -542,10 +542,23 @@
                 <button id="soulSubmitBtn" onclick="submitSoul()" style="background:#00aaff; color:#0a0a0a;">
                     ⚡ Set Soul & Traits
                 </button>
-                <button onclick="document.getElementById('soulBuilder').style.display='none'" style="background:transparent; border:1px solid #444; color:#888; margin-top:0.5rem; font-size:0.85rem;">
+                <button onclick="showShareCard(mintedTokenId);document.getElementById('soulBuilder').style.display='none'" style="background:transparent; border:1px solid #444; color:#888; margin-top:0.5rem; font-size:0.85rem;">
                     Skip for now
                 </button>
                 <div id="soulStatus" style="margin-top:0.75rem; font-size:0.85rem;"></div>
+            </div>
+
+            <!-- Share Card (appears after soul is set) -->
+            <div id="shareCard" style="display:none; margin-top:1.5rem; border:1px solid rgba(179,136,255,0.3); border-radius:12px; padding:1.5rem; background:rgba(179,136,255,0.05); text-align:center;">
+                <h3 style="color:#b388ff; margin-bottom:0.5rem;">🎉 Your Aura is live onchain!</h3>
+                <div id="shareAuraPreview" style="display:flex; justify-content:center; margin:1rem 0;"></div>
+                <p style="color:#aaa; font-size:0.85rem; margin-bottom:1rem;">Share it with the world 👇</p>
+                <div id="shareTweetText" style="background:#111; border:1px solid #333; border-radius:8px; padding:1rem; text-align:left; color:#ccc; font-size:0.9rem; margin-bottom:1rem; white-space:pre-wrap; cursor:pointer;" onclick="navigator.clipboard.writeText(this.innerText);this.style.borderColor='#b388ff';setTimeout(()=>this.style.borderColor='#333',1500);" title="Click to copy"></div>
+                <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+                    <a id="shareTweetLink" href="#" target="_blank" style="display:inline-block; background:linear-gradient(135deg,#b388ff,#64b5f6,#ff80ab); color:#0a0a0f; padding:0.6rem 1.5rem; border-radius:8px; text-decoration:none; font-weight:700; font-size:0.9rem;">Post on X →</a>
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('shareTweetText').innerText);this.textContent='Copied!';setTimeout(()=>this.textContent='📋 Copy Text',1500)" style="background:transparent; border:1px solid #b388ff; color:#b388ff; padding:0.6rem 1.5rem; border-radius:8px; font-size:0.9rem; cursor:pointer;">📋 Copy Text</button>
+                    <button onclick="document.getElementById('shareCard').style.display='none';document.getElementById('soulBuilder').style.display='none'" style="background:transparent; border:1px solid #444; color:#888; padding:0.6rem 1rem; border-radius:8px; font-size:0.85rem; cursor:pointer;">Done</button>
+                </div>
             </div>
         </div>
         
@@ -598,7 +611,7 @@
     <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
     <script>
         // CONTRACT CONFIG — UPDATE AFTER DEPLOYMENT
-        const CONTRACT_ADDRESS = "0x665971e7bf8ec90c3066162c5b396604b3cd7711"; // Base testnet
+        const CONTRACT_ADDRESS = "0x665971e7bf8ec90c3066162c5b396604b3cd7711"; // Base mainnet
         const CHAIN_ID = 8453; // Base
         const CHAIN_NAME = "Base";
         const RPC_URL = "https://mainnet.base.org";
@@ -1932,11 +1945,46 @@ function getAuraRarity(points, mutationCount) {
                 }
 
                 status.innerHTML = `<span style="color:#b388ff;">✅ Soul set! Personality + ${traitCount} trait${traitCount !== 1 ? 's' : ''} saved onchain.</span>`;
-                setTimeout(() => { document.getElementById('soulBuilder').style.display = 'none'; loadAgents(); }, 3000);
+                // Show share card
+                showShareCard(mintedTokenId);
+                setTimeout(() => { loadAgents(); }, 2000);
             } catch (err) {
                 status.innerHTML = `<span style="color:#ff4444;">❌ ${err.reason || err.message}</span>`;
             }
             btn.disabled = false;
+        }
+
+        async function showShareCard(tokenId) {
+            const card = document.getElementById('shareCard');
+            const preview = document.getElementById('shareAuraPreview');
+            const tweetText = document.getElementById('shareTweetText');
+            const tweetLink = document.getElementById('shareTweetLink');
+            
+            // Generate Aura thumbnail
+            try {
+                const agent = await readOnlyContract.getAgent(tokenId);
+                const name = agent.name || agent[1];
+                const fw = agent.framework || agent[2];
+                let personality = null, pts = 0;
+                try { personality = await readOnlyContract.getPersonality(tokenId); pts = Number(await readOnlyContract.points(agent.agentAddress || agent[0])); } catch(e) {}
+                const thumbData = {
+                    agentAddress: agent.agentAddress || agent[0], framework: fw, name: name,
+                    mutationCount: 0, points: pts, soulbound: agent.soulbound ?? agent[5],
+                    traitCount: 0, temperament: personality?.temperament || 'analytical',
+                    communicationStyle: personality?.communicationStyle || 'formal',
+                    riskTolerance: personality ? Number(personality.riskTolerance) : 5,
+                    autonomyLevel: personality ? Number(personality.autonomyLevel) : 5,
+                    alignment: personality?.alignment || 'true-neutral',
+                    specialization: personality?.specialization || 'researcher', generation: 0,
+                };
+                preview.innerHTML = generateFaceQR(thumbData, 160);
+            } catch(e) { console.log('share preview err', e); }
+            
+            const tweet = `I just minted my Agent Aura on @HelixaXYZ 🧬\n\nAgentDNA #${tokenId} — onchain identity for AI agents.\n\nFirst 100 mints are free. Get yours:\nhttps://helixa.xyz/mint.html`;
+            tweetText.textContent = tweet;
+            tweetLink.href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(tweet);
+            card.style.display = 'block';
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         // Load stats + agents on page load — no wallet needed
