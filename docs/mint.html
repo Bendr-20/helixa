@@ -683,7 +683,8 @@
             "event AgentMinted(uint256 indexed tokenId, address indexed agentAddress, string name, string framework)",
             "function setPersonality(uint256 tokenId, string temperament, string communicationStyle, uint8 riskTolerance, uint8 autonomyLevel, string alignment, string specialization) external",
             "function addTrait(uint256 tokenId, string name, string category) external payable",
-            "function traitFee() view returns (uint256)"
+            "function traitFee() view returns (uint256)",
+            "function setAgentURI(uint256 agentId, string newURI) external"
         ];
         
 /**
@@ -1675,16 +1676,18 @@ function getAuraRarity(points, mutationCount) {
             if (!name) { showStatus('Agent name is required', 'error'); return; }
             if (!ethers.isAddress(agentAddr)) { showStatus('Invalid agent address', 'error'); return; }
             
-            // Build metadata JSON (would upload to IPFS in production)
+            // Build OpenSea-compatible metadata JSON
             const metadata = {
                 name: name,
-                description: description,
-                attributes: {
-                    framework: framework,
-                    capabilities: capabilities.split(',').map(s => s.trim()).filter(Boolean),
-                    model: model,
-                    source_repo: sourceRepo
-                }
+                description: description || `${name} — an AI agent with onchain identity on Helixa AgentDNA (ERC-8004).`,
+                image: '', // Will be set to Aura SVG URL after mint (tokenId needed)
+                external_url: 'https://helixa.xyz/directory.html',
+                attributes: [
+                    { trait_type: 'framework', value: framework },
+                    ...(model ? [{ trait_type: 'model', value: model }] : []),
+                    ...(capabilities ? [{ trait_type: 'capabilities', value: capabilities }] : []),
+                    ...(sourceRepo ? [{ trait_type: 'source_repo', value: sourceRepo }] : []),
+                ]
             };
             
             // For MVP, use a data URI as tokenURI (replace with IPFS in production)
@@ -1791,6 +1794,17 @@ function getAuraRarity(points, mutationCount) {
                     }
                 }
                 
+                // Update tokenURI with Aura image URL (OpenSea compatible)
+                try {
+                    metadata.image = 'https://helixa.xyz/auras/' + agentDnaTokenId + '.svg';
+                    const updatedURI = "data:application/json;base64," + btoa(JSON.stringify(metadata));
+                    const updateTx = await contract.setAgentURI(parseInt(agentDnaTokenId), updatedURI);
+                    await updateTx.wait();
+                    console.log('tokenURI updated with Aura image');
+                } catch (uriErr) {
+                    console.log('tokenURI update failed (non-critical):', uriErr.message);
+                }
+
                 // Show Soul Builder
                 showSoulBuilder(parseInt(agentDnaTokenId));
                 
