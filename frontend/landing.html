@@ -200,9 +200,9 @@ footer .copy { color: #555; font-size: 0.75rem; }
 
 <!-- STATS -->
 <div class="stats-bar">
-  <div class="stat"><div class="num purple" id="liveTotal">1</div><div class="lbl">Agents Minted</div></div>
-  <div class="stat"><div class="num blue" id="liveMutations">0</div><div class="lbl">Mutations</div></div>
-  <div class="stat"><div class="num blue" id="live8004">0</div><div class="lbl">ERC-8004 Registrations</div></div>
+  <div class="stat"><div class="num purple" id="liveTotal">—</div><div class="lbl">Agents Minted</div></div>
+  <div class="stat"><div class="num blue" id="liveMutations">—</div><div class="lbl">Mutations</div></div>
+  <div class="stat"><div class="num blue" id="live8004">—</div><div class="lbl">Traits Set</div></div>
   <div class="stat"><div class="num gold">4</div><div class="lbl">Rarity Tiers</div></div>
   <div class="stat"><div class="num purple">∞</div><div class="lbl">Unique Combinations</div></div>
 </div>
@@ -1059,7 +1059,21 @@ updatePreview();
 <script src="qrcode.min.js?v=4"></script>
 <script src="qr-overlay.js?v=4"></script>
 <script>
-(async()=>{try{const r=await fetch('https://mainnet.base.org',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to:'0x665971e7bf8ec90c3066162c5b396604b3cd7711',data:'0x18160ddd'},'latest']})});const j=await r.json();const t=parseInt(j.result,16);if(t>=0)document.getElementById('liveTotal').textContent=t;}catch(e){console.log(e)}})();
+(async()=>{try{
+const C='0x665971e7bf8ec90c3066162c5b396604b3cd7711',R='https://mainnet.base.org';
+async function rpc(method,params){const r=await fetch(R,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});return(await r.json()).result}
+// totalSupply
+const ts=parseInt(await rpc('eth_call',[{to:C,data:'0x18160ddd'},'latest']),16);
+if(ts>=0)document.getElementById('liveTotal').textContent=ts;
+// Count mutations via Mutated events (topic0)
+const mutTopic='0x09f32da17fb384adafd0886be8e606f530bc0f3cc9670fba9fe677c8836b4683';
+const mutLogs=await rpc('eth_getLogs',[{address:C,topics:[mutTopic],fromBlock:'0x0',toBlock:'latest'}]);
+if(mutLogs)document.getElementById('liveMutations').textContent=mutLogs.length;
+// Count traits via TraitAdded events
+const traitTopic='0xbc61cc3832b0076cf9aaf86723393f1fa81787bdfd9db2a82a2f654ef599247a';
+const traitLogs=await rpc('eth_getLogs',[{address:C,topics:[traitTopic],fromBlock:'0x0',toBlock:'latest'}]);
+if(traitLogs)document.getElementById('live8004').textContent=traitLogs.length;
+}catch(e){console.log('stats',e)}})();
 </script>
 </body>
 </html>
