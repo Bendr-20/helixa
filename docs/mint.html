@@ -1798,7 +1798,13 @@ function getAuraRarity(points, mutationCount) {
                         `;
                         ((tid, ag, ow) => { card.onclick = () => showAgentDetail(tid, ag, ow); })(i, agent, owner);
                         cards.push(card);
-                    } catch (e) { console.error('Agent #' + i + ' error:', e); }
+                    } catch (e) { 
+                        console.error('Agent #' + i + ' error:', e);
+                        const errCard = document.createElement('div');
+                        errCard.className = 'agent-card';
+                        errCard.innerHTML = '<div class="card-info"><div class="name" style="color:#ff4444;">#' + i + ' — Load error: ' + e.message + '</div></div>';
+                        cards.push(errCard);
+                    }
                 }
                 list.innerHTML = '';
                 if (cards.length === 0) {
