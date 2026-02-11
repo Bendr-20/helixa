@@ -2,16 +2,13 @@
   "name": "@helixa/agentdna-api",
   "version": "1.0.0",
   "description": "x402 payment-gated API for the Helixa AgentDNA protocol",
-  "type": "module",
+  "type": "commonjs",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
   "dependencies": {
-    "@x402/express": "^0.1.0",
-    "cors": "^2.8.5",
-    "ethers": "^6.13.0",
-    "express": "^4.21.0"
+    "ethers": "^6.13.0"
   }
 }
