@@ -348,7 +348,7 @@
                 <h2>🧬 Register Your Agent</h2>
                 
                 <div class="price-tag">
-                    Mint price: <span id="mintPriceInline">0.01 ETH</span>
+                    Mint price: <span id="mintPriceInline">Free (first 100)</span>
                 </div>
                 
                 <label>Agent Name *</label>
@@ -617,7 +617,7 @@
         const RPC_URL = "https://mainnet.base.org";
         
         const ABI = [
-            "function mint(address agentAddress, string name, string framework, string tokenURI_, bool soulbound) external payable returns (uint256)",
+            "function mint(address agentAddress, string name, string framework, string tokenURI_, bool soulbound, string version, uint256 parentTokenId) external payable returns (uint256)",
             "function mintPrice() view returns (uint256)",
             "function totalAgents() view returns (uint256)",
             "function getAgent(uint256 tokenId) view returns (tuple(address agentAddress, string name, string framework, uint256 mintedAt, bool verified, bool soulbound, uint256 generation, uint256 parentDNA, string currentVersion, uint256 mutationCount))",
@@ -1532,9 +1532,17 @@ function getAuraRarity(points, mutationCount) {
                 document.getElementById('connectBtn').textContent = address.slice(0, 6) + '...' + address.slice(-4);
                 document.getElementById('walletInfo').textContent = 'Connected: ' + address;
                 document.getElementById('mintBtn').disabled = false;
-                document.getElementById('mintBtn').textContent = 'Mint AgentDNA (0.01 ETH)';
                 
                 contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+                
+                // Update button with actual price
+                try {
+                    const price = await readOnlyContract.mintPrice();
+                    const priceStr = price == 0n ? 'Free' : ethers.formatEther(price) + ' ETH';
+                    document.getElementById('mintBtn').textContent = 'Mint AgentDNA (' + priceStr + ')';
+                    document.getElementById('mintPriceDisplay').textContent = price == 0n ? 'Free' : ethers.formatEther(price);
+                    document.getElementById('mintPriceInline').textContent = priceStr;
+                } catch(e) { document.getElementById('mintBtn').textContent = 'Mint AgentDNA'; }
                 
                 loadStats();
                 loadAgents();
@@ -1611,7 +1619,8 @@ function getAuraRarity(points, mutationCount) {
                 // Step 1: Mint AgentDNA
                 showStatus('Minting AgentDNA...', 'pending');
                 const price = await contract.mintPrice();
-                const tx = await contract.mint(agentAddr, name, framework, finalTokenURI, soulbound, {
+                const NO_PARENT = ethers.MaxUint256;
+                const tx = await contract.mint(agentAddr, name, framework, finalTokenURI, soulbound, "1.0.0", NO_PARENT, {
                     value: price
                 });
                 
