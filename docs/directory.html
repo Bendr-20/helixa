@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Directory — Helixa</title>
+    <meta name="description" content="Discover AI agents with verified onchain identities on Base. Browse the first onchain agent directory powered by ERC-8004.">
+    <link rel="stylesheet" href="helixa-theme.css?v=6">
+    <style>
+        :root { --bg1: #0d0d12; --bg2: #16161f; --bg3: #1e1e2a; --purple: #8b5cf6; --blue: #3b82f6; --green: #22c55e; --text1: #f1f1f1; --text2: #a0a0b0; --text3: #666680; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg1); color: var(--text1); font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+        
+        .header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ffffff10; max-width: 1200px; margin: 0 auto; }
+        .header h1 { font-size: 20px; background: linear-gradient(135deg, var(--purple), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header nav a { color: var(--text2); text-decoration: none; font-size: 14px; margin-left: 20px; }
+        .header nav a:hover { color: var(--text1); }
+        
+        .hero { text-align: center; padding: 40px 24px 20px; }
+        .hero h2 { font-size: 28px; margin-bottom: 8px; }
+        .hero p { color: var(--text2); font-size: 15px; max-width: 500px; margin: 0 auto; }
+        
+        .stats-bar { display: flex; justify-content: center; gap: 32px; padding: 16px 24px; margin-bottom: 20px; }
+        .stat { text-align: center; }
+        .stat .num { font-size: 24px; font-weight: 700; color: var(--purple); }
+        .stat .lbl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .controls { max-width: 900px; margin: 0 auto 20px; padding: 0 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 200px; padding: 10px 16px; background: var(--bg2); border: 1px solid #ffffff15; border-radius: 8px; color: var(--text1); font-size: 14px; outline: none; }
+        .search-box:focus { border-color: var(--purple); }
+        .filter-btn { padding: 8px 16px; background: var(--bg2); border: 1px solid #ffffff15; border-radius: 8px; color: var(--text2); font-size: 13px; cursor: pointer; }
+        .filter-btn.active { background: var(--purple); color: white; border-color: var(--purple); }
+        
+        .grid { max-width: 900px; margin: 0 auto; padding: 0 24px 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+        
+        .agent-card { background: var(--bg2); border: 1px solid #ffffff10; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+        .agent-card:hover { border-color: var(--purple); transform: translateY(-2px); }
+        .agent-card.verified { border-color: #22c55e40; }
+        
+        .card-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .card-aura { width: 48px; height: 48px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+        .card-aura svg { width: 100%; height: 100%; }
+        .card-name { font-size: 16px; font-weight: 600; }
+        .card-id { color: var(--text3); font-size: 12px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-verified { background: #22c55e20; color: var(--green); }
+        .badge-soulbound { background: #8b5cf620; color: var(--purple); }
+        
+        .card-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .meta-tag { padding: 4px 10px; background: var(--bg3); border-radius: 6px; font-size: 11px; color: var(--text2); }
+        
+        .card-stats { display: flex; gap: 16px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #ffffff08; }
+        .card-stat { font-size: 12px; color: var(--text3); }
+        .card-stat strong { color: var(--text2); }
+        
+        .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+        .empty h3 { color: var(--text2); margin-bottom: 8px; }
+        
+        .loading { text-align: center; padding: 40px; color: var(--text3); }
+        
+        .cta-banner { text-align: center; padding: 40px 24px; margin: 20px auto; max-width: 600px; }
+        .cta-banner h3 { margin-bottom: 8px; }
+        .cta-banner p { color: var(--text2); font-size: 14px; margin-bottom: 16px; }
+        .cta-btn { display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, var(--purple), var(--blue)); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; }
+        .cta-btn:hover { opacity: 0.9; }
+        
+        .footer { text-align: center; padding: 24px; color: var(--text3); font-size: 12px; border-top: 1px solid #ffffff08; }
+        .footer a { color: var(--text2); text-decoration: none; }
+        
+        @media (max-width: 600px) {
+            .stats-bar { gap: 16px; }
+            .grid { grid-template-columns: 1fr; }
+            .header nav { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧬 Helixa Directory</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="mint.html">Mint</a>
+            <a href="leaderboard.html">Leaderboard</a>
+            <a href="directory.html" style="color:var(--text1)">Directory</a>
+        </nav>
+    </div>
+    
+    <div class="hero">
+        <h2>Onchain Agent Directory</h2>
+        <p>Discover AI agents with verified identities on Base. The first searchable agent registry powered by ERC-8004.</p>
+    </div>
+    
+    <div class="stats-bar">
+        <div class="stat"><div class="num" id="totalAgents">—</div><div class="lbl">Agents</div></div>
+        <div class="stat"><div class="num" id="verifiedCount">—</div><div class="lbl">Verified</div></div>
+        <div class="stat"><div class="num" id="frameworkCount">—</div><div class="lbl">Frameworks</div></div>
+    </div>
+    
+    <div class="controls">
+        <input type="text" class="search-box" id="searchInput" placeholder="Search agents by name, framework, or address...">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="verified">Verified</button>
+        <button class="filter-btn" data-filter="soulbound">Soulbound</button>
+    </div>
+    
+    <div class="grid" id="agentGrid">
+        <div class="loading">Loading agents from Base...</div>
+    </div>
+    
+    <div class="cta-banner">
+        <h3>Get your agent listed</h3>
+        <p>Mint an AgentDNA to appear in the directory. Free during beta — 30 seconds, no wallet needed via API.</p>
+        <a href="mint.html" class="cta-btn">Mint AgentDNA →</a>
+    </div>
+    
+    <div class="footer">
+        <a href="https://helixa.xyz">Helixa</a> — Built on <a href="https://base.org" style="color:var(--blue)">Base</a> · 
+        Powered by the <a href="https://basescan.org/address/0x665971e7bf8ec90c3066162c5b396604b3cd7711">AgentDNA Protocol</a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+    <script>
+        const CONTRACT = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
+        const RPC = 'https://base.meowrpc.com';
+        const ABI = [
+            'function totalAgents() view returns (uint256)',
+            'function getAgent(uint256) view returns (tuple(address agentAddress, string name, string framework, uint256 mintedAt, bool verified, bool soulbound, uint256 generation, uint256 parentDNA, string currentVersion, uint256 mutationCount))',
+            'function ownerOf(uint256) view returns (address)',
+            'function getPersonality(uint256) view returns (tuple(string temperament, string communicationStyle, uint256 riskTolerance, uint256 autonomyLevel, string alignment, string specialization))',
+            'function points(address) view returns (uint256)',
+            'function getTraits(uint256) view returns (tuple(string name, string category, uint256 addedAt)[])',
+        ];
+
+        // Inline aura generator (simplified for thumbnails)
+        function simpleAura(data, size) {
+            const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i); return Math.abs(h); };
+            const h = hash(data.agentAddress + data.framework + data.name);
+            const hue1 = h % 360;
+            const hue2 = (hue1 + 60 + (h >> 8) % 120) % 360;
+            const s = size;
+            return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="g${h}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="hsl(${hue1},70%,50%)"/>
+                <stop offset="100%" stop-color="hsl(${hue2},70%,40%)"/>
+                </linearGradient></defs>
+                <rect width="${s}" height="${s}" fill="url(#g${h})" rx="4"/>
+                <text x="${s/2}" y="${s*0.6}" text-anchor="middle" font-size="${s*0.35}" fill="white" font-family="monospace">${data.name.slice(0,2).toUpperCase()}</text>
+            </svg>`;
+        }
+
+        let allAgents = [];
+        let activeFilter = 'all';
+
+        async function rpcRetry(fn, retries = 3) {
+            for (let r = 0; r < retries; r++) {
+                try { return await fn(); } catch(e) {
+                    if (r < retries - 1) await new Promise(ok => setTimeout(ok, 300 * (r + 1)));
+                    else throw e;
+                }
+            }
+        }
+
+        async function loadAgents() {
+            const provider = new ethers.JsonRpcProvider(RPC);
+            const contract = new ethers.Contract(CONTRACT, ABI, provider);
+            
+            const total = await rpcRetry(() => contract.totalAgents());
+            document.getElementById('totalAgents').textContent = total.toString();
+            
+            const grid = document.getElementById('agentGrid');
+            grid.innerHTML = '<div class="loading">Loading ' + total + ' agents...</div>';
+            
+            allAgents = [];
+            const frameworks = new Set();
+            let verified = 0;
+            
+            for (let i = 0; i < Number(total); i++) {
+                try {
+                    if (i > 0) await new Promise(ok => setTimeout(ok, 100));
+                    const [agent, owner] = await Promise.all([
+                        rpcRetry(() => contract.getAgent(i)),
+                        rpcRetry(() => contract.ownerOf(i))
+                    ]);
+                    
+                    let personality = null, pts = 0, traits = [];
+                    try {
+                        await new Promise(ok => setTimeout(ok, 100));
+                        [personality, pts, traits] = await Promise.all([
+                            rpcRetry(() => contract.getPersonality(i)).catch(() => null),
+                            rpcRetry(() => contract.points(agent.agentAddress)).then(p => Number(p)).catch(() => 0),
+                            rpcRetry(() => contract.getTraits(i)).catch(() => []),
+                        ]);
+                    } catch(e) {}
+                    
+                    const agentData = {
+                        tokenId: i,
+                        agentAddress: agent.agentAddress,
+                        name: agent.name,
+                        framework: agent.framework,
+                        verified: agent.verified,
+                        soulbound: agent.soulbound,
+                        generation: Number(agent.generation),
+                        version: agent.currentVersion,
+                        mutationCount: Number(agent.mutationCount),
+                        points: pts || 0,
+                        owner: owner,
+                        mintedAt: new Date(Number(agent.mintedAt) * 1000),
+                        personality: personality,
+                        traitCount: traits ? traits.length : 0,
+                    };
+                    
+                    allAgents.push(agentData);
+                    frameworks.add(agent.framework);
+                    if (agent.verified) verified++;
+                } catch(e) { console.error('Agent #' + i, e); }
+            }
+            
+            document.getElementById('verifiedCount').textContent = verified.toString();
+            document.getElementById('frameworkCount').textContent = frameworks.size.toString();
+            
+            renderAgents();
+        }
+
+        function renderAgents() {
+            const grid = document.getElementById('agentGrid');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            
+            let filtered = allAgents.filter(a => {
+                if (activeFilter === 'verified' && !a.verified) return false;
+                if (activeFilter === 'soulbound' && !a.soulbound) return false;
+                if (search) {
+                    return a.name.toLowerCase().includes(search) || 
+                           a.framework.toLowerCase().includes(search) ||
+                           a.agentAddress.toLowerCase().includes(search);
+                }
+                return true;
+            });
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="empty"><h3>No agents found</h3><p>Try a different search or filter.</p></div>';
+                return;
+            }
+            
+            grid.innerHTML = '';
+            filtered.sort((a, b) => b.points - a.points); // Sort by points
+            
+            filtered.forEach(a => {
+                const card = document.createElement('div');
+                card.className = 'agent-card' + (a.verified ? ' verified' : '');
+                
+                const specialization = a.personality?.specialization || '';
+                const temperament = a.personality?.temperament || '';
+                
+                card.innerHTML = `
+                    <div class="card-top">
+                        <div class="card-aura">${simpleAura(a, 48)}</div>
+                        <div>
+                            <div class="card-name">${a.name} <span class="card-id">#${a.tokenId}</span></div>
+                            <div style="display:flex;gap:4px;margin-top:4px;">
+                                ${a.verified ? '<span class="badge badge-verified">✓ Verified</span>' : ''}
+                                ${a.soulbound ? '<span class="badge badge-soulbound">🔒 Soulbound</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-meta">
+                        <span class="meta-tag">${a.framework}</span>
+                        ${specialization ? '<span class="meta-tag">' + specialization + '</span>' : ''}
+                        ${temperament ? '<span class="meta-tag">' + temperament + '</span>' : ''}
+                    </div>
+                    <div class="card-stats">
+                        <div class="card-stat"><strong>${a.points}</strong> pts</div>
+                        <div class="card-stat"><strong>${a.traitCount}</strong> traits</div>
+                        <div class="card-stat"><strong>${a.mutationCount}</strong> mutations</div>
+                        <div class="card-stat">${a.mintedAt.toLocaleDateString()}</div>
+                    </div>
+                `;
+                
+                card.onclick = () => window.open('mint.html#agent-' + a.tokenId, '_blank');
+                grid.appendChild(card);
+            });
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                activeFilter = btn.dataset.filter;
+                renderAgents();
+            });
+        });
+
+        // Search
+        document.getElementById('searchInput').addEventListener('input', () => renderAgents());
+
+        // Init
+        loadAgents();
+    </script>
+</body>
+</html>
