@@ -1060,10 +1060,10 @@ updatePreview();
 <script src="qr-overlay.js?v=4"></script>
 <script>
 (async()=>{try{
-const C='0x665971e7bf8ec90c3066162c5b396604b3cd7711',R='https://base.meowrpc.com';
+const C='0x665971e7bf8ec90c3066162c5b396604b3cd7711',R='https://base.drpc.org';
 async function rpc(method,params){const r=await fetch(R,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});return(await r.json()).result}
-// totalSupply
-const ts=parseInt(await rpc('eth_call',[{to:C,data:'0x18160ddd'},'latest']),16);
+// totalAgents
+const ts=parseInt(await rpc('eth_call',[{to:C,data:'0xc5053712'},'latest']),16);
 if(ts>=0)document.getElementById('liveTotal').textContent=ts;
 // Count mutations via Mutated events (topic0)
 const mutTopic='0x09f32da17fb384adafd0886be8e606f530bc0f3cc9670fba9fe677c8836b4683';
