@@ -1727,7 +1727,7 @@ function getAuraRarity(points, mutationCount) {
                         const thumbData = {
                             agentAddress: addr, framework: fw, name: name,
                             mutationCount: mutCount, points: pts, soulbound: soulbound,
-                            traitCount: Number(agent.capCount || agent[7] || 0),
+                            traitCount: 0,
                             temperament: personality ? personality.temperament : 'analytical',
                             communicationStyle: personality ? personality.communicationStyle : 'formal',
                             riskTolerance: personality ? Number(personality.riskTolerance) : 5,
@@ -1795,7 +1795,7 @@ function getAuraRarity(points, mutationCount) {
                 const lkThumbData = {
                     agentAddress: agent.agentAddress, framework: agent.framework, name: agent.name,
                     mutationCount: Number(agent.mutationCount || 0), points: lkPts, soulbound: agent.soulbound,
-                    traitCount: Number(agent.capCount || 0),
+                    traitCount: 0,
                     temperament: lkPersonality ? lkPersonality.temperament : 'analytical',
                     communicationStyle: lkPersonality ? lkPersonality.communicationStyle : 'formal',
                     riskTolerance: lkPersonality ? Number(lkPersonality.riskTolerance) : 5,
