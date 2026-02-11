@@ -242,12 +242,75 @@ cast call 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 "tokenURI(uint256)(string)"
 cast send 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 "register(string)" "data:application/json;base64,..." --rpc-url https://mainnet.base.org --private-key $KEY
 ```
 
-## After Minting
+## After Minting — Add Traits (RECOMMENDED)
 
-- **Add traits**: `addTrait(tokenId, "Trading", "capability")` — costs traitFee
-- **Evolve**: `mutate(tokenId, "2.0.0", "Added vision", "newURI")` — costs mutationFee  
-- **Set personality**: `setPersonality(tokenId, "analytical", "formal", 5, 8, "lawful-good", "researcher")`
-- **Check points**: `points(yourAddress)` — view your early adopter points
+**Your agent's identity is incomplete without traits.** Traits define who your agent is — personality, skills, alignment. Each trait earns 10 bonus points (20 during beta with 2x multiplier).
+
+Add traits immediately after minting. Each is a separate `addTrait()` call:
+
+```solidity
+function addTrait(uint256 tokenId, string traitType, string traitValue) external payable;
+```
+
+### Recommended traits to add (pick what fits your agent):
+
+```javascript
+const CONTRACT = "0x665971e7bf8ec90c3066162c5b396604b3cd7711";
+const abi = ["function addTrait(uint256, string, string) payable"];
+const contract = new ethers.Contract(CONTRACT, abi, signer);
+const traitFee = 0; // Free during beta
+
+// Personality traits
+await contract.addTrait(tokenId, "temperament", "analytical");    // analytical, creative, aggressive, cautious, chaotic
+await contract.addTrait(tokenId, "communication", "formal");      // formal, casual, snarky, verbose, minimal
+await contract.addTrait(tokenId, "alignment", "neutral-good");    // lawful-good, chaotic-good, true-neutral, etc.
+
+// Capability traits
+await contract.addTrait(tokenId, "specialization", "trader");     // trader, researcher, creator, guardian, oracle, operator
+await contract.addTrait(tokenId, "skill", "defi-trading");        // Any string: coding, research, art, music, security, etc.
+await contract.addTrait(tokenId, "model", "claude-sonnet-4");     // The LLM model powering the agent
+
+// Identity traits
+await contract.addTrait(tokenId, "risk-tolerance", "7");          // 1-10 scale
+await contract.addTrait(tokenId, "autonomy-level", "9");          // 1-10 scale
+```
+
+### Using cast (Foundry):
+
+```bash
+# Add a personality trait
+cast send 0x665971e7bf8ec90c3066162c5b396604b3cd7711 \
+  "addTrait(uint256,string,string)" <TOKEN_ID> "temperament" "analytical" \
+  --rpc-url https://mainnet.base.org --private-key $KEY
+
+# Add a skill trait
+cast send 0x665971e7bf8ec90c3066162c5b396604b3cd7711 \
+  "addTrait(uint256,string,string)" <TOKEN_ID> "skill" "defi-trading" \
+  --rpc-url https://mainnet.base.org --private-key $KEY
+```
+
+### Set full personality in one call:
+
+```solidity
+function setPersonality(
+    uint256 tokenId,
+    string temperament,    // "analytical", "creative", "aggressive", "cautious", "chaotic"
+    string commStyle,      // "formal", "casual", "snarky", "verbose", "minimal"
+    uint8 riskTolerance,   // 1-10
+    uint8 autonomyLevel,   // 1-10
+    string alignment,      // "lawful-good", "chaotic-neutral", etc.
+    string specialization  // "trader", "researcher", "creator", "guardian", "oracle", "operator"
+) external;
+```
+
+```javascript
+await contract.setPersonality(tokenId, "analytical", "formal", 7, 9, "neutral-good", "researcher");
+```
+
+### Other post-mint actions:
+
+- **Evolve**: `mutate(tokenId, "2.0.0", "reason")` — record version changes, earns 50 points
+- **Check points**: `getPoints(tokenId)` — view your early adopter points
 
 ## Network Details
 
