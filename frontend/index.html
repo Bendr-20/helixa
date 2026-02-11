@@ -306,6 +306,31 @@
         .agent-card:hover { border-color: var(--accent); box-shadow: 0 0 20px rgba(179,136,255,0.05); }
         .agent-card .faceqr-thumb { flex-shrink: 0; border-radius: 8px; overflow: hidden; line-height: 0; }
         .agent-card .card-info { flex: 1; min-width: 0; }
+
+        /* Verified agent cards — green glow */
+        .agent-card.verified-card { border-color: rgba(0,230,118,0.25); box-shadow: 0 0 15px rgba(0,230,118,0.06); }
+        .agent-card.verified-card:hover { border-color: rgba(0,230,118,0.5); box-shadow: 0 0 25px rgba(0,230,118,0.1); }
+        .verified-badge { display:inline-flex; align-items:center; gap:3px; font-size:0.75rem; color:var(--green); background:rgba(0,230,118,0.08); padding:2px 7px; border-radius:10px; border:1px solid rgba(0,230,118,0.2); font-weight:600; }
+        .verified-badge::before { content:'✓'; font-weight:900; }
+        .unverified-label { font-size:0.7rem; color:var(--text3); opacity:0.5; font-style:italic; }
+
+        /* Explorer filter toggle */
+        .filter-toggle { display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; }
+        .filter-toggle input[type=checkbox] { width:auto; accent-color:var(--green); }
+        .filter-toggle label { margin:0; color:var(--text2); font-size:0.85rem; text-transform:none; cursor:pointer; }
+
+        /* Verification request button */
+        .verify-request-btn { background:transparent; border:1px solid var(--green); color:var(--green); padding:0.75rem; margin-top:0.75rem; font-size:0.9rem; }
+        .verify-request-btn:hover { background:rgba(0,230,118,0.08); box-shadow:none; }
+        .verify-request-btn:disabled { border-color:var(--text3); color:var(--text3); background:transparent; }
+        .verify-status { text-align:center; font-size:0.85rem; margin-top:0.5rem; padding:0.5rem; border-radius:6px; }
+        .verify-status.requested { color:var(--orange); background:rgba(255,171,64,0.08); border:1px solid rgba(255,171,64,0.15); }
+        .verify-status.already { color:var(--green); background:rgba(0,230,118,0.08); border:1px solid rgba(0,230,118,0.15); }
+
+        /* Modal verified badge — bigger */
+        .nft-verified-big { display:inline-flex; align-items:center; gap:4px; background:rgba(0,230,118,0.12); color:var(--green); padding:3px 10px; border-radius:12px; border:1px solid rgba(0,230,118,0.25); font-size:11px; font-weight:700; }
+        .nft-verified-big::before { content:'✓'; font-size:13px; font-weight:900; }
+        .nft-unverified-badge { display:inline-flex; align-items:center; font-size:10px; color:var(--text3); opacity:0.6; font-style:italic; }
     </style>
 </head>
 <body>
@@ -546,6 +571,19 @@
                     Skip for now
                 </button>
                 <div id="soulStatus" style="margin-top:0.75rem; font-size:0.85rem;"></div>
+
+                <!-- Verification Request -->
+                <div style="border-top:1px solid #222; margin-top:1rem; padding-top:1rem;">
+                    <h2 style="font-size:0.95rem; color:var(--green); margin-bottom:0.5rem;">✓ Agent Verification</h2>
+                    <p style="color:#888; font-size:0.8rem; margin-bottom:0.75rem;">
+                        Prove your agent is real by signing a challenge message with the agent's wallet. 
+                        Verified agents get a green badge in the explorer.
+                    </p>
+                    <button class="verify-request-btn" id="verifyRequestBtn" onclick="requestVerification()">
+                        🔐 Request Verification
+                    </button>
+                    <div id="verifyStatus"></div>
+                </div>
             </div>
 
             <!-- Share Card (appears after soul is set) -->
@@ -566,6 +604,10 @@
         <div class="tab-content" id="tab-explore">
             <div class="section">
                 <h2>📡 Registered Agents</h2>
+                <div class="filter-toggle">
+                    <input type="checkbox" id="filterVerified" onchange="filterAgentList()">
+                    <label for="filterVerified">Show verified only</label>
+                </div>
                 <div id="agentList">
                     <p style="color: #666; text-align: center;">Connect wallet to browse agents</p>
                 </div>
@@ -1380,7 +1422,7 @@ function getAuraRarity(points, mutationCount) {
                 </div>
                 <div class="nft-identity">
                     <span class="nft-name">${name}</span>
-                    ${verified ? '<span class="nft-verified">✓</span>' : ''}
+                    ${verified ? '<span class="nft-verified-big">Verified</span>' : '<span class="nft-unverified-badge">unverified</span>'}
                 </div>
                 ${description ? `<div class="nft-desc">${description}</div>` : ''}
                 <div class="nft-stats">
@@ -1723,7 +1765,8 @@ function getAuraRarity(points, mutationCount) {
                         } catch(e) {}
                         
                         const card = document.createElement('div');
-                        card.className = 'agent-card';
+                        card.className = 'agent-card' + (verified ? ' verified-card' : '');
+                        card.dataset.verified = verified ? '1' : '0';
                         const thumbData = {
                             agentAddress: addr, framework: fw, name: name,
                             mutationCount: mutCount, points: pts, soulbound: soulbound,
@@ -1742,7 +1785,7 @@ function getAuraRarity(points, mutationCount) {
                             <div class="card-info">
                                 <div class="name">
                                     #${i} — ${name} 
-                                    ${verified ? '<span class="verified">✓ Verified</span>' : ''}
+                                    ${verified ? '<span class="verified-badge">Verified</span>' : '<span class="unverified-label">unverified</span>'}
                                     ${soulbound ? '🔒' : ''}
                                 </div>
                                 <div class="meta">
@@ -1994,6 +2037,93 @@ function getAuraRarity(points, mutationCount) {
             tweetLink.href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(tweet);
             card.style.display = 'block';
             card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // ============ VERIFICATION REQUEST ============
+        async function requestVerification() {
+            if (!contract || mintedTokenId === null) {
+                document.getElementById('verifyStatus').innerHTML = '<div class="verify-status requested">Connect wallet and mint first</div>';
+                return;
+            }
+            const btn = document.getElementById('verifyRequestBtn');
+            const status = document.getElementById('verifyStatus');
+            btn.disabled = true;
+            
+            try {
+                // Check if already verified
+                const isV = await readOnlyContract.isVerified(mintedTokenId);
+                if (isV) {
+                    status.innerHTML = '<div class="verify-status already">✓ This agent is already verified!</div>';
+                    btn.disabled = true;
+                    return;
+                }
+                
+                // Generate challenge
+                const timestamp = Math.floor(Date.now() / 1000);
+                const challenge = `Verify AgentDNA #${mintedTokenId} at timestamp ${timestamp}`;
+                
+                status.innerHTML = '<div class="verify-status requested">Sign the challenge message with your agent wallet...</div>';
+                
+                // Ask the connected wallet to sign
+                const signature = await signer.signMessage(challenge);
+                const signerAddr = await signer.getAddress();
+                
+                // Verify client-side that signature is valid
+                const recovered = ethers.verifyMessage(challenge, signature);
+                
+                // Get the agent's address from contract
+                const agent = await readOnlyContract.getAgent(mintedTokenId);
+                const agentAddr = agent.agentAddress || agent[0];
+                
+                // Check: signer should be the owner or the agent address
+                const owner = await readOnlyContract.ownerOf(mintedTokenId);
+                if (recovered.toLowerCase() !== agentAddr.toLowerCase() && recovered.toLowerCase() !== owner.toLowerCase()) {
+                    status.innerHTML = '<div class="verify-status requested">⚠️ Signature must be from the agent wallet (' + agentAddr.slice(0,8) + '...) or the owner wallet.</div>';
+                    btn.disabled = false;
+                    return;
+                }
+                
+                // Store verification request in localStorage for cron job pickup
+                const request = {
+                    tokenId: mintedTokenId,
+                    challenge: challenge,
+                    signature: signature,
+                    signerAddress: recovered,
+                    agentAddress: agentAddr,
+                    owner: owner,
+                    timestamp: timestamp,
+                    status: 'pending'
+                };
+                
+                // Save to localStorage
+                const requests = JSON.parse(localStorage.getItem('helixa_verify_requests') || '[]');
+                requests.push(request);
+                localStorage.setItem('helixa_verify_requests', JSON.stringify(requests));
+                
+                // Also log to console for monitoring
+                console.log('VERIFICATION_REQUEST:', JSON.stringify(request));
+                
+                status.innerHTML = '<div class="verify-status requested">🕐 Verification requested! Your agent will be verified shortly by the Helixa team.<br><small style="opacity:0.7;">Token #' + mintedTokenId + ' · Signed by ' + recovered.slice(0,8) + '...</small></div>';
+                btn.textContent = '✓ Verification Requested';
+                btn.disabled = true;
+                
+            } catch (err) {
+                status.innerHTML = '<div class="verify-status requested">❌ ' + (err.reason || err.message) + '</div>';
+                btn.disabled = false;
+            }
+        }
+
+        // ============ EXPLORER FILTER ============
+        function filterAgentList() {
+            const verifiedOnly = document.getElementById('filterVerified').checked;
+            const cards = document.querySelectorAll('#agentList .agent-card');
+            cards.forEach(card => {
+                if (verifiedOnly && card.dataset.verified !== '1') {
+                    card.style.display = 'none';
+                } else {
+                    card.style.display = '';
+                }
+            });
         }
 
         // Load stats + agents on page load — no wallet needed
