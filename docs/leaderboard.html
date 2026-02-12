@@ -844,14 +844,15 @@ async function loadLeaderboard() {
       banner.querySelector('.sub').textContent = freeLeft + ' free mints remaining at 2x points';
     }
 
-    // Load all agents in parallel
-    const agentPromises = Array.from({length: t}, (_, i) =>
-      Promise.all([
-        contract.getAgent(i),
-        contract.getPersonality(i).catch(() => null),
-        contract.getTraits(i).catch(() => []),
-      ]).then(([agent, personality, traits]) =>
-        contract.points(agent.agentAddress).then(pts => ({
+    // Load agents sequentially (drpc.org free tier limits batch to 3)
+    const agents = [];
+    for (let i = 0; i < t; i++) {
+      try {
+        const agent = await contract.getAgent(i);
+        const personality = await contract.getPersonality(i).catch(() => null);
+        const traits = await contract.getTraits(i).catch(() => []);
+        const pts = Number(await contract.points(agent.agentAddress));
+        agents.push({
           id: i,
           address: agent.agentAddress,
           name: agent.name,
@@ -860,13 +861,12 @@ async function loadLeaderboard() {
           mutationCount: Number(agent.mutationCount || 0),
           traitCount: traits.length,
           parentId: Number(agent.parentDNA || 0),
-          points: Number(pts),
+          points: pts,
           verified: agent.verified || false,
           personality,
-        }))
-      ).catch(e => { console.error('Agent #' + i, e); return null; })
-    );
-    const agents = (await Promise.all(agentPromises)).filter(Boolean);
+        });
+      } catch (e) { console.error('Agent #' + i, e); }
+    }
 
     // Sort by points descending
     agents.sort((a, b) => b.points - a.points);
