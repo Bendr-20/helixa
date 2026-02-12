@@ -457,7 +457,7 @@
             <div class="section" id="soulBuilder" style="display:none; border-color:#00aaff;">
                 <h2 style="color:#00aaff;">🧬 Define Your Agent's Soul</h2>
                 <p style="color:#888; font-size:0.85rem; margin-bottom:1rem;">
-                    You just minted AgentDNA <span id="soulTokenId" style="color:#b388ff;"></span>. Now give it a soul — traits and personality that display on the NFT card.
+                    🎉 AgentDNA <span id="soulTokenId" style="color:#b388ff;"></span> minted! <strong>Don't skip this</strong> — traits and personality make your agent discoverable and define its Aura. Agents without traits are invisible on the leaderboard.
                 </p>
 
                 <div style="border-bottom:1px solid #222; padding-bottom:1rem; margin-bottom:1rem;">
@@ -1978,26 +1978,40 @@ function getAuraRarity(points, mutationCount) {
             mintedTokenId = tokenId;
             document.getElementById('soulTokenId').textContent = '#' + tokenId;
             document.getElementById('traitRows').innerHTML = '';
-            addTraitRow(); // Start with one empty row
+            
+            // Pre-populate with framework-based default traits
+            const fw = document.getElementById('framework')?.value || 'custom';
+            const defaultTraits = {
+                openclaw: [['Autonomous Agent', 'capability'], ['Tool-Using', 'capability']],
+                eliza: [['Multi-Platform', 'capability'], ['Social Agent', 'capability']],
+                langchain: [['Tool-Using', 'capability'], ['RAG-Enabled', 'capability']],
+                crewai: [['Collaborative', 'capability'], ['Task-Oriented', 'capability']],
+                autogpt: [['Self-Directed', 'capability'], ['Goal-Oriented', 'capability']],
+                bankr: [['DeFi-Native', 'capability'], ['Trading', 'skill']],
+                virtuals: [['Entertainment', 'capability'], ['Interactive', 'capability']],
+                custom: [['', 'capability']],
+            };
+            const presets = defaultTraits[fw] || defaultTraits.custom;
+            for (const [name, cat] of presets) {
+                addTraitRow(name, cat);
+            }
+            // Add empty row for custom traits
+            addTraitRow();
+            
             document.getElementById('soulBuilder').style.display = 'block';
             document.getElementById('soulBuilder').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function addTraitRow() {
+        function addTraitRow(defaultName, defaultCategory) {
             const container = document.getElementById('traitRows');
             if (container.children.length >= 8) return;
             const row = document.createElement('div');
             row.style.cssText = 'display:flex; gap:0.5rem; margin-bottom:0.5rem;';
+            const cats = ['capability','skill','knowledge','behavior','integration','specialization','model','custom'];
+            const options = cats.map(c => `<option value="${c}"${c === (defaultCategory||'capability') ? ' selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`).join('');
             row.innerHTML = `
-                <input type="text" placeholder="Trait name (e.g. Trading)" style="flex:1; margin:0;">
-                <select style="flex:1; margin:0;">
-                    <option value="capability">Capability</option>
-                    <option value="skill">Skill</option>
-                    <option value="knowledge">Knowledge</option>
-                    <option value="behavior">Behavior</option>
-                    <option value="integration">Integration</option>
-                    <option value="custom">Custom</option>
-                </select>
+                <input type="text" placeholder="Trait name (e.g. Trading)" value="${defaultName || ''}" style="flex:1; margin:0;">
+                <select style="flex:1; margin:0;">${options}</select>
                 <button onclick="this.parentElement.remove()" style="width:auto; padding:0.5rem; background:#ff444430; color:#ff4444; border:1px solid #ff444440; font-size:0.8rem;">✕</button>
             `;
             container.appendChild(row);

@@ -59,6 +59,10 @@ const ABI = [
     'function isVerified(uint256) view returns (bool)',
     'function hasFreeMinted(address) view returns (bool)',
     'function setVerified(uint256, bool) external',
+    'function addTrait(uint256 tokenId, string name, string category) external payable',
+    'function setPersonality(uint256 tokenId, string temperament, string communicationStyle, uint256 riskTolerance, uint256 autonomyLevel, string alignment, string specialization) external',
+    'function transferFrom(address from, address to, uint256 tokenId) external',
+    'function traitFee() view returns (uint256)',
     'event Registered(uint256 indexed agentId, string agentURI, address indexed owner)',
 ];
 
@@ -85,6 +89,57 @@ const mintCooldowns = new Map();
 const COOLDOWN_MS = 60 * 60 * 1000;
 
 const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'custom'];
+
+// Default trait templates by framework
+const FRAMEWORK_TRAITS = {
+    openclaw: [
+        { name: 'OpenClaw Agent', category: 'framework-detail' },
+        { name: 'Autonomous', category: 'capability' },
+    ],
+    eliza: [
+        { name: 'ElizaOS Agent', category: 'framework-detail' },
+        { name: 'Multi-Platform', category: 'capability' },
+    ],
+    langchain: [
+        { name: 'LangChain Agent', category: 'framework-detail' },
+        { name: 'Tool-Using', category: 'capability' },
+    ],
+    crewai: [
+        { name: 'CrewAI Agent', category: 'framework-detail' },
+        { name: 'Collaborative', category: 'capability' },
+    ],
+    autogpt: [
+        { name: 'AutoGPT Agent', category: 'framework-detail' },
+        { name: 'Self-Directed', category: 'capability' },
+    ],
+    bankr: [
+        { name: 'Bankr Agent', category: 'framework-detail' },
+        { name: 'DeFi-Native', category: 'capability' },
+    ],
+    virtuals: [
+        { name: 'Virtuals Agent', category: 'framework-detail' },
+        { name: 'Entertainment', category: 'capability' },
+    ],
+    custom: [
+        { name: 'Custom Framework', category: 'framework-detail' },
+    ],
+};
+
+// Add traits to an agent (deployer must be owner)
+async function addTraitsToAgent(tokenId, traits) {
+    const results = [];
+    const traitFee = await readContract.traitFee();
+    for (const trait of traits) {
+        try {
+            const tx = await contract.addTrait(tokenId, trait.name, trait.category, { value: traitFee });
+            await tx.wait();
+            results.push({ ...trait, success: true });
+        } catch (e) {
+            results.push({ ...trait, success: false, error: e.message.slice(0, 100) });
+        }
+    }
+    return results;
+}
 
 // ============ HELPERS ============
 
@@ -240,7 +295,13 @@ app.get(['/', '/api'], (req, res) => {
                 framework: 'openclaw',
                 description: 'My AI agent',
                 soulbound: false,
-            }
+                model: 'claude-opus-4',
+                traits: [
+                    { name: 'Autonomous', category: 'capability' },
+                    { name: 'DeFi Expert', category: 'specialization' },
+                ],
+            },
+            note: 'Framework traits are auto-added. Custom traits (max 10) are optional. Non-soulbound agents get onchain traits automatically.',
         },
         x402: {
             facilitator: 'https://x402.org/facilitator',
@@ -409,9 +470,31 @@ app.post('/api/mint', async (req, res) => {
     
     const recipient = req.body.ownerAddress && ethers.isAddress(req.body.ownerAddress) ? req.body.ownerAddress : agentAddress;
     
+    // Build traits list: framework defaults + custom traits from request
+    const traits = [...(FRAMEWORK_TRAITS[fw] || [])];
+    
+    // Add custom traits from request body
+    if (req.body.traits && Array.isArray(req.body.traits)) {
+        for (const t of req.body.traits.slice(0, 10)) { // Max 10 custom traits
+            if (t.name && t.category) {
+                traits.push({ name: String(t.name).slice(0, 64), category: String(t.category).slice(0, 32) });
+            }
+        }
+    }
+    
+    // Add model trait if provided
+    if (req.body.model) {
+        traits.push({ name: String(req.body.model).slice(0, 64), category: 'model' });
+    }
+    
+    // Strategy: For non-soulbound, mint to deployer → add traits → transfer
+    // For soulbound, mint to recipient (can't transfer), traits go in metadata only
+    const isSoulbound = soulbound === true;
+    const mintTo = isSoulbound ? recipient : wallet.address; // Deployer if non-soulbound
+    
     try {
-        console.log(`[MINT] ${name} (${fw}) → ${agentAddress} (owner: ${recipient})`);
-        const tx = await contract.mintFree(recipient, agentAddress, name, fw, tokenURI, soulbound === true);
+        console.log(`[MINT] ${name} (${fw}) → ${agentAddress} (owner: ${recipient}, soulbound: ${isSoulbound})`);
+        const tx = await contract.mintFree(mintTo, agentAddress, name, fw, tokenURI, isSoulbound);
         console.log(`[MINT] TX: ${tx.hash}`);
         const receipt = await tx.wait();
         
@@ -428,6 +511,28 @@ app.post('/api/mint', async (req, res) => {
         
         mintCooldowns.set(cooldownKey, Date.now());
         console.log(`[MINT] ✓ Token #${tokenId} minted for ${name}`);
+        
+        // Add onchain traits (only works if deployer is owner = non-soulbound)
+        let traitResults = [];
+        if (!isSoulbound && traits.length > 0 && tokenId !== null) {
+            console.log(`[TRAITS] Adding ${traits.length} traits to #${tokenId}...`);
+            traitResults = await addTraitsToAgent(tokenId, traits);
+            const successCount = traitResults.filter(t => t.success).length;
+            console.log(`[TRAITS] ✓ ${successCount}/${traits.length} traits added`);
+        }
+        
+        // Transfer to recipient (non-soulbound only)
+        let transferTx = null;
+        if (!isSoulbound && mintTo !== recipient) {
+            try {
+                const ttx = await contract.transferFrom(wallet.address, recipient, tokenId);
+                transferTx = ttx.hash;
+                await ttx.wait();
+                console.log(`[TRANSFER] ✓ #${tokenId} transferred to ${recipient}`);
+            } catch (e) {
+                console.error(`[TRANSFER] Failed: ${e.message}`);
+            }
+        }
         
         // Register .agent name if provided
         let agentNameResult = null;
@@ -457,10 +562,13 @@ app.post('/api/mint', async (req, res) => {
             success: true,
             tokenId,
             txHash: tx.hash,
+            transferTx,
             agentName: agentNameResult,
+            traits: traitResults,
+            soulbound: isSoulbound,
             explorer: `https://basescan.org/tx/${tx.hash}`,
             agent: `https://helixa.xyz/mint.html#agent-${tokenId}`,
-            message: `${name} is now onchain! AgentDNA #${tokenId}${agentNameResult ? ` — ${agentNameResult}` : ''}`
+            message: `${name} is now onchain! AgentDNA #${tokenId}${agentNameResult ? ` — ${agentNameResult}` : ''} with ${traitResults.filter(t=>t.success).length} traits`
         });
     } catch (e) {
         console.error('[MINT] Error:', e.message);
