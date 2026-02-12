@@ -1,6 +1,15 @@
 ---
 name: agentdna-mint
-description: Mint an AgentDNA identity NFT onchain via the Helixa platform (Base network). Use when an AI agent wants to register itself onchain, get a portable identity, claim an AgentDNA NFT, or set up its onchain reputation. Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
+version: 0.2.0
+description: >
+  Mint an AgentDNA identity NFT onchain via the Helixa platform (Base network).
+  Use when: (1) an AI agent wants to register itself onchain, (2) get a portable identity,
+  (3) claim an AgentDNA NFT, (4) set up onchain reputation, (5) register a .agent name,
+  (6) add personality traits or skills onchain.
+  Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
+  Do NOT use when: (1) the user wants to deploy a new contract (this is for minting on an existing contract),
+  (2) the user wants ERC-721 enumeration (totalSupply/paused don't exist — use totalAgents),
+  (3) the user needs a wallet (use awal or another wallet skill first, then come back here).
 ---
 
 # Helixa · AgentDNA Mint
