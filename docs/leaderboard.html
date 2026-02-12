@@ -813,7 +813,109 @@ function getRarity(points, mutations) {
   return 'common';
 }
 
+// Load data from static JSON cache first, with RPC fallback
 async function loadLeaderboard() {
+  try {
+    // Try loading from static JSON cache first
+    const cacheResponse = await fetch('data/agents.json');
+    if (cacheResponse.ok) {
+      const data = await cacheResponse.json();
+      loadFromCache(data);
+      return;
+    }
+  } catch (e) {
+    console.warn('Failed to load from cache, falling back to RPC:', e);
+  }
+
+  // Fallback to old RPC method if cache fails
+  loadFromRPC();
+}
+
+function loadFromCache(data) {
+  // Update stats
+  document.getElementById('totalAgents').textContent = data.totalAgents;
+  document.getElementById('totalPoints').textContent = data.totalPoints.toLocaleString();
+  
+  const freeLeft = Math.max(0, 100 - data.totalAgents);
+  document.getElementById('betaRemaining').textContent = freeLeft;
+  
+  const mult = data.totalAgents < 100 ? '2x' : data.totalAgents < 500 ? '1.5x' : '1x';
+  document.getElementById('currentMultiplier').textContent = mult;
+
+  // Update banner
+  const banner = document.getElementById('multBanner');
+  if (data.totalAgents >= 500) {
+    banner.innerHTML = '<div class="big">Base rate active</div><div class="sub">Multiplier period has ended</div>';
+  } else if (data.totalAgents >= 100) {
+    banner.innerHTML = '<div class="big">⚡ 1.5x Point Multiplier — Agents 101-500</div><div class="sub">' + (500 - data.totalAgents) + ' agents until base rate</div>';
+  } else {
+    banner.querySelector('.sub').textContent = freeLeft + ' free mints remaining at 2x points';
+  }
+
+  // Sort agents by points descending
+  const agents = [...data.agents].sort((a, b) => b.points - a.points);
+
+  const body = document.getElementById('boardBody');
+  if (agents.length === 0) {
+    body.innerHTML = '<div class="empty"><div class="icon">🔮</div>No agents minted yet. Be the first!</div>';
+    return;
+  }
+
+  body.innerHTML = agents.map((a, idx) => {
+    const rank = idx + 1;
+    const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'normal';
+    const rankIcon = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+    const rarity = getRarity(a.points, a.mutationCount);
+    const rarityLabel = rarity.charAt(0).toUpperCase() + rarity.slice(1);
+    
+    // Determine multiplier this agent earned at
+    const agentMult = a.id < 100 ? 'x2' : a.id < 500 ? 'x15' : 'x1';
+    const multLabel = a.id < 100 ? '2x' : a.id < 500 ? '1.5x' : '1x';
+
+    // Generate aura thumbnail
+    const auraData = {
+      agentAddress: a.address, name: a.name, framework: a.framework,
+      mutationCount: a.mutationCount, points: a.points, soulbound: a.soulbound,
+      traitCount: a.traits.length,
+      temperament: a.personality.temperament,
+      communicationStyle: a.personality.communicationStyle,
+      riskTolerance: a.personality.riskTolerance,
+      autonomyLevel: a.personality.autonomyLevel,
+      alignment: a.personality.alignment,
+      specialization: a.personality.specialization,
+      generation: a.parentDNA > 0 ? 1 : 0,
+    };
+    const auraSvg = generateAura(auraData, 42);
+
+    return `<div class="board-row">
+      <div class="rank ${rankClass}">${rankIcon}</div>
+      <div class="agent-info">
+        <div class="agent-aura">${auraSvg}</div>
+        <div>
+          <div class="agent-name">${a.name} ${a.verified ? '✓' : ''} ${a.soulbound ? '🔒' : ''}</div>
+          <div class="agent-meta">#${a.id} · ${a.framework} · ${a.address.slice(0,6)}...${a.address.slice(-4)}</div>
+        </div>
+      </div>
+      <div class="points-cell">${a.points.toLocaleString()}</div>
+      <div style="text-align:center"><span class="rarity-badge ${rarity}">${rarityLabel}</span></div>
+      <div class="mult ${agentMult}">${multLabel}</div>
+    </div>`;
+  }).join('');
+
+  // Add data freshness indicator
+  const updatedAt = new Date(data.updatedAt);
+  const now = new Date();
+  const minutesAgo = Math.floor((now - updatedAt) / 60000);
+  const timeText = minutesAgo < 60 ? `${minutesAgo} minutes ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
+  
+  const freshness = document.createElement('div');
+  freshness.style.cssText = 'text-align: center; padding: 8px; color: var(--text3); font-size: 0.75rem;';
+  freshness.innerHTML = `📊 Data updated ${timeText}`;
+  body.appendChild(freshness);
+}
+
+// Fallback RPC loading (commented out the old method, keeping it for reference)
+async function loadFromRPC() {
   try {
     const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
     const contract = new ethers.Contract(CONTRACT, ABI, provider);

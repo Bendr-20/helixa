@@ -1080,7 +1080,42 @@ updatePreview();
 <script src="qrcode.min.js?v=4"></script>
 <script src="qr-overlay.js?v=4"></script>
 <script>
-(async()=>{try{
+// Load live stats from static JSON cache first, with RPC fallback
+(async()=>{
+try {
+  // Try loading from static JSON cache first
+  const cacheResponse = await fetch('data/agents.json');
+  if (cacheResponse.ok) {
+    const data = await cacheResponse.json();
+    // Update stats from cache
+    document.getElementById('liveTotal').textContent = data.totalAgents;
+    
+    // Count mutations and traits from cache data
+    let totalMutations = data.agents.reduce((sum, agent) => sum + (agent.mutationCount || 0), 0);
+    let totalTraits = data.agents.reduce((sum, agent) => sum + (agent.traits?.length || 0), 0);
+    
+    document.getElementById('liveMutations').textContent = totalMutations;
+    document.getElementById('live8004').textContent = totalTraits;
+    
+    // Add data freshness indicator
+    const updatedAt = new Date(data.updatedAt);
+    const now = new Date();
+    const minutesAgo = Math.floor((now - updatedAt) / 60000);
+    const timeText = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)}h ago`;
+    
+    const freshness = document.createElement('div');
+    freshness.style.cssText = 'text-align: center; padding: 4px; color: var(--text3); font-size: 0.7rem; opacity: 0.8;';
+    freshness.innerHTML = `📊 ${timeText}`;
+    document.querySelector('.stats-bar').appendChild(freshness);
+    
+    return; // Success, no need for RPC fallback
+  }
+} catch (e) {
+  console.warn('Failed to load stats from cache, falling back to RPC:', e);
+}
+
+// Fallback to old RPC method if cache fails
+try{
 const C='0x665971e7bf8ec90c3066162c5b396604b3cd7711',R='https://base.drpc.org';
 async function rpc(method,params){const r=await fetch(R,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method,params})});return(await r.json()).result}
 // totalAgents

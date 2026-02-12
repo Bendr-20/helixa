@@ -778,6 +778,7 @@ if (cardId !== null) {
   loadAllCards();
 }
 
+// Load data from static JSON cache first, with RPC fallback
 async function loadAllCards() {
   currentView = 'grid';
   document.getElementById('gridView').style.display = 'grid';
@@ -786,6 +787,54 @@ async function loadAllCards() {
   document.getElementById('downloadBtn').style.display = 'none';
   document.getElementById('shareBtn').style.display = 'none';
 
+  try {
+    // Try loading from static JSON cache first
+    const cacheResponse = await fetch('data/agents.json');
+    if (cacheResponse.ok) {
+      const data = await cacheResponse.json();
+      loadAllFromCache(data);
+      return;
+    }
+  } catch (e) {
+    console.warn('Failed to load from cache, falling back to RPC:', e);
+  }
+
+  // Fallback to old RPC method if cache fails
+  loadAllFromRPC();
+}
+
+function loadAllFromCache(data) {
+  allAgents = data.agents.map(agent => ({
+    id: agent.id,
+    address: agent.address,
+    name: agent.name,
+    framework: agent.framework,
+    soulbound: agent.soulbound,
+    verified: agent.verified,
+    mutationCount: agent.mutationCount,
+    traitCount: agent.traits.length,
+    points: agent.points,
+    mintedAt: agent.mintedAt,
+    personality: agent.personality,
+    traits: agent.traits,
+  }));
+
+  // Add data freshness indicator
+  const updatedAt = new Date(data.updatedAt);
+  const now = new Date();
+  const minutesAgo = Math.floor((now - updatedAt) / 60000);
+  const timeText = minutesAgo < 60 ? `${minutesAgo} minutes ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
+  
+  const freshness = document.createElement('div');
+  freshness.style.cssText = 'text-align: center; padding: 8px; color: var(--text3); font-size: 0.75rem;';
+  freshness.innerHTML = `📊 Data updated ${timeText}`;
+  document.body.appendChild(freshness);
+
+  renderGrid();
+}
+
+// Fallback RPC loading (keeping original as fallback)
+async function loadAllFromRPC() {
   try {
     const provider = getProvider();
     const contract = new ethers.Contract(CONTRACT, ABI, provider);
@@ -866,6 +915,7 @@ function renderGrid() {
   }).join('');
 }
 
+// Load single card data from static JSON cache first, with RPC fallback
 async function loadSingleCard(agentId) {
   currentView = 'single';
   document.getElementById('gridView').style.display = 'none';
@@ -874,6 +924,59 @@ async function loadSingleCard(agentId) {
   document.getElementById('downloadBtn').style.display = 'inline-block';
   document.getElementById('shareBtn').style.display = 'inline-block';
 
+  try {
+    // Try loading from static JSON cache first
+    const cacheResponse = await fetch('data/agents.json');
+    if (cacheResponse.ok) {
+      const data = await cacheResponse.json();
+      const agent = data.agents.find(a => a.id === agentId);
+      if (agent) {
+        loadSingleFromCache(agent, data.updatedAt);
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load from cache, falling back to RPC:', e);
+  }
+
+  // Fallback to old RPC method if cache fails
+  loadSingleFromRPC(agentId);
+}
+
+function loadSingleFromCache(agent, updatedAt) {
+  const agentData = {
+    id: agent.id,
+    address: agent.address,
+    name: agent.name,
+    framework: agent.framework,
+    soulbound: agent.soulbound,
+    verified: agent.verified,
+    mutationCount: agent.mutationCount,
+    traitCount: agent.traits.length,
+    points: agent.points,
+    mintedAt: agent.mintedAt,
+    currentVersion: agent.version,
+    generation: agent.generation,
+    personality: agent.personality,
+    traits: agent.traits,
+  };
+
+  // Add data freshness indicator
+  const updatedAtDate = new Date(updatedAt);
+  const now = new Date();
+  const minutesAgo = Math.floor((now - updatedAtDate) / 60000);
+  const timeText = minutesAgo < 60 ? `${minutesAgo} minutes ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
+  
+  const freshness = document.createElement('div');
+  freshness.style.cssText = 'text-align: center; padding: 8px; color: var(--text3); font-size: 0.75rem;';
+  freshness.innerHTML = `📊 Data updated ${timeText}`;
+  document.body.appendChild(freshness);
+
+  renderCard(agentData);
+}
+
+// Fallback RPC loading (keeping original as fallback)
+async function loadSingleFromRPC(agentId) {
   try {
     const provider = getProvider();
     const contract = new ethers.Contract(CONTRACT, ABI, provider);

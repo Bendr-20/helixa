@@ -900,7 +900,77 @@
             }
         }
 
+        // Load data from static JSON cache first, with RPC fallback
         async function loadAgents() {
+            try {
+                // Try loading from static JSON cache first
+                const cacheResponse = await fetch('data/agents.json');
+                if (cacheResponse.ok) {
+                    const data = await cacheResponse.json();
+                    loadFromCache(data);
+                    return;
+                }
+            } catch (e) {
+                console.warn('Failed to load from cache, falling back to RPC:', e);
+            }
+
+            // Fallback to old RPC method if cache fails
+            loadFromRPC();
+        }
+
+        function loadFromCache(data) {
+            document.getElementById('totalAgents').textContent = data.totalAgents.toString();
+            
+            const grid = document.getElementById('agentGrid');
+            grid.innerHTML = '<div class="loading">Organizing agent data...</div>';
+            
+            allAgents = [];
+            const frameworks = new Set();
+            let verified = 0;
+            
+            data.agents.forEach(agent => {
+                const agentData = {
+                    tokenId: agent.id,
+                    agentAddress: agent.address,
+                    name: agent.name,
+                    framework: agent.framework,
+                    verified: agent.verified,
+                    soulbound: agent.soulbound,
+                    generation: agent.generation,
+                    version: agent.version,
+                    mutationCount: agent.mutationCount,
+                    points: agent.points,
+                    owner: agent.address, // Simplified - in cache, agent address = owner
+                    mintedAt: new Date(agent.mintedAt * 1000),
+                    personality: agent.personality,
+                    traits: agent.traits, // Full traits array from cache
+                    traitCount: agent.traits.length,
+                };
+                
+                allAgents.push(agentData);
+                frameworks.add(agent.framework);
+                if (agent.verified) verified++;
+            });
+            
+            document.getElementById('verifiedCount').textContent = verified.toString();
+            document.getElementById('frameworkCount').textContent = frameworks.size.toString();
+            
+            // Add data freshness indicator
+            const updatedAt = new Date(data.updatedAt);
+            const now = new Date();
+            const minutesAgo = Math.floor((now - updatedAt) / 60000);
+            const timeText = minutesAgo < 60 ? `${minutesAgo} minutes ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
+            
+            const freshness = document.createElement('div');
+            freshness.style.cssText = 'text-align: center; padding: 8px; color: var(--text3); font-size: 0.75rem;';
+            freshness.innerHTML = `📊 Data updated ${timeText}`;
+            document.body.appendChild(freshness);
+            
+            renderAgents();
+        }
+
+        // Fallback RPC loading (keeping original as fallback)
+        async function loadFromRPC() {
             const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
             const contract = new ethers.Contract(CONTRACT, ABI, provider);
             
