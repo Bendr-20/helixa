@@ -150,19 +150,38 @@ footer .copy { color: #555; font-size: 0.75rem; }
 .hamburger.open span:nth-child(2) { opacity: 0; }
 .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
 
+/* Tablet */
+@media (max-width: 900px) {
+  nav { padding: 1rem 1.5rem; }
+  .hero { padding: 5rem 1.5rem 3rem; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  .aura-wall .aura-card { width: 80px; height: 80px; }
+  .stats-bar { gap: 2rem; }
+  section { padding: 4rem 1.5rem; }
+  .rarity-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Mobile */
 @media (max-width: 700px) {
   .hamburger { display: block; }
-  nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; }
+  nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; position: fixed; }
   nav .logo { flex: 1; }
-  nav { position: fixed; }
-  nav .links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
+  nav .links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 1000; }
   nav .links.open { display: flex; }
-  nav .links a { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+  nav .links a { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 1rem; min-height: 44px; display: flex; align-items: center; }
   nav .links a:last-of-type { border-bottom: none; }
-  nav .links .btn-mint { margin-top: 8px; width: 100%; text-align: center; padding: 12px; }
-  .hero h1 { font-size: 2rem; }
-  .stats-bar { gap: 1.5rem; }
+  nav .links .btn-mint { margin-top: 8px; width: 100%; text-align: center; padding: 14px; min-height: 44px; }
+  .hero { padding: 6rem 1rem 3rem; }
+  .hero h1 { font-size: 2.2rem; line-height: 1.2; }
+  .hero p { font-size: 1rem; }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .btn-hero { min-width: 200px; min-height: 44px; font-size: 1rem; }
+  .stats-bar { gap: 1.5rem; flex-wrap: wrap; padding: 1.5rem 1rem; }
   .aura-wall .aura-card { width: 70px; height: 70px; }
+  section { padding: 3rem 1rem; }
+  .steps { grid-template-columns: 1fr; }
+  .preview-box { flex-direction: column; gap: 24px; }
+  .preview-controls { min-width: 100%; }
 }
 </style>
 </head>

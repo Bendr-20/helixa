@@ -11,7 +11,7 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 
 /* Nav */
 nav { padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); text-decoration: none; }
 .logo span { color: var(--text3); font-weight: 400; }
 .nav-links { display: flex; gap: 1.5rem; align-items: center; }
 .nav-links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
@@ -107,29 +107,37 @@ footer a { color: var(--accent); text-decoration: none; }
 .hamburger.open span:nth-child(2) { opacity: 0; }
 .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
 
+/* Tablet */
+@media (max-width: 900px) {
+  .container { padding: 1.5rem; }
+  .board-header, .board-row { grid-template-columns: 50px 1fr 90px 80px 70px; }
+  .stats-row { gap: 1.5rem; }
+  .mini-stat { padding: 12px 20px; }
+}
+
+/* Mobile */
 @media (max-width: 600px) {
   .hamburger { display: block; }
   nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; }
   nav .logo { flex: 1; }
   nav { position: relative; }
-  .nav-links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 50; }
+  .nav-links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 1000; }
   .nav-links.open { display: flex; }
-  .nav-links a { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+  .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 1rem; min-height: 44px; display: flex; align-items: center; }
+  .nav-links a:last-child { border-bottom: none; }
   .board-header, .board-row { grid-template-columns: 40px 1fr 70px 70px; }
   .board-header > :nth-child(5), .board-row > :nth-child(5) { display: none; }
-  .stats-row { gap: 0.75rem; }
+  .stats-row { gap: 0.75rem; flex-wrap: wrap; }
   .mini-stat { padding: 10px 16px; min-width: 100px; }
   .agent-aura { width: 32px; height: 32px; }
-  .stats-row { gap: 0.75rem; }
-  .mini-stat { padding: 10px 16px; min-width: 100px; }
-  .agent-aura { width: 32px; height: 32px; }
+  .container { padding: 1rem; }
 }
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo">helixa<span>.xyz</span></div>
+  <a href="index.html" class="logo">helixa<span>.xyz</span></a>
   <button class="hamburger" onclick="this.classList.toggle('open');document.querySelector('.nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
   <div class="nav-links">
     <a href="index.html">Home</a>

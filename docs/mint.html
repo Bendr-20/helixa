@@ -333,18 +333,120 @@
         .nft-verified-big { display:inline-flex; align-items:center; gap:4px; background:rgba(0,230,118,0.12); color:var(--green); padding:3px 10px; border-radius:12px; border:1px solid rgba(0,230,118,0.25); font-size:11px; font-weight:700; }
         .nft-verified-big::before { content:'✓'; font-size:13px; font-weight:900; }
         .nft-unverified-badge { display:inline-flex; align-items:center; font-size:10px; color:var(--text3); opacity:0.6; font-style:italic; }
+
+        /* ---- NAV ---- */
+        nav { 
+            position: relative; 
+            padding: 1rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            backdrop-filter: blur(20px); 
+            background: rgba(8,6,14,0.7); 
+            border-bottom: 1px solid rgba(179,136,255,0.08); 
+            max-width: 900px; 
+            margin: 0 auto;
+        }
+        .logo { 
+            font-family: 'Space Grotesk', sans-serif; 
+            font-size: 1.3rem; 
+            font-weight: 700; 
+            letter-spacing: -0.5px; 
+            background: linear-gradient(135deg, var(--accent), var(--cool), var(--warm)); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            background-clip: text; 
+            text-decoration: none;
+        }
+        .logo span { color: var(--text3); font-weight: 400; }
+        nav .links { display: flex; gap: 1.5rem; align-items: center; }
+        nav .links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+        nav .links a:hover { color: var(--text); }
+        
+        /* Hamburger */
+        .hamburger { 
+            display: none; 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            padding: 4px; 
+            width: auto; 
+        }
+        .hamburger span { 
+            display: block; 
+            width: 22px; 
+            height: 2px; 
+            background: var(--text2); 
+            margin: 5px 0; 
+            transition: all 0.3s; 
+            border-radius: 1px; 
+        }
+        .hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+        .hamburger.open span:nth-child(2) { opacity: 0; }
+        .hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+        /* Tablet */
+        @media (max-width: 900px) {
+            nav { padding: 1rem 1.5rem; }
+            .container { padding: 1.5rem; }
+            .stats { gap: 1.5rem; }
+        }
+
+        /* Mobile */
+        @media (max-width: 700px) {
+            .hamburger { display: block; }
+            nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; }
+            nav .logo { flex: 1; }
+            nav .links { 
+                display: none; 
+                flex-direction: column; 
+                width: 100%; 
+                gap: 0; 
+                padding: 0.8rem 1.2rem 1rem; 
+                position: absolute; 
+                top: 100%; 
+                left: 0; 
+                right: 0; 
+                background: rgba(8,6,14,0.95); 
+                backdrop-filter: blur(20px); 
+                border-bottom: 1px solid var(--border); 
+                z-index: 1000; 
+            }
+            nav .links.open { display: flex; }
+            nav .links a { 
+                padding: 12px 0; 
+                border-bottom: 1px solid var(--border); 
+                font-size: 1rem; 
+                min-height: 44px; 
+                display: flex; 
+                align-items: center; 
+            }
+            nav .links a:last-of-type { border-bottom: none; }
+            
+            .stats { gap: 1rem; flex-wrap: wrap; }
+            .container { padding: 1rem; }
+            h1 { font-size: 2rem; }
+            button { padding: 0.875rem; font-size: 1rem; min-height: 44px; }
+            input, select, textarea { padding: 0.875rem; font-size: 1rem; min-height: 44px; }
+            .section { padding: 1.25rem; }
+            .checkbox-row { margin-bottom: 1.25rem; }
+            .checkbox-row label { font-size: 1rem; }
+        }
     </style>
 </head>
 <body>
-    <div style="padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);max-width:900px;margin:0 auto;">
-        <a href="index.html" style="font-family:'Space Grotesk',sans-serif;font-size:1.3rem;font-weight:700;color:var(--accent);text-decoration:none;">helixa<span style="color:var(--text3);font-weight:400">.xyz</span></a>
-        <div style="display:flex;gap:1.5rem;align-items:center;">
-            <a href="index.html" style="color:var(--text2);text-decoration:none;font-size:0.85rem;">Home</a>
-            <a href="mint.html" style="color:var(--accent);text-decoration:none;font-size:0.85rem;">Mint</a>
-            <a href="directory.html" style="color:var(--text2);text-decoration:none;font-size:0.85rem;">Directory</a>
-            <a href="leaderboard.html" style="color:var(--text2);text-decoration:none;font-size:0.85rem;">Leaderboard</a>
+    <nav>
+        <a href="index.html" class="logo">helixa<span>.xyz</span></a>
+        <button class="hamburger" onclick="this.classList.toggle('open');document.querySelector('nav .links').classList.toggle('open')">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="links">
+            <a href="index.html">Home</a>
+            <a href="mint.html" style="color: var(--accent);">Mint</a>
+            <a href="directory.html">Directory</a>
+            <a href="leaderboard.html">Leaderboard</a>
         </div>
-    </div>
+    </nav>
     <div class="container">
         <header>
             <h1>Helixa</h1>
