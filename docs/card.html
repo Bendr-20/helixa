@@ -737,7 +737,24 @@ function generateAura(agentData, size) {
 
 // Contract setup
 const CONTRACT = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
-const RPC = 'https://base.drpc.org';
+const RPCS = ['https://base.drpc.org', 'https://mainnet.base.org'];
+let currentRpcIdx = 0;
+const RPC = RPCS[0];
+
+async function rpcRetry(fn, retries = 3) {
+  for (let r = 0; r < retries; r++) {
+    try { return await fn(); } catch(e) {
+      if (r < retries - 1) {
+        currentRpcIdx = (currentRpcIdx + 1) % RPCS.length;
+        await new Promise(ok => setTimeout(ok, 500 * (r + 1)));
+      } else throw e;
+    }
+  }
+}
+
+function getProvider() {
+  return new ethers.JsonRpcProvider(RPCS[currentRpcIdx], undefined, { batchMaxCount: 1 });
+}
 const ABI = [
   "function totalAgents() view returns (uint256)",
   "function getAgent(uint256) view returns (tuple(address agentAddress, string name, string framework, uint256 mintedAt, bool verified, bool soulbound, uint256 generation, uint256 parentDNA, string currentVersion, uint256 mutationCount))",
@@ -770,7 +787,7 @@ async function loadAllCards() {
   document.getElementById('shareBtn').style.display = 'none';
 
   try {
-    const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
+    const provider = getProvider();
     const contract = new ethers.Contract(CONTRACT, ABI, provider);
 
     const total = Number(await contract.totalAgents());
@@ -858,7 +875,7 @@ async function loadSingleCard(agentId) {
   document.getElementById('shareBtn').style.display = 'inline-block';
 
   try {
-    const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
+    const provider = getProvider();
     const contract = new ethers.Contract(CONTRACT, ABI, provider);
 
     const agent = await contract.getAgent(agentId);
