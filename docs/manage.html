@@ -827,7 +827,7 @@ async function connectWallet() {
 // Load user's agents
 async function loadUserAgents() {
   try {
-    const readProvider = new ethers.JsonRpcProvider(RPC);
+    const readProvider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
     const readContract = new ethers.Contract(CONTRACT, ABI, readProvider);
 
     const totalAgents = Number(await readContract.totalAgents());

@@ -815,7 +815,7 @@ function getRarity(points, mutations) {
 
 async function loadLeaderboard() {
   try {
-    const provider = new ethers.JsonRpcProvider(RPC);
+    const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
     const contract = new ethers.Contract(CONTRACT, ABI, provider);
 
     const [total, totalPts, betaEnded] = await Promise.all([

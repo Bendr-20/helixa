@@ -1716,7 +1716,7 @@ function getAuraRarity(points, mutationCount) {
             }
         }
         
-        const readProvider = new ethers.JsonRpcProvider(RPC_URL);
+        const readProvider = new ethers.JsonRpcProvider(RPC_URL, undefined, { batchMaxCount: 1 });
         
         // Retry helper for rate-limited public RPC
         async function rpcRetry(fn, retries = 3) {

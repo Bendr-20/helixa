@@ -234,7 +234,7 @@
         }
 
         async function loadAgents() {
-            const provider = new ethers.JsonRpcProvider(RPC);
+            const provider = new ethers.JsonRpcProvider(RPC, undefined, { batchMaxCount: 1 });
             const contract = new ethers.Contract(CONTRACT, ABI, provider);
             
             const total = await rpcRetry(() => contract.totalAgents());
