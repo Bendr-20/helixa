@@ -838,11 +838,9 @@ async function loadUserAgents() {
       try {
         const owner = await readContract.ownerOf(i);
         if (owner.toLowerCase() === userAddress.toLowerCase()) {
-          const [agent, personality, traits] = await Promise.all([
-            readContract.getAgent(i),
-            readContract.getPersonality(i).catch(() => null),
-            readContract.getTraits(i).catch(() => []),
-          ]);
+          const agent = await readContract.getAgent(i);
+          const personality = await readContract.getPersonality(i).catch(() => null);
+          const traits = await readContract.getTraits(i).catch(() => []);
           
           const points = Number(await readContract.points(agent.agentAddress));
           
