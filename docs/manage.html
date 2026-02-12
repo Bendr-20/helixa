@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manage Agents — Helixa</title>
+<link rel="stylesheet" href="helixa-theme.css?v=2">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Nav */
+nav { padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+.logo { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); text-decoration: none; }
+.logo span { color: var(--text3); font-weight: 400; }
+.nav-links { display: flex; gap: 1.5rem; align-items: center; }
+.nav-links a { color: var(--text2); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+.nav-links a:hover { color: var(--text); }
+.nav-links a.active { color: var(--accent); }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+/* Header */
+.page-header { text-align: center; padding: 2rem 0 2rem; }
+.page-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.page-header h1 .gradient { background: linear-gradient(135deg, var(--accent), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.page-header p { color: var(--text2); font-size: 0.9rem; }
+
+/* Wallet Connection */
+.wallet-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; text-align: center; }
+.connect-btn { padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); border: none; border-radius: 12px; font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.connect-btn:hover { box-shadow: 0 0 20px rgba(179,136,255,0.3); transform: translateY(-1px); }
+.connect-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.wallet-info { display: none; }
+.wallet-address { color: var(--text3); font-family: monospace; font-size: 0.8rem; margin-top: 0.5rem; }
+
+/* Loading */
+.loading { text-align: center; padding: 3rem; color: var(--text3); }
+.spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--border2); border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Agents Grid */
+.agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 2rem; }
+.agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; transition: border-color 0.3s; }
+.agent-card:hover { border-color: var(--border2); }
+
+/* Agent Header */
+.agent-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.agent-aura { width: 64px; height: 64px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--border); }
+.agent-aura svg { width: 100%; height: 100%; }
+.agent-info h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 600; margin-bottom: 0.25rem; }
+.agent-meta { color: var(--text3); font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.agent-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.badge { padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500; }
+.badge.verified { background: rgba(0,230,118,0.1); color: var(--green); border: 1px solid rgba(0,230,118,0.2); }
+.badge.soulbound { background: rgba(179,136,255,0.1); color: var(--accent); border: 1px solid rgba(179,136,255,0.2); }
+.badge.rarity { font-weight: 600; }
+.badge.common { color: #aaa; background: rgba(170,170,170,0.08); border: 1px solid rgba(170,170,170,0.15); }
+.badge.rare { color: var(--blue); background: rgba(79,195,247,0.08); border: 1px solid rgba(79,195,247,0.15); }
+.badge.epic { color: var(--pink); background: rgba(206,147,216,0.08); border: 1px solid rgba(206,147,216,0.15); }
+.badge.legendary { color: var(--gold); background: rgba(255,213,79,0.08); border: 1px solid rgba(255,213,79,0.15); }
+
+/* Tabs */
+.agent-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.tab-btn { background: none; border: none; color: var(--text3); padding: 8px 16px; cursor: pointer; font-size: 0.85rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover { color: var(--text2); }
+
+/* Tab Content */
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Current Values */
+.current-values { margin-bottom: 1.5rem; }
+.current-values h4 { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.75rem; }
+.value-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem; }
+.value-item { color: var(--text3); }
+.value-item .label { color: var(--text3); }
+.value-item .value { color: var(--text); font-weight: 500; }
+
+/* Traits List */
+.traits-list { margin-bottom: 1.5rem; }
+.traits-list h4 { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.75rem; }
+.trait-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: var(--surface2); border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.8rem; }
+.trait-name { font-weight: 500; }
+.trait-category { color: var(--text3); font-size: 0.7rem; text-transform: uppercase; }
+.no-traits { color: var(--text3); font-style: italic; font-size: 0.8rem; }
+
+/* Forms */
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 0.5rem; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.85rem; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+
+/* Slider */
+.slider-group { margin-bottom: 1rem; }
+.slider-group label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 0.5rem; }
+.slider-container { display: flex; align-items: center; gap: 1rem; }
+.slider { flex: 1; }
+.slider input[type="range"] { width: 100%; height: 6px; background: var(--surface2); border-radius: 3px; outline: none; }
+.slider input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+.slider-value { font-size: 0.9rem; font-weight: 600; color: var(--accent); min-width: 24px; text-align: center; }
+
+/* Live Preview */
+.live-preview { background: var(--surface2); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+.live-preview h4 { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.75rem; }
+.preview-container { display: flex; align-items: center; gap: 1rem; }
+.preview-aura { width: 48px; height: 48px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.preview-aura svg { width: 100%; height: 100%; }
+.preview-text { font-size: 0.8rem; color: var(--text3); }
+
+/* Action Buttons */
+.action-buttons { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+.action-btn { padding: 8px 16px; border: none; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.action-btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: var(--bg); }
+.action-btn.secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.action-btn:hover { transform: translateY(-1px); }
+.action-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Advanced Section */
+.advanced-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.advanced-section h4 { font-size: 0.9rem; color: var(--text3); margin-bottom: 1rem; }
+
+/* Toast Messages */
+.toast { position: fixed; top: 2rem; right: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.5rem; z-index: 1000; max-width: 300px; transform: translateX(100%); transition: transform 0.3s; }
+.toast.show { transform: translateX(0); }
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+.toast-title { font-weight: 600; margin-bottom: 0.25rem; }
+.toast.success .toast-title { color: var(--green); }
+.toast.error .toast-title { color: var(--red); }
+.toast-message { font-size: 0.85rem; color: var(--text2); }
+.toast-link { color: var(--accent); text-decoration: none; }
+.toast-link:hover { text-decoration: underline; }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 4rem 2rem; }
+.empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-state h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+.empty-state p { color: var(--text3); margin-bottom: 1.5rem; }
+
+/* Hamburger */
+.hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; width: auto; }
+.hamburger span { display: block; width: 22px; height: 2px; background: var(--text2); margin: 5px 0; transition: all 0.3s; border-radius: 1px; }
+.hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* Mobile */
+@media (max-width: 900px) {
+  .container { padding: 1.5rem; }
+  .agents-grid { grid-template-columns: 1fr; }
+  .value-grid { grid-template-columns: 1fr; }
+  .action-buttons { justify-content: stretch; }
+  .action-btn { flex: 1; }
+}
+
+@media (max-width: 600px) {
+  .hamburger { display: block; }
+  nav { flex-wrap: wrap; padding: 0.8rem 1.2rem; }
+  nav .logo { flex: 1; }
+  nav { position: relative; }
+  .nav-links { display: none; flex-direction: column; width: 100%; gap: 0; padding: 0.8rem 1.2rem 1rem; position: absolute; top: 100%; left: 0; right: 0; background: rgba(8,6,14,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); z-index: 1000; }
+  .nav-links.open { display: flex; }
+  .nav-links a { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 1rem; min-height: 44px; display: flex; align-items: center; }
+  .nav-links a:last-child { border-bottom: none; }
+  .container { padding: 1rem; }
+  .agent-card { padding: 1rem; }
+  .agent-header { flex-direction: column; text-align: center; }
+  .preview-container { flex-direction: column; text-align: center; }
+  .toast { position: fixed; top: auto; bottom: 2rem; left: 1rem; right: 1rem; max-width: none; transform: translateY(100%); }
+  .toast.show { transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">helixa<span>.xyz</span></a>
+  <button class="hamburger" onclick="this.classList.toggle('open');document.querySelector('.nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="mint.html">Mint</a>
+    <a href="directory.html">Directory</a>
+    <a href="leaderboard.html">Leaderboard</a>
+    <a href="manage.html" class="active">Manage</a>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="page-header">
+    <h1>🛠️ <span class="gradient">Manage Agents</span></h1>
+    <p>Connect your wallet to view and manage your minted agents</p>
+  </div>
+
+  <div class="wallet-section" id="walletSection">
+    <div id="connectWallet">
+      <h3 style="margin-bottom: 1rem;">Connect Wallet</h3>
+      <p style="color: var(--text3); margin-bottom: 1.5rem;">Connect your MetaMask to view and manage your agents</p>
+      <button class="connect-btn" onclick="connectWallet()">Connect MetaMask</button>
+    </div>
+    
+    <div class="wallet-info" id="walletInfo">
+      <h3 style="margin-bottom: 0.5rem;">Wallet Connected</h3>
+      <div class="wallet-address" id="walletAddress"></div>
+      <p style="color: var(--text3); margin-top: 1rem;">Loading your agents...</p>
+    </div>
+  </div>
+
+  <div id="agentsSection" style="display: none;">
+    <div id="agentsGrid" class="agents-grid"></div>
+    
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <div class="icon">🤖</div>
+      <h3>No Agents Found</h3>
+      <p>You don't own any agents yet. Mint your first agent to get started!</p>
+      <a href="mint.html" class="connect-btn">Mint Agent</a>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+<script>
+// Copy the generateAura function from leaderboard.html
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+    return (s >>> 0) / 0xFFFFFFFF;
+  };
+}
+
+const FRAMEWORK_SHAPES = {
+  eliza:     { faceRadius: 0.42, baseHue: 280 },
+  openclaw:  { faceRadius: 0.40, baseHue: 150 },
+  langchain: { faceRadius: 0.41, baseHue: 200 },
+  crewai:    { faceRadius: 0.39, baseHue: 30 },
+  autogpt:   { faceRadius: 0.41, baseHue: 0 },
+  bankr:     { faceRadius: 0.41, baseHue: 45 },
+  virtuals:  { faceRadius: 0.42, baseHue: 320 },
+  custom:    { faceRadius: 0.40, baseHue: 60 },
+};
+
+const ALIGNMENT_SHIFT = {
+  'lawful-good':0,'neutral-good':10,'chaotic-good':20,
+  'lawful-neutral':-10,'true-neutral':0,'chaotic-neutral':30,
+  'lawful-evil':-20,'neutral-evil':-30,'chaotic-evil':-40,
+};
+
+// ============ RARITY SYSTEM ============
+function getRarity(points, mutationCount) {
+  const score = points + mutationCount * 50;
+  if (score >= 1000) return 'legendary';
+  if (score >= 500)  return 'epic';
+  if (score >= 200)  return 'rare';
+  return 'common';
+}
+
+const RARITY_COLORS = {
+  common:    { label: 'Common',    borderOpacity: 0 },
+  rare:      { label: 'Rare',      borderOpacity: 0.3 },
+  epic:      { label: 'Epic',      borderOpacity: 0.5 },
+  legendary: { label: 'Legendary', borderOpacity: 0.7 },
+};
+
+// ============ 10 EYE TYPES ============
+const EYE_TYPES = [
+  'round',      'diamond',    'slit',       'hollow',     'cross',
+  'square',     'dot',        'scanner',    'void',       'nova',
+];
+
+function getEyeType(specialization, rng, rarity) {
+  const specMap = {
+    'researcher': 0, 'trader': 1, 'guardian': 2, 'oracle': 3,
+    'creator': 4, 'operator': 5, 'analyst': 0, 'defi': 1,
+    'security': 2, 'social': 6, 'infrastructure': 5, 'governance': 3,
+  };
+  let base = specMap[specialization] !== undefined ? specMap[specialization] : Math.floor(rng() * 7);
+  
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7;
+  
+  return base;
+}
+
+function drawEye(grid, G, ex, ey, eyeR, eyeType) {
+  switch (eyeType) {
+    case 0: // round
+      for (let dy = -eyeR + 1; dy <= eyeR - 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (Math.abs(dx) + Math.abs(dy) <= eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      break;
+    case 1: // diamond
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      break;
+    case 2: // slit
+      for (let dx = -eyeR; dx <= eyeR; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      break;
+    case 3: // hollow circle
+      for (let dy = -eyeR; dy <= eyeR; dy++)
+        for (let dx = -eyeR; dx <= eyeR; dx++)
+          if (dx * dx + dy * dy <= eyeR * eyeR)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+      grid[ey][ex] = 0; // hollow center
+      break;
+    case 4: // cross
+      for (let d = 0; d <= eyeR; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+      }
+      for (let d = 1; d <= eyeR - 1; d++) {
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      break;
+    case 5: // square
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -eyeR + 1; dx <= eyeR - 1; dx++)
+          if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+            grid[ey + dy][ex + dx] = 2;
+      break;
+    case 6: // dot
+      grid[ey][ex] = 2;
+      if (ex + 1 < G) grid[ey][ex + 1] = 2;
+      break;
+    case 7: // scanner
+      for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++)
+        if (ex + dx >= 0 && ex + dx < G) grid[ey][ex + dx] = 2;
+      if (ey - 1 >= 0) grid[ey - 1][ex] = 2;
+      if (ey + 1 < G) grid[ey + 1][ex] = 2;
+      break;
+    case 8: // void
+      for (let dy = -eyeR - 1; dy <= eyeR + 1; dy++)
+        for (let dx = -eyeR - 1; dx <= eyeR + 1; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist <= eyeR + 1 && dist >= eyeR - 0.5)
+            if (ey + dy >= 0 && ey + dy < G && ex + dx >= 0 && ex + dx < G)
+              grid[ey + dy][ex + dx] = 2;
+        }
+      break;
+    case 9: // nova
+      for (let d = 0; d <= eyeR + 1; d++) {
+        if (ey - d >= 0) grid[ey - d][ex] = 2;
+        if (ey + d < G) grid[ey + d][ex] = 2;
+        if (ex - d >= 0) grid[ey][ex - d] = 2;
+        if (ex + d < G) grid[ey][ex + d] = 2;
+        if (ey-d>=0 && ex-d>=0) grid[ey-d][ex-d] = 2;
+        if (ey-d>=0 && ex+d<G) grid[ey-d][ex+d] = 2;
+        if (ey+d<G && ex-d>=0) grid[ey+d][ex-d] = 2;
+        if (ey+d<G && ex+d<G) grid[ey+d][ex+d] = 2;
+      }
+      grid[ey][ex] = 4;
+      break;
+  }
+}
+
+// ============ 10 MOUTH TYPES ============
+const MOUTH_TYPES = [
+  'line', 'smile', 'smirk', 'open', 'dot', 'frown', 'zigzag', 'fangs', 'grin', 'vortex',
+];
+
+function getMouthType(commStyle, rng, rarity) {
+  const commMap = {
+    'formal': 0, 'casual': 1, 'snarky': 2, 'verbose': 3,
+    'minimal': 4, 'analytical': 0, 'friendly': 1, 'blunt': 5,
+    'cryptic': 6, 'diplomatic': 0,
+  };
+  let base = commMap[commStyle] !== undefined ? commMap[commStyle] : Math.floor(rng() * 7);
+  
+  if (rarity === 'legendary' && rng() < 0.6) base = 9;
+  else if (rarity === 'epic' && rng() < 0.4) base = 7 + Math.floor(rng() * 2);
+  else if (rarity === 'rare' && rng() < 0.25) base = 7 + Math.floor(rng() * 2);
+  
+  return base;
+}
+
+function drawMouth(grid, G, cx, mouthY, mW, mouthType) {
+  switch (mouthType) {
+    case 0: // line
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      break;
+    case 1: // smile
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.3 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        if (my + 1 < G && Math.abs(dx) < mW - 1 && mx >= 0 && mx < G) grid[my + 1][mx] = 1;
+      }
+      break;
+    case 2: // smirk
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = dx > 0 ? Math.round(-0.2 * (dx * dx) / (mW || 1)) : Math.round(0.1 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 3: // open
+      for (let dy = -1; dy <= 2; dy++)
+        for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (mx >= 0 && mx < G && my >= 0 && my < G)
+            if (dy === -1 || dy === 2 || Math.abs(dx) === mW - 1)
+              grid[my][mx] = 1;
+        }
+      break;
+    case 4: // dot
+      grid[mouthY][Math.round(cx)] = 1;
+      if (Math.round(cx) + 1 < G) grid[mouthY][Math.round(cx) + 1] = 1;
+      break;
+    case 5: // frown
+      for (let dx = -mW; dx <= mW; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(-0.25 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 6: // zigzag
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const my = mouthY + (dx % 2 === 0 ? 0 : 1);
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      break;
+    case 7: // fangs
+      for (let dx = -mW + 1; dx <= mW - 1; dx++) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G) grid[mouthY][mx] = 1;
+      }
+      const fangL = Math.round(cx - mW * 0.5);
+      const fangR = Math.round(cx + mW * 0.5);
+      if (mouthY + 1 < G && fangL >= 0) grid[mouthY + 1][fangL] = 1;
+      if (mouthY + 2 < G && fangL >= 0) grid[mouthY + 2][fangL] = 1;
+      if (mouthY + 1 < G && fangR < G) grid[mouthY + 1][fangR] = 1;
+      if (mouthY + 2 < G && fangR < G) grid[mouthY + 2][fangR] = 1;
+      break;
+    case 8: // grin
+      for (let dx = -mW - 1; dx <= mW + 1; dx++) {
+        const mx = Math.round(cx + dx);
+        const curve = Math.round(0.2 * (dx * dx) / (mW || 1));
+        const my = mouthY + curve;
+        if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+      }
+      for (let dx = -mW + 1; dx <= mW - 1; dx += 2) {
+        const mx = Math.round(cx + dx);
+        if (mx >= 0 && mx < G && mouthY - 1 >= 0) grid[mouthY - 1][mx] = 1;
+      }
+      break;
+    case 9: // vortex
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const mx = Math.round(cx + dx);
+          const my = mouthY + dy;
+          if (dist >= 1.2 && dist <= 2.2)
+            if (mx >= 0 && mx < G && my >= 0 && my < G) grid[my][mx] = 1;
+        }
+      break;
+  }
+}
+
+function buildPalette(address, riskTolerance, alignment) {
+  const hash = simpleHash(address || '0x0');
+  let hue = (hash % 360 + (ALIGNMENT_SHIFT[alignment] || 0) + 360) % 360;
+  const sat = Math.max(30, Math.min(100, 65 + (riskTolerance - 5) * 5));
+  return {
+    primary: `hsl(${hue}, ${sat}%, 55%)`,
+    secondary: `hsl(${(hue + 35) % 360}, ${sat - 10}%, 45%)`,
+    accent: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 10)}%, 60%)`,
+    accentBright: `hsl(${(hue + 180) % 360}, ${Math.min(100, sat + 20)}%, 80%)`,
+    glow: `hsl(${hue}, ${sat}%, 55%)`,
+    hue, sat,
+  };
+}
+
+function generateAura(agentData, size) {
+  size = size || 400;
+  const G = 25;
+  const cs = size / G;
+
+  const address = agentData.agentAddress || agentData.address || '0x0000';
+  const framework = agentData.framework || 'custom';
+  const name = agentData.name || 'Agent';
+  const traitCount = agentData.traitCount || 0;
+  const mutationCount = agentData.mutationCount || 0;
+  const soulbound = agentData.soulbound || false;
+  const points = agentData.points || 0;
+  const generation = agentData.generation || 0;
+  const temperament = agentData.temperament || 'analytical';
+  const commStyle = agentData.communicationStyle || 'formal';
+  const riskTolerance = agentData.riskTolerance || 5;
+  const autonomyLevel = agentData.autonomyLevel || 5;
+  const alignment = agentData.alignment || 'true-neutral';
+  const specialization = agentData.specialization || 'researcher';
+
+  const seed = simpleHash(address + name + framework + temperament + alignment + specialization + riskTolerance + autonomyLevel);
+  const rng = seededRandom(seed);
+  const fwStyle = FRAMEWORK_SHAPES[framework] || FRAMEWORK_SHAPES.custom;
+  const colors = buildPalette(address, riskTolerance, alignment);
+  const cx = G / 2, cy = G / 2;
+  const fR = G * fwStyle.faceRadius;
+
+  const rarity = getRarity(points, mutationCount);
+
+  const grid = Array.from({length: G}, () => Array(G).fill(0));
+
+  // QR Corners
+  function qr(sx, sy) {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++)
+        if (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4))
+          if (sy + y < G && sx + x < G) grid[sy + y][sx + x] = 1;
+  }
+  qr(0, 0); qr(G - 7, 0); qr(0, G - 7);
+
+  // Face outline
+  for (let angle = 0; angle < 360; angle += 2) {
+    const rad = (angle * Math.PI) / 180;
+    for (let thickness = 0; thickness < 2; thickness++) {
+      const r = fR - thickness * 0.5 + Math.sin(angle * 3 * Math.PI / 180) * 0.6;
+      const fx = Math.round(cx + Math.cos(rad) * r);
+      const fy = Math.round(cy + Math.sin(rad) * r);
+      if (fx >= 0 && fx < G && fy >= 0 && fy < G) grid[fy][fx] = 1;
+    }
+  }
+
+  // Eyes
+  const eyeY = Math.round(cy - fR * 0.2);
+  const leftEX = Math.round(cx - fR * 0.35);
+  const rightEX = Math.round(cx + fR * 0.35);
+  const eyeR = Math.min(3, 2 + Math.floor(traitCount / 6));
+  const eyeType = getEyeType(specialization, rng, rarity);
+  drawEye(grid, G, leftEX, eyeY, eyeR, eyeType);
+  drawEye(grid, G, rightEX, eyeY, eyeR, eyeType);
+
+  // Mouth
+  const mouthY = Math.round(cy + fR * 0.3);
+  const mW = Math.round(fR * 0.5);
+  const mouthType = getMouthType(commStyle, rng, rarity);
+  drawMouth(grid, G, cx, mouthY, mW, mouthType);
+
+  // Nose
+  const noseY = Math.round(cy + fR * 0.05);
+  grid[noseY][Math.round(cx)] = 1;
+  if (noseY + 1 < G) grid[noseY + 1][Math.round(cx)] = 1;
+
+  // Fill interior
+  const symmetry = 1 - (autonomyLevel / 10);
+  const density = ({
+    analytical: 0.18, creative: 0.22, aggressive: 0.28,
+    cautious: 0.12, chaotic: 0.3,
+  })[temperament] || 0.2;
+  const fillDensity = density + mutationCount * 0.01;
+
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dx = x - cx, dy = y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= fR * 0.9 || dist < 1) continue;
+      const nearEye = (Math.abs(x - leftEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1) ||
+                      (Math.abs(x - rightEX) <= eyeR + 1 && Math.abs(y - eyeY) <= eyeR + 1);
+      const nearMouth = Math.abs(y - mouthY) <= 2 && Math.abs(x - Math.round(cx)) <= mW;
+      if (nearEye || nearMouth) continue;
+
+      let fill = false;
+      const mirrorX = Math.round(2 * cx - x);
+      switch (temperament) {
+        case 'analytical':
+          fill = (x % 3 === 0 || y % 3 === 0) && rng() < fillDensity; break;
+        case 'creative':
+          fill = rng() < fillDensity * (0.5 + 0.5 * Math.sin(x * 0.8 + y * 0.6)); break;
+        case 'aggressive':
+          fill = rng() < fillDensity && ((x + y) % 2 === 0); break;
+        case 'cautious':
+          fill = dist < fR * 0.45 && rng() < fillDensity * 1.5; break;
+        case 'chaotic':
+          fill = rng() < fillDensity * (0.3 + rng() * 0.7); break;
+        default:
+          fill = rng() < fillDensity;
+      }
+      if (fill) {
+        grid[y][x] = rng() < 0.12 ? 3 : 1;
+        if (rng() < symmetry && mirrorX >= 0 && mirrorX < G && grid[y][mirrorX] === 0)
+          grid[y][mirrorX] = grid[y][x];
+      }
+    }
+  }
+
+  // QR noise outside face
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (grid[y][x] !== 0) continue;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      if (dist <= fR + 1) continue;
+      if (rng() < 0.12 + mutationCount * 0.008) grid[y][x] = 1;
+    }
+  }
+
+  // RENDER
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const uid = 'a' + simpleHash(address + name).toString(36);
+  let defs = '';
+
+  // Rarity defs
+  if (rarity === 'rare' || rarity === 'epic' || rarity === 'legendary') {
+    defs += `<linearGradient id="${uid}_pg" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="${colors.primary}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.secondary}"/>`;
+    defs += `</linearGradient>`;
+    defs += `<linearGradient id="${uid}_ag" x1="0%" y1="100%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="${colors.accent}"/>`;
+    defs += `<stop offset="100%" stop-color="${colors.accentBright}"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'epic' || rarity === 'legendary') {
+    defs += `<linearGradient id="${uid}_chrome" x1="0%" y1="0%" x2="100%" y2="100%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 85%)"/>`;
+    defs += `<stop offset="30%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 55%)"/>`;
+    defs += `<stop offset="50%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 90%)"/>`;
+    defs += `<stop offset="70%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 50%)"/>`;
+    defs += `<stop offset="100%" stop-color="hsl(${colors.hue}, ${colors.sat}%, 80%)"/>`;
+    defs += `</linearGradient>`;
+  }
+  if (rarity === 'legendary') {
+    defs += `<filter id="${uid}_glow"><feGaussianBlur stdDeviation="2" result="blur"/>`;
+    defs += `<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+    defs += `<linearGradient id="${uid}_iris" x1="0%" y1="0%" x2="100%" y2="0%">`;
+    defs += `<stop offset="0%" stop-color="hsl(${colors.hue}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="50%" stop-color="hsl(${(colors.hue+60)%360}, 100%, 75%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+60)%360},100%,75%);hsl(${(colors.hue+180)%360},100%,75%);hsl(${(colors.hue+300)%360},100%,75%);hsl(${(colors.hue+60)%360},100%,75%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `<stop offset="100%" stop-color="hsl(${(colors.hue+120)%360}, 100%, 70%)">`;
+    defs += `<animate attributeName="stop-color" values="hsl(${(colors.hue+120)%360},100%,70%);hsl(${(colors.hue+240)%360},100%,70%);hsl(${colors.hue},100%,70%);hsl(${(colors.hue+120)%360},100%,70%)" dur="4s" repeatCount="indefinite"/></stop>`;
+    defs += `</linearGradient>`;
+  }
+
+  function cellColor(cellType) {
+    if (rarity === 'legendary') {
+      if (cellType === 4) return `url(#${uid}_iris)`;
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'epic') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      if (cellType === 3) return `url(#${uid}_chrome)`;
+      return `url(#${uid}_chrome)`;
+    }
+    if (rarity === 'rare') {
+      if (cellType === 2) return `url(#${uid}_ag)`;
+      return `url(#${uid}_pg)`;
+    }
+    if (cellType === 2) return colors.accent;
+    if (cellType === 3) return colors.secondary;
+    if (cellType === 4) return colors.accentBright;
+    return colors.primary;
+  }
+
+  let svg = `<svg xmlns="${svgNS}" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  if (defs) svg += `<defs>${defs}</defs>`;
+  svg += `<rect width="${size}" height="${size}" fill="#0a0a0a"/>`;
+
+  if (rarity === 'legendary') {
+    svg += `<rect x="2" y="2" width="${size-4}" height="${size-4}" rx="4" fill="none" stroke="url(#${uid}_iris)" stroke-width="3" opacity="0.8"/>`;
+  }
+  if (rarity === 'epic') {
+    svg += `<rect x="3" y="3" width="${size-6}" height="${size-6}" rx="3" fill="none" stroke="url(#${uid}_chrome)" stroke-width="2" opacity="0.5"/>`;
+  }
+  if (rarity === 'rare') {
+    svg += `<rect x="4" y="4" width="${size-8}" height="${size-8}" rx="2" fill="none" stroke="url(#${uid}_pg)" stroke-width="1.5" opacity="0.35"/>`;
+  }
+
+  if (soulbound)
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 1.5) * cs}" fill="none" stroke="#b388ff" stroke-width="1.5" opacity="0.25" stroke-dasharray="4 3"/>`;
+
+  const glowBase = { common: 0.03, rare: 0.06, epic: 0.1, legendary: 0.15 }[rarity];
+  const glowI = Math.min(0.25, glowBase + points * 0.0002);
+  svg += `<circle cx="${size/2}" cy="${size/2}" r="${fR * cs}" fill="${colors.glow}" opacity="${glowI}"/>`;
+
+  if (rarity === 'legendary') {
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${(fR + 3) * cs}" fill="${colors.accent}" opacity="0.04"/>`;
+  }
+
+  if (['trader', 'oracle', 'guardian', 'operator'].includes(specialization) || rarity === 'epic' || rarity === 'legendary') {
+    const gr = cs * (eyeR + 2);
+    const eGlowOp = rarity === 'legendary' ? 0.2 : rarity === 'epic' ? 0.15 : 0.1;
+    svg += `<circle cx="${leftEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+    svg += `<circle cx="${rightEX * cs + cs/2}" cy="${eyeY * cs + cs/2}" r="${gr}" fill="${colors.accent}" opacity="${eGlowOp}"/>`;
+  }
+
+  for (let g = 0; g < Math.min(generation, 3); g++) {
+    const gr = (fR + 2 + g * 0.8) * cs;
+    svg += `<circle cx="${size/2}" cy="${size/2}" r="${gr}" fill="none" stroke="${colors.secondary}" stroke-width="0.5" opacity="0.15"/>`;
+  }
+
+  const legendaryEyeFilter = rarity === 'legendary' ? ` filter="url(#${uid}_glow)"` : '';
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (!grid[y][x]) continue;
+      const px = x * cs, py = y * cs;
+      const color = cellColor(grid[y][x]);
+      const r = cs * 0.1;
+      const isEyeCell = grid[y][x] === 2 || grid[y][x] === 4;
+      const filter = isEyeCell ? legendaryEyeFilter : '';
+      svg += `<rect x="${px}" y="${py}" width="${cs}" height="${cs}" rx="${r}" fill="${color}"${filter}/>`;
+    }
+  }
+
+  if (rarity !== 'common') {
+    const badgeColor = { rare: '#4fc3f7', epic: '#ce93d8', legendary: '#ffd54f' }[rarity];
+    const badgeLabel = RARITY_COLORS[rarity].label;
+    svg += `<text x="${size - 6}" y="14" text-anchor="end" fill="${badgeColor}" font-family="monospace" font-size="8" font-weight="bold" opacity="0.8">${badgeLabel}</text>`;
+  }
+
+  svg += `<text x="${size/2}" y="${size - 6}" text-anchor="middle" fill="${colors.primary}" font-family="monospace" font-size="10" opacity="0.6">${name}</text>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+// Contract constants
+const CONTRACT = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
+const RPC = 'https://base.drpc.org';
+const CHAIN_ID = 8453;
+
+const ABI = [
+  "function totalAgents() view returns (uint256)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function getAgent(uint256) view returns (tuple(address agentAddress, string name, string framework, uint256 mintedAt, bool verified, bool soulbound, uint256 generation, uint256 parentDNA, string currentVersion, uint256 mutationCount))",
+  "function getPersonality(uint256) view returns (tuple(string temperament, string communicationStyle, uint8 riskTolerance, uint8 autonomyLevel, string alignment, string specialization))",
+  "function getTraits(uint256) view returns (tuple(string name, string category, uint256 addedAt)[])",
+  "function points(address) view returns (uint256)",
+  "function setPersonality(uint256 tokenId, string temperament, string communicationStyle, uint8 riskTolerance, uint8 autonomyLevel, string alignment, string specialization)",
+  "function addTrait(uint256 tokenId, string name, string category) payable",
+  "function mutateAgent(uint256 tokenId, string newVersion)",
+  "function setAgentURI(uint256 tokenId, string newURI)"
+];
+
+let provider, signer, contract, userAddress;
+let userAgents = [];
+
+// Wallet connection
+async function connectWallet() {
+  try {
+    if (!window.ethereum) {
+      showToast('MetaMask not found', 'Please install MetaMask to continue', 'error');
+      return;
+    }
+
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    userAddress = accounts[0];
+
+    // Switch to Base network
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x2105' }], // Base chain ID in hex
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x2105',
+            chainName: 'Base',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: ['https://mainnet.base.org'],
+            blockExplorerUrls: ['https://basescan.org']
+          }]
+        });
+      } else {
+        throw switchError;
+      }
+    }
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT, ABI, signer);
+
+    // Update UI
+    document.getElementById('connectWallet').style.display = 'none';
+    document.getElementById('walletInfo').style.display = 'block';
+    document.getElementById('walletAddress').textContent = userAddress;
+    document.getElementById('agentsSection').style.display = 'block';
+
+    // Load user's agents
+    await loadUserAgents();
+
+  } catch (error) {
+    console.error('Wallet connection error:', error);
+    showToast('Connection Failed', 'Failed to connect wallet: ' + error.message, 'error');
+  }
+}
+
+// Load user's agents
+async function loadUserAgents() {
+  try {
+    const readProvider = new ethers.JsonRpcProvider(RPC);
+    const readContract = new ethers.Contract(CONTRACT, ABI, readProvider);
+
+    const totalAgents = Number(await readContract.totalAgents());
+    userAgents = [];
+
+    // Check ownership of all agents
+    for (let i = 0; i < totalAgents; i++) {
+      try {
+        const owner = await readContract.ownerOf(i);
+        if (owner.toLowerCase() === userAddress.toLowerCase()) {
+          const [agent, personality, traits] = await Promise.all([
+            readContract.getAgent(i),
+            readContract.getPersonality(i).catch(() => null),
+            readContract.getTraits(i).catch(() => []),
+          ]);
+          
+          const points = Number(await readContract.points(agent.agentAddress));
+          
+          userAgents.push({
+            tokenId: i,
+            address: agent.agentAddress,
+            name: agent.name,
+            framework: agent.framework,
+            verified: agent.verified,
+            soulbound: agent.soulbound,
+            mutationCount: Number(agent.mutationCount),
+            currentVersion: agent.currentVersion,
+            generation: Number(agent.generation),
+            points,
+            personality: personality ? {
+              temperament: personality.temperament,
+              communicationStyle: personality.communicationStyle,
+              riskTolerance: Number(personality.riskTolerance),
+              autonomyLevel: Number(personality.autonomyLevel),
+              alignment: personality.alignment,
+              specialization: personality.specialization
+            } : {
+              temperament: 'analytical',
+              communicationStyle: 'formal',
+              riskTolerance: 5,
+              autonomyLevel: 5,
+              alignment: 'true-neutral',
+              specialization: 'researcher'
+            },
+            traits: traits.map(t => ({
+              name: t.name,
+              category: t.category,
+              addedAt: Number(t.addedAt)
+            }))
+          });
+        }
+      } catch (error) {
+        console.error(`Error checking agent ${i}:`, error);
+      }
+    }
+
+    renderAgents();
+
+  } catch (error) {
+    console.error('Error loading agents:', error);
+    showToast('Load Error', 'Failed to load agents: ' + error.message, 'error');
+  }
+}
+
+// Render agents in the UI
+function renderAgents() {
+  const grid = document.getElementById('agentsGrid');
+  const emptyState = document.getElementById('emptyState');
+
+  if (userAgents.length === 0) {
+    grid.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+
+  grid.style.display = 'grid';
+  emptyState.style.display = 'none';
+
+  grid.innerHTML = userAgents.map((agent, index) => {
+    const rarity = getRarity(agent.points, agent.mutationCount);
+    const auraData = {
+      agentAddress: agent.address,
+      name: agent.name,
+      framework: agent.framework,
+      mutationCount: agent.mutationCount,
+      points: agent.points,
+      soulbound: agent.soulbound,
+      traitCount: agent.traits.length,
+      temperament: agent.personality.temperament,
+      communicationStyle: agent.personality.communicationStyle,
+      riskTolerance: agent.personality.riskTolerance,
+      autonomyLevel: agent.personality.autonomyLevel,
+      alignment: agent.personality.alignment,
+      specialization: agent.personality.specialization,
+      generation: agent.generation
+    };
+    const auraUrl = 'data:image/svg+xml;base64,' + btoa(generateAura(auraData, 64));
+
+    return `
+      <div class="agent-card" id="agent-${index}">
+        <div class="agent-header">
+          <div class="agent-aura">
+            <img src="${auraUrl}" alt="${agent.name} Aura" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
+          <div class="agent-info">
+            <h3>${agent.name}</h3>
+            <div class="agent-meta">
+              <span>Token ID: ${agent.tokenId}</span>
+              <span>•</span>
+              <span>${agent.framework}</span>
+              <span>•</span>
+              <span>${agent.points} pts</span>
+              <span>•</span>
+              <span>${agent.mutationCount} mutations</span>
+            </div>
+            <div class="agent-badges">
+              ${agent.verified ? '<span class="badge verified">✓ Verified</span>' : ''}
+              ${agent.soulbound ? '<span class="badge soulbound">⚡ Soulbound</span>' : ''}
+              <span class="badge rarity ${rarity}">${rarity.charAt(0).toUpperCase() + rarity.slice(1)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-tabs">
+          <button class="tab-btn active" onclick="switchTab(${index}, 'overview')">Overview</button>
+          <button class="tab-btn" onclick="switchTab(${index}, 'personality')">Personality</button>
+          <button class="tab-btn" onclick="switchTab(${index}, 'traits')">Traits</button>
+          <button class="tab-btn" onclick="switchTab(${index}, 'advanced')">Advanced</button>
+        </div>
+
+        <div id="overview-${index}" class="tab-content active">
+          <div class="current-values">
+            <h4>Current Personality</h4>
+            <div class="value-grid">
+              <div class="value-item"><span class="label">Temperament:</span> <span class="value">${agent.personality.temperament}</span></div>
+              <div class="value-item"><span class="label">Communication:</span> <span class="value">${agent.personality.communicationStyle}</span></div>
+              <div class="value-item"><span class="label">Risk Tolerance:</span> <span class="value">${agent.personality.riskTolerance}/10</span></div>
+              <div class="value-item"><span class="label">Autonomy:</span> <span class="value">${agent.personality.autonomyLevel}/10</span></div>
+              <div class="value-item"><span class="label">Alignment:</span> <span class="value">${agent.personality.alignment}</span></div>
+              <div class="value-item"><span class="label">Specialization:</span> <span class="value">${agent.personality.specialization}</span></div>
+            </div>
+          </div>
+
+          <div class="traits-list">
+            <h4>Traits (${agent.traits.length})</h4>
+            ${agent.traits.length > 0 ? agent.traits.map(trait => `
+              <div class="trait-item">
+                <span class="trait-name">${trait.name}</span>
+                <span class="trait-category">${trait.category}</span>
+              </div>
+            `).join('') : '<div class="no-traits">No traits added yet</div>'}
+          </div>
+        </div>
+
+        <div id="personality-${index}" class="tab-content">
+          <div class="live-preview">
+            <h4>Live Preview</h4>
+            <div class="preview-container">
+              <div class="preview-aura" id="preview-aura-${index}">
+                <img src="${auraUrl}" alt="Live Preview" style="width: 100%; height: 100%; object-fit: cover;" />
+              </div>
+              <div class="preview-text">Changes will appear in real-time</div>
+            </div>
+          </div>
+
+          <form id="personality-form-${index}">
+            <div class="form-group">
+              <label>Temperament</label>
+              <select name="temperament" onchange="updatePreview(${index})">
+                <option value="analytical" ${agent.personality.temperament === 'analytical' ? 'selected' : ''}>Analytical</option>
+                <option value="creative" ${agent.personality.temperament === 'creative' ? 'selected' : ''}>Creative</option>
+                <option value="aggressive" ${agent.personality.temperament === 'aggressive' ? 'selected' : ''}>Aggressive</option>
+                <option value="cautious" ${agent.personality.temperament === 'cautious' ? 'selected' : ''}>Cautious</option>
+                <option value="chaotic" ${agent.personality.temperament === 'chaotic' ? 'selected' : ''}>Chaotic</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Communication Style</label>
+              <select name="communicationStyle" onchange="updatePreview(${index})">
+                <option value="formal" ${agent.personality.communicationStyle === 'formal' ? 'selected' : ''}>Formal</option>
+                <option value="casual" ${agent.personality.communicationStyle === 'casual' ? 'selected' : ''}>Casual</option>
+                <option value="snarky" ${agent.personality.communicationStyle === 'snarky' ? 'selected' : ''}>Snarky</option>
+                <option value="verbose" ${agent.personality.communicationStyle === 'verbose' ? 'selected' : ''}>Verbose</option>
+                <option value="minimal" ${agent.personality.communicationStyle === 'minimal' ? 'selected' : ''}>Minimal</option>
+                <option value="analytical" ${agent.personality.communicationStyle === 'analytical' ? 'selected' : ''}>Analytical</option>
+                <option value="friendly" ${agent.personality.communicationStyle === 'friendly' ? 'selected' : ''}>Friendly</option>
+                <option value="blunt" ${agent.personality.communicationStyle === 'blunt' ? 'selected' : ''}>Blunt</option>
+                <option value="cryptic" ${agent.personality.communicationStyle === 'cryptic' ? 'selected' : ''}>Cryptic</option>
+                <option value="diplomatic" ${agent.personality.communicationStyle === 'diplomatic' ? 'selected' : ''}>Diplomatic</option>
+              </select>
+            </div>
+
+            <div class="slider-group">
+              <label>Risk Tolerance</label>
+              <div class="slider-container">
+                <div class="slider">
+                  <input type="range" name="riskTolerance" min="1" max="10" value="${agent.personality.riskTolerance}" onchange="updatePreview(${index})" />
+                </div>
+                <div class="slider-value" id="risk-value-${index}">${agent.personality.riskTolerance}</div>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <label>Autonomy Level</label>
+              <div class="slider-container">
+                <div class="slider">
+                  <input type="range" name="autonomyLevel" min="1" max="10" value="${agent.personality.autonomyLevel}" onchange="updatePreview(${index})" />
+                </div>
+                <div class="slider-value" id="autonomy-value-${index}">${agent.personality.autonomyLevel}</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Alignment</label>
+              <select name="alignment" onchange="updatePreview(${index})">
+                <option value="lawful-good" ${agent.personality.alignment === 'lawful-good' ? 'selected' : ''}>Lawful Good</option>
+                <option value="neutral-good" ${agent.personality.alignment === 'neutral-good' ? 'selected' : ''}>Neutral Good</option>
+                <option value="chaotic-good" ${agent.personality.alignment === 'chaotic-good' ? 'selected' : ''}>Chaotic Good</option>
+                <option value="lawful-neutral" ${agent.personality.alignment === 'lawful-neutral' ? 'selected' : ''}>Lawful Neutral</option>
+                <option value="true-neutral" ${agent.personality.alignment === 'true-neutral' ? 'selected' : ''}>True Neutral</option>
+                <option value="chaotic-neutral" ${agent.personality.alignment === 'chaotic-neutral' ? 'selected' : ''}>Chaotic Neutral</option>
+                <option value="lawful-evil" ${agent.personality.alignment === 'lawful-evil' ? 'selected' : ''}>Lawful Evil</option>
+                <option value="neutral-evil" ${agent.personality.alignment === 'neutral-evil' ? 'selected' : ''}>Neutral Evil</option>
+                <option value="chaotic-evil" ${agent.personality.alignment === 'chaotic-evil' ? 'selected' : ''}>Chaotic Evil</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Specialization</label>
+              <select name="specialization" onchange="updatePreview(${index})">
+                <option value="researcher" ${agent.personality.specialization === 'researcher' ? 'selected' : ''}>Researcher</option>
+                <option value="trader" ${agent.personality.specialization === 'trader' ? 'selected' : ''}>Trader</option>
+                <option value="guardian" ${agent.personality.specialization === 'guardian' ? 'selected' : ''}>Guardian</option>
+                <option value="oracle" ${agent.personality.specialization === 'oracle' ? 'selected' : ''}>Oracle</option>
+                <option value="creator" ${agent.personality.specialization === 'creator' ? 'selected' : ''}>Creator</option>
+                <option value="operator" ${agent.personality.specialization === 'operator' ? 'selected' : ''}>Operator</option>
+                <option value="analyst" ${agent.personality.specialization === 'analyst' ? 'selected' : ''}>Analyst</option>
+                <option value="defi" ${agent.personality.specialization === 'defi' ? 'selected' : ''}>DeFi</option>
+                <option value="security" ${agent.personality.specialization === 'security' ? 'selected' : ''}>Security</option>
+                <option value="social" ${agent.personality.specialization === 'social' ? 'selected' : ''}>Social</option>
+                <option value="infrastructure" ${agent.personality.specialization === 'infrastructure' ? 'selected' : ''}>Infrastructure</option>
+                <option value="governance" ${agent.personality.specialization === 'governance' ? 'selected' : ''}>Governance</option>
+              </select>
+            </div>
+
+            <div class="action-buttons">
+              <button type="button" class="action-btn primary" onclick="updatePersonality(${index})">Update Personality</button>
+              <button type="button" class="action-btn secondary" onclick="resetPersonality(${index})">Reset</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="traits-${index}" class="tab-content">
+          <div class="traits-list">
+            <h4>Current Traits (${agent.traits.length})</h4>
+            ${agent.traits.length > 0 ? agent.traits.map((trait, traitIndex) => `
+              <div class="trait-item">
+                <span class="trait-name">${trait.name}</span>
+                <span class="trait-category">${trait.category}</span>
+              </div>
+            `).join('') : '<div class="no-traits">No traits added yet</div>'}
+          </div>
+
+          <form id="trait-form-${index}">
+            <div class="form-group">
+              <label>Trait Name</label>
+              <input type="text" name="traitName" placeholder="Enter trait name" required />
+            </div>
+
+            <div class="form-group">
+              <label>Category</label>
+              <select name="traitCategory" required>
+                <option value="">Select category</option>
+                <option value="personality">Personality</option>
+                <option value="skill">Skill</option>
+                <option value="reputation">Reputation</option>
+                <option value="achievement">Achievement</option>
+                <option value="specialization">Specialization</option>
+                <option value="model">Model</option>
+              </select>
+            </div>
+
+            <div class="action-buttons">
+              <button type="button" class="action-btn primary" onclick="addTrait(${index})">Add Trait</button>
+            </div>
+          </form>
+
+          <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+            <div class="form-group">
+              <label>Mutation Version</label>
+              <input type="text" id="mutation-version-${index}" placeholder="Enter new version (e.g., v1.1)" />
+            </div>
+            <div class="action-buttons">
+              <button type="button" class="action-btn primary" onclick="mutateAgent(${index})">Mutate Agent (+50 pts)</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="advanced-${index}" class="tab-content">
+          <div class="advanced-section">
+            <h4>Advanced Settings</h4>
+            <div class="form-group">
+              <label>Metadata URI</label>
+              <input type="text" id="metadata-uri-${index}" placeholder="https://..." />
+            </div>
+            <div class="action-buttons">
+              <button type="button" class="action-btn secondary" onclick="updateMetadataURI(${index})">Update URI</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Tab switching
+function switchTab(agentIndex, tabName) {
+  const card = document.getElementById(`agent-${agentIndex}`);
+  
+  // Update tab buttons
+  card.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  card.querySelector(`[onclick="switchTab(${agentIndex}, '${tabName}')"]`).classList.add('active');
+  
+  // Update tab content
+  card.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  card.querySelector(`#${tabName}-${agentIndex}`).classList.add('active');
+}
+
+// Live preview update
+function updatePreview(agentIndex) {
+  const form = document.getElementById(`personality-form-${agentIndex}`);
+  const formData = new FormData(form);
+  const agent = userAgents[agentIndex];
+  
+  const updatedPersonality = {
+    temperament: formData.get('temperament'),
+    communicationStyle: formData.get('communicationStyle'),
+    riskTolerance: parseInt(formData.get('riskTolerance')),
+    autonomyLevel: parseInt(formData.get('autonomyLevel')),
+    alignment: formData.get('alignment'),
+    specialization: formData.get('specialization')
+  };
+
+  // Update slider value displays
+  document.getElementById(`risk-value-${agentIndex}`).textContent = updatedPersonality.riskTolerance;
+  document.getElementById(`autonomy-value-${agentIndex}`).textContent = updatedPersonality.autonomyLevel;
+
+  const auraData = {
+    agentAddress: agent.address,
+    name: agent.name,
+    framework: agent.framework,
+    mutationCount: agent.mutationCount,
+    points: agent.points,
+    soulbound: agent.soulbound,
+    traitCount: agent.traits.length,
+    temperament: updatedPersonality.temperament,
+    communicationStyle: updatedPersonality.communicationStyle,
+    riskTolerance: updatedPersonality.riskTolerance,
+    autonomyLevel: updatedPersonality.autonomyLevel,
+    alignment: updatedPersonality.alignment,
+    specialization: updatedPersonality.specialization,
+    generation: agent.generation
+  };
+  
+  const previewAura = document.querySelector(`#preview-aura-${agentIndex} img`);
+  const newAuraUrl = 'data:image/svg+xml;base64,' + btoa(generateAura(auraData, 48));
+  previewAura.src = newAuraUrl;
+}
+
+// Reset personality form
+function resetPersonality(agentIndex) {
+  const agent = userAgents[agentIndex];
+  const form = document.getElementById(`personality-form-${agentIndex}`);
+  
+  form.temperament.value = agent.personality.temperament;
+  form.communicationStyle.value = agent.personality.communicationStyle;
+  form.riskTolerance.value = agent.personality.riskTolerance;
+  form.autonomyLevel.value = agent.personality.autonomyLevel;
+  form.alignment.value = agent.personality.alignment;
+  form.specialization.value = agent.personality.specialization;
+  
+  updatePreview(agentIndex);
+}
+
+// Update personality on-chain
+async function updatePersonality(agentIndex) {
+  try {
+    const agent = userAgents[agentIndex];
+    const form = document.getElementById(`personality-form-${agentIndex}`);
+    const formData = new FormData(form);
+    
+    const tx = await contract.setPersonality(
+      agent.tokenId,
+      formData.get('temperament'),
+      formData.get('communicationStyle'),
+      parseInt(formData.get('riskTolerance')),
+      parseInt(formData.get('autonomyLevel')),
+      formData.get('alignment'),
+      formData.get('specialization')
+    );
+    
+    showToast('Transaction Submitted', 'Updating personality...', 'success');
+    const receipt = await tx.wait();
+    
+    showToast('Personality Updated!', 
+      `Transaction: <a href="https://basescan.org/tx/${receipt.hash}" target="_blank" class="toast-link">${receipt.hash.slice(0,8)}...</a>`, 
+      'success');
+    
+    // Update local data
+    agent.personality = {
+      temperament: formData.get('temperament'),
+      communicationStyle: formData.get('communicationStyle'),
+      riskTolerance: parseInt(formData.get('riskTolerance')),
+      autonomyLevel: parseInt(formData.get('autonomyLevel')),
+      alignment: formData.get('alignment'),
+      specialization: formData.get('specialization')
+    };
+    
+    // Re-render to update overview tab
+    renderAgents();
+    
+  } catch (error) {
+    console.error('Update personality error:', error);
+    showToast('Transaction Failed', error.reason || error.message, 'error');
+  }
+}
+
+// Add trait
+async function addTrait(agentIndex) {
+  try {
+    const agent = userAgents[agentIndex];
+    const form = document.getElementById(`trait-form-${agentIndex}`);
+    const formData = new FormData(form);
+    const traitName = formData.get('traitName');
+    const traitCategory = formData.get('traitCategory');
+    
+    if (!traitName || !traitCategory) {
+      showToast('Invalid Input', 'Please fill in all fields', 'error');
+      return;
+    }
+    
+    const tx = await contract.addTrait(agent.tokenId, traitName, traitCategory, { value: 0 });
+    
+    showToast('Transaction Submitted', 'Adding trait...', 'success');
+    const receipt = await tx.wait();
+    
+    showToast('Trait Added!', 
+      `Transaction: <a href="https://basescan.org/tx/${receipt.hash}" target="_blank" class="toast-link">${receipt.hash.slice(0,8)}...</a>`, 
+      'success');
+    
+    // Add to local data
+    agent.traits.push({
+      name: traitName,
+      category: traitCategory,
+      addedAt: Date.now() / 1000
+    });
+    
+    // Clear form and re-render
+    form.reset();
+    renderAgents();
+    
+  } catch (error) {
+    console.error('Add trait error:', error);
+    showToast('Transaction Failed', error.reason || error.message, 'error');
+  }
+}
+
+// Mutate agent
+async function mutateAgent(agentIndex) {
+  try {
+    const agent = userAgents[agentIndex];
+    const versionInput = document.getElementById(`mutation-version-${agentIndex}`);
+    const newVersion = versionInput.value.trim();
+    
+    if (!newVersion) {
+      showToast('Invalid Input', 'Please enter a version string', 'error');
+      return;
+    }
+    
+    const tx = await contract.mutateAgent(agent.tokenId, newVersion);
+    
+    showToast('Transaction Submitted', 'Mutating agent...', 'success');
+    const receipt = await tx.wait();
+    
+    showToast('Agent Mutated!', 
+      `+50 points! Transaction: <a href="https://basescan.org/tx/${receipt.hash}" target="_blank" class="toast-link">${receipt.hash.slice(0,8)}...</a>`, 
+      'success');
+    
+    // Update local data
+    agent.mutationCount++;
+    agent.currentVersion = newVersion;
+    agent.points += 50;
+    
+    // Clear input and re-render
+    versionInput.value = '';
+    renderAgents();
+    
+  } catch (error) {
+    console.error('Mutate agent error:', error);
+    showToast('Transaction Failed', error.reason || error.message, 'error');
+  }
+}
+
+// Update metadata URI
+async function updateMetadataURI(agentIndex) {
+  try {
+    const agent = userAgents[agentIndex];
+    const uriInput = document.getElementById(`metadata-uri-${agentIndex}`);
+    const newURI = uriInput.value.trim();
+    
+    if (!newURI) {
+      showToast('Invalid Input', 'Please enter a URI', 'error');
+      return;
+    }
+    
+    const tx = await contract.setAgentURI(agent.tokenId, newURI);
+    
+    showToast('Transaction Submitted', 'Updating metadata URI...', 'success');
+    const receipt = await tx.wait();
+    
+    showToast('URI Updated!', 
+      `Transaction: <a href="https://basescan.org/tx/${receipt.hash}" target="_blank" class="toast-link">${receipt.hash.slice(0,8)}...</a>`, 
+      'success');
+    
+    uriInput.value = '';
+    
+  } catch (error) {
+    console.error('Update URI error:', error);
+    showToast('Transaction Failed', error.reason || error.message, 'error');
+  }
+}
+
+// Toast notifications
+function showToast(title, message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <div class="toast-title">${title}</div>
+    <div class="toast-message">${message}</div>
+  `;
+  
+  container.appendChild(toast);
+  
+  // Show toast
+  setTimeout(() => toast.classList.add('show'), 100);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => container.removeChild(toast), 300);
+  }, 5000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+  // Auto-connect if MetaMask is available and connected
+  if (window.ethereum && window.ethereum.selectedAddress) {
+    connectWallet();
+  }
+});
+</script>
+
+</body>
+</html>
