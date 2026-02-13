@@ -1,7 +1,7 @@
 import React from 'react';
 import { MintData } from './MintFlow';
 import { AuraPreview } from '../AuraPreview';
-import { useMintAgent } from '../../hooks/useHelixa';
+import { useMint } from '../../hooks/useHelixa';
 import { ORIGIN_DISPLAY } from '../../lib/constants';
 
 interface Step5ReviewProps {
@@ -12,26 +12,17 @@ interface Step5ReviewProps {
 }
 
 export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5ReviewProps) {
-  const { mintAgent, isPending, isConfirming, isConfirmed, hash, error } = useMintAgent();
+  const { mint, isPending, isConfirming, isConfirmed, hash, error } = useMint();
   
   const handleMint = () => {
-    mintAgent({
+    // V2 contract: mint(agentAddress, name, framework, soulbound)
+    // Personality + narrative are set in separate transactions after mint
+    mint({
+      agentAddress: data.agentAddress as `0x${string}`,
       name: data.name,
-      agentAddress: data.agentAddress,
       framework: data.framework,
       soulbound: data.soulbound,
-      temperament: data.temperament,
-      communicationStyle: data.communicationStyle,
-      riskTolerance: data.riskTolerance,
-      autonomyLevel: data.autonomyLevel,
-      alignment: data.alignment,
-      specialization: data.specialization,
-      quirks: data.quirks,
-      values: data.values,
-      origin: data.origin,
-      mission: data.mission,
-      lore: data.lore,
-      manifesto: data.manifesto,
+      value: BigInt(0), // TODO: read mintPrice from contract
     });
   };
   
@@ -79,7 +70,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               <AuraPreview 
                 agentData={{
                   name: data.name,
-                  agentAddress: data.agentAddress,
+                  agentAddress: data.agentAddress as `0x${string}`,
                   framework: data.framework,
                   points: 0,
                   traitCount: totalFields,

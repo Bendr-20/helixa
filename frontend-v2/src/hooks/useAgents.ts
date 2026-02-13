@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useReadContract } from 'wagmi';
-import { useTotalSupply, useGetAgent, formatAgentData } from './useHelixa';
+import { useTotalAgents, useGetAgent, formatAgentData } from './useHelixa';
 import { CONTRACT_ADDRESS } from '../lib/constants';
 import HelixaV2ABI from '../abi/HelixaV2.json';
 
 export function useAllAgents() {
-  const { data: totalSupply } = useTotalSupply();
+  const { data: totalSupply } = useTotalAgents();
   
   return useQuery({
     queryKey: ['allAgents', totalSupply],
@@ -95,7 +95,7 @@ export function useTopAgents(limit = 6) {
 }
 
 export function useAgentStats() {
-  const { data: totalSupply } = useTotalSupply();
+  const { data: totalSupply } = useTotalAgents();
   const { data: allAgents } = useAllAgents();
   
   return useQuery({
