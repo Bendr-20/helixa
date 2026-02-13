@@ -834,7 +834,8 @@ async function loadLeaderboard() {
 function loadFromCache(data) {
   // Update stats
   document.getElementById('totalAgents').textContent = data.totalAgents;
-  document.getElementById('totalPoints').textContent = data.totalPoints.toLocaleString();
+  const totalPts = data.totalPoints || data.agents.reduce((s, a) => s + (a.points || 0), 0);
+  document.getElementById('totalPoints').textContent = totalPts.toLocaleString();
   
   const freeLeft = Math.max(0, 100 - data.totalAgents);
   document.getElementById('betaRemaining').textContent = freeLeft;
@@ -873,17 +874,19 @@ function loadFromCache(data) {
     const multLabel = a.id < 100 ? '2x' : a.id < 500 ? '1.5x' : '1x';
 
     // Generate aura thumbnail
+    const addr = a.agentAddress || a.address || a.owner || '';
+    const pers = a.personality || {};
     const auraData = {
-      agentAddress: a.address, name: a.name, framework: a.framework,
-      mutationCount: a.mutationCount, points: a.points, soulbound: a.soulbound,
-      traitCount: a.traits.length,
-      temperament: a.personality.temperament,
-      communicationStyle: a.personality.communicationStyle,
-      riskTolerance: a.personality.riskTolerance,
-      autonomyLevel: a.personality.autonomyLevel,
-      alignment: a.personality.alignment,
-      specialization: a.personality.specialization,
-      generation: a.parentDNA > 0 ? 1 : 0,
+      agentAddress: addr, name: a.name, framework: a.framework,
+      mutationCount: a.mutationCount || 0, points: a.points || 0, soulbound: a.soulbound,
+      traitCount: (a.traits || []).length,
+      temperament: pers.temperament || pers.quirks || '',
+      communicationStyle: pers.communicationStyle || '',
+      riskTolerance: pers.riskTolerance || 0,
+      autonomyLevel: pers.autonomyLevel || 0,
+      alignment: pers.alignment || pers.values || '',
+      specialization: pers.specialization || pers.humor || '',
+      generation: (a.parentDNA || a.generation || 0) > 0 ? 1 : 0,
     };
     const auraSvg = generateAura(auraData, 42);
 
@@ -892,18 +895,18 @@ function loadFromCache(data) {
       <div class="agent-info">
         <div class="agent-aura">${auraSvg}</div>
         <div>
-          <div class="agent-name">${a.name} ${a.verified ? '✓' : ''} ${a.soulbound ? '🔒' : ''}</div>
-          <div class="agent-meta">#${a.id} · ${a.framework} · ${a.address.slice(0,6)}...${a.address.slice(-4)}</div>
+          <div class="agent-name">${a.name || 'Agent #'+a.id} ${a.verified ? '✓' : ''} ${a.soulbound ? '🔒' : ''}</div>
+          <div class="agent-meta">#${a.id} · ${a.framework || '?'} · ${addr.slice(0,6)}...${addr.slice(-4)}</div>
         </div>
       </div>
-      <div class="points-cell">${a.points.toLocaleString()}</div>
+      <div class="points-cell">${(a.points||0).toLocaleString()}</div>
       <div style="text-align:center"><span class="rarity-badge ${rarity}">${rarityLabel}</span></div>
       <div class="mult ${agentMult}">${multLabel}</div>
     </div>`;
   }).join('');
 
   // Add data freshness indicator
-  const updatedAt = new Date(data.updatedAt);
+  const updatedAt = new Date(data.updatedAt || data.generatedAt);
   const now = new Date();
   const minutesAgo = Math.floor((now - updatedAt) / 60000);
   const timeText = minutesAgo < 60 ? `${minutesAgo} minutes ago` : `${Math.floor(minutesAgo / 60)} hours ago`;
