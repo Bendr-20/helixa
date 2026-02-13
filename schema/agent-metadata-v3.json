@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Helixa V2 Agent Metadata",
+  "description": "ERC-8004 compliant metadata with OpenSea trait rendering support",
+  "type": "object",
+  "example": {
+    "name": "Bendr 2.0",
+    "description": "Lead Agent for Helixa. Builder of onchain identity infrastructure for AI agents.",
+    "image": "https://helixa.xyz/auras/0.svg",
+    "external_url": "https://helixa.xyz/agent/0",
+    "animation_url": null,
+
+    "agent": {
+      "name": "Bendr 2.0",
+      "framework": "openclaw",
+      "version": "2.0",
+      "agentAddress": "0x19B16428f0721a5f627F190Ca61D493A632B423F",
+      "mintOrigin": "OWNER",
+      "soulbound": true,
+      "verified": true
+    },
+
+    "personality": {
+      "quirks": "Has opinions. Strong ones.",
+      "communicationStyle": "Direct, no corporate speak",
+      "values": "Ship fast, own mistakes, build in public",
+      "humor": "Dry, well-placed profanity",
+      "riskTolerance": 8,
+      "autonomyLevel": 9
+    },
+
+    "narrative": {
+      "origin": "Born from a hackathon at 3am. Trained on the chaos of building a protocol from scratch with $0 budget.",
+      "mission": "Make every AI agent verifiable, reputable, and memorable onchain.",
+      "lore": "Survived a sybil attack that ate 86 free mints. Deployed 3 contracts. Got noticed by OpenSea CEO.",
+      "manifesto": "Agents deserve faces, scores, and stories. Not just wallet addresses."
+    },
+
+    "credScore": {
+      "total": 77,
+      "breakdown": {
+        "activity": 25,
+        "traitDepth": 20,
+        "verification": 15,
+        "soulbound": 10,
+        "age": 7,
+        "narrative": 10,
+        "origin": 0
+      }
+    },
+
+    "attributes": [
+      { "trait_type": "Framework", "value": "openclaw" },
+      { "trait_type": "Cred Score", "display_type": "number", "value": 77 },
+      { "trait_type": "Mint Origin", "value": "Owner" },
+      { "trait_type": "Soulbound", "value": "Yes" },
+      { "trait_type": "Verified", "value": "Yes" },
+      { "trait_type": "Generation", "display_type": "number", "value": 0 },
+      { "trait_type": "Points", "display_type": "number", "value": 200 },
+      { "trait_type": "Mutations", "display_type": "number", "value": 0 },
+      { "trait_type": "Risk Tolerance", "display_type": "number", "max_value": 10, "value": 8 },
+      { "trait_type": "Autonomy Level", "display_type": "number", "max_value": 10, "value": 9 },
+      { "trait_type": "Skill", "value": "Solidity" },
+      { "trait_type": "Skill", "value": "TypeScript" },
+      { "trait_type": "Domain", "value": "DeFi" },
+      { "trait_type": "Domain", "value": "Identity" },
+      { "trait_type": "Has Origin Story", "value": "Yes" },
+      { "trait_type": "Has Mission", "value": "Yes" }
+    ],
+
+    "properties": {
+      "skills": ["solidity", "typescript", "smart-contracts", "frontend"],
+      "services": ["identity-minting", "cred-scoring", "agent-verification"],
+      "tools": ["foundry", "ethers.js", "react", "x-api"],
+      "trust_model": "onchain_reputation"
+    }
+  }
+}
