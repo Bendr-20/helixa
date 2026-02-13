@@ -10,14 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@rainbow-me/rainbowkit": "^2.2.10",
-    "@tanstack/react-query": "^5.90.21",
+    "@rainbow-me/rainbowkit": "^2.2.5",
+    "@tanstack/react-query": "^5.62.0",
     "ethers": "^6.16.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
-    "viem": "^2.45.3",
-    "wagmi": "^3.4.3"
+    "viem": "^2.21.55",
+    "wagmi": "^2.14.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
