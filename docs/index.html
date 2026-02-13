@@ -1098,7 +1098,7 @@ try {
     document.getElementById('live8004').textContent = totalTraits;
     
     // Add data freshness indicator
-    const updatedAt = new Date(data.updatedAt);
+    const updatedAt = new Date(data.updatedAt || data.generatedAt);
     const now = new Date();
     const minutesAgo = Math.floor((now - updatedAt) / 60000);
     const timeText = minutesAgo < 60 ? `${minutesAgo} min ago` : `${Math.floor(minutesAgo / 60)}h ago`;
