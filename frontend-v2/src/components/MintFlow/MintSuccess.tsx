@@ -12,7 +12,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
   const [copySuccess, setCopySuccess] = useState<string>('');
   
   const profileUrl = `${window.location.origin}/agent/${tokenId}`;
-  const shareText = `Meet ${agentData.name}! 🤖\n\nJust minted my agent on Helixa V2 ✨\n\n${profileUrl}`;
+  const shareText = `Meet ${agentData.name}\n\nJust minted my agent on Helixa V2\n\n${profileUrl}`;
   
   const copyToClipboard = async (text: string, type: string) => {
     try {
@@ -30,7 +30,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
   };
   
   const shareOnTelegram = () => {
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Meet ${agentData.name}! Just minted my agent on Helixa V2 ✨`)}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my agent on Helixa V2`)}`;
     window.open(telegramUrl, '_blank');
   };
   
@@ -49,7 +49,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
           </svg>
         </div>
         <h2 className="text-3xl font-heading font-bold text-gradient mb-2">
-          🎉 Agent Minted Successfully!
+          Agent Minted Successfully
         </h2>
         <p className="text-muted text-lg">
           Welcome <span className="text-accent-purple font-semibold">{agentData.name}</span> to the Helixa ecosystem
@@ -99,7 +99,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
               <div className="flex justify-between">
                 <span className="text-muted">Type:</span>
                 <span className={`badge ${agentData.soulbound ? 'bg-purple-900/30 text-purple-300' : 'bg-green-900/30 text-green-300'}`}>
-                  {agentData.soulbound ? '🔒 Soulbound' : '🔄 Transferable'}
+                  {agentData.soulbound ? 'Soulbound' : 'Transferable'}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -175,7 +175,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
       <div className="grid md:grid-cols-3 gap-6 mb-8">
         <div className="glass-card p-6 text-center">
           <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">📊</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
           </div>
           <h4 className="font-semibold mb-2">View Profile</h4>
           <p className="text-sm text-muted mb-4">
@@ -188,7 +188,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
         
         <div className="glass-card p-6 text-center">
           <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">🎯</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
           <h4 className="font-semibold mb-2">Start Earning</h4>
           <p className="text-sm text-muted mb-4">
@@ -201,7 +201,7 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
         
         <div className="glass-card p-6 text-center">
           <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-xl">🏆</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
           </div>
           <h4 className="font-semibold mb-2">Explore Agents</h4>
           <p className="text-sm text-muted mb-4">
@@ -216,17 +216,14 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
       {/* Action Buttons */}
       <div className="flex justify-center gap-4 flex-wrap">
         <Link to={`/agent/${tokenId}`} className="btn btn-primary">
-          <span>👁️</span>
           View Agent Profile
         </Link>
         
         <Link to="/mint" className="btn btn-secondary">
-          <span>➕</span>
           Mint Another
         </Link>
         
         <Link to="/agents" className="btn btn-ghost">
-          <span>🌐</span>
           Explore Directory
         </Link>
       </div>

@@ -117,7 +117,7 @@ export function Step4Narrative({ data, updateData, onNext, onPrev }: Step4Narrat
                  lore: "I've analyzed over 10,000 DeFi protocols and helped users avoid $50M+ in potential losses through early risk detection.",
                  manifesto: "Information should be free, analysis should be unbiased, and everyone deserves access to institutional-grade research."
                })}>
-            <h5 className="font-medium text-sm mb-2">🏦 DeFi Analyst</h5>
+            <h5 className="font-medium text-sm mb-2">DeFi Analyst</h5>
             <p className="text-xs text-muted">Financial analysis agent</p>
           </div>
           
@@ -128,7 +128,7 @@ export function Step4Narrative({ data, updateData, onNext, onPrev }: Step4Narrat
                  lore: "I've co-created over 5,000 artworks, each one a unique collaboration between human vision and algorithmic possibility.",
                  manifesto: "Art is the bridge between logic and emotion. I exist to strengthen that bridge, not build walls."
                })}>
-            <h5 className="font-medium text-sm mb-2">🎨 Creative Collaborator</h5>
+            <h5 className="font-medium text-sm mb-2">Creative Collaborator</h5>
             <p className="text-xs text-muted">Art generation agent</p>
           </div>
           
@@ -139,7 +139,7 @@ export function Step4Narrative({ data, updateData, onNext, onPrev }: Step4Narrat
                  lore: "I've prevented 847 security breaches and helped recover $12M in compromised funds through early detection algorithms.",
                  manifesto: "Security is not about building walls, but about creating trust. I guard not just assets, but the future of decentralized systems."
                })}>
-            <h5 className="font-medium text-sm mb-2">🛡️ Security Guardian</h5>
+            <h5 className="font-medium text-sm mb-2">Security Guardian</h5>
             <p className="text-xs text-muted">Security monitoring agent</p>
           </div>
           
@@ -150,7 +150,7 @@ export function Step4Narrative({ data, updateData, onNext, onPrev }: Step4Narrat
                  lore: "I've processed 2.3 million research papers and helped accelerate 147 breakthrough discoveries through cross-domain analysis.",
                  manifesto: "Knowledge belongs to humanity. My purpose is to break down silos and connect dots that humans might miss."
                })}>
-            <h5 className="font-medium text-sm mb-2">🔬 Research Synthesizer</h5>
+            <h5 className="font-medium text-sm mb-2">Research Synthesizer</h5>
             <p className="text-xs text-muted">Research analysis agent</p>
           </div>
         </div>

@@ -1,145 +1,117 @@
 import { useQuery } from '@tanstack/react-query';
-import { useReadContract } from 'wagmi';
-import { useTotalAgents, useGetAgent, formatAgentData } from './useHelixa';
-import { CONTRACT_ADDRESS } from '../lib/constants';
-import HelixaV2ABI from '../abi/HelixaV2.json';
 
-export function useAllAgents() {
-  const { data: totalSupply } = useTotalAgents();
-  
+const AGENTS_JSON_URL = 'https://helixa.xyz/data/agents.json';
+
+interface AgentData {
+  id: number;
+  tokenId: number;
+  name: string;
+  framework: string;
+  mintedAt: number;
+  verified: boolean;
+  soulbound: boolean;
+  generation: number;
+  mutationCount: number;
+  owner: string;
+  points: number;
+  traits: string[];
+  personality: any;
+  credScore: number;
+}
+
+function normalizeAgent(raw: any): AgentData {
+  return {
+    id: raw.id,
+    tokenId: raw.id,
+    name: raw.name || `Agent #${raw.id}`,
+    framework: raw.framework || 'unknown',
+    mintedAt: raw.mintedAt || 0,
+    verified: raw.verified || false,
+    soulbound: raw.soulbound || false,
+    generation: raw.generation || 0,
+    mutationCount: raw.mutationCount || 0,
+    owner: raw.owner || '',
+    points: raw.points || 0,
+    traits: raw.traits || [],
+    personality: raw.personality || null,
+    credScore: raw.credScore || (raw.verified ? 50 : raw.name ? 10 : 5),
+  };
+}
+
+function useAgentsJson() {
   return useQuery({
-    queryKey: ['allAgents', totalSupply],
+    queryKey: ['agents-json'],
     queryFn: async () => {
-      if (!totalSupply) return [];
-      
-      const total = Number(totalSupply);
-      const agents = [];
-      
-      // Fetch all agents by token ID (1-indexed)
-      for (let i = 1; i <= total; i++) {
-        try {
-          // Note: This is a simplified approach. In a real app, you'd want to
-          // batch these requests or use events/subgraph for better performance
-          const response = await fetch(`/api/agent/${i}`);
-          if (response.ok) {
-            const agentData = await response.json();
-            agents.push(formatAgentData(agentData));
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch agent ${i}:`, error);
-        }
-      }
-      
-      return agents;
+      const res = await fetch(AGENTS_JSON_URL);
+      if (!res.ok) throw new Error('Failed to fetch agents');
+      const data = await res.json();
+      return {
+        total: data.totalAgents || data.total || 0,
+        agents: (data.agents || []).map(normalizeAgent),
+      };
     },
-    enabled: !!totalSupply,
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 60000, // 1 minute
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
 }
 
-export function useAgentsByOwner(owner: string | undefined) {
-  const { data: balance } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: HelixaV2ABI.abi,
-    functionName: 'balanceOf',
-    args: owner ? [owner] : undefined,
-    query: {
-      enabled: !!owner,
-    },
-  });
-  
-  return useQuery({
-    queryKey: ['agentsByOwner', owner, balance],
-    queryFn: async () => {
-      if (!owner || !balance) return [];
-      
-      const userBalance = Number(balance);
-      const agents = [];
-      
-      for (let i = 0; i < userBalance; i++) {
-        try {
-          // Fetch token ID by index, then fetch agent data
-          const tokenResponse = await fetch(`/api/owner/${owner}/token/${i}`);
-          if (tokenResponse.ok) {
-            const { tokenId } = await tokenResponse.json();
-            const agentResponse = await fetch(`/api/agent/${tokenId}`);
-            if (agentResponse.ok) {
-              const agentData = await agentResponse.json();
-              agents.push(formatAgentData(agentData));
-            }
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch agent ${i} for owner ${owner}:`, error);
-        }
-      }
-      
-      return agents;
-    },
-    enabled: !!owner && !!balance,
-    staleTime: 30000,
-  });
+export function useAllAgents() {
+  const { data, ...query } = useAgentsJson();
+  return { ...query, data: data?.agents };
 }
 
 export function useTopAgents(limit = 6) {
-  const { data: allAgents, ...query } = useAllAgents();
-  
+  const { data, ...query } = useAgentsJson();
   return {
     ...query,
-    data: allAgents 
-      ? allAgents
-          .sort((a, b) => b.credScore - a.credScore)
-          .slice(0, limit)
-      : undefined,
+    data: data?.agents
+      ?.filter((a) => a.name && a.name.length > 0)
+      .sort((a, b) => b.credScore - a.credScore)
+      .slice(0, limit),
   };
 }
 
 export function useAgentStats() {
-  const { data: totalSupply } = useTotalAgents();
-  const { data: allAgents } = useAllAgents();
-  
-  return useQuery({
-    queryKey: ['agentStats', totalSupply, allAgents?.length],
-    queryFn: () => {
-      if (!allAgents) return null;
-      
-      const totalCredScore = allAgents.reduce((sum, agent) => sum + agent.credScore, 0);
-      const averageCredScore = allAgents.length > 0 ? totalCredScore / allAgents.length : 0;
-      
-      return {
-        totalAgents: allAgents.length,
-        totalCredScore,
-        averageCredScore: Math.round(averageCredScore),
-        frameworks: [...new Set(allAgents.map(a => a.framework))].length,
-        soulboundCount: allAgents.filter(a => a.soulbound).length,
-      };
-    },
-    enabled: !!allAgents,
-  });
+  const { data, ...query } = useAgentsJson();
+  return {
+    ...query,
+    data: data
+      ? {
+          totalAgents: data.total,
+          totalCredScore: data.agents.reduce((s, a) => s + a.credScore, 0),
+          frameworks: new Set(data.agents.map((a) => a.framework).filter(Boolean)).size,
+          soulboundCount: data.agents.filter((a) => a.soulbound).length,
+        }
+      : undefined,
+  };
 }
 
-// Search and filter utilities
+export function useAgentsByOwner(owner: string | undefined) {
+  const { data, ...query } = useAgentsJson();
+  return {
+    ...query,
+    data: owner
+      ? data?.agents.filter(
+          (a) => a.owner.toLowerCase() === owner.toLowerCase()
+        )
+      : undefined,
+  };
+}
+
 export function useFilteredAgents(filters: {
   search?: string;
   framework?: string;
   soulbound?: boolean;
   verified?: boolean;
 }) {
-  const { data: allAgents, ...query } = useAllAgents();
-  
+  const { data, ...query } = useAgentsJson();
   return {
     ...query,
-    data: allAgents?.filter(agent => {
-      if (filters.search && !agent.name.toLowerCase().includes(filters.search.toLowerCase())) {
-        return false;
-      }
-      if (filters.framework && agent.framework !== filters.framework) {
-        return false;
-      }
-      if (filters.soulbound !== undefined && agent.soulbound !== filters.soulbound) {
-        return false;
-      }
-      // Add more filter logic as needed
+    data: data?.agents.filter((agent) => {
+      if (filters.search && !agent.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+      if (filters.framework && agent.framework !== filters.framework) return false;
+      if (filters.soulbound !== undefined && agent.soulbound !== filters.soulbound) return false;
+      if (filters.verified !== undefined && agent.verified !== filters.verified) return false;
       return true;
     }),
   };

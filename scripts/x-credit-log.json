@@ -1,0 +1,18 @@
+{
+  "starting_balance": 25.00,
+  "log": [
+    { "date": "2026-02-12T17:00", "action": "tweet", "count": 1, "note": "First gm tweet" },
+    { "date": "2026-02-12T17:01", "action": "search", "count": 1, "note": "Test search" },
+    { "date": "2026-02-12T17:01", "action": "mentions", "count": 1, "note": "Test mentions read" },
+    { "date": "2026-02-12T17:02", "action": "search", "count": 6, "note": "5 topic searches + 1 broad" },
+    { "date": "2026-02-12T17:03", "action": "reply", "count": 5, "note": "Replies to WuBlockchain, sauciii, raajeevanand, dcryptgirl, 0xsiam" },
+    { "date": "2026-02-12T17:03", "action": "reply_failed", "count": 1, "note": "XyBrainz 403 forbidden" }
+  ],
+  "totals": {
+    "tweets_posted": 6,
+    "searches": 7,
+    "reads": 1,
+    "estimated_cost": "unknown - check developer console"
+  },
+  "note": "X pay-per-use pricing varies by endpoint. Check developer.x.com console for actual credit usage."
+}

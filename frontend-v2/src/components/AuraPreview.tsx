@@ -7,8 +7,8 @@ interface AuraPreviewProps {
   className?: string;
 }
 
-export function AuraPreview({ agentData, size = 200, className = '' }: AuraPreviewProps) {
-  const svgContent = generateAura(agentData, size);
+export const AuraPreview = React.memo(function AuraPreview({ agentData, size = 200, className = '' }: AuraPreviewProps) {
+  const svgContent = React.useMemo(() => generateAura(agentData, size), [agentData.name, agentData.agentAddress, size]);
   
   return (
     <div 
@@ -16,4 +16,4 @@ export function AuraPreview({ agentData, size = 200, className = '' }: AuraPrevi
       dangerouslySetInnerHTML={{ __html: svgContent }}
     />
   );
-}
+});

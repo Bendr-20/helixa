@@ -1,6 +1,6 @@
 import React from 'react';
 import '@rainbow-me/rainbowkit/styles.css';
-import { getDefaultConfig, RainbowKitProvider } from '@rainbow-me/rainbowkit';
+import { getDefaultConfig, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http } from 'viem';
@@ -26,7 +26,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider coolMode>
+        <RainbowKitProvider coolMode theme={darkTheme({
+          accentColor: '#b490ff',
+          accentColorForeground: '#0a0a14',
+          borderRadius: 'medium',
+          fontStack: 'system',
+          overlayBlur: 'small',
+        })}>
           {children}
         </RainbowKitProvider>
       </QueryClientProvider>

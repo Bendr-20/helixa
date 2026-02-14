@@ -93,7 +93,7 @@ export function Step2Identity({ data, updateData, onNext, onPrev }: Step2Identit
             <div>
               <span className="label">Soulbound Token</span>
               <p className="text-xs text-muted">
-                🔒 Soulbound tokens cannot be transferred. Choose this for personal agents.
+                Soulbound tokens cannot be transferred. Choose this for personal agents.
               </p>
             </div>
           </label>
@@ -102,7 +102,6 @@ export function Step2Identity({ data, updateData, onNext, onPrev }: Step2Identit
         {/* Preview Card */}
         <div className="glass-card p-4">
           <h4 className="font-medium mb-3 flex items-center gap-2">
-            <span>👁️</span>
             Preview
           </h4>
           <div className="space-y-2 text-sm">
@@ -124,7 +123,7 @@ export function Step2Identity({ data, updateData, onNext, onPrev }: Step2Identit
               <div className="flex gap-2">
                 <span className="text-muted">Type:</span>
                 <span className="badge badge-sm bg-purple-900/30 text-purple-300">
-                  🔒 Soulbound
+                  Soulbound
                 </span>
               </div>
             )}

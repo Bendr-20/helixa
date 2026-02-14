@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { DnaBackground } from './DnaBackground';
+import { preloadMap } from '../App';
 
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/mint', label: 'Mint' },
   { href: '/agents', label: 'Agents' },
   { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/manage', label: 'Manage' },
+  { href: '/docs', label: 'Docs' },
 ];
 
 interface LayoutProps {
@@ -15,7 +19,21 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [navVisible, setNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const location = useLocation();
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      setNavVisible(y < 20 || y < lastScrollY.current);
+      lastScrollY.current = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   
   const isActiveLink = (href: string) => {
     if (href === '/' && location.pathname === '/') return true;
@@ -25,25 +43,35 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Holographic Swirl Background */}
+      {/* DNA Double Helix Background — Canvas 3D */}
+      <DnaBackground />
+      {/* Nav spacer for fixed positioning */}
+      <div style={{ height: 64 }} />
       {/* Navigation */}
-      <nav className="nav sticky top-0 z-40 bg-bg/80">
-        <div className="container">
-          <div className="flex items-center justify-between h-16">
+      <nav className={`nav ${scrolled ? 'nav-scrolled' : ''} ${navVisible ? '' : 'nav-hidden'}`}>
+        <div className="container" style={{ width: '100%' }}>
+          <div className="flex items-center justify-between" style={{ height: '100%' }}>
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">H</span>
-              </div>
-              <span className="font-heading font-bold text-xl text-gradient">Helixa</span>
+            <Link to="/" className="flex items-center gap-2 nav-logo-text" style={{ textDecoration: 'none' }}>
+              <span className="text-gradient" style={{
+                fontFamily: "'Orbitron', sans-serif",
+                fontSize: '1.4rem',
+                fontWeight: 700,
+                letterSpacing: '-0.5px',
+              }}>
+                helixa<span style={{ color: 'var(--text2)', fontWeight: 400, WebkitTextFillColor: 'var(--text2)' }}>.xyz</span>
+              </span>
             </Link>
             
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-8">
+            <div className="hidden md:flex items-center gap-6">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
+                  onMouseEnter={() => preloadMap[link.href]?.()}
                 >
                   {link.label}
                 </Link>
@@ -95,117 +123,16 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       
-      {/* Footer */}
-      <footer className="bg-surface/50 border-t border-gray-800">
-        <div className="container py-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            {/* Brand */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 bg-gradient-primary rounded-md flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">H</span>
-                </div>
-                <span className="font-heading font-bold text-gradient">Helixa V2</span>
-              </div>
-              <p className="text-muted text-sm">
-                Every Agent Deserves a Face, a Score, and a Story.
-              </p>
-            </div>
-            
-            {/* Navigation */}
-            <div>
-              <h3 className="font-semibold mb-3">Navigate</h3>
-              <div className="space-y-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-                <Link
-                  to="/manage"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  Manage
-                </Link>
-              </div>
-            </div>
-            
-            {/* Resources */}
-            <div>
-              <h3 className="font-semibold mb-3">Resources</h3>
-              <div className="space-y-2">
-                <a
-                  href="https://github.com/helixagenttoolkit"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  GitHub
-                </a>
-                <a
-                  href="/docs"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  Documentation
-                </a>
-                <a
-                  href="/api"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  API
-                </a>
-              </div>
-            </div>
-            
-            {/* Social */}
-            <div>
-              <h3 className="font-semibold mb-3">Community</h3>
-              <div className="space-y-2">
-                <a
-                  href="https://twitter.com/helixa_agent"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  Twitter
-                </a>
-                <a
-                  href="https://discord.gg/helixa"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  Discord
-                </a>
-                <a
-                  href="https://t.me/helixa_agents"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-sm text-muted hover:text-accent-purple transition-colors"
-                >
-                  Telegram
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted">
-              © 2024 Helixa. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4 text-sm text-muted">
-              <a href="/privacy" className="hover:text-accent-purple transition-colors">
-                Privacy
-              </a>
-              <a href="/terms" className="hover:text-accent-purple transition-colors">
-                Terms
-              </a>
-            </div>
-          </div>
+      {/* Footer — Clean & Minimal */}
+      <footer>
+        <div className="container" style={{ padding: '1.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#555', fontSize: '0.75rem' }}>Helixa Protocol</span>
+          <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
+          <a href="https://github.com/helixagenttoolkit" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
+          <a href="https://twitter.com/helixa_agent" target="_blank" rel="noopener noreferrer">Twitter</a>
+          <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
+          <Link to="/docs">Docs</Link>
         </div>
       </footer>
     </div>

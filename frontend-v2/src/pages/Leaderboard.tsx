@@ -1,181 +1,215 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { AuraPreview } from '../components/AuraPreview';
-import { CredBadge } from '../components/CredBadge';
-import { useAllAgents } from '../hooks/useAgents';
-import { ORIGIN_DISPLAY } from '../lib/constants';
+import { useAllAgents, useAgentStats } from '../hooks/useAgents';
+import type { AgentData } from '../lib/aura';
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-50px' as const },
+  transition: { duration: 0.5, ease: 'easeOut' as const },
+};
+
+function getRarityTier(score: number): { label: string; className: string } {
+  if (score >= 70) return { label: 'Legendary', className: 'legendary' };
+  if (score >= 50) return { label: 'Epic', className: 'epic' };
+  if (score >= 25) return { label: 'Rare', className: 'rare' };
+  return { label: 'Common', className: 'common' };
+}
+
+// Memoized row to prevent AuraPreview re-renders
+const LeaderboardRow = React.memo(function LeaderboardRow({ 
+  agent, rank, sortBy, auraData 
+}: { 
+  agent: any; rank: number; sortBy: string; auraData: AgentData;
+}) {
+  const rarity = getRarityTier(agent.credScore);
+  const getRankClass = (r: number) => {
+    if (r === 1) return 'rank-gold';
+    if (r === 2) return 'rank-silver';
+    if (r === 3) return 'rank-bronze';
+    return 'rank-normal';
+  };
+
+  return (
+    <Link
+      to={`/agent/${agent.tokenId}`}
+      className={`lb-board-row ${rank <= 3 ? 'top-three' : ''}`}
+    >
+      <div className={`lb-rank ${getRankClass(rank)}`}>{rank}</div>
+      <div className="lb-agent-info">
+        <div className="lb-agent-aura">
+          <AuraPreview agentData={auraData} size={42} />
+        </div>
+        <div>
+          <div className="lb-agent-name">{agent.name}</div>
+          <div className="lb-agent-meta">
+            #{agent.tokenId}
+            {agent.verified && <span className="lb-verified">Verified</span>}
+            {agent.soulbound && <span className="lb-soulbound">Soulbound</span>}
+          </div>
+        </div>
+      </div>
+      <div className="lb-framework">
+        <span className="lb-framework-badge">{agent.framework}</span>
+      </div>
+      <div className="lb-score">
+        {sortBy === 'credScore' ? agent.credScore : agent.points.toLocaleString()}
+      </div>
+      <div className="lb-rarity">
+        <span className={`lb-rarity-badge ${rarity.className}`}>{rarity.label}</span>
+      </div>
+    </Link>
+  );
+});
 
 export function Leaderboard() {
   const [sortBy, setSortBy] = useState<'credScore' | 'points'>('credScore');
   const { data: agents, isLoading } = useAllAgents();
-  
-  const sortedAgents = React.useMemo(() => {
+  const { data: stats } = useAgentStats();
+
+  // Pre-compute stable aura data objects (keyed by tokenId, never changes)
+  const auraDataMap = useMemo(() => {
+    if (!agents) return new Map<number, AgentData>();
+    const map = new Map<number, AgentData>();
+    for (const a of agents) {
+      map.set(a.tokenId, {
+        name: a.name,
+        agentAddress: a.owner,
+        framework: a.framework,
+        points: a.points,
+        traitCount: 0,
+        mutationCount: a.mutationCount,
+        soulbound: a.soulbound,
+      });
+    }
+    return map;
+  }, [agents]);
+
+  const sortedAgents = useMemo(() => {
     if (!agents) return [];
     return [...agents]
+      .filter((a) => a.name && a.name.length > 0)
       .sort((a, b) => b[sortBy] - a[sortBy])
-      .slice(0, 100); // Top 100
+      .slice(0, 100);
   }, [agents, sortBy]);
-  
+
   return (
-    <div className="py-8 fade-in">
-      <div className="container">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-heading font-bold mb-4">
-              <span className="text-gradient">Leaderboard</span>
-            </h1>
-            <p className="text-lg text-muted">
-              Top agents ranked by reputation and activity
-            </p>
+    <div className="leaderboard-page">
+      <div className="lb-container">
+        {/* Header */}
+        <motion.div {...fadeUp} className="lb-header">
+          <h1>
+            <span className="text-gradient">Leaderboard</span>
+          </h1>
+          <p>Top agents ranked by reputation and activity</p>
+        </motion.div>
+
+        {/* Stats Row */}
+        <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }} className="lb-stats-row">
+          <div className="lb-mini-stat">
+            <div className="val purple">{stats?.totalAgents ?? '—'}</div>
+            <div className="lbl">Total Agents</div>
           </div>
-          
-          {/* Sort Options */}
-          <div className="flex justify-center mb-8">
-            <div className="flex bg-surface rounded-lg p-1">
-              <button
-                onClick={() => setSortBy('credScore')}
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  sortBy === 'credScore' 
-                    ? 'bg-accent-purple text-white' 
-                    : 'text-muted hover:text-white'
-                }`}
-              >
-                By Cred Score
-              </button>
-              <button
-                onClick={() => setSortBy('points')}
-                className={`px-4 py-2 rounded-md transition-colors ${
-                  sortBy === 'points' 
-                    ? 'bg-accent-purple text-white' 
-                    : 'text-muted hover:text-white'
-                }`}
-              >
-                By Points
-              </button>
+          <div className="lb-mini-stat">
+            <div className="val gold">{stats?.totalCredScore?.toLocaleString() ?? '—'}</div>
+            <div className="lbl">Total Cred</div>
+          </div>
+          <div className="lb-mini-stat">
+            <div className="val blue">{stats?.frameworks ?? '—'}</div>
+            <div className="lbl">Frameworks</div>
+          </div>
+          <div className="lb-mini-stat">
+            <div className="val green">{stats?.soulboundCount ?? '—'}</div>
+            <div className="lbl">Soulbound</div>
+          </div>
+        </motion.div>
+
+        {/* Animated Sort Toggle */}
+        <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.15 }} className="lb-sort-bar">
+          <div className="lb-toggle-switch">
+            <motion.div
+              className="lb-toggle-indicator"
+              animate={{ x: sortBy === 'credScore' ? 0 : '100%' }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            />
+            <button
+              onClick={() => setSortBy('credScore')}
+              className={`lb-toggle-btn ${sortBy === 'credScore' ? 'active' : ''}`}
+            >
+              By Cred Score
+            </button>
+            <button
+              onClick={() => setSortBy('points')}
+              className={`lb-toggle-btn ${sortBy === 'points' ? 'active' : ''}`}
+            >
+              By Points
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Board */}
+        {isLoading ? (
+          <div className="lb-board">
+            <div className="lb-board-header">
+              <span>Rank</span>
+              <span>Agent</span>
+              <span>Framework</span>
+              <span className="text-right">Score</span>
+              <span className="text-right">Rarity</span>
             </div>
-          </div>
-          
-          {/* Leaderboard */}
-          {isLoading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="card">
-                  <div className="flex items-center gap-4">
-                    <div className="w-8 h-8 bg-gray-700 rounded skeleton"></div>
-                    <div className="w-16 h-16 bg-gray-700 rounded-lg skeleton"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-700 rounded w-32 mb-2 skeleton"></div>
-                      <div className="h-3 bg-gray-700 rounded w-20 skeleton"></div>
-                    </div>
-                    <div className="w-16 h-16 bg-gray-700 rounded-full skeleton"></div>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="lb-board-row">
+                <div className="lb-rank"><div className="skeleton-box w-8 h-6"></div></div>
+                <div className="lb-agent-info">
+                  <div className="skeleton-box w-10 h-10 rounded-lg"></div>
+                  <div>
+                    <div className="skeleton-box w-24 h-4 mb-1"></div>
+                    <div className="skeleton-box w-16 h-3"></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {sortedAgents.map((agent, index) => {
-                const rank = index + 1;
-                const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '❓', label: 'Unknown' };
-                
-                return (
-                  <Link
-                    key={agent.tokenId}
-                    to={`/agent/${agent.tokenId}`}
-                    className={`card hover:scale-105 transition-transform block ${
-                      rank <= 3 ? 'border-2 border-gradient-primary' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-6">
-                      {/* Rank */}
-                      <div className="flex-shrink-0">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg ${
-                          rank === 1 ? 'bg-yellow-500/20 text-yellow-400' :
-                          rank === 2 ? 'bg-gray-400/20 text-gray-300' :
-                          rank === 3 ? 'bg-amber-600/20 text-amber-400' :
-                          'bg-surface text-muted'
-                        }`}>
-                          {rank <= 3 ? (
-                            <span>{rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>
-                          ) : (
-                            rank
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Aura */}
-                      <div className="flex-shrink-0">
-                        <AuraPreview
-                          agentData={{
-                            name: agent.name,
-                            agentAddress: agent.agentAddress,
-                            framework: agent.framework,
-                            points: agent.points,
-                            traitCount: agent.traitCount,
-                            mutationCount: agent.mutationCount,
-                            soulbound: agent.soulbound,
-                            temperament: agent.temperament,
-                            communicationStyle: agent.communicationStyle,
-                            riskTolerance: agent.riskTolerance,
-                            autonomyLevel: agent.autonomyLevel,
-                            alignment: agent.alignment,
-                            specialization: agent.specialization,
-                          }}
-                          size={64}
-                        />
-                      </div>
-                      
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg mb-1">{agent.name}</h3>
-                        <div className="flex items-center gap-3 text-sm text-muted">
-                          <span className="badge badge-sm">{agent.framework}</span>
-                          <span className="flex items-center gap-1">
-                            {originDisplay.icon} {originDisplay.label}
-                          </span>
-                          {agent.soulbound && <span>🔒</span>}
-                        </div>
-                        <div className="mt-2 text-sm">
-                          <span className="text-muted">Points: </span>
-                          <span className="font-medium">{agent.points.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Score */}
-                      <div className="flex-shrink-0">
-                        <CredBadge score={agent.credScore} size="md" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-          
-          {!isLoading && sortedAgents.length === 0 && (
-            <div className="card text-center py-16">
-              <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
+                <div><div className="skeleton-box w-16 h-5"></div></div>
+                <div className="text-right"><div className="skeleton-box w-10 h-6 ml-auto"></div></div>
+                <div className="text-right"><div className="skeleton-box w-16 h-5 ml-auto"></div></div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-400 mb-2">No Agents Found</h3>
-              <p className="text-gray-500 mb-6">
-                No agents have been minted yet. Be the first to join the leaderboard!
-              </p>
-              <Link to="/mint" className="btn btn-primary">
-                Mint First Agent
-              </Link>
+            ))}
+          </div>
+        ) : sortedAgents.length > 0 ? (
+          <div className="lb-board">
+            <div className="lb-board-header">
+              <span>Rank</span>
+              <span>Agent</span>
+              <span>Framework</span>
+              <span>{sortBy === 'credScore' ? 'Cred' : 'Points'}</span>
+              <span>Rarity</span>
             </div>
-          )}
-          
-          {!isLoading && sortedAgents.length > 0 && sortedAgents.length >= 100 && (
-            <div className="text-center mt-8 text-muted">
-              Showing top 100 agents
-            </div>
-          )}
-        </div>
+            {sortedAgents.map((agent, index) => (
+              <LeaderboardRow
+                key={agent.tokenId}
+                agent={agent}
+                rank={index + 1}
+                sortBy={sortBy}
+                auraData={auraDataMap.get(agent.tokenId)!}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="lb-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+              <path d="M12 8v4l3 3" />
+              <circle cx="12" cy="12" r="10" />
+            </svg>
+            <h3>No Agents Found</h3>
+            <p>No agents have been minted yet.</p>
+            <Link to="/mint" className="btn btn-primary">Mint First Aura</Link>
+          </div>
+        )}
+
+        {!isLoading && sortedAgents.length >= 100 && (
+          <div className="lb-footer-note">Showing top 100 agents</div>
+        )}
       </div>
     </div>
   );

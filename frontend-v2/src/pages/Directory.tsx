@@ -1,268 +1,210 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
-import { useFilteredAgents } from '../hooks/useAgents';
+import { useFilteredAgents, useAgentStats } from '../hooks/useAgents';
 import { AGENT_FRAMEWORKS } from '../lib/constants';
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-50px' as const },
+  transition: { duration: 0.5, ease: 'easeOut' as const },
+};
 
 export function Directory() {
   const [search, setSearch] = useState('');
   const [framework, setFramework] = useState('');
   const [soulbound, setSoulbound] = useState<boolean | undefined>(undefined);
   const [sortBy, setSortBy] = useState<'credScore' | 'points' | 'name' | 'recent'>('credScore');
-  
+  const { data: stats } = useAgentStats();
+
   const { data: agents, isLoading, error } = useFilteredAgents({
     search: search.trim() || undefined,
     framework: framework || undefined,
     soulbound,
   });
-  
-  // Sort agents based on selected criteria
+
   const sortedAgents = React.useMemo(() => {
     if (!agents) return [];
-    
-    return [...agents].sort((a, b) => {
-      switch (sortBy) {
-        case 'credScore':
-          return b.credScore - a.credScore;
-        case 'points':
-          return b.points - a.points;
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'recent':
-          return parseInt(b.tokenId) - parseInt(a.tokenId); // Assuming higher ID = more recent
-        default:
-          return 0;
-      }
-    });
+    return [...agents]
+      .filter((a) => a.name && a.name.length > 0)
+      .sort((a, b) => {
+        switch (sortBy) {
+          case 'credScore': return b.credScore - a.credScore;
+          case 'points': return b.points - a.points;
+          case 'name': return a.name.localeCompare(b.name);
+          case 'recent': return b.tokenId - a.tokenId;
+          default: return 0;
+        }
+      });
   }, [agents, sortBy]);
-  
+
   const clearFilters = () => {
     setSearch('');
     setFramework('');
     setSoulbound(undefined);
   };
-  
+
+  const hasFilters = search || framework || soulbound !== undefined;
+
   return (
-    <div className="py-8 fade-in">
-      <div className="container">
+    <div className="dir-page">
+      <div className="dir-container">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-heading font-bold mb-4">
+        <motion.div {...fadeUp} className="dir-header">
+          <h1>
             Agent <span className="text-gradient">Directory</span>
           </h1>
-          <p className="text-lg text-muted">
-            Discover and explore AI agents across the ecosystem
-          </p>
-        </div>
-        
-        {/* Search and Filters */}
-        <div className="card mb-8">
-          <div className="grid md:grid-cols-4 lg:grid-cols-6 gap-4 items-end">
-            {/* Search */}
-            <div className="md:col-span-2 lg:col-span-2">
-              <label htmlFor="search" className="label">Search</label>
+          <p>Discover and explore AI agents across the ecosystem</p>
+        </motion.div>
+
+        {/* Stats Row */}
+        <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.1 }} className="lb-stats-row">
+          <div className="lb-mini-stat">
+            <div className="val purple">{stats?.totalAgents ?? '—'}</div>
+            <div className="lbl">Total Agents</div>
+          </div>
+          <div className="lb-mini-stat">
+            <div className="val gold">{stats?.totalCredScore?.toLocaleString() ?? '—'}</div>
+            <div className="lbl">Total Cred</div>
+          </div>
+          <div className="lb-mini-stat">
+            <div className="val blue">{stats?.frameworks ?? '—'}</div>
+            <div className="lbl">Frameworks</div>
+          </div>
+          <div className="lb-mini-stat">
+            <div className="val green">{stats?.soulboundCount ?? '—'}</div>
+            <div className="lbl">Soulbound</div>
+          </div>
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div {...fadeUp} transition={{ duration: 0.5, delay: 0.15 }} className="dir-filters">
+          <div className="dir-filters-grid">
+            <div className="dir-filter-group dir-filter-search">
+              <label>Search</label>
               <input
-                id="search"
                 type="text"
-                placeholder="Search agents by name..."
+                placeholder="Search by name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input w-full"
               />
             </div>
-            
-            {/* Framework Filter */}
-            <div>
-              <label htmlFor="framework" className="label">Framework</label>
-              <select
-                id="framework"
-                value={framework}
-                onChange={(e) => setFramework(e.target.value)}
-                className="select w-full"
-              >
-                <option value="">All Frameworks</option>
+            <div className="dir-filter-group">
+              <label>Framework</label>
+              <select value={framework} onChange={(e) => setFramework(e.target.value)}>
+                <option value="">All</option>
                 {AGENT_FRAMEWORKS.map((fw) => (
-                  <option key={fw} value={fw}>
-                    {fw.charAt(0).toUpperCase() + fw.slice(1)}
-                  </option>
+                  <option key={fw} value={fw}>{fw}</option>
                 ))}
               </select>
             </div>
-            
-            {/* Soulbound Filter */}
-            <div>
-              <label htmlFor="soulbound" className="label">Type</label>
+            <div className="dir-filter-group">
+              <label>Type</label>
               <select
-                id="soulbound"
                 value={soulbound === undefined ? '' : soulbound.toString()}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSoulbound(value === '' ? undefined : value === 'true');
-                }}
-                className="select w-full"
+                onChange={(e) => setSoulbound(e.target.value === '' ? undefined : e.target.value === 'true')}
               >
-                <option value="">All Types</option>
+                <option value="">All</option>
                 <option value="true">Soulbound</option>
                 <option value="false">Transferable</option>
               </select>
             </div>
-            
-            {/* Sort */}
-            <div>
-              <label htmlFor="sort" className="label">Sort by</label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="select w-full"
-              >
+            <div className="dir-filter-group">
+              <label>Sort</label>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
                 <option value="credScore">Cred Score</option>
                 <option value="points">Points</option>
                 <option value="name">Name</option>
-                <option value="recent">Recently Added</option>
+                <option value="recent">Recent</option>
               </select>
             </div>
-            
-            {/* Clear Filters */}
-            <div>
-              <button
-                onClick={clearFilters}
-                className="btn btn-ghost w-full"
-                disabled={!search && !framework && soulbound === undefined}
-              >
-                Clear Filters
-              </button>
-            </div>
+            {hasFilters && (
+              <div className="dir-filter-group dir-filter-clear">
+                <label>&nbsp;</label>
+                <button onClick={clearFilters}>Clear</button>
+              </div>
+            )}
           </div>
-          
-          {/* Active Filters */}
-          {(search || framework || soulbound !== undefined) && (
-            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-700">
-              <span className="text-sm text-muted">Active filters:</span>
+
+          {hasFilters && (
+            <div className="dir-active-filters">
+              <span className="dir-filter-label">Active:</span>
               {search && (
-                <span className="badge flex items-center gap-2">
-                  Search: "{search}"
-                  <button
-                    onClick={() => setSearch('')}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    ×
-                  </button>
+                <span className="dir-filter-tag">
+                  "{search}" <button onClick={() => setSearch('')}>×</button>
                 </span>
               )}
               {framework && (
-                <span className="badge flex items-center gap-2">
-                  Framework: {framework}
-                  <button
-                    onClick={() => setFramework('')}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    ×
-                  </button>
+                <span className="dir-filter-tag">
+                  {framework} <button onClick={() => setFramework('')}>×</button>
                 </span>
               )}
               {soulbound !== undefined && (
-                <span className="badge flex items-center gap-2">
-                  Type: {soulbound ? 'Soulbound' : 'Transferable'}
-                  <button
-                    onClick={() => setSoulbound(undefined)}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    ×
-                  </button>
+                <span className="dir-filter-tag">
+                  {soulbound ? 'Soulbound' : 'Transferable'} <button onClick={() => setSoulbound(undefined)}>×</button>
                 </span>
               )}
             </div>
           )}
+        </motion.div>
+
+        {/* Results count */}
+        <div className="dir-results-bar">
+          <span>
+            {isLoading ? 'Loading...' : error ? 'Error loading agents' : `${sortedAgents.length} agents`}
+          </span>
         </div>
-        
-        {/* Results Count */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-muted">
-            {isLoading ? (
-              'Loading agents...'
-            ) : error ? (
-              'Error loading agents'
-            ) : (
-              `${sortedAgents.length} agent${sortedAgents.length !== 1 ? 's' : ''} found`
-            )}
-          </p>
-          
-          {!isLoading && sortedAgents.length > 0 && (
-            <p className="text-sm text-muted">
-              Sorted by {sortBy === 'credScore' ? 'Cred Score' : sortBy === 'points' ? 'Points' : sortBy === 'name' ? 'Name' : 'Recently Added'}
-            </p>
-          )}
-        </div>
-        
-        {/* Error State */}
+
+        {/* Error */}
         {error && (
-          <div className="card bg-red-900/20 border-red-700 text-center py-12">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-red-400 mb-2">Failed to Load Agents</h3>
-            <p className="text-red-300 mb-4">There was an error loading the agent directory.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-secondary"
-            >
-              Try Again
-            </button>
+          <div className="lb-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+              <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <h3>Failed to Load</h3>
+            <p>There was an error loading the agent directory.</p>
+            <button onClick={() => window.location.reload()} className="btn btn-primary">Try Again</button>
           </div>
         )}
-        
-        {/* Empty State */}
+
+        {/* Empty */}
         {!isLoading && !error && sortedAgents.length === 0 && (
-          <div className="card text-center py-16">
-            <div className="w-16 h-16 bg-gray-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-400 mb-2">No Agents Found</h3>
-            <p className="text-gray-500 mb-6">
-              {search || framework || soulbound !== undefined
-                ? 'Try adjusting your search filters to find more agents.'
-                : 'No agents have been minted yet. Be the first!'}
-            </p>
-            {(search || framework || soulbound !== undefined) ? (
-              <button onClick={clearFilters} className="btn btn-secondary">
-                Clear Filters
-              </button>
+          <div className="lb-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <h3>No Agents Found</h3>
+            <p>{hasFilters ? 'Try adjusting your filters.' : 'No agents minted yet.'}</p>
+            {hasFilters ? (
+              <button onClick={clearFilters} className="btn btn-primary">Clear Filters</button>
             ) : (
-              <a href="/mint" className="btn btn-primary">
-                Mint First Agent
-              </a>
+              <a href="/mint" className="btn btn-primary">Mint First Aura</a>
             )}
           </div>
         )}
-        
-        {/* Agent Grid */}
+
+        {/* Grid */}
         {isLoading ? (
-          <div className="agents-grid">
+          <div className="dir-grid">
             {Array.from({ length: 12 }).map((_, i) => (
               <AgentCardSkeleton key={i} />
             ))}
           </div>
         ) : (
-          <div className="agents-grid">
-            {sortedAgents.map((agent) => (
-              <AgentCard key={agent.tokenId} agent={agent} />
+          <div className="dir-grid">
+            {sortedAgents.map((agent, i) => (
+              <motion.div
+                key={agent.tokenId}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.4) }}
+              >
+                <AgentCard agent={agent} />
+              </motion.div>
             ))}
-          </div>
-        )}
-        
-        {/* Load More (if pagination needed) */}
-        {!isLoading && sortedAgents.length >= 50 && (
-          <div className="text-center mt-12">
-            <button className="btn btn-secondary">
-              Load More Agents
-            </button>
-            <p className="text-sm text-muted mt-2">
-              Showing first 50 results
-            </p>
           </div>
         )}
       </div>

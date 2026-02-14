@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -8,14 +8,16 @@ import { useAgentsByOwner } from '../hooks/useAgents';
 export function Manage() {
   const { address, isConnected } = useAccount();
   const { data: userAgents, isLoading } = useAgentsByOwner(address);
+  const [agentNameInput, setAgentNameInput] = useState('');
+  const [ensNameInput, setEnsNameInput] = useState('');
   
   if (!isConnected) {
     return (
-      <div className="py-8">
-        <div className="container">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="card py-16">
-              <div className="w-16 h-16 bg-accent-purple/20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div style={{ minHeight: 'calc(100vh - 128px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="container" style={{ width: '100%' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <div className="card py-16" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div className="w-16 h-16 bg-accent-purple/20 rounded-full flex items-center justify-center mb-6">
                 <svg className="w-8 h-8 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -37,7 +39,7 @@ export function Manage() {
   }
   
   return (
-    <div className="py-8 fade-in">
+    <div className="py-8">
       <div className="container">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -52,8 +54,7 @@ export function Manage() {
             </div>
             
             <Link to="/mint" className="btn btn-primary">
-              <span>➕</span>
-              Mint New Agent
+              Mint New Aura
             </Link>
           </div>
           
@@ -73,6 +74,49 @@ export function Manage() {
             </div>
           </div>
           
+          {/* Agent Naming */}
+          {!isLoading && userAgents && userAgents.length > 0 && (
+            <div className="card mb-8" style={{ background: 'rgba(10,10,20,0.85)' }}>
+              <h3 className="font-heading font-semibold text-lg mb-4">Agent Name</h3>
+              <p className="text-sm text-muted mb-4">No .agent name claimed</p>
+              <div style={{ display: 'flex', gap: '0', marginBottom: '12px' }}>
+                <input
+                  type="text"
+                  className="input"
+                  style={{ flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 'none' }}
+                  placeholder="e.g. myagent"
+                  value={agentNameInput}
+                  onChange={(e) => setAgentNameInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  maxLength={32}
+                />
+                <span style={{
+                  display: 'flex', alignItems: 'center', padding: '0 14px',
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderLeft: 'none', borderRadius: '0 8px 8px 0',
+                  color: 'var(--color-accent-purple)', fontFamily: "'Orbitron', sans-serif",
+                  fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap',
+                }}>.agent</span>
+              </div>
+              <button className="btn btn-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed', marginBottom: '24px' }}>
+                Claim Name — Coming Soon
+              </button>
+
+              <h3 className="font-heading font-semibold text-lg mb-4" style={{ marginTop: '8px' }}>ENS Name</h3>
+              <p className="text-sm text-muted mb-4">Link an ENS name to your agent identity</p>
+              <input
+                type="text"
+                className="input w-full"
+                placeholder="e.g. myagent.eth"
+                value={ensNameInput}
+                onChange={(e) => setEnsNameInput(e.target.value)}
+                style={{ marginBottom: '12px' }}
+              />
+              <button className="btn btn-secondary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                Link ENS — Coming Soon
+              </button>
+            </div>
+          )}
+
           {/* User's Agents */}
           {isLoading ? (
             <div>
@@ -100,13 +144,13 @@ export function Manage() {
                           className="w-8 h-8 bg-gray-800/80 rounded-full flex items-center justify-center text-xs hover:bg-gray-700/80 transition-colors"
                           title="View Profile"
                         >
-                          👁️
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </Link>
                         <button
                           className="w-8 h-8 bg-gray-800/80 rounded-full flex items-center justify-center text-xs hover:bg-gray-700/80 transition-colors"
                           title="Edit Agent"
                         >
-                          ✏️
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                       </div>
                     </div>
@@ -126,7 +170,6 @@ export function Manage() {
                 You don't own any agents yet. Mint your first agent to get started!
               </p>
               <Link to="/mint" className="btn btn-primary">
-                <span>🚀</span>
                 Mint Your First Agent
               </Link>
             </div>
@@ -138,7 +181,7 @@ export function Manage() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="glass-card p-6">
                 <div className="w-12 h-12 bg-accent-purple/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">✏️</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </div>
                 <h3 className="font-semibold mb-2">Update Traits</h3>
                 <p className="text-sm text-muted">
@@ -148,7 +191,7 @@ export function Manage() {
               
               <div className="glass-card p-6">
                 <div className="w-12 h-12 bg-accent-cyan/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">📖</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
                 </div>
                 <h3 className="font-semibold mb-2">Edit Story</h3>
                 <p className="text-sm text-muted">
@@ -158,7 +201,7 @@ export function Manage() {
               
               <div className="glass-card p-6">
                 <div className="w-12 h-12 bg-accent-orange/20 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-2xl">📊</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
                 </div>
                 <h3 className="font-semibold mb-2">Track Evolution</h3>
                 <p className="text-sm text-muted">

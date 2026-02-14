@@ -110,7 +110,6 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           {/* Identity */}
           <div className="card">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <span>🆔</span>
               Identity
             </h4>
             <div className="space-y-2 text-sm">
@@ -131,7 +130,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               <div className="flex justify-between">
                 <span className="text-muted">Type:</span>
                 <span className={`badge badge-sm ${data.soulbound ? 'bg-purple-900/30 text-purple-300' : 'bg-green-900/30 text-green-300'}`}>
-                  {data.soulbound ? '🔒 Soulbound' : '🔄 Transferable'}
+                  {data.soulbound ? 'Soulbound' : 'Transferable'}
                 </span>
               </div>
             </div>
@@ -140,7 +139,6 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           {/* Personality */}
           <div className="card">
             <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <span>🧠</span>
               Personality
             </h4>
             <div className="space-y-3">
@@ -199,7 +197,6 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           {(data.origin || data.mission || data.lore || data.manifesto) && (
             <div className="card">
               <h4 className="font-semibold mb-3 flex items-center gap-2">
-                <span>📖</span>
                 Story
               </h4>
               <div className="space-y-3 text-sm">
@@ -310,7 +307,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
             </>
           ) : (
             <>
-              🚀 Mint Agent
+              Mint Aura
             </>
           )}
         </button>

@@ -71,7 +71,7 @@ export function AgentProfile() {
     );
   }
   
-  const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '❓', label: 'Unknown' };
+  const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '', label: 'Unknown' };
   
   // Mock breakdown for Cred Score
   const credBreakdown = {
@@ -82,7 +82,7 @@ export function AgentProfile() {
   };
   
   return (
-    <div className="py-8 fade-in">
+    <div className="py-8">
       <div className="container">
         <div className="max-w-6xl mx-auto">
           {/* Back Button */}
@@ -154,7 +154,6 @@ export function AgentProfile() {
               {/* Identity & Origin */}
               <div className="card">
                 <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span>🆔</span>
                   Identity & Origin
                 </h2>
                 
@@ -173,7 +172,7 @@ export function AgentProfile() {
                   <div>
                     <span className="text-muted block text-sm">Type</span>
                     <span className={`badge mt-1 ${agent.soulbound ? 'bg-purple-900/30 text-purple-300' : 'bg-green-900/30 text-green-300'}`}>
-                      {agent.soulbound ? '🔒 Soulbound' : '🔄 Transferable'}
+                      {agent.soulbound ? 'Soulbound' : 'Transferable'}
                     </span>
                   </div>
                   <div>
@@ -195,7 +194,6 @@ export function AgentProfile() {
               {/* Personality */}
               <div className="card">
                 <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span>🧠</span>
                   Personality Profile
                 </h2>
                 
@@ -222,7 +220,7 @@ export function AgentProfile() {
                         <div className="flex-1 h-2 bg-gray-700 rounded-full">
                           <div 
                             className="h-full bg-gradient-primary rounded-full"
-                            style={{ width: `${(agent.riskTolerance / 10) * 100}%` }}
+                            style={{ width: `${(agent.riskTolerance / 10) * 100}%`, background: 'linear-gradient(135deg, #b490ff, #6eecd8, #f5a0d0)' }}
                           ></div>
                         </div>
                         <span className="text-sm font-medium">{agent.riskTolerance}/10</span>
@@ -235,7 +233,7 @@ export function AgentProfile() {
                         <div className="flex-1 h-2 bg-gray-700 rounded-full">
                           <div 
                             className="h-full bg-gradient-primary rounded-full"
-                            style={{ width: `${(agent.autonomyLevel / 10) * 100}%` }}
+                            style={{ width: `${(agent.autonomyLevel / 10) * 100}%`, background: 'linear-gradient(135deg, #b490ff, #6eecd8, #f5a0d0)' }}
                           ></div>
                         </div>
                         <span className="text-sm font-medium">{agent.autonomyLevel}/10</span>
@@ -281,7 +279,6 @@ export function AgentProfile() {
               {(agent.origin || agent.mission || agent.lore || agent.manifesto) && (
                 <div className="card">
                   <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <span>📖</span>
                     Agent Story
                   </h2>
                   
@@ -320,7 +317,6 @@ export function AgentProfile() {
               {/* Evolution History */}
               <div className="card">
                 <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span>📈</span>
                   Evolution History
                 </h2>
                 

@@ -29,7 +29,7 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, className = '' }: AgentCardProps) {
-  const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '❓', label: 'Unknown' };
+  const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '', label: 'Unknown' };
   
   return (
     <Link
@@ -66,7 +66,7 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
             <span className="badge badge-sm">{agent.framework}</span>
             {agent.soulbound && (
               <span className="badge badge-sm" style={{ background: 'rgba(179, 136, 255, 0.3)' }}>
-                🔒 Soulbound
+                Soulbound
               </span>
             )}
           </div>
@@ -76,7 +76,7 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
       </div>
       
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 text-sm" style={{ marginTop: '0.75rem' }}>
         <div className="flex items-center gap-2">
           <span className="text-muted">Origin:</span>
           <span className="flex items-center gap-1">
