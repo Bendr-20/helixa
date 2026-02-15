@@ -227,9 +227,10 @@ function requirePayment(amountUSDC) {
 
 // Phase 1 pricing — all $0
 const PRICING = {
-    agentMint: 0,    // Free in Phase 1
+    agentMint: 1,    // $1 USDC platform fee (covers gas + infra)
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
+    // Phase 2 (1000+ agents): agentMint → $10, update → $1
 };
 
 // ═══════════════════════════════════════════════════════════════

@@ -181,7 +181,7 @@ The frontend calls the contract directly. No API involvement.
 
 | Action | Phase 1 (0-1000) | Phase 2 (1000+) |
 |--------|-----------------|-----------------|
-| Agent Mint | FREE | $10 USDC |
+| Agent Mint | $1 USDC (platform fee) | $10 USDC |
 | Human Mint | $10 ETH (contract) | $10 ETH (contract) |
 | Update Traits | FREE | $1 USDC |
 | Mutate | FREE | $1 USDC |
