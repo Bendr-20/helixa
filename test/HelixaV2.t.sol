@@ -311,10 +311,11 @@ contract HelixaV2Test is Test {
         vm.warp(block.timestamp + 30 days);
         
         (uint8 activity, uint8 traitDepth, uint8 verification, uint8 soulboundScore,
-         uint8 age, uint8 narrative, uint8 originScore) = helixa.getCredBreakdown(0);
+         uint8 age, uint8 narrative, uint8 originScore, uint8 coinbaseScore) = helixa.getCredBreakdown(0);
         
         assertEq(verification, 15); // weightVerification
-        assertEq(soulboundScore, 10); // weightSoulbound
+        assertEq(soulboundScore, 5); // weightSoulbound
+        assertEq(coinbaseScore, 0); // not coinbase verified
         assertGt(age, 0);
     }
 
@@ -472,13 +473,13 @@ contract HelixaV2Test is Test {
     }
 
     function test_setCredWeights() public {
-        helixa.setCredWeights(30, 20, 10, 10, 10, 10, 10);
-        assertEq(helixa.weightActivity(), 30);
+        helixa.setCredWeights(25, 15, 10, 10, 10, 10, 10, 10);
+        assertEq(helixa.weightActivity(), 25);
     }
 
     function test_setCredWeights_must_sum_100() public {
         vm.expectRevert("must sum 100");
-        helixa.setCredWeights(30, 20, 10, 10, 10, 10, 5); // sums to 95
+        helixa.setCredWeights(30, 20, 10, 10, 10, 10, 5, 0); // sums to 95
     }
 
     // ─── MintOrigin Badge ───────────────────────────────────────

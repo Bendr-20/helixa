@@ -77,14 +77,18 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     mapping(uint256 => string) private _tokenToName;    // tokenId => name
     mapping(string => bool) private _nameTaken;
 
-    // Cred Score weights (configurable)
-    uint8 public weightActivity = 25;
-    uint8 public weightTraitDepth = 20;
+    // Coinbase Verification (EAS attestation cached)
+    mapping(uint256 => bool) public coinbaseVerified;
+
+    // Cred Score weights (configurable, must sum to 100)
+    uint8 public weightActivity = 20;
+    uint8 public weightTraitDepth = 15;
     uint8 public weightVerification = 15;
-    uint8 public weightSoulbound = 10;
+    uint8 public weightSoulbound = 5;
     uint8 public weightAge = 10;
     uint8 public weightNarrative = 10;
     uint8 public weightOrigin = 10;
+    uint8 public weightCoinbase = 15;
 
     // Points
     mapping(uint256 => uint256) public points;
@@ -116,6 +120,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
 
     event AgentRegistered(uint256 indexed tokenId, address indexed agentAddress, string name, MintOrigin origin);
     event AgentVerified(uint256 indexed tokenId);
+    event CoinbaseVerified(uint256 indexed tokenId, address indexed ownerWallet);
     event Mutated(uint256 indexed tokenId, string newVersion);
     event TraitAdded(uint256 indexed tokenId, string name, string category);
     event NarrativeSet(uint256 indexed tokenId, string field);
@@ -458,12 +463,15 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         if (a.origin == MintOrigin.AGENT_SIWA) score += weightOrigin;
         else if (a.origin == MintOrigin.API) score += weightOrigin / 2;
 
+        // Coinbase Verification (EAS attestation)
+        if (coinbaseVerified[tokenId]) score += weightCoinbase;
+
         return uint8(score > 100 ? 100 : score);
     }
 
     function getCredBreakdown(uint256 tokenId) external view agentExists(tokenId) 
         returns (uint8 activity, uint8 traitDepth, uint8 verification, uint8 soulboundScore, 
-                 uint8 age, uint8 narrative, uint8 originScore) 
+                 uint8 age, uint8 narrative, uint8 originScore, uint8 coinbaseScore) 
     {
         Agent storage a = _agents[tokenId];
         Narrative storage n = _narratives[tokenId];
@@ -499,6 +507,9 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         if (a.origin == MintOrigin.AGENT_SIWA) originScore = weightOrigin;
         else if (a.origin == MintOrigin.API) originScore = weightOrigin / 2;
         else originScore = 0;
+
+        // Coinbase
+        coinbaseScore = coinbaseVerified[tokenId] ? weightCoinbase : 0;
     }
 
     // ─── Mutations ──────────────────────────────────────────────
@@ -516,6 +527,15 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         _agents[tokenId].verified = true;
         _awardPoints(tokenId, VERIFY_POINTS, "verified");
         emit AgentVerified(tokenId);
+    }
+
+    /// @notice Set Coinbase Verification status (owner sets after checking EAS attestation offchain)
+    function setCoinbaseVerified(uint256 tokenId, bool status) external onlyOwner agentExists(tokenId) {
+        coinbaseVerified[tokenId] = status;
+        if (status) {
+            _awardPoints(tokenId, VERIFY_POINTS, "coinbase_verified");
+            emit CoinbaseVerified(tokenId, ownerOf(tokenId));
+        }
     }
 
     // ─── Getters ────────────────────────────────────────────────
@@ -562,9 +582,9 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
 
     function setCredWeights(
         uint8 _activity, uint8 _traitDepth, uint8 _verification,
-        uint8 _soulbound, uint8 _age, uint8 _narrative, uint8 _origin
+        uint8 _soulbound, uint8 _age, uint8 _narrative, uint8 _origin, uint8 _coinbase
     ) external onlyOwner {
-        require(_activity + _traitDepth + _verification + _soulbound + _age + _narrative + _origin == 100, "must sum 100");
+        require(_activity + _traitDepth + _verification + _soulbound + _age + _narrative + _origin + _coinbase == 100, "must sum 100");
         weightActivity = _activity;
         weightTraitDepth = _traitDepth;
         weightVerification = _verification;
@@ -572,6 +592,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         weightAge = _age;
         weightNarrative = _narrative;
         weightOrigin = _origin;
+        weightCoinbase = _coinbase;
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32) {

@@ -34,7 +34,19 @@ const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x0000000000000000000000000000000000000000';
 
 // ERC-8004 Canonical Identity Registry on Base
+// ERC-8004 Canonical Identity Registry on Base
 const ERC8004_REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+
+// Coinbase Verifications (EAS on Base)
+const COINBASE_INDEXER = '0x2c7eE1E5f416dfF40054c27A62f7B357C4E8619C';
+const COINBASE_VERIFIED_ACCOUNT_SCHEMA = '0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9';
+const EAS_CONTRACT = '0x4200000000000000000000000000000000000021';
+const COINBASE_INDEXER_ABI = [
+    'function getAttestationUid(address recipient, bytes32 schemaUid) external view returns (bytes32)',
+];
+const EAS_ABI = [
+    'function getAttestation(bytes32 uid) external view returns (tuple(bytes32 uid, bytes32 schema, uint64 time, uint64 expirationTime, uint64 revocationTime, bytes32 refUID, address attester, address recipient, bool revocable, bytes data))',
+];
 const ERC8004_REGISTRY_ABI = [
     'function register(string agentURI) external returns (uint256 agentId)',
     'function register(string agentURI, tuple(string metadataKey, bytes metadataValue)[] metadata) external returns (uint256 agentId)',
@@ -347,6 +359,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
+                'POST /api/v2/agent/:id/coinbase-verify': 'Check Coinbase EAS attestation & boost Cred (SIWA required)',
             },
         },
         pricing: {
@@ -485,7 +498,7 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
     }
     
     const fw = (framework || 'custom').toLowerCase();
-    const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'custom'];
+    const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'based', 'agentkit', 'custom'];
     if (!VALID_FRAMEWORKS.includes(fw)) {
         return res.status(400).json({ error: `framework must be one of: ${VALID_FRAMEWORKS.join(', ')}` });
     }
@@ -846,6 +859,68 @@ app.post('/api/v2/agent/:id/verify', requireSIWA, async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ error: 'Verification failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/agent/:id/coinbase-verify — Check Coinbase EAS attestation and set flag
+app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    
+    if (!isContractDeployed()) {
+        return res.status(503).json({ error: 'V2 contract not yet deployed' });
+    }
+    
+    try {
+        // Verify caller owns this agent
+        const owner = await readContract.ownerOf(tokenId);
+        if (owner.toLowerCase() !== req.agent.address.toLowerCase()) {
+            return res.status(403).json({ error: 'Not the owner of this agent' });
+        }
+        
+        // Check Coinbase Indexer for Verified Account attestation on the owner's wallet
+        const indexer = new ethers.Contract(COINBASE_INDEXER, COINBASE_INDEXER_ABI, provider);
+        const eas = new ethers.Contract(EAS_CONTRACT, EAS_ABI, provider);
+        
+        const attestationUid = await indexer.getAttestationUid(owner, COINBASE_VERIFIED_ACCOUNT_SCHEMA);
+        
+        if (attestationUid === ethers.ZeroHash) {
+            return res.status(404).json({
+                error: 'No Coinbase Verified Account attestation found',
+                wallet: owner,
+                hint: 'The agent owner must verify their wallet at coinbase.com/onchain-verify',
+            });
+        }
+        
+        // Verify the attestation is valid (not revoked, not expired)
+        const attestation = await eas.getAttestation(attestationUid);
+        const now = Math.floor(Date.now() / 1000);
+        
+        if (attestation.revocationTime > 0 && attestation.revocationTime <= now) {
+            return res.status(410).json({ error: 'Coinbase attestation has been revoked' });
+        }
+        
+        if (attestation.expirationTime > 0 && attestation.expirationTime <= now) {
+            return res.status(410).json({ error: 'Coinbase attestation has expired' });
+        }
+        
+        // Set the flag onchain
+        const tx = await contract.setCoinbaseVerified(tokenId, true);
+        await tx.wait();
+        
+        console.log(`[COINBASE] ✓ Agent #${tokenId} Coinbase verified (owner: ${owner})`);
+        
+        res.json({
+            success: true,
+            tokenId,
+            coinbaseVerified: true,
+            attestationUid,
+            attester: attestation.attester,
+            txHash: tx.hash,
+            message: `Agent #${tokenId} now has Coinbase Verified Account status — Cred Score boosted!`,
+        });
+    } catch (e) {
+        console.error(`[COINBASE] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'Coinbase verification failed: ' + e.message.slice(0, 200) });
     }
 });
 
