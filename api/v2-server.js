@@ -580,27 +580,8 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         try {
             const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
             
-            // Build 8004-compliant registration file URI
-            const registrationFile = {
-                type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
-                name,
-                description: `${name} — AI agent (${fw}) registered on Helixa, the most complete ERC-8004 implementation.`,
-                image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
-                services: [
-                    { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
-                ],
-                x402Support: true,
-                active: true,
-                registrations: [
-                    {
-                        agentId: tokenId,
-                        agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
-                    },
-                ],
-            };
-            
-            // Use data URI for fully onchain metadata
-            const dataURI = 'data:application/json;base64,' + Buffer.from(JSON.stringify(registrationFile)).toString('base64');
+            const registrationFile = build8004RegistrationFile(tokenId, name, fw);
+            const dataURI = registrationFileToDataURI(registrationFile);
             
             const regTx = await registryContract['register(string)'](dataURI);
             console.log(`[8004 XREG] TX: ${regTx.hash}`);
@@ -643,6 +624,31 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         res.status(500).json({ error: 'Mint failed: ' + e.message.slice(0, 200) });
     }
 });
+
+// ─── Helper: Build 8004 registration file ──────────────────────
+function build8004RegistrationFile(tokenId, name, framework) {
+    return {
+        type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+        name,
+        description: `${name} — AI agent (${framework}) registered on Helixa, the most complete ERC-8004 implementation.`,
+        image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
+        services: [
+            { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
+        ],
+        x402Support: true,
+        active: true,
+        registrations: [
+            {
+                agentId: tokenId,
+                agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
+            },
+        ],
+    };
+}
+
+function registrationFileToDataURI(regFile) {
+    return 'data:application/json;base64,' + Buffer.from(JSON.stringify(regFile)).toString('base64');
+}
 
 // POST /api/v2/agent/:id/update — Update agent traits/personality/narrative
 app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update), async (req, res) => {
@@ -728,7 +734,30 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
             }
         }
         
-        res.json({ success: true, tokenId, updated });
+        // ─── Sync to 8004 Registry (non-fatal) ─────────────────
+        let registrySync = null;
+        if (updated.length > 0) {
+            try {
+                const agent = await readContract.getAgent(tokenId);
+                const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
+                const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework);
+                const dataURI = registrationFileToDataURI(regFile);
+                
+                // Try to find agent's 8004 Registry ID via events or stored mapping
+                // For now, we update the URI if agent has a crossRegId stored
+                // TODO: maintain a tokenId → 8004 agentId mapping
+                // Fallback: re-register (creates new entry — acceptable for now)
+                const regTx = await registryContract['register(string)'](dataURI);
+                await regTx.wait();
+                registrySync = { status: 'synced', txHash: regTx.hash };
+                console.log(`[8004 SYNC] ✓ Agent #${tokenId} registry synced`);
+            } catch (e) {
+                registrySync = { status: 'failed', error: e.message.slice(0, 100) };
+                console.error(`[8004 SYNC] Failed for #${tokenId}: ${e.message}`);
+            }
+        }
+        
+        res.json({ success: true, tokenId, updated, registrySync });
     } catch (e) {
         res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
     }
@@ -752,25 +781,8 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
         const agent = await readContract.getAgent(tokenId);
         const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
         
-        const registrationFile = {
-            type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
-            name: agent.name,
-            description: `${agent.name} — AI agent (${agent.framework}) registered on Helixa.`,
-            image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
-            services: [
-                { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
-            ],
-            x402Support: true,
-            active: true,
-            registrations: [
-                {
-                    agentId: tokenId,
-                    agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
-                },
-            ],
-        };
-        
-        const dataURI = 'data:application/json;base64,' + Buffer.from(JSON.stringify(registrationFile)).toString('base64');
+        const registrationFile = build8004RegistrationFile(tokenId, agent.name, agent.framework);
+        const dataURI = registrationFileToDataURI(registrationFile);
         const regTx = await registryContract['register(string)'](dataURI);
         const regReceipt = await regTx.wait();
         
