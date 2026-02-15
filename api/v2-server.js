@@ -33,6 +33,16 @@ const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 // TODO: Replace with actual deployed V2 contract address
 const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x0000000000000000000000000000000000000000';
 
+// ERC-8004 Canonical Identity Registry on Base
+const ERC8004_REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
+const ERC8004_REGISTRY_ABI = [
+    'function register(string agentURI) external returns (uint256 agentId)',
+    'function register(string agentURI, tuple(string metadataKey, bytes metadataValue)[] metadata) external returns (uint256 agentId)',
+    'function setAgentURI(uint256 agentId, string newURI) external',
+    'function getMetadata(uint256 agentId, string metadataKey) external view returns (bytes)',
+    'function setMetadata(uint256 agentId, string metadataKey, bytes metadataValue) external',
+];
+
 if (!DEPLOYER_KEY) {
     console.error('ERROR: DEPLOYER_KEY not set in .env');
     process.exit(1);
@@ -336,6 +346,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/mint': 'Mint new agent (SIWA required, free Phase 1)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
+                'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
             },
         },
         pricing: {
@@ -563,6 +574,56 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         
         console.log(`[V2 MINT] ✓ Token #${tokenId} minted for ${name}`);
         
+        // ─── Cross-register on canonical ERC-8004 Registry ────────
+        let crossRegId = null;
+        let crossRegTx = null;
+        try {
+            const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
+            
+            // Build 8004-compliant registration file URI
+            const registrationFile = {
+                type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+                name,
+                description: `${name} — AI agent (${fw}) registered on Helixa, the most complete ERC-8004 implementation.`,
+                image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
+                services: [
+                    { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
+                ],
+                x402Support: true,
+                active: true,
+                registrations: [
+                    {
+                        agentId: tokenId,
+                        agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
+                    },
+                ],
+            };
+            
+            // Use data URI for fully onchain metadata
+            const dataURI = 'data:application/json;base64,' + Buffer.from(JSON.stringify(registrationFile)).toString('base64');
+            
+            const regTx = await registryContract['register(string)'](dataURI);
+            console.log(`[8004 XREG] TX: ${regTx.hash}`);
+            const regReceipt = await regTx.wait();
+            crossRegTx = regTx.hash;
+            
+            // Extract agentId from Registered event
+            for (const log of regReceipt.logs) {
+                try {
+                    const parsed = registryContract.interface.parseLog(log);
+                    if (parsed?.name === 'Registered') {
+                        crossRegId = Number(parsed.args.agentId);
+                        break;
+                    }
+                } catch {}
+            }
+            
+            console.log(`[8004 XREG] ✓ Cross-registered as 8004 Registry ID #${crossRegId}`);
+        } catch (e) {
+            // Non-fatal — Helixa mint succeeded, cross-reg is bonus
+            console.error(`[8004 XREG] Cross-registration failed (non-fatal): ${e.message}`);
+        }
+        
         res.status(201).json({
             success: true,
             tokenId,
@@ -570,6 +631,12 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
             mintOrigin: 'AGENT_SIWA',
             explorer: `https://basescan.org/tx/${tx.hash}`,
             message: `${name} is now onchain! Helixa V2 Agent #${tokenId}`,
+            crossRegistration: crossRegId !== null ? {
+                registry: ERC8004_REGISTRY,
+                agentId: crossRegId,
+                txHash: crossRegTx,
+                explorer: `https://basescan.org/tx/${crossRegTx}`,
+            } : null,
         });
     } catch (e) {
         console.error('[V2 MINT] Error:', e.message);
@@ -667,6 +734,74 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
     }
 });
 
+// POST /api/v2/agent/:id/crossreg — Cross-register on canonical 8004 Registry
+app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    
+    if (!isContractDeployed()) {
+        return res.status(503).json({ error: 'V2 contract not yet deployed' });
+    }
+    
+    try {
+        // Verify caller owns this agent
+        const owner = await readContract.ownerOf(tokenId);
+        if (owner.toLowerCase() !== req.agent.address.toLowerCase()) {
+            return res.status(403).json({ error: 'Not the owner of this agent' });
+        }
+        
+        const agent = await readContract.getAgent(tokenId);
+        const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
+        
+        const registrationFile = {
+            type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+            name: agent.name,
+            description: `${agent.name} — AI agent (${agent.framework}) registered on Helixa.`,
+            image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
+            services: [
+                { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
+            ],
+            x402Support: true,
+            active: true,
+            registrations: [
+                {
+                    agentId: tokenId,
+                    agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
+                },
+            ],
+        };
+        
+        const dataURI = 'data:application/json;base64,' + Buffer.from(JSON.stringify(registrationFile)).toString('base64');
+        const regTx = await registryContract['register(string)'](dataURI);
+        const regReceipt = await regTx.wait();
+        
+        let crossRegId = null;
+        for (const log of regReceipt.logs) {
+            try {
+                const parsed = registryContract.interface.parseLog(log);
+                if (parsed?.name === 'Registered') {
+                    crossRegId = Number(parsed.args.agentId);
+                    break;
+                }
+            } catch {}
+        }
+        
+        console.log(`[8004 XREG] ✓ Agent #${tokenId} cross-registered as 8004 ID #${crossRegId}`);
+        
+        res.json({
+            success: true,
+            tokenId,
+            crossRegistration: {
+                registry: ERC8004_REGISTRY,
+                agentId: crossRegId,
+                txHash: regTx.hash,
+                explorer: `https://basescan.org/tx/${regTx.hash}`,
+            },
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Cross-registration failed: ' + e.message.slice(0, 200) });
+    }
+});
+
 // POST /api/v2/agent/:id/verify — Verify agent identity
 app.post('/api/v2/agent/:id/verify', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
@@ -725,5 +860,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`   Auth: SIWA (Sign-In With Agent)`);
     console.log(`   Payments: x402 (Phase 1 — all free)`);
     console.log(`   RPC: ${RPC_URL}`);
+    console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
     console.log(`   Deployer: ${wallet.address}\n`);
 });
