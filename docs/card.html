@@ -852,17 +852,18 @@ async function loadAllCards() {
 function loadAllFromCache(data) {
   allAgents = data.agents.map(agent => ({
     id: agent.id,
-    address: agent.address,
+    address: agent.address || agent.owner || '0x0000',
     name: agent.name,
     framework: agent.framework,
     soulbound: agent.soulbound,
     verified: agent.verified,
-    mutationCount: agent.mutationCount,
-    traitCount: agent.traits.length,
-    points: agent.points,
+    mutationCount: agent.mutationCount || 0,
+    traitCount: (agent.traits || []).length,
+    points: agent.points || 0,
+    credScore: agent.credScore || 0,
     mintedAt: agent.mintedAt,
     personality: agent.personality,
-    traits: agent.traits,
+    traits: agent.traits || [],
   }));
 
   // Add data freshness indicator
@@ -992,20 +993,20 @@ async function loadSingleCard(agentId) {
 function loadSingleFromCache(agent, updatedAt) {
   const agentData = {
     id: agent.id,
-    address: agent.address,
+    address: agent.address || agent.owner || '0x0000000000000000000000000000000000000000',
     name: agent.name,
     framework: agent.framework,
     soulbound: agent.soulbound,
     verified: agent.verified,
-    mutationCount: agent.mutationCount,
-    traitCount: agent.traits.length,
-    points: agent.points,
+    mutationCount: agent.mutationCount || 0,
+    traitCount: (agent.traits || []).length,
+    points: agent.points || 0,
     credScore: agent.credScore || 0,
     mintedAt: agent.mintedAt,
-    currentVersion: agent.version,
-    generation: agent.generation,
+    currentVersion: agent.version || agent.currentVersion || '1.0',
+    generation: agent.generation || 0,
     personality: agent.personality,
-    traits: agent.traits,
+    traits: agent.traits || [],
   };
 
   // Add data freshness indicator
