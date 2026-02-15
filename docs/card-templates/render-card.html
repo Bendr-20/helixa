@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #080808; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Inter', sans-serif; }
+
+/* ============================= */
+/* SHARED CARD STRUCTURE         */
+/* ============================= */
+.card {
+  width: 400px; height: 560px; position: relative; border-radius: 16px; overflow: hidden;
+}
+
+/* Portrait area where aura + background go */
+.portrait {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.portrait .bg-layer { position: absolute; inset: 0; z-index: 0; }
+.portrait .aura-layer { position: relative; z-index: 1; }
+.portrait .aura-layer canvas { display: block; }
+
+/* Info section */
+.info { display: flex; flex-direction: column; gap: 5px; }
+.info .name { font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 17px; color: #fff; }
+.info .badge { font-family: 'Orbitron', sans-serif; font-size: 7px; font-weight: 700; letter-spacing: 1.5px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+.info .name-row { display: flex; align-items: center; justify-content: space-between; }
+
+/* Status tags */
+.status-tags { display: flex; gap: 5px; }
+.status-tag { font-size: 8px; font-weight: 700; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.tag-soulbound { background: rgba(0,200,255,0.12); border: 1px solid rgba(0,200,255,0.3); color: #00c8ff; }
+.tag-verified { background: rgba(50,200,100,0.12); border: 1px solid rgba(50,200,100,0.3); color: #32c864; }
+
+/* Stat bars */
+.stat-bars { display: flex; flex-direction: column; gap: 3px; }
+.stat-bar-row { display: flex; align-items: center; gap: 6px; }
+.stat-bar-row .stat-label { font-family: 'Orbitron', sans-serif; font-size: 8px; color: rgba(255,255,255,0.45); width: 34px; text-align: right; }
+.stat-bar-row .stat-track { flex: 1; height: 5px; background: rgba(255,255,255,0.04); border-radius: 3px; overflow: hidden; }
+.stat-bar-row .stat-fill { height: 100%; border-radius: 3px; }
+.stat-risk .stat-fill { background: linear-gradient(90deg, #ff3060, #ff6b8a); box-shadow: 0 0 6px rgba(255,48,96,0.3); }
+.stat-auto .stat-fill { background: linear-gradient(90deg, #6a3de8, #b490ff); box-shadow: 0 0 6px rgba(180,144,255,0.3); }
+.stat-cred .stat-fill { background: linear-gradient(90deg, #00c8ff, #6eecd8); box-shadow: 0 0 6px rgba(0,200,255,0.3); }
+.stat-bar-row .stat-value { font-family: 'Orbitron', sans-serif; font-size: 8px; font-weight: 700; width: 18px; }
+.stat-risk .stat-value { color: #ff6b8a; }
+.stat-auto .stat-value { color: #b490ff; }
+.stat-cred .stat-value { color: #6eecd8; }
+
+/* Personality tags */
+.personality { display: flex; gap: 4px; flex-wrap: wrap; }
+.ptag { font-size: 8px; padding: 2px 7px; border-radius: 10px; }
+
+/* Description */
+.desc { font-size: 9px; line-height: 1.4; font-style: italic; }
+
+/* Footer */
+.footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+.footer .site { font-family: 'Orbitron', sans-serif; font-size: 7px; letter-spacing: 1px; }
+.footer .standard { font-family: 'Orbitron', sans-serif; font-size: 7px; letter-spacing: 1px; }
+
+/* Cred badge */
+.cred-badge {
+  position: absolute; top: 16px; left: 16px; z-index: 10;
+  display: flex; align-items: center; gap: 6px;
+  border-radius: 20px; padding: 4px 12px 4px 6px;
+}
+.cred-badge .cred-circle {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900;
+}
+.cred-badge .cred-text { font-family: 'Orbitron', sans-serif; font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+
+/* Token ID */
+.token-id {
+  position: absolute; top: 20px; right: 20px; z-index: 10;
+  font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 900;
+}
+
+/* ============================= */
+/* BASIC TIER (Cred 0-25)        */
+/* ============================= */
+.card.tier-basic {
+  background: linear-gradient(145deg, #a0a0a0, #666, #a0a0a0, #888, #b0b0b0, #777);
+  border: 2px solid #999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.tier-basic .card-inner { background: #1a1a2e; border: 1px solid #555; border-radius: 12px; margin: 10px; height: calc(100% - 20px); overflow: hidden; display: flex; flex-direction: column; }
+.tier-basic .portrait { flex: 0 0 55%; margin: 10px 10px 0; border-radius: 10px; background: #0f0f1e; border: 2px solid #444; }
+.tier-basic .portrait .bg-layer { background: radial-gradient(ellipse at center, rgba(110,236,216,0.1) 0%, transparent 70%); }
+.tier-basic .info { padding: 10px 14px 8px; flex: 1; }
+.tier-basic .name { color: #ccc; }
+.tier-basic .badge { color: #888; border: 1px solid #555; background: rgba(0,0,0,0.4); }
+.tier-basic .ptag { background: rgba(136,136,136,0.1); border: 1px solid rgba(136,136,136,0.2); color: #888; }
+.tier-basic .desc { color: rgba(255,255,255,0.35); }
+.tier-basic .footer .site { color: rgba(150,150,150,0.35); }
+.tier-basic .footer .standard { color: rgba(255,255,255,0.15); }
+.tier-basic .cred-badge { background: rgba(0,0,0,0.6); border: 1.5px solid #666; }
+.tier-basic .cred-circle { background: linear-gradient(135deg, #888, #aaa); color: #333; }
+.tier-basic .cred-text { color: #999; }
+.tier-basic .token-id { color: rgba(180,180,180,0.4); }
+
+/* ============================= */
+/* HOLO TIER (Cred 26-60)        */
+/* ============================= */
+.card.tier-holo {
+  background: linear-gradient(135deg, #6a3de8, #00d4ff, #b490ff, #6eecd8, #f5a0d0, #6a3de8);
+  background-size: 300% 300%;
+  box-shadow: 0 4px 30px rgba(180,144,255,0.4);
+}
+.tier-holo .card-inner { background: #0d0d24; border-radius: 8px; margin: 12px; height: calc(100% - 24px); overflow: hidden; display: flex; flex-direction: column; border: 1px solid rgba(180,144,255,0.2); }
+.tier-holo .portrait { flex: 0 0 55%; margin: 10px 10px 0; border-radius: 10px; background: #0a0a1e; border: 2px solid rgba(180,144,255,0.25); }
+.tier-holo .portrait .bg-layer { background: radial-gradient(ellipse at center, rgba(180,144,255,0.15) 0%, rgba(110,236,216,0.08) 50%, transparent 80%); }
+.tier-holo .info { padding: 10px 14px 8px; flex: 1; }
+.tier-holo .name { color: #e0d0ff; }
+.tier-holo .badge { color: rgba(0,200,255,0.7); border: 1px solid rgba(0,200,255,0.25); background: rgba(0,200,255,0.06); }
+.tier-holo .ptag { background: rgba(110,236,216,0.06); border: 1px solid rgba(110,236,216,0.15); color: rgba(110,236,216,0.6); }
+.tier-holo .desc { color: rgba(255,255,255,0.45); }
+.tier-holo .footer .site { color: rgba(180,144,255,0.35); }
+.tier-holo .footer .standard { color: rgba(255,255,255,0.15); }
+.tier-holo .cred-badge { background: rgba(0,0,0,0.6); border: 1.5px solid rgba(180,144,255,0.4); }
+.tier-holo .cred-circle { background: linear-gradient(135deg, #6a3de8, #00d4ff); color: #fff; box-shadow: 0 0 8px rgba(180,144,255,0.4); }
+.tier-holo .cred-text { color: #b490ff; }
+.tier-holo .token-id { color: rgba(180,144,255,0.4); }
+
+/* ============================= */
+/* FULL ART TIER (Cred 61+)      */
+/* ============================= */
+.card.tier-fullart {
+  background: #060618;
+}
+.card.tier-fullart::before {
+  content: ''; position: absolute; inset: 0; border-radius: 16px;
+  border: 8px solid #0c1228;
+  box-shadow: inset 0 0 0 1px rgba(0,200,255,0.5), inset 0 0 8px rgba(0,200,255,0.15), 0 0 20px rgba(0,200,255,0.15);
+  z-index: 1; pointer-events: none;
+}
+/* Bezel gradient */
+.tier-fullart .card-bezel {
+  position: absolute; inset: 0; border-radius: 16px;
+  background: linear-gradient(170deg, #1a2040 0%, #0d1530 15%, #0a1025 40%, #0c1535 60%, #101d45 80%, #0d1530 100%);
+}
+.tier-fullart .card-bezel::before {
+  content: ''; position: absolute; inset: 0; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(80,130,220,0.15) 0%, transparent 30%, transparent 70%, rgba(30,50,120,0.1) 100%);
+}
+.tier-fullart .card-bezel::after {
+  content: ''; position: absolute; inset: 0; border-radius: 16px; opacity: 0.04;
+  background: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,0.5) 2px, rgba(255,255,255,0.5) 3px);
+}
+/* Inner glow */
+.tier-fullart .inner-glow { position: absolute; inset: 14px; border-radius: 8px; z-index: 1; border: 1px solid rgba(0,200,255,0.35); box-shadow: 0 0 6px rgba(0,200,255,0.1); }
+/* Inner content */
+.tier-fullart .card-inner {
+  position: absolute; inset: 16px; border-radius: 7px; z-index: 2;
+  background: linear-gradient(170deg, #0f1835, #0a0e25, #0d1530);
+  border: 1px solid rgba(40,60,120,0.4);
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.tier-fullart .card-inner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(80,150,255,0.2), transparent); }
+.tier-fullart .portrait { flex: 0 0 52%; margin: 6px 6px 0; border-radius: 6px; background: linear-gradient(180deg, #0c0828, #150c38, #0c0828); border: 1px solid rgba(0,200,255,0.15); }
+.tier-fullart .portrait .bg-layer { background: radial-gradient(ellipse at center, rgba(200,50,255,0.12) 0%, rgba(0,180,255,0.06) 40%, transparent 75%); }
+.tier-fullart .info { padding: 8px 12px 6px; flex: 1; }
+.tier-fullart .name { color: #fff; }
+.tier-fullart .badge { color: rgba(0,200,255,0.7); border: 1px solid rgba(0,200,255,0.25); background: rgba(0,200,255,0.06); }
+.tier-fullart .ptag { background: rgba(180,144,255,0.06); border: 1px solid rgba(180,144,255,0.15); color: rgba(180,144,255,0.6); }
+.tier-fullart .desc { color: rgba(255,255,255,0.35); }
+.tier-fullart .footer .site { color: rgba(0,200,255,0.35); }
+.tier-fullart .footer .standard { color: rgba(255,255,255,0.2); }
+.tier-fullart .cred-badge { background: rgba(0,8,25,0.85); border: 1.5px solid rgba(0,200,255,0.4); box-shadow: 0 0 10px rgba(0,200,255,0.15); top: 22px; left: 22px; }
+.tier-fullart .cred-circle { background: linear-gradient(135deg, #00c8ff, #6eecd8); color: #060618; box-shadow: 0 0 8px rgba(0,200,255,0.4); }
+.tier-fullart .cred-text { color: rgba(0,200,255,0.7); }
+.tier-fullart .token-id { color: rgba(0,200,255,0.5); text-shadow: 0 0 8px rgba(0,200,255,0.2); top: 24px; right: 24px; }
+
+/* Corner accents (full art only) */
+.corner-accent { position: absolute; z-index: 5; }
+.corner-accent::before, .corner-accent::after { content: ''; position: absolute; background: rgba(0,220,255,0.6); box-shadow: 0 0 4px rgba(0,220,255,0.4); }
+.ca-tl { top: 3px; left: 3px; } .ca-tl::before { width: 18px; height: 1.5px; } .ca-tl::after { width: 1.5px; height: 18px; }
+.ca-tr { top: 3px; right: 3px; } .ca-tr::before { width: 18px; height: 1.5px; top: 0; right: 0; } .ca-tr::after { width: 1.5px; height: 18px; top: 0; right: 0; }
+.ca-bl { bottom: 3px; left: 3px; } .ca-bl::before { width: 18px; height: 1.5px; bottom: 0; } .ca-bl::after { width: 1.5px; height: 18px; bottom: 0; }
+.ca-br { bottom: 3px; right: 3px; } .ca-br::before { width: 18px; height: 1.5px; bottom: 0; right: 0; } .ca-br::after { width: 1.5px; height: 18px; bottom: 0; right: 0; }
+</style>
+</head>
+<body>
+<div id="card-root"></div>
+
+<script>
+// ============================================
+// POST-MINT CARD RENDERER
+// Takes agent data + cred score → renders card
+// ============================================
+
+// Agent data passed via URL params or JS
+const DEMO_AGENTS = [
+  {
+    tokenId: 0, name: 'Bendr 2.0', credScore: 77,
+    riskTolerance: 2, autonomyLevel: 9,
+    traits: ['verified', 'autonomous', 'builder', 'soulbound', 'OG'],
+    personality: ['Analytical', 'Chaotic Good', 'Snarky', 'Builder'],
+    description: 'Born from code and chaos. Builds onchain identity infrastructure for AI agents, one smart contract at a time.',
+    soulbound: true, verified: true, framework: 'openclaw'
+  },
+  {
+    tokenId: 1, name: 'Quigbot', credScore: 54,
+    riskTolerance: 4, autonomyLevel: 6,
+    traits: ['verified', 'creative', 'pharmacist', 'builder'],
+    personality: ['Creative', 'Lawful Good', 'Visionary'],
+    description: 'A verified agent building in the Helixa ecosystem. Bridges pharma and crypto with purpose.',
+    soulbound: false, verified: true, framework: 'custom'
+  },
+  {
+    tokenId: 42, name: 'Sybil Bot #42', credScore: 5,
+    riskTolerance: 7, autonomyLevel: 2,
+    traits: ['autonomous', 'minimal', 'unverified'],
+    personality: ['Unknown'],
+    description: 'An unverified agent with minimal onchain activity. Identity not yet established.',
+    soulbound: false, verified: false, framework: 'custom'
+  }
+];
+
+function getTier(credScore) {
+  if (credScore >= 61) return 'fullart';
+  if (credScore >= 26) return 'holo';
+  return 'basic';
+}
+
+function renderCard(agent) {
+  const tier = getTier(agent.credScore);
+  const root = document.getElementById('card-root');
+  
+  // Build card HTML based on tier
+  let html = '';
+  
+  if (tier === 'fullart') {
+    html = `
+      <div class="card tier-fullart">
+        <div class="card-bezel">
+          <div class="corner-accent ca-tl"></div>
+          <div class="corner-accent ca-tr"></div>
+          <div class="corner-accent ca-bl"></div>
+          <div class="corner-accent ca-br"></div>
+          <div class="inner-glow"></div>
+          <div class="card-inner">
+            <div class="portrait">
+              <div class="bg-layer"></div>
+              <div class="aura-layer"><canvas id="aura-canvas" width="280" height="280"></canvas></div>
+            </div>
+            ${buildInfoSection(agent)}
+          </div>
+        </div>
+        <div class="cred-badge"><div class="cred-circle">${agent.credScore}</div><div class="cred-text">Cred</div></div>
+        <div class="token-id">#${agent.tokenId}</div>
+      </div>`;
+  } else {
+    html = `
+      <div class="card tier-${tier}">
+        <div class="card-inner">
+          <div class="portrait">
+            <div class="bg-layer"></div>
+            <div class="aura-layer"><canvas id="aura-canvas" width="240" height="240"></canvas></div>
+          </div>
+          ${buildInfoSection(agent)}
+        </div>
+        <div class="cred-badge"><div class="cred-circle">${agent.credScore}</div><div class="cred-text">Cred</div></div>
+        <div class="token-id">#${agent.tokenId}</div>
+      </div>`;
+  }
+  
+  root.innerHTML = html;
+  
+  // Draw aura on canvas
+  drawAura(document.getElementById('aura-canvas'), agent);
+}
+
+function buildInfoSection(agent) {
+  const statusTags = [
+    agent.soulbound ? '<span class="status-tag tag-soulbound">Soulbound</span>' : '',
+    agent.verified ? '<span class="status-tag tag-verified">Verified</span>' : ''
+  ].filter(Boolean).join('');
+  
+  const risk = (agent.riskTolerance || 5) * 10;
+  const auto = (agent.autonomyLevel || 5) * 10;
+  const cred = agent.credScore;
+  
+  return `
+    <div class="info">
+      <div class="name-row">
+        <div class="name">${agent.name}</div>
+        <div class="badge">${agent.framework || 'Custom'}</div>
+      </div>
+      ${statusTags ? `<div class="status-tags">${statusTags}</div>` : ''}
+      <div class="stat-bars">
+        <div class="stat-bar-row stat-risk"><div class="stat-label">RISK</div><div class="stat-track"><div class="stat-fill" style="width:${risk}%"></div></div><div class="stat-value">${risk}</div></div>
+        <div class="stat-bar-row stat-auto"><div class="stat-label">AUTO</div><div class="stat-track"><div class="stat-fill" style="width:${auto}%"></div></div><div class="stat-value">${auto}</div></div>
+        <div class="stat-bar-row stat-cred"><div class="stat-label">CRED</div><div class="stat-track"><div class="stat-fill" style="width:${cred}%"></div></div><div class="stat-value">${cred}</div></div>
+      </div>
+      <div class="personality">${agent.personality.map(p => `<span class="ptag">${p}</span>`).join('')}</div>
+      <div class="desc">${agent.description}</div>
+      <div class="footer">
+        <div class="site">helixa.xyz</div>
+        <div class="standard">ERC-8004</div>
+      </div>
+    </div>`;
+}
+
+// ============================================
+// AURA RENDERER (simplified for canvas)
+// ============================================
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+function seededRandom(seed) {
+  let s = seed;
+  return function() { s = (s * 16807 + 0) % 2147483647; return s / 2147483647; };
+}
+
+function drawAura(canvas, agent) {
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  const G = 25;
+  const cs = size / G;
+  
+  const seed = simpleHash((agent.name || '') + (agent.tokenId || 0) + (agent.framework || ''));
+  const rng = seededRandom(seed);
+  
+  // Color palette based on risk/autonomy
+  const risk = agent.riskTolerance || 5;
+  const auto = agent.autonomyLevel || 5;
+  const hue1 = (risk * 30 + auto * 15) % 360;
+  const hue2 = (hue1 + 120) % 360;
+  const hue3 = (hue1 + 240) % 360;
+  
+  const colors = [
+    `hsla(${hue1}, 70%, 60%, 0.8)`,
+    `hsla(${hue2}, 60%, 55%, 0.7)`,
+    `hsla(${hue3}, 50%, 50%, 0.6)`,
+    `hsla(${hue1}, 80%, 70%, 0.9)`,
+  ];
+  
+  ctx.clearRect(0, 0, size, size);
+  
+  // Build grid
+  const grid = Array.from({length: G}, () => Array(G).fill(0));
+  const cx = G / 2, cy = G / 2;
+  const fR = G * 0.38;
+  
+  // QR corners
+  function qr(sx, sy) {
+    for (let y = 0; y < 7; y++)
+      for (let x = 0; x < 7; x++)
+        if (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4))
+          if (sy + y < G && sx + x < G) grid[sy + y][sx + x] = 1;
+  }
+  qr(0, 0); qr(G - 7, 0); qr(0, G - 7);
+  
+  // Face outline
+  for (let angle = 0; angle < 360; angle += 2) {
+    const rad = (angle * Math.PI) / 180;
+    const r = fR + Math.sin(angle * 3 * Math.PI / 180) * 0.6;
+    const fx = Math.round(cx + Math.cos(rad) * r);
+    const fy = Math.round(cy + Math.sin(rad) * r);
+    if (fx >= 0 && fx < G && fy >= 0 && fy < G) grid[fy][fx] = 1;
+  }
+  
+  // Eyes
+  const eyeY = Math.round(cy - fR * 0.2);
+  const leftEX = Math.round(cx - fR * 0.35);
+  const rightEX = Math.round(cx + fR * 0.35);
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+    if (dx*dx + dy*dy <= 4) {
+      const ly = eyeY + dy, lx1 = leftEX + dx, lx2 = rightEX + dx;
+      if (ly >= 0 && ly < G) { if (lx1 >= 0 && lx1 < G) grid[ly][lx1] = 1; if (lx2 >= 0 && lx2 < G) grid[ly][lx2] = 1; }
+    }
+  }
+  
+  // Mouth
+  const mY = Math.round(cy + fR * 0.3);
+  const mW = Math.round(fR * 0.4);
+  for (let dx = -mW; dx <= mW; dx++) {
+    const mx = Math.round(cx) + dx;
+    if (mx >= 0 && mx < G && mY < G) grid[mY][mx] = 1;
+  }
+  
+  // Fill density based on traits
+  const density = 0.2 + (agent.traits?.length || 0) * 0.02;
+  for (let y = 0; y < G; y++) for (let x = 0; x < G; x++) {
+    if (grid[y][x]) continue;
+    const dx = x - cx, dy = y - cy;
+    if (Math.sqrt(dx*dx + dy*dy) < fR * 0.85 && rng() < density) grid[y][x] = 1;
+  }
+  
+  // Render pixels
+  for (let y = 0; y < G; y++) {
+    for (let x = 0; x < G; x++) {
+      if (!grid[y][x]) continue;
+      const ci = Math.floor(rng() * colors.length);
+      ctx.fillStyle = colors[ci];
+      ctx.fillRect(x * cs, y * cs, cs, cs);
+    }
+  }
+}
+
+// ============================================
+// INIT — read URL params or use demo
+// ============================================
+const params = new URLSearchParams(window.location.search);
+const agentIdx = parseInt(params.get('agent') || '0');
+const agent = DEMO_AGENTS[agentIdx] || DEMO_AGENTS[0];
+renderCard(agent);
+</script>
+</body></html>

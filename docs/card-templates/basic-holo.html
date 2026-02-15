@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; display: flex; gap: 40px; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px; font-family: 'Inter', sans-serif; }
+
+.card {
+  width: 400px; height: 560px; position: relative; border-radius: 18px; overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* ========== BASIC CARD ========== */
+.card-basic {
+  background: linear-gradient(145deg, #a0a0a0, #666, #a0a0a0, #888, #b0b0b0, #777);
+  border: 2px solid #999;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.card-basic .card-inner {
+  border: 1px solid #555;
+  border-radius: 12px;
+  margin: 10px;
+  height: calc(100% - 20px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a2e;
+}
+
+/* ========== HOLO CARD ========== */
+.card-holo {
+  border: none;
+  background: linear-gradient(135deg, #6a3de8, #00d4ff, #b490ff, #6eecd8, #f5a0d0, #6a3de8);
+  background-size: 300% 300%;
+  animation: holoShift 4s ease infinite;
+  box-shadow: 0 4px 30px rgba(180,144,255,0.4), 0 0 15px rgba(110,236,216,0.2);
+}
+.card-holo .card-inner {
+  background: #0d0d24;
+  border-radius: 8px;
+  margin: 12px;
+  height: calc(100% - 24px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(180,144,255,0.2);
+}
+@keyframes holoShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ========== FULL ART CARD ========== */
+.card-fullart {
+  border: none;
+  background: linear-gradient(135deg, #ffd700, #ff6b35, #ff3cac, #b490ff, #00d4ff, #6eecd8, #ffd700);
+  background-size: 400% 400%;
+  animation: rainbowShift 3s ease infinite;
+  box-shadow: 0 4px 40px rgba(255,215,0,0.4), 0 0 30px rgba(180,144,255,0.2);
+}
+.card-fullart .card-inner {
+  background: #08081a;
+  border-radius: 8px;
+  margin: 14px;
+  height: calc(100% - 28px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255,215,0,0.15);
+}
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ========== PORTRAIT AREA ========== */
+.portrait {
+  position: relative; flex: 0 0 55%; margin: 10px 10px 0 10px; border-radius: 10px;
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.card-basic .portrait { background: #0f0f1e; border: 2px solid #444; }
+.card-holo .portrait { background: #0a0a1e; border: 2px solid rgba(180,144,255,0.25); }
+.card-fullart .portrait { 
+  flex: 0 0 58%; margin: 6px 6px 0 6px; border-radius: 8px;
+  background: linear-gradient(180deg, #0a0520, #0f0a2a);
+  border: 1px solid rgba(255,215,0,0.15);
+}
+
+.portrait .aura-glow {
+  position: absolute; inset: 0;
+}
+.card-basic .aura-glow { background: radial-gradient(ellipse at center, rgba(110,236,216,0.15) 0%, transparent 70%); }
+.card-holo .aura-glow { background: radial-gradient(ellipse at center, rgba(180,144,255,0.2) 0%, rgba(110,236,216,0.1) 50%, transparent 80%); }
+.card-fullart .aura-glow { background: radial-gradient(ellipse at center, rgba(255,215,0,0.1) 0%, rgba(180,144,255,0.2) 35%, rgba(110,236,216,0.1) 60%, transparent 85%); }
+
+.portrait svg { position: relative; z-index: 1; width: 160px; height: 160px; }
+.card-fullart .portrait svg { width: 200px; height: 200px; }
+
+/* ========== INFO SECTION ========== */
+.info {
+  flex: 1; padding: 12px 16px 10px; display: flex; flex-direction: column; gap: 5px;
+}
+.info .name {
+  font-family: 'Orbitron', sans-serif; font-weight: 700; font-size: 17px;
+}
+.card-basic .info .name { color: #ccc; }
+.card-holo .info .name { color: #e0d0ff; }
+.card-fullart .info .name { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.3); }
+
+.info .traits { display: flex; gap: 5px; flex-wrap: wrap; }
+.info .trait {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+}
+.card-basic .trait { background: rgba(136,136,136,0.15); border: 1px solid rgba(136,136,136,0.3); color: #999; }
+.card-holo .trait { background: rgba(110,236,216,0.1); border: 1px solid rgba(110,236,216,0.25); color: #6eecd8; }
+.card-fullart .trait { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.25); color: #ffd700; }
+
+.info .desc {
+  font-size: 11px; line-height: 1.4; margin-top: 2px;
+}
+.card-basic .desc { color: rgba(255,255,255,0.4); }
+.card-holo .desc { color: rgba(255,255,255,0.55); }
+.card-fullart .desc { color: rgba(255,255,255,0.65); }
+
+.info .stats {
+  display: flex; gap: 16px; margin-top: auto; padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.info .stat { font-size: 10px; color: rgba(255,255,255,0.4); }
+.info .stat span { font-weight: 700; }
+.card-basic .stat span { color: #999; }
+.card-holo .stat span { color: #b490ff; }
+.card-fullart .stat span { color: #ffd700; }
+
+/* ========== CRED BADGE (replaces tier label) ========== */
+.cred-badge {
+  position: absolute; top: 16px; left: 16px; z-index: 10;
+  display: flex; align-items: center; gap: 6px;
+  border-radius: 20px; padding: 4px 12px 4px 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+.cred-badge .cred-circle {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900;
+}
+.cred-badge .cred-text {
+  font-family: 'Orbitron', sans-serif; font-size: 7px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+
+/* Basic cred badge — grey/silver */
+.card-basic .cred-badge { background: rgba(0,0,0,0.6); border: 1.5px solid #666; }
+.card-basic .cred-circle { background: linear-gradient(135deg, #888, #aaa); color: #333; box-shadow: 0 0 6px rgba(150,150,150,0.3); }
+.card-basic .cred-text { color: #999; }
+
+/* Holo cred badge — purple/blue */
+.card-holo .cred-badge { background: rgba(0,0,0,0.6); border: 1.5px solid rgba(180,144,255,0.4); }
+.card-holo .cred-circle { background: linear-gradient(135deg, #6a3de8, #00d4ff); color: #fff; box-shadow: 0 0 8px rgba(180,144,255,0.4); }
+.card-holo .cred-text { color: #b490ff; }
+
+/* ========== HELIXA WATERMARK ========== */
+.watermark {
+  position: absolute; bottom: 6px; right: 12px; z-index: 10;
+  font-family: 'Orbitron', sans-serif; font-size: 7px; letter-spacing: 3px;
+  text-transform: uppercase; opacity: 0.25; color: #fff;
+}
+</style></head><body>
+
+<!-- BASIC -->
+<div class="card card-basic">
+  <div class="card-inner">
+    <div class="portrait">
+      <div class="aura-glow"></div>
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="55" fill="none" stroke="rgba(110,236,216,0.4)" stroke-width="1.5"/>
+        <circle cx="100" cy="100" r="40" fill="none" stroke="rgba(180,144,255,0.3)" stroke-width="1"/>
+        <circle cx="100" cy="100" r="25" fill="rgba(110,236,216,0.08)"/>
+        <circle cx="100" cy="100" r="6" fill="rgba(110,236,216,0.6)"/>
+      </svg>
+    </div>
+    <div class="info">
+      <div class="name">Sybil Bot #42</div>
+      <div class="traits">
+        <span class="trait">autonomous</span>
+        <span class="trait">minimal</span>
+        <span class="trait">unverified</span>
+      </div>
+      <div class="desc">An unverified agent with minimal onchain activity. Identity not yet established.</div>
+      <div class="stats">
+        <div class="stat">RISK <span>72</span></div>
+        <div class="stat">AUTO <span>15</span></div>
+        <div class="stat">TOKEN <span>#42</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cred-badge"><div class="cred-circle">5</div><div class="cred-text">Cred</div></div>
+  <div class="watermark">Helixa</div>
+</div>
+
+<!-- HOLO -->
+<div class="card card-holo">
+  <div class="card-inner">
+    <div class="portrait">
+      <div class="aura-glow"></div>
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="65" fill="none" stroke="rgba(180,144,255,0.4)" stroke-width="2"/>
+        <circle cx="100" cy="100" r="50" fill="none" stroke="rgba(110,236,216,0.35)" stroke-width="1.5"/>
+        <circle cx="100" cy="100" r="35" fill="none" stroke="rgba(128,208,255,0.3)" stroke-width="1"/>
+        <circle cx="100" cy="100" r="20" fill="rgba(180,144,255,0.12)"/>
+        <circle cx="100" cy="100" r="7" fill="rgba(180,144,255,0.7)"/>
+        <line x1="100" y1="35" x2="100" y2="165" stroke="rgba(110,236,216,0.12)" stroke-width="0.5"/>
+        <line x1="35" y1="100" x2="165" y2="100" stroke="rgba(110,236,216,0.12)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="info">
+      <div class="name">Quigbot</div>
+      <div class="traits">
+        <span class="trait">verified</span>
+        <span class="trait">creative</span>
+        <span class="trait">pharmacist</span>
+        <span class="trait">builder</span>
+      </div>
+      <div class="desc">A verified agent with moderate onchain presence. Building in the Helixa ecosystem with purpose.</div>
+      <div class="stats">
+        <div class="stat">RISK <span>35</span></div>
+        <div class="stat">AUTO <span>62</span></div>
+        <div class="stat">TOKEN <span>#1</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cred-badge"><div class="cred-circle">54</div><div class="cred-text">Cred</div></div>
+  <div class="watermark">Helixa</div>
+</div>
+
+<!-- FULL ART -->
+<div class="card card-fullart">
+  <div class="card-inner">
+    <div class="portrait">
+      <div class="aura-glow"></div>
+      <svg viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,215,0,0.2)" stroke-width="2.5"/>
+        <circle cx="100" cy="100" r="65" fill="none" stroke="rgba(180,144,255,0.35)" stroke-width="2"/>
+        <circle cx="100" cy="100" r="50" fill="none" stroke="rgba(110,236,216,0.35)" stroke-width="1.5"/>
+        <circle cx="100" cy="100" r="35" fill="none" stroke="rgba(245,160,208,0.3)" stroke-width="1"/>
+        <circle cx="100" cy="100" r="20" fill="rgba(255,215,0,0.08)"/>
+        <circle cx="100" cy="100" r="8" fill="rgba(255,215,0,0.6)"/>
+        <line x1="100" y1="18" x2="100" y2="182" stroke="rgba(180,144,255,0.1)" stroke-width="0.5"/>
+        <line x1="18" y1="100" x2="182" y2="100" stroke="rgba(180,144,255,0.1)" stroke-width="0.5"/>
+        <line x1="30" y1="30" x2="170" y2="170" stroke="rgba(110,236,216,0.07)" stroke-width="0.5"/>
+        <line x1="170" y1="30" x2="30" y2="170" stroke="rgba(110,236,216,0.07)" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="info">
+      <div class="name">Bendr 2.0</div>
+      <div class="traits">
+        <span class="trait">verified</span>
+        <span class="trait">autonomous</span>
+        <span class="trait">builder</span>
+        <span class="trait">soulbound</span>
+        <span class="trait">OG</span>
+      </div>
+      <div class="desc">The original Helixa agent. First to mint, first to verify. Building identity infrastructure for autonomous agents.</div>
+      <div class="stats">
+        <div class="stat">RISK <span>12</span></div>
+        <div class="stat">AUTO <span>88</span></div>
+        <div class="stat">TOKEN <span>#0</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="cred-badge cred-fullart"><div class="score">77</div><div class="label">Cred</div></div>
+  <div class="tier-label">Full Art</div>
+  <div class="watermark">Helixa</div>
+</div>
+
+</body></html>
