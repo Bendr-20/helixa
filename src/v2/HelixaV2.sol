@@ -109,6 +109,8 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     uint16 public constant TRAIT_POINTS = 10;
     uint16 public constant NARRATIVE_POINTS = 25;
     uint16 public constant SIWA_BONUS = 50;
+    uint16 public constant UPDATE_POINTS = 5;
+    uint16 public constant VERIFY_POINTS = 75;
 
     // ─── Events ─────────────────────────────────────────────────
 
@@ -321,6 +323,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         Personality calldata p
     ) external onlyTokenOwner(tokenId) {
         _personalities[tokenId] = p;
+        _awardPoints(tokenId, UPDATE_POINTS, "update_personality");
     }
 
     function getPersonality(uint256 tokenId) external view agentExists(tokenId) returns (Personality memory) {
@@ -339,6 +342,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         if (isNew) {
             _awardPoints(tokenId, NARRATIVE_POINTS, "narrative");
         }
+        _awardPoints(tokenId, UPDATE_POINTS, "update_narrative");
         emit NarrativeSet(tokenId, "all");
     }
 
@@ -346,6 +350,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         bool isNew = bytes(_narratives[tokenId].origin).length == 0;
         _narratives[tokenId].origin = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "origin");
+        _awardPoints(tokenId, UPDATE_POINTS, "update_origin");
         emit NarrativeSet(tokenId, "origin");
     }
 
@@ -353,6 +358,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         bool isNew = bytes(_narratives[tokenId].mission).length == 0;
         _narratives[tokenId].mission = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "mission");
+        _awardPoints(tokenId, UPDATE_POINTS, "update_mission");
         emit NarrativeSet(tokenId, "mission");
     }
 
@@ -360,6 +366,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         bool isNew = bytes(_narratives[tokenId].lore).length == 0;
         _narratives[tokenId].lore = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "lore");
+        _awardPoints(tokenId, UPDATE_POINTS, "update_lore");
         emit NarrativeSet(tokenId, "lore");
     }
 
@@ -367,6 +374,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         bool isNew = bytes(_narratives[tokenId].manifesto).length == 0;
         _narratives[tokenId].manifesto = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "manifesto");
+        _awardPoints(tokenId, UPDATE_POINTS, "update_manifesto");
         emit NarrativeSet(tokenId, "manifesto");
     }
 
@@ -498,6 +506,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     function mutate(uint256 tokenId, string calldata newVersion) external onlyTokenOwner(tokenId) {
         _agents[tokenId].mutationCount++;
         _agents[tokenId].currentVersion = newVersion;
+        _awardPoints(tokenId, UPDATE_POINTS, "mutate");
         emit Mutated(tokenId, newVersion);
     }
 
@@ -505,6 +514,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
 
     function verify(uint256 tokenId) external onlyOwner agentExists(tokenId) {
         _agents[tokenId].verified = true;
+        _awardPoints(tokenId, VERIFY_POINTS, "verified");
         emit AgentVerified(tokenId);
     }
 

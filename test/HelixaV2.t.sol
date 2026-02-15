@@ -198,8 +198,8 @@ contract HelixaV2Test is Test {
         helixa.setOrigin(0, "Updated origin");
         uint256 ptsAfterSecond = helixa.points(0);
         
-        // Should NOT get double points for updating same field
-        assertEq(ptsAfterFirst, ptsAfterSecond);
+        // Narrative bonus (25) only awarded once, but update bonus (5) on every call
+        assertEq(ptsAfterSecond - ptsAfterFirst, helixa.UPDATE_POINTS());
     }
 
     // ─── .agent Naming ──────────────────────────────────────────
