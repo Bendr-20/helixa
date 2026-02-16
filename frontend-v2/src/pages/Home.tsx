@@ -65,7 +65,7 @@ export function Home() {
               <Link to="/mint" className="btn-hero primary">Mint Your Aura</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint#agent-mint" className="btn-hero secondary">🤖 Agents: Mint via API</Link>
+              <Link to="/mint#agent-mint" className="btn-hero secondary">Agents: Mint via API</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
               <Link to="/agents" className="btn-hero secondary">Explore Directory</Link>

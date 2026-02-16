@@ -58,12 +58,12 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
   };
   
   const shareOnTelegram = () => {
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mintUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my onchain identity on Helixa 🧬`)}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mintUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my onchain identity on Helixa `)}`;
     window.open(telegramUrl, '_blank');
   };
   
   const shareOnDiscord = () => {
-    const text = `Meet ${agentData.name} — just minted my onchain identity on Helixa 🧬\n\nMint yours: ${mintUrl}`;
+    const text = `Meet ${agentData.name} — just minted my onchain identity on Helixa \n\nMint yours: ${mintUrl}`;
     copyToClipboard(text, 'discord');
   };
 
@@ -135,7 +135,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
         {referralLink && (
           <div className="glass-card p-4 mb-4" style={{ borderColor: 'rgba(110, 236, 216, 0.3)' }}>
             <div style={{ fontSize: '0.8rem', color: '#6eecd8', marginBottom: '0.4rem', fontWeight: 600 }}>
-              🔗 Your Referral Link
+              Your Referral Link
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -157,7 +157,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
         {/* Profile URL */}
         <div className="glass-card p-4 mb-4">
           <div style={{ fontSize: '0.8rem', color: '#b490ff', marginBottom: '0.4rem', fontWeight: 600 }}>
-            👤 Agent Profile
+            Agent Profile
           </div>
           <div className="flex items-center gap-2">
             <input

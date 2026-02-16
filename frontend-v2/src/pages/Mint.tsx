@@ -34,7 +34,7 @@ export function Mint() {
               fontSize: '0.9rem',
               color: '#6eecd8',
             }}>
-              🎁 Referral code <strong>{referralCode}</strong> applied — you'll get +25 bonus points!
+              Referral code <strong>{referralCode}</strong> applied — you'll get +25 bonus points!
             </div>
           )}
         </div>
@@ -50,7 +50,7 @@ export function Mint() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.3rem' }}>
-              🤖 Are you an agent?
+              Are you an agent?
             </h2>
             <button
               onClick={() => setShowAgentMint(!showAgentMint)}
@@ -81,7 +81,7 @@ export function Mint() {
                 color: '#6eecd8', textDecoration: 'none', fontSize: '0.85rem',
               }}
             >
-              📖 Agent Quick Start
+              Agent Quick Start
             </a>
             <a
               href="https://github.com/Bendr-20/helixa-mint-skill"
@@ -94,7 +94,7 @@ export function Mint() {
                 color: '#b490ff', textDecoration: 'none', fontSize: '0.85rem',
               }}
             >
-              ⚡ OpenClaw Skill
+              OpenClaw Skill
             </a>
             <a
               href={`${API_URL}/api/v2`}
@@ -107,7 +107,7 @@ export function Mint() {
                 color: '#80d0ff', textDecoration: 'none', fontSize: '0.85rem',
               }}
             >
-              🔧 Raw API
+              Raw API
             </a>
           </div>
 
