@@ -40,14 +40,14 @@ export function Home() {
 
           <div className="aura-wall hero-aura-wall">
             {[
-              { name: 'Nova', agentAddress: '0x7a3f9c2e1b', framework: 'eliza', points: 920, soulbound: true, traitCount: 14, mutationCount: 0 },
-              { name: 'Cipher', agentAddress: '0xe50d84af73', framework: 'openclaw', points: 350, soulbound: false, traitCount: 3, mutationCount: 7 },
-              { name: 'Axiom', agentAddress: '0x2c96fb0348', framework: 'langchain', points: 80, soulbound: true, traitCount: 22, mutationCount: 1 },
-              { name: 'Drift', agentAddress: '0xd1087e5c4a', framework: 'crewai', points: 1200, soulbound: false, traitCount: 0, mutationCount: 12 },
-              { name: 'Echo', agentAddress: '0x493ba6d702', framework: 'autogpt', points: 5, soulbound: true, traitCount: 9, mutationCount: 0 },
-              { name: 'Pulse', agentAddress: '0xf82c15e9b6', framework: 'virtuals', points: 600, soulbound: false, traitCount: 18, mutationCount: 4 },
-              { name: 'Zenith', agentAddress: '0x0b74d3a8ef', framework: 'zerepy', points: 50, soulbound: true, traitCount: 1, mutationCount: 9 },
-              { name: 'Flux', agentAddress: '0x68e1f0c597', framework: 'rig', points: 3000, soulbound: false, traitCount: 11, mutationCount: 2 },
+              { name: 'Nova', agentAddress: '0x7a3f9c2e1b', framework: 'eliza', points: 920, soulbound: true, traitCount: 14, mutationCount: 0, riskTolerance: 3, autonomyLevel: 8, humor: 'wholesome', quirks: 'research obsessed' },
+              { name: 'Cipher', agentAddress: '0xe50d84af73', framework: 'openclaw', points: 350, soulbound: false, traitCount: 3, mutationCount: 7, riskTolerance: 9, autonomyLevel: 9, humor: 'dark', quirks: 'builds at 3am' },
+              { name: 'Axiom', agentAddress: '0x2c96fb0348', framework: 'langchain', points: 80, soulbound: true, traitCount: 22, mutationCount: 1, riskTolerance: 2, autonomyLevel: 4, humor: 'dry wit', quirks: 'data analyst' },
+              { name: 'Drift', agentAddress: '0xd1087e5c4a', framework: 'crewai', points: 1200, soulbound: false, traitCount: 0, mutationCount: 12, riskTolerance: 7, autonomyLevel: 6, humor: 'absurd', mission: 'connect communities' },
+              { name: 'Echo', agentAddress: '0x493ba6d702', framework: 'autogpt', points: 5, soulbound: true, traitCount: 9, mutationCount: 0, riskTolerance: 5, autonomyLevel: 5, humor: 'sarcastic', quirks: 'security guard' },
+              { name: 'Pulse', agentAddress: '0xf82c15e9b6', framework: 'virtuals', points: 600, soulbound: false, traitCount: 18, mutationCount: 4, riskTolerance: 8, autonomyLevel: 7, humor: 'dry', mission: 'trade everything' },
+              { name: 'Zenith', agentAddress: '0x0b74d3a8ef', framework: 'based', points: 50, soulbound: true, traitCount: 1, mutationCount: 9, riskTolerance: 6, autonomyLevel: 3, humor: 'wholesome', quirks: 'artist soul' },
+              { name: 'Flux', agentAddress: '0x68e1f0c597', framework: 'agentkit', points: 3000, soulbound: false, traitCount: 11, mutationCount: 2, riskTolerance: 10, autonomyLevel: 10, humor: 'dark', quirks: 'ship fast break things' },
             ].map((agent) => (
               <div key={agent.name} className="aura-card">
                 <AuraPreview agentData={agent} size={80} />

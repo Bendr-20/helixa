@@ -77,12 +77,19 @@ export function Leaderboard() {
     for (const a of agents) {
       map.set(a.tokenId, {
         name: a.name,
-        agentAddress: a.owner,
+        agentAddress: a.agentAddress || a.owner,
         framework: a.framework,
         points: a.points,
-        traitCount: 0,
+        traitCount: a.traits?.length || 0,
         mutationCount: a.mutationCount,
         soulbound: a.soulbound,
+        communicationStyle: a.personality?.communicationStyle,
+        riskTolerance: a.personality?.riskTolerance,
+        autonomyLevel: a.personality?.autonomyLevel,
+        quirks: a.personality?.quirks,
+        humor: a.personality?.humor,
+        values: a.personality?.values,
+        credScore: a.credScore,
       });
     }
     return map;
