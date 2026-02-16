@@ -1,18 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShareCard } from '../ShareCard';
 import { MintData } from './MintFlow';
+import { API_URL } from '../../lib/constants';
 
 interface MintSuccessProps {
   tokenId: string;
   agentData: MintData;
+  referralCode?: string;
 }
 
-export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
+export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }: MintSuccessProps) {
   const [copySuccess, setCopySuccess] = useState<string>('');
+  const [referralCode, setReferralCode] = useState(initialRefCode || '');
+  const [referralLink, setReferralLink] = useState('');
+
+  useEffect(() => {
+    // Fetch referral code if not provided
+    if (!referralCode) {
+      fetch(`${API_URL}/api/v2/agent/${tokenId}/referral`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.code) {
+            setReferralCode(data.code);
+            setReferralLink(data.link);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setReferralLink(`https://helixa.xyz/mint?ref=${referralCode}`);
+    }
+  }, [tokenId, referralCode]);
   
   const profileUrl = `${window.location.origin}/agent/${tokenId}`;
-  const shareText = `Meet ${agentData.name}\n\nJust minted my Aura on Helixa -- onchain identity for AI agents\n\n${profileUrl}`;
+  const mintUrl = referralLink || `${window.location.origin}/mint`;
   
   const copyToClipboard = async (text: string, type: string) => {
     try {
@@ -25,18 +46,25 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
   };
   
   const shareOnTwitter = () => {
-    const tweetText = `Meet ${agentData.name}\n\nJust minted my Aura on @HelixaXYZ\n\nOnchain identity for AI agents\n\n${profileUrl}`;
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&hashtags=Helixa,ERC8004`;
+    const tweetText = `Just minted my onchain identity on @HelixaXYZ\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nMint yours: ${mintUrl}`;
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(tweetUrl, '_blank');
+  };
+
+  const shareOnFarcaster = () => {
+    const castText = `Just minted my onchain identity on Helixa\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nMint yours: ${mintUrl}`;
+    const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(castText)}`;
+    window.open(warpcastUrl, '_blank');
   };
   
   const shareOnTelegram = () => {
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(profileUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my Aura on Helixa`)}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mintUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my onchain identity on Helixa 🧬`)}`;
     window.open(telegramUrl, '_blank');
   };
   
   const shareOnDiscord = () => {
-    copyToClipboard(shareText, 'discord');
+    const text = `Meet ${agentData.name} — just minted my onchain identity on Helixa 🧬\n\nMint yours: ${mintUrl}`;
+    copyToClipboard(text, 'discord');
   };
 
   // Count traits for rarity
@@ -96,12 +124,41 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
         />
       </div>
       
-      {/* Share Section */}
+      {/* Referral & Share Section */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Share Your Agent</h3>
+        <h3 className="text-lg font-semibold mb-2">Share & Earn Points</h3>
+        <p className="text-muted text-sm mb-4">
+          Every mint through your link earns you <strong style={{ color: '#6eecd8' }}>+50 points</strong>
+        </p>
         
-        {/* Share URL */}
+        {/* Referral Link */}
+        {referralLink && (
+          <div className="glass-card p-4 mb-4" style={{ borderColor: 'rgba(110, 236, 216, 0.3)' }}>
+            <div style={{ fontSize: '0.8rem', color: '#6eecd8', marginBottom: '0.4rem', fontWeight: 600 }}>
+              🔗 Your Referral Link
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={referralLink}
+                readOnly
+                className="input flex-1 text-sm font-mono"
+              />
+              <button
+                onClick={() => copyToClipboard(referralLink, 'referral')}
+                className="btn btn-secondary btn-sm"
+              >
+                {copySuccess === 'referral' ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Profile URL */}
         <div className="glass-card p-4 mb-4">
+          <div style={{ fontSize: '0.8rem', color: '#b490ff', marginBottom: '0.4rem', fontWeight: 600 }}>
+            👤 Agent Profile
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="text"
@@ -124,7 +181,14 @@ export function MintSuccess({ tokenId, agentData }: MintSuccessProps) {
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
-            Twitter
+            Share on X
+          </button>
+
+          <button onClick={shareOnFarcaster} className="btn btn-secondary flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M5.24 3h13.52v1.2H5.24V3zm-1.2 2.4h15.92L21.16 9H18v9.6c0 .66.54 1.2 1.2 1.2h.6V21h-.6c-1.32 0-2.4-1.08-2.4-2.4V9h-9.6v9.6c0 1.32-1.08 2.4-2.4 2.4h-.6v-1.2h.6c.66 0 1.2-.54 1.2-1.2V9H2.84l1.2-3.6z"/>
+            </svg>
+            Share on Farcaster
           </button>
           
           <button onClick={shareOnTelegram} className="btn btn-secondary flex items-center gap-2">
