@@ -133,28 +133,31 @@ def render_fullart(name="Bendr 2.0", framework="OpenClaw", aura_path=None,
 
     # --- 2. Robot body ---
     robot = load_asset('robot-fullbody-front.webp')
-    # Scale 1.2x
-    rw, rh = robot.size
-    new_rw, new_rh = int(rw * 1.2), int(rh * 1.2)
-    robot = robot.resize((new_rw, new_rh), Image.LANCZOS)
-    
-    # Remove background
     robot = remove_bg(robot)
     
-    # Crop to card width, bias top
-    crop_x = (new_rw - CARD_W) // 2
-    crop_y = new_rh // 5
-    crop_h = min(CARD_H, new_rh - crop_y)
-    robot_cropped = robot.crop((max(0, crop_x), crop_y, max(0, crop_x) + CARD_W, crop_y + crop_h))
+    # Scale robot to fit card width with some margin, keeping aspect ratio
+    rw, rh = robot.size
+    # Scale robot up — bigger TV head per Epifani
+    robot_scale = 1.5
+    new_rw = int(rw * robot_scale)
+    new_rh = int(rh * robot_scale)
+    robot = robot.resize((new_rw, new_rh), Image.LANCZOS)
     
-    # Paste robot onto card
+    # Crop: center horizontally, bias toward top
+    crop_x = (new_rw - CARD_W) // 2
+    crop_y = new_rh // 10  # less top crop to show full TV head
+    robot_cropped = robot.crop((max(0, crop_x), crop_y, max(0, crop_x) + CARD_W, crop_y + CARD_H))
+    
     card.paste(robot_cropped, (0, 0), robot_cropped)
+    
+    # TV screen center: original robot ~(448, 273), scaled then offset by crop
+    screen_cx = int(448 * robot_scale) - max(0, crop_x)
+    screen_cy = int(273 * robot_scale) - crop_y
 
     # --- 3. Aura on TV screen ---
     if aura_path and os.path.exists(aura_path):
         aura = Image.open(aura_path).convert('RGBA')
     else:
-        # Try default bendr aura
         default_aura = os.path.join(ASSETS, 'aura-bendr.png')
         if os.path.exists(default_aura):
             aura = Image.open(default_aura).convert('RGBA')
@@ -162,14 +165,20 @@ def render_fullart(name="Bendr 2.0", framework="OpenClaw", aura_path=None,
             aura = None
     
     if aura:
-        aura = aura.resize((130, 130), Image.LANCZOS)
-        # Center on TV screen area (~306, 199 after crop adjustments)
-        screen_cx, screen_cy = CARD_W // 2, 199 - crop_y + (crop_y // 2)
-        # Adjust for the actual robot position
-        screen_cx = CARD_W // 2
-        screen_cy = max(130, min(280, 199))
-        ax = screen_cx - 65
-        ay = screen_cy - 65
+        aura_size = 160  # fills the bigger TV screen
+        aura = aura.resize((aura_size, aura_size), Image.LANCZOS)
+        # Make black background transparent if no alpha
+        if aura.mode == 'RGB':
+            aura = aura.convert('RGBA')
+        # Remove near-black pixels (background)
+        import numpy as np
+        arr = np.array(aura)
+        # Pixels where all RGB channels < 25 become transparent
+        mask = (arr[:,:,0] < 25) & (arr[:,:,1] < 25) & (arr[:,:,2] < 25)
+        arr[mask, 3] = 0
+        aura = Image.fromarray(arr)
+        ax = screen_cx - aura_size // 2
+        ay = screen_cy - aura_size // 2
         card.paste(aura, (ax, ay), aura)
 
     # --- 4. Gradient overlay for text ---
