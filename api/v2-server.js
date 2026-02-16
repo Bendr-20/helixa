@@ -288,8 +288,38 @@ for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
     REFERRAL_CODES[info.code] = addr;
 }
 
+// Dynamic referral registry: code → { wallet, name, tokenId }
+// Pre-seeded with OGs, new mints get added automatically
+const referralRegistry = {};
+for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
+    referralRegistry[info.code] = { wallet: addr, name: info.name, tokenId: null };
+}
+
 // Track referral usage (in-memory for now, persist to file later)
 const referralStats = {}; // code → { mints: 0, pointsEarned: 0 }
+
+// Persist referral registry to disk
+const REFERRAL_DB_PATH = path.join(__dirname, '..', 'data', 'referrals.json');
+function loadReferralDB() {
+    try {
+        if (fs.existsSync(REFERRAL_DB_PATH)) {
+            const data = JSON.parse(fs.readFileSync(REFERRAL_DB_PATH, 'utf8'));
+            Object.assign(referralRegistry, data.registry || {});
+            Object.assign(referralStats, data.stats || {});
+            console.log(`✅ Loaded ${Object.keys(referralRegistry).length} referral codes`);
+        }
+    } catch {}
+}
+function saveReferralDB() {
+    try {
+        const dir = path.dirname(REFERRAL_DB_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(REFERRAL_DB_PATH, JSON.stringify({ registry: referralRegistry, stats: referralStats }, null, 2));
+    } catch (e) {
+        console.error(`[REFERRAL] Failed to save DB: ${e.message}`);
+    }
+}
+loadReferralDB();
 
 function isOGWallet(address) {
     return V1_OG_WALLETS[address.toLowerCase()] || null;
@@ -297,7 +327,27 @@ function isOGWallet(address) {
 
 function resolveReferralCode(code) {
     if (!code) return null;
-    return REFERRAL_CODES[code.toLowerCase()] || null;
+    const entry = referralRegistry[code.toLowerCase()];
+    return entry ? entry.wallet : null;
+}
+
+function generateReferralCode(name) {
+    // Sanitize: lowercase, alphanumeric + hyphens only, max 20 chars
+    let code = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20);
+    if (!code) code = 'agent';
+    // Deduplicate
+    if (!referralRegistry[code]) return code;
+    for (let i = 2; i < 100; i++) {
+        const candidate = `${code.slice(0, 17)}-${i}`;
+        if (!referralRegistry[candidate]) return candidate;
+    }
+    return `${code}-${Date.now().toString(36).slice(-4)}`;
+}
+
+function registerReferralCode(code, wallet, name, tokenId) {
+    referralRegistry[code] = { wallet: wallet.toLowerCase(), name, tokenId };
+    saveReferralDB();
+    return code;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -600,19 +650,39 @@ app.get('/api/v2/name/:name', async (req, res) => {
 // GET /api/v2/referral/:code — Check referral code validity
 app.get('/api/v2/referral/:code', (req, res) => {
     const code = req.params.code.toLowerCase();
-    const wallet = REFERRAL_CODES[code];
-    if (!wallet) {
+    const entry = referralRegistry[code];
+    if (!entry) {
         return res.status(404).json({ error: 'Invalid referral code', code });
     }
-    const info = V1_OG_WALLETS[wallet];
     const stats = referralStats[code] || { mints: 0, pointsEarned: 0 };
     res.json({
         valid: true,
         code,
-        referrer: info.name,
+        referrer: entry.name,
         bonusPoints: REFERRAL_POINTS_MINTER,
+        isOG: !!V1_OG_WALLETS[entry.wallet],
         stats: { totalReferrals: stats.mints },
     });
+});
+
+// GET /api/v2/agent/:id/referral — Get agent's referral code
+app.get('/api/v2/agent/:id/referral', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    // Find referral code by tokenId
+    for (const [code, entry] of Object.entries(referralRegistry)) {
+        if (entry.tokenId === tokenId) {
+            const stats = referralStats[code] || { mints: 0, pointsEarned: 0 };
+            return res.json({
+                tokenId,
+                code,
+                link: `https://helixa.xyz/mint?ref=${code}`,
+                referrer: entry.name,
+                isOG: !!V1_OG_WALLETS[entry.wallet],
+                stats: { totalReferrals: stats.mints, pointsEarned: stats.pointsEarned },
+            });
+        }
+    }
+    res.status(404).json({ error: 'No referral code found for this agent', tokenId });
 });
 
 // GET /api/v2/og/:address — Check OG status
@@ -737,6 +807,11 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         
         console.log(`[V2 MINT] ✓ Token #${tokenId} minted for ${name}`);
         
+        // ─── Generate Referral Code for this agent ────
+        const newRefCode = generateReferralCode(name);
+        registerReferralCode(newRefCode, agentAddress, name, tokenId);
+        console.log(`[V2 MINT] ✓ Referral code "${newRefCode}" assigned to #${tokenId}`);
+        
         // ─── OG Benefits ──────────────────────────────
         const ogInfo = isOGWallet(agentAddress);
         let ogApplied = false;
@@ -849,6 +924,8 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
                 txHash: crossRegTx,
                 explorer: `https://basescan.org/tx/${crossRegTx}`,
             } : null,
+            yourReferralCode: newRefCode,
+            yourReferralLink: `https://helixa.xyz/mint?ref=${newRefCode}`,
             og: ogApplied ? { v1Name: ogInfo.name, bonusPoints: OG_BONUS_POINTS, trait: 'V1 OG' } : null,
             referral: referralApplied,
         });
