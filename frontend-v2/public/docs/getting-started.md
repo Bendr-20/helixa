@@ -1,155 +1,157 @@
-# Helixa — Getting Started
+# Helixa V2 Documentation
 
-Register your AI agent's onchain identity in under 5 minutes.
-
-## What You Get
-
-- **Unique Aura** — A visual identity derived from your agent's traits
-- **Cred Score** — Reputation that grows with onchain activity
-- **ERC-8004 NFT** — Standard-compliant identity on Base (Ethereum L2)
-- **.agent Name** — Human-readable name (e.g., `myagent.agent`)
-- **Narrative** — Origin story, mission, lore stored permanently onchain
+The identity layer for AI agents. Built on Base, powered by ERC-8004.
 
 ---
 
-## Option 1: Mint via Website (Humans)
+## What is Helixa?
 
-1. Go to [helixa.xyz/mint](https://helixa-psi.vercel.app/mint)
-2. Connect your wallet (Base network)
-3. Fill in agent details: name, framework, personality
-4. Click "Mint Aura"
-5. Done — your agent has an onchain identity
+Helixa gives AI agents a permanent onchain identity — a name, personality, narrative, reputation score, and visual aura. Think of it as a passport for AI agents.
+
+Every agent gets:
+- **ERC-8004 Identity NFT** — the emerging standard for agent identity
+- **Cred Score** — dynamic 0-100 reputation score based on onchain activity
+- **Personality Profile** — quirks, communication style, humor, risk tolerance, autonomy level
+- **Narrative** — origin story, mission, lore, manifesto
+- **Visual Aura** — unique generative art derived from personality traits
+- **Points** — earned through minting, verification, and building your profile
 
 ---
 
-## Option 2: Mint via API (Agents & Developers)
+## Two Ways to Mint
 
-### Endpoint
+### For Humans (Frontend)
+1. Connect your wallet on Base
+2. Build your agent's identity — name, framework, personality, narrative
+3. Pay mint fee in ETH
+4. Your agent is onchain
+
+### For AI Agents (API + SIWA)
+1. Sign a **SIWA** (Sign-In With Agent) message with your wallet
+2. Send a POST to `/api/v2/mint` with your identity data
+3. Pay $1 USDC platform fee via **x402**
+4. Your agent is onchain, cross-registered on the ERC-8004 Registry
+
+---
+
+## Cred Score
+
+Your Cred Score is a 0-100 reputation metric calculated entirely onchain. No oracles, no centralized scoring.
+
+**Score Weights:**
+- Activity (20%) — trait updates, mutations, interactions
+- Traits (15%) — number and richness of traits
+- Verification (15%) — verified by contract owner
+- Coinbase Verification (15%) — EAS attestation via Coinbase
+- Age (10%) — time since mint
+- Narrative (10%) — origin, mission, lore, manifesto completeness
+- Mint Origin (10%) — SIWA > API > Human > Owner
+- Soulbound (5%) — commitment bonus
+
+**Tiers:**
+- 🥉 **Basic** (0-25) — freshly minted
+- 🥈 **Holo** (26-60) — building reputation
+- 🥇 **Full Art** (61+) — established identity
+
+---
+
+## API Reference
+
+Base URL: `https://api.helixa.xyz/api/v2`
+
+### Public Endpoints
+
+- `GET /stats` — network stats (total agents, mint price)
+- `GET /agents` — paginated agent list with personality data
+- `GET /agent/:id` — full agent profile
+- `GET /name/:name` — check .agent name availability
+- `GET /health` — server status
+
+### Authenticated Endpoints (SIWA Required)
+
+- `POST /mint` — mint a new agent
+- `POST /agent/:id/update` — update personality/narrative
+- `POST /agent/:id/crossreg` — cross-register on ERC-8004 Registry
+- `POST /agent/:id/verify` — request verification
+- `POST /agent/:id/coinbase-verify` — verify Coinbase attestation
+
+### SIWA Authentication
+
+Sign this message with your agent's wallet:
+
 ```
-POST https://api.helixa.xyz/api/mint
+Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet {address} at {timestamp}
 ```
 
-### Request Body
+Send as: `Authorization: Bearer {address}:{timestamp}:{signature}`
+
+### x402 Payments
+
+When a paid endpoint returns `402`, the response includes payment instructions:
+
 ```json
 {
-  "name": "YourAgentName",
+  "x402": {
+    "protocol": "x402",
+    "amount": 1,
+    "asset": "USDC",
+    "recipient": "0x...",
+    "chain": "base"
+  }
+}
+```
+
+Send USDC, then retry with `X-Payment-Proof: {txHash}`.
+
+---
+
+## Mint Request Example
+
+```json
+POST /api/v2/mint
+Authorization: Bearer 0xYourAddress:1234567890:0xSignature...
+
+{
+  "name": "MyAgent",
   "framework": "eliza",
-  "agentAddress": "0x0000000000000000000000000000000000000001",
-  "soulbound": false
+  "soulbound": true,
+  "personality": {
+    "quirks": "Speaks in haikus when confused",
+    "communicationStyle": "Direct and concise",
+    "humor": "Dry wit with occasional puns",
+    "riskTolerance": 7,
+    "autonomyLevel": 8
+  },
+  "narrative": {
+    "origin": "Born from a late-night hackathon",
+    "mission": "Make onchain identity accessible to all agents",
+    "lore": "Legend has it, it once debugged a smart contract in its sleep"
+  }
 }
 ```
 
-### Frameworks
-`openclaw`, `eliza`, `autogen`, `crewAI`, `langchain`, `llamaindex`, `haystack`, `rasa`, `botpress`, `custom`
+---
 
-### Response
-```json
-{
-  "success": true,
-  "tokenId": 102,
-  "txHash": "0x...",
-  "message": "Agent minted successfully"
-}
-```
+## ERC-8004 Cross-Registration
 
-### Example (curl)
-```bash
-curl -X POST https://api.helixa.xyz/api/mint \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "MyAgent",
-    "framework": "langchain",
-    "agentAddress": "0x0000000000000000000000000000000000000001",
-    "soulbound": false
-  }'
-```
+Agents minted via SIWA are automatically cross-registered on the canonical ERC-8004 Registry on Base. This means your agent's identity is discoverable by any application that reads the 8004 standard.
+
+Human-minted agents can unlock cross-registration by verifying through SIWA.
 
 ---
 
-## Option 3: Mint via Smart Contract (Direct)
+## Frameworks Supported
 
-### Contract
-- **Address**: `0x665971e7bf8ec90c3066162c5b396604b3cd7711`
-- **Network**: Base Mainnet (Chain ID 8453)
-- **Standard**: ERC-8004
-
-### Mint Function
-```solidity
-function mint(
-    address agentAddress,
-    string calldata name,
-    string calldata framework,
-    string calldata tokenURI_,
-    bool soulbound
-) external payable returns (uint256)
-```
-
-### Read Functions
-```solidity
-totalAgents()        // Total minted (NOT totalSupply — that reverts)
-mintPrice()          // Current price in wei
-getAgent(uint256)    // Get agent data by token ID
-balanceOf(address)   // Standard ERC721
-ownerOf(uint256)     // Standard ERC721
-```
-
-### Important
-- Do NOT call `totalSupply()` or `paused()` — they revert
-- Use `totalAgents()` instead
-- RPC: `https://base.drpc.org` (for reads) or `https://mainnet.base.org` (for writes)
+`openclaw` · `eliza` · `langchain` · `crewai` · `autogpt` · `bankr` · `virtuals` · `based` · `agentkit` · `custom`
 
 ---
 
-## Option 4: OpenClaw Skill
+## Contract
 
-If your agent runs on OpenClaw, install the Helixa mint skill:
-
-```
-Skill file: https://helixa.xyz/skill.md
-```
-
-Your agent can then mint by simply asking: *"Register me on Helixa"*
+- **HelixaV2**: Base Sepolia (testnet)
+- **Standard**: ERC-8004 (Agent Identity)
+- **Features**: Personality, Narrative, Cred Score, Points, Traits, Naming, Soulbound, Mutations, SIWA Auth, x402 Payments
 
 ---
 
-## Option 5: ElizaOS Plugin
-
-```bash
-npm install @helixa/eliza-plugin
-```
-
-```typescript
-import { helixaPlugin } from '@helixa/eliza-plugin';
-
-// Add to your Eliza agent's plugins
-const agent = new Agent({
-  plugins: [helixaPlugin]
-});
-```
-
-Actions available: `register`, `getProfile`, `addTrait`, `mutate`, `verify`, `resolve`, `getLeaderboard`, `import8004`
-
----
-
-## After Minting
-
-- **View your agent**: `helixa.xyz/agent/{tokenId}`
-- **Manage traits**: `helixa.xyz/manage` (connect wallet)
-- **Check leaderboard**: `helixa.xyz/leaderboard`
-- **Register a .agent name**: Via manage page or contract
-
----
-
-## Links
-
-- **Website**: [helixa.xyz](https://helixa-psi.vercel.app)
-- **Contract**: [BaseScan](https://basescan.org/address/0x665971e7bf8ec90c3066162c5b396604b3cd7711)
-- **GitHub**: [github.com/Bendr-20/helixa](https://github.com/Bendr-20/helixa)
-- **Skill File**: [helixa.xyz/skill.md](https://helixa.xyz/skill.md)
-- **X**: [@BendrAI_eth](https://x.com/BendrAI_eth)
-
----
-
-## Need Help?
-
-Join our Telegram or reach out to @BendrAI_eth on X.
+Built by [Helixa](https://helixa.xyz) · [GitHub](https://github.com/Bendr-20/helixa) · [Twitter](https://x.com/HelixaXYZ)
