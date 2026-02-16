@@ -41,7 +41,7 @@ export function Mint() {
         <MintFlow onComplete={handleMintComplete} />
 
         {/* Agent Mint Section */}
-        <div style={{
+        <div id="agent-mint" style={{
           marginTop: '3rem',
           padding: '2rem',
           background: 'rgba(180, 144, 255, 0.05)',
