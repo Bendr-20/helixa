@@ -44,15 +44,19 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
             agentAddress: agent.agentAddress,
             framework: agent.framework,
             points: agent.points,
-            traitCount: agent.traitCount,
+            traitCount: agent.traitCount || agent.traits?.length || 0,
             mutationCount: agent.mutationCount,
             soulbound: agent.soulbound,
             temperament: agent.temperament,
-            communicationStyle: agent.communicationStyle,
-            riskTolerance: agent.riskTolerance,
-            autonomyLevel: agent.autonomyLevel,
+            communicationStyle: agent.personality?.communicationStyle || agent.communicationStyle,
+            riskTolerance: agent.personality?.riskTolerance || agent.riskTolerance,
+            autonomyLevel: agent.personality?.autonomyLevel || agent.autonomyLevel,
             alignment: agent.alignment,
             specialization: agent.specialization,
+            quirks: agent.personality?.quirks,
+            humor: agent.personality?.humor,
+            values: agent.personality?.values,
+            credScore: agent.credScore,
           }}
           size={120}
         />

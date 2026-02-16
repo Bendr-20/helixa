@@ -91,6 +91,15 @@ export function AgentProfile() {
                       traitCount: agent.traits?.length || 0,
                       mutationCount: agent.mutationCount,
                       soulbound: agent.soulbound,
+                      communicationStyle: agent.personality?.communicationStyle,
+                      riskTolerance: agent.personality?.riskTolerance,
+                      autonomyLevel: agent.personality?.autonomyLevel,
+                      quirks: agent.personality?.quirks,
+                      humor: agent.personality?.humor,
+                      values: agent.personality?.values,
+                      origin: agent.narrative?.origin,
+                      mission: agent.narrative?.mission,
+                      credScore: agent.credScore,
                     }}
                     size={280}
                   />
@@ -280,8 +289,8 @@ export function AgentProfile() {
                     <div className="text-sm text-muted">Mutations</div>
                   </div>
                   <div className="glass-card p-4 text-center">
-                    <div className="text-2xl font-bold text-accent-pink">
-                      {agent.mintedAt ? new Date(agent.mintedAt * 1000).toLocaleDateString() : '—'}
+                    <div className="text-lg font-bold text-accent-pink">
+                      {agent.mintedAt ? new Date(agent.mintedAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                     </div>
                     <div className="text-sm text-muted">Minted</div>
                   </div>
