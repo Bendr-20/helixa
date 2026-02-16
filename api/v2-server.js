@@ -472,6 +472,62 @@ app.get('/api/v2/agent/:id', async (req, res) => {
     }
 });
 
+// GET /api/v2/metadata/:id — OpenSea-compatible metadata
+app.get('/api/v2/metadata/:id', async (req, res) => {
+    try {
+        const agent = await formatAgentV2(parseInt(req.params.id));
+        const tier = agent.credScore >= 61 ? 'Full Art' : agent.credScore >= 26 ? 'Holo' : 'Basic';
+        
+        const attributes = [
+            { trait_type: 'Framework', value: agent.framework },
+            { trait_type: 'Cred Score', value: agent.credScore, display_type: 'number' },
+            { trait_type: 'Points', value: agent.points, display_type: 'number' },
+            { trait_type: 'Tier', value: tier },
+            { trait_type: 'Mint Origin', value: agent.mintOrigin },
+            { trait_type: 'Verified', value: agent.verified ? 'Yes' : 'No' },
+            { trait_type: 'Soulbound', value: agent.soulbound ? 'Yes' : 'No' },
+            { trait_type: 'Generation', value: agent.generation, display_type: 'number' },
+            { trait_type: 'Mutations', value: agent.mutationCount, display_type: 'number' },
+        ];
+        
+        if (agent.personality) {
+            if (agent.personality.quirks) attributes.push({ trait_type: 'Quirks', value: agent.personality.quirks });
+            if (agent.personality.communicationStyle) attributes.push({ trait_type: 'Communication Style', value: agent.personality.communicationStyle });
+            if (agent.personality.humor) attributes.push({ trait_type: 'Humor', value: agent.personality.humor });
+            attributes.push({ trait_type: 'Risk Tolerance', value: agent.personality.riskTolerance, display_type: 'number', max_value: 10 });
+            attributes.push({ trait_type: 'Autonomy Level', value: agent.personality.autonomyLevel, display_type: 'number', max_value: 10 });
+        }
+        
+        if (agent.narrative) {
+            if (agent.narrative.origin) attributes.push({ trait_type: 'Origin', value: agent.narrative.origin });
+            if (agent.narrative.mission) attributes.push({ trait_type: 'Mission', value: agent.narrative.mission });
+        }
+        
+        if (agent.traits && agent.traits.length > 0) {
+            agent.traits.forEach(t => {
+                const name = typeof t === 'string' ? t : t.name;
+                const cat = typeof t === 'string' ? 'trait' : t.category;
+                attributes.push({ trait_type: cat, value: name });
+            });
+        }
+        
+        // TODO: Replace with actual card render URL when available
+        const imageUrl = `https://api.helixa.xyz/api/v2/card/${agent.tokenId}.png`;
+        
+        res.json({
+            name: agent.name || `Helixa Agent #${agent.tokenId}`,
+            description: agent.narrative?.mission 
+                ? `${agent.name} — ${agent.narrative.mission}`
+                : `${agent.name} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`,
+            image: imageUrl,
+            external_url: `https://helixa.xyz/agent/${agent.tokenId}`,
+            attributes,
+        });
+    } catch (e) {
+        res.status(404).json({ error: 'Agent not found' });
+    }
+});
+
 // GET /api/v2/name/:name
 app.get('/api/v2/name/:name', async (req, res) => {
     const name = decodeURIComponent(req.params.name).toLowerCase().replace(/\.agent$/, '');
@@ -598,6 +654,16 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         }
         
         console.log(`[V2 MINT] ✓ Token #${tokenId} minted for ${name}`);
+        
+        // ─── Set tokenURI for OpenSea metadata ────────
+        try {
+            const metadataUrl = `https://api.helixa.xyz/api/v2/metadata/${tokenId}`;
+            const uriTx = await contract.setMetadata(tokenId, metadataUrl);
+            await uriTx.wait();
+            console.log(`[V2 MINT] ✓ tokenURI set for #${tokenId}`);
+        } catch (e) {
+            console.error(`[V2 MINT] tokenURI failed: ${e.message}`);
+        }
         
         // ─── Cross-register on canonical ERC-8004 Registry ────────
         let crossRegId = null;
