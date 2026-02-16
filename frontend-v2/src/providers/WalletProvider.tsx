@@ -7,8 +7,8 @@ import { http } from 'viem';
 import { CHAIN, BASE_RPC_URL } from '../lib/constants';
 
 const config = getDefaultConfig({
-  appName: 'Helixa V2',
-  projectId: import.meta.env.VITE_PROJECT_ID || '0534788f365bab3b9eacef1b403e5c52',
+  appName: 'Helixa',
+  projectId: import.meta.env.VITE_PROJECT_ID || '79555f4c73d677402a6c1b29978b3569',
   chains: [CHAIN],
   transports: {
     [CHAIN.id]: http(BASE_RPC_URL),
