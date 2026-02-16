@@ -14,6 +14,7 @@ const { ethers } = require('ethers');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // ─── Environment ────────────────────────────────────────────────
 const envPath = path.join(__dirname, '..', '.env');
@@ -172,11 +173,25 @@ function requireSIWA(req, res, next) {
 // Phase 1: All prices are $0, so x402 gates are present but pass-through.
 //
 
-// Payment verification cache (txHash → verified boolean)
-const paymentCache = new Map();
+// Payment verification: track USED tx hashes to prevent replay
+const usedPayments = new Set();
+const USED_PAYMENTS_PATH = path.join(__dirname, '..', 'data', 'used-payments.json');
+try {
+    if (fs.existsSync(USED_PAYMENTS_PATH)) {
+        JSON.parse(fs.readFileSync(USED_PAYMENTS_PATH, 'utf8')).forEach(h => usedPayments.add(h));
+        console.log(`✅ Loaded ${usedPayments.size} used payment hashes`);
+    }
+} catch {}
+function saveUsedPayments() {
+    try {
+        const dir = path.dirname(USED_PAYMENTS_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(USED_PAYMENTS_PATH, JSON.stringify([...usedPayments]));
+    } catch {}
+}
 
 async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
-    if (paymentCache.has(txHash)) return paymentCache.get(txHash);
+    if (usedPayments.has(txHash)) return false; // REPLAY BLOCKED
     
     try {
         const receipt = await provider.getTransactionReceipt(txHash);
@@ -196,7 +211,8 @@ async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
             const expectedRaw = BigInt(Math.round(expectedAmountUSDC * 1e6));
             
             if (amount >= expectedRaw) {
-                paymentCache.set(txHash, true);
+                usedPayments.add(txHash);
+                saveUsedPayments();
                 return true;
             }
         }
@@ -357,12 +373,69 @@ function registerReferralCode(code, wallet, name, tokenId) {
 const app = express();
 app.use(express.json({ limit: '200kb' }));
 
-// CORS
+// ─── Security Headers ──────────────────────────────────────────
 app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    next();
+});
+
+// ─── CORS (restricted) ─────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+    'https://helixa.xyz',
+    'https://www.helixa.xyz',
+    'https://api.helixa.xyz',
+    'http://localhost:5173',
+    'http://localhost:3000',
+];
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else if (!origin) {
+        // Allow non-browser requests (curl, agents)
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment-Proof');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
+
+// ─── Rate Limiting ──────────────────────────────────────────────
+const rateLimitWindows = {}; // ip → { count, resetAt }
+const RATE_LIMIT = { window: 60_000, maxRequests: 30 }; // 30 req/min
+const RATE_LIMIT_MINT = { window: 300_000, maxRequests: 3 }; // 3 mints per 5 min
+const mintRateLimits = {};
+
+function checkRateLimit(key, limits, store) {
+    const now = Date.now();
+    const entry = store[key];
+    if (!entry || now > entry.resetAt) {
+        store[key] = { count: 1, resetAt: now + limits.window };
+        return true;
+    }
+    entry.count++;
+    if (entry.count > limits.maxRequests) return false;
+    return true;
+}
+
+// Clean up stale entries every 5 min
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of Object.entries(rateLimitWindows)) { if (now > v.resetAt) delete rateLimitWindows[k]; }
+    for (const [k, v] of Object.entries(mintRateLimits)) { if (now > v.resetAt) delete mintRateLimits[k]; }
+}, 300_000);
+
+app.use((req, res, next) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    if (!checkRateLimit(ip, RATE_LIMIT, rateLimitWindows)) {
+        return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+    }
+    req.clientIp = ip;
     next();
 });
 
@@ -707,10 +780,22 @@ app.get('/api/v2/og/:address', (req, res) => {
 
 // POST /api/v2/mint — Mint new agent
 app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (req, res) => {
+    // Mint-specific rate limit (stricter)
+    const mintKey = req.agent?.address || req.clientIp;
+    if (!checkRateLimit(mintKey, RATE_LIMIT_MINT, mintRateLimits)) {
+        return res.status(429).json({ error: 'Mint rate limit exceeded. Max 3 per 5 minutes.' });
+    }
+
     const { name, framework, soulbound, personality, narrative, referralCode } = req.body;
     
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
         return res.status(400).json({ error: 'name required (1-64 chars)' });
+    }
+
+    // Input sanitization — reject control chars and excessive unicode
+    const NAME_REGEX = /^[\x20-\x7E\u00C0-\u024F\u0370-\u03FF]{1,64}$/;
+    if (!NAME_REGEX.test(name)) {
+        return res.status(400).json({ error: 'Name contains invalid characters' });
     }
     
     const fw = (framework || 'custom').toLowerCase();
@@ -766,15 +851,17 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         }
         
         // Set personality if provided
+        const MAX_STR = 256; // Max chars for any onchain string field
+        const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
         if (personality && tokenId !== null) {
             try {
                 const ptx = await contract.setPersonality(
                     tokenId,
                     [
-                        personality.quirks || '',
-                        personality.communicationStyle || '',
-                        personality.values || '',
-                        personality.humor || '',
+                        clamp(personality.quirks),
+                        clamp(personality.communicationStyle),
+                        clamp(personality.values),
+                        clamp(personality.humor),
                         Math.min(10, Math.max(0, parseInt(personality.riskTolerance) || 5)),
                         Math.min(10, Math.max(0, parseInt(personality.autonomyLevel) || 5)),
                     ],
@@ -792,10 +879,10 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
                 const ntx = await contract.setNarrative(
                     tokenId,
                     [
-                        narrative.origin || '',
-                        narrative.mission || '',
-                        narrative.lore || '',
-                        narrative.manifesto || '',
+                        clamp(narrative.origin, 512),
+                        clamp(narrative.mission, 512),
+                        clamp(narrative.lore, 1024),
+                        clamp(narrative.manifesto, 1024),
                     ],
                 );
                 await ntx.wait();
@@ -977,6 +1064,8 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
         }
         
         const updated = [];
+        const MAX_STR = 256;
+        const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
         
         // Update personality
         if (personality) {
@@ -996,10 +1085,10 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
             const tx = await contract.setPersonality(
                 tokenId,
                 [
-                    merged.quirks || '',
-                    merged.communicationStyle || '',
-                    merged.values || '',
-                    merged.humor || '',
+                    clamp(merged.quirks),
+                    clamp(merged.communicationStyle),
+                    clamp(merged.values),
+                    clamp(merged.humor),
                     Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
                     Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
                 ],
@@ -1227,8 +1316,9 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
 // ─── Error Handler ──────────────────────────────────────────────
 
 app.use((err, req, res, next) => {
-    console.error('[V2 ERROR]', err.message || err);
-    res.status(500).json({ error: 'Internal server error' });
+    const errId = crypto.randomBytes(4).toString('hex');
+    console.error(`[V2 ERROR ${errId}]`, err.message || err);
+    res.status(500).json({ error: 'Internal server error', errorId: errId });
 });
 
 // 404 handler
@@ -1238,8 +1328,11 @@ app.use((req, res) => {
 
 // ─── Start ──────────────────────────────────────────────────────
 
-process.on('uncaughtException', (err) => console.error('Uncaught:', err.message || err));
-process.on('unhandledRejection', (err) => console.error('Unhandled:', err.message || err));
+process.on('uncaughtException', (err) => {
+    console.error('FATAL uncaught:', err.message || err);
+    process.exit(1); // Don't continue in unknown state
+});
+process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err.message || err));
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
