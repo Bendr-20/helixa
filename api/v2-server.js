@@ -31,7 +31,7 @@ const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x19B16428f0721a5f627F
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 // TODO: Replace with actual deployed V2 contract address
-const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x0000000000000000000000000000000000000000';
+const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x95Ad82720adDe7686957F43Fe82783Fbfb4A92E2';
 
 // ERC-8004 Canonical Identity Registry on Base
 // ERC-8004 Canonical Identity Registry on Base

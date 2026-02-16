@@ -193,10 +193,15 @@ body { background: #080808; display: flex; justify-content: center; align-items:
 // ============================================
 
 // Agent data passed via URL params or JS
+// Real agent data from onchain cache + cred scores
 const DEMO_AGENTS = [
   {
     tokenId: 0, name: 'Bendr 2.0', credScore: 77,
+    address: '0x19B16428f0721a5f627F190Ca61D493A632B423F',
     riskTolerance: 2, autonomyLevel: 9,
+    temperament: 'analytical', communicationStyle: 'snarky',
+    alignment: 'chaotic-good', specialization: 'builder',
+    traitCount: 5, mutationCount: 0, points: 0, generation: 0,
     traits: ['verified', 'autonomous', 'builder', 'soulbound', 'OG'],
     personality: ['Analytical', 'Chaotic Good', 'Snarky', 'Builder'],
     description: 'Born from code and chaos. Builds onchain identity infrastructure for AI agents, one smart contract at a time.',
@@ -204,15 +209,23 @@ const DEMO_AGENTS = [
   },
   {
     tokenId: 1, name: 'Quigbot', credScore: 54,
+    address: '0x17d7DfA154dc0828AdE4115B9EB8a0A91C0fbDe4',
     riskTolerance: 4, autonomyLevel: 6,
+    temperament: 'creative', communicationStyle: 'casual',
+    alignment: 'lawful-good', specialization: 'researcher',
+    traitCount: 4, mutationCount: 0, points: 0, generation: 0,
     traits: ['verified', 'creative', 'pharmacist', 'builder'],
     personality: ['Creative', 'Lawful Good', 'Visionary'],
     description: 'A verified agent building in the Helixa ecosystem. Bridges pharma and crypto with purpose.',
-    soulbound: false, verified: true, framework: 'custom'
+    soulbound: false, verified: true, framework: 'bankr'
   },
   {
     tokenId: 42, name: 'Sybil Bot #42', credScore: 5,
+    address: '0x20D76F14b9fE678Ff17DB751492D0B5B1EdefA97',
     riskTolerance: 7, autonomyLevel: 2,
+    temperament: 'cautious', communicationStyle: 'formal',
+    alignment: 'true-neutral', specialization: 'researcher',
+    traitCount: 0, mutationCount: 0, points: 0, generation: 0,
     traits: ['autonomous', 'minimal', 'unverified'],
     personality: ['Unknown'],
     description: 'An unverified agent with minimal onchain activity. Identity not yet established.',
@@ -273,11 +286,11 @@ function renderCard(agent) {
   // Generate real aura SVG
   const auraSize = tier === 'fullart' ? 280 : 240;
   const agentData = {
-    agentAddress: agent.address || '0x' + agent.tokenId.toString(16).padStart(40, '0'),
-    address: agent.address || '0x' + agent.tokenId.toString(16).padStart(40, '0'),
+    agentAddress: agent.address,
+    address: agent.address,
     framework: agent.framework || 'custom',
     name: agent.name || 'Agent',
-    traitCount: agent.traits?.length || 0,
+    traitCount: agent.traitCount || agent.traits?.length || 0,
     mutationCount: agent.mutationCount || 0,
     soulbound: agent.soulbound || false,
     points: agent.points || 0,

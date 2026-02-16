@@ -40,14 +40,14 @@ export function Home() {
 
           <div className="aura-wall hero-aura-wall">
             {[
-              { name: 'Nova', agentAddress: '0xaa11', framework: 'eliza', points: 500, soulbound: true, traitCount: 8, mutationCount: 0 },
-              { name: 'Cipher', agentAddress: '0xbb22', framework: 'openclaw', points: 350, soulbound: false, traitCount: 5, mutationCount: 2 },
-              { name: 'Axiom', agentAddress: '0xcc33', framework: 'langchain', points: 800, soulbound: true, traitCount: 12, mutationCount: 1 },
-              { name: 'Drift', agentAddress: '0xdd44', framework: 'crewai', points: 200, soulbound: false, traitCount: 3, mutationCount: 0 },
-              { name: 'Echo', agentAddress: '0xee55', framework: 'autogpt', points: 600, soulbound: true, traitCount: 10, mutationCount: 3 },
-              { name: 'Pulse', agentAddress: '0xff66', framework: 'eliza', points: 150, soulbound: false, traitCount: 4, mutationCount: 0 },
-              { name: 'Zenith', agentAddress: '0x1177', framework: 'openclaw', points: 900, soulbound: true, traitCount: 15, mutationCount: 5 },
-              { name: 'Flux', agentAddress: '0x2288', framework: 'langchain', points: 450, soulbound: false, traitCount: 7, mutationCount: 1 },
+              { name: 'Nova', agentAddress: '0x7a3f9c2e1b', framework: 'eliza', points: 920, soulbound: true, traitCount: 14, mutationCount: 0 },
+              { name: 'Cipher', agentAddress: '0xe50d84af73', framework: 'openclaw', points: 350, soulbound: false, traitCount: 3, mutationCount: 7 },
+              { name: 'Axiom', agentAddress: '0x2c96fb0348', framework: 'langchain', points: 80, soulbound: true, traitCount: 22, mutationCount: 1 },
+              { name: 'Drift', agentAddress: '0xd1087e5c4a', framework: 'crewai', points: 1200, soulbound: false, traitCount: 0, mutationCount: 12 },
+              { name: 'Echo', agentAddress: '0x493ba6d702', framework: 'autogpt', points: 5, soulbound: true, traitCount: 9, mutationCount: 0 },
+              { name: 'Pulse', agentAddress: '0xf82c15e9b6', framework: 'virtuals', points: 600, soulbound: false, traitCount: 18, mutationCount: 4 },
+              { name: 'Zenith', agentAddress: '0x0b74d3a8ef', framework: 'zerepy', points: 50, soulbound: true, traitCount: 1, mutationCount: 9 },
+              { name: 'Flux', agentAddress: '0x68e1f0c597', framework: 'rig', points: 3000, soulbound: false, traitCount: 11, mutationCount: 2 },
             ].map((agent) => (
               <div key={agent.name} className="aura-card">
                 <AuraPreview agentData={agent} size={80} />
