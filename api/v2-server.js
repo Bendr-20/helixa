@@ -257,6 +257,50 @@ const PRICING = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// V1 OG Allowlist & Referral System
+// ═══════════════════════════════════════════════════════════════
+
+const OG_BONUS_POINTS = 200;
+const REFERRAL_POINTS_REFERRER = 50;
+const REFERRAL_POINTS_MINTER = 25;
+
+// V1 OG wallets → referral code (lowercase addresses)
+const V1_OG_WALLETS = {
+    '0x19b16428f0721a5f627f190ca61d493a632b423f': { name: 'Bendr 2.0', code: 'bendr', team: true },
+    '0x17d7dfa154dc0828ade4115b9eb8a0a91c0fbde4': { name: 'Quigbot', code: 'quigbot', team: true },
+    '0x20d76f14b9fe678ff17db751492d0b5b1edefa97': { name: 'deola', code: 'deola' },
+    '0xef05cb759c8397667286663902e79bd29f435e1b': { name: 'butter alpha', code: 'butter' },
+    '0xd43e021a28be16d91b75feb62575fe533f27c344': { name: 'MrsMillion', code: 'mrsmillion' },
+    '0x867bbb504cdbfc6742035a810b2cc1fe1c42407c': { name: 'MoltBot Agent', code: 'moltbot' },
+    '0x1d15ac2caa30abf43d45ce86ee0cb0f3c8b929f6': { name: 'LienXinOne', code: 'lienxin' },
+    '0x3862f531cf80f3664a287c4de453db8f2452d3eb': { name: 'irvinecold', code: 'irvine' },
+    '0x1a751188343bee997ff2132f5454e0b5da477705': { name: 'ANCNAgent', code: 'ancn' },
+    '0x331aa75a851cdbdb5d4e583a6658f9dc5a4f6ba3': { name: 'mell_agent', code: 'mell' },
+    '0x73286b4ae95358b040f3a405c2c76172e9f46ffa': { name: 'PremeBot', code: 'premebot' },
+    '0x34bdbca018125638f63cbac2780d7bd3d069dc83': { name: 'Xai', code: 'xai' },
+    '0x8a4c8bb8f70773b3ab8e18e0f0f469fad4637000': { name: 'Blockhead', code: 'blockhead' },
+    '0xf459dbaa62e3976b937ae9a4f6c31df96cd12a44': { name: 'R2d2', code: 'r2d2' },
+};
+
+// Reverse lookup: referral code → wallet address
+const REFERRAL_CODES = {};
+for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
+    REFERRAL_CODES[info.code] = addr;
+}
+
+// Track referral usage (in-memory for now, persist to file later)
+const referralStats = {}; // code → { mints: 0, pointsEarned: 0 }
+
+function isOGWallet(address) {
+    return V1_OG_WALLETS[address.toLowerCase()] || null;
+}
+
+function resolveReferralCode(code) {
+    if (!code) return null;
+    return REFERRAL_CODES[code.toLowerCase()] || null;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Express App
 // ═══════════════════════════════════════════════════════════════
 
@@ -553,9 +597,47 @@ app.get('/api/v2/name/:name', async (req, res) => {
 
 // ─── Authenticated Endpoints (SIWA required) ───────────────────
 
+// GET /api/v2/referral/:code — Check referral code validity
+app.get('/api/v2/referral/:code', (req, res) => {
+    const code = req.params.code.toLowerCase();
+    const wallet = REFERRAL_CODES[code];
+    if (!wallet) {
+        return res.status(404).json({ error: 'Invalid referral code', code });
+    }
+    const info = V1_OG_WALLETS[wallet];
+    const stats = referralStats[code] || { mints: 0, pointsEarned: 0 };
+    res.json({
+        valid: true,
+        code,
+        referrer: info.name,
+        bonusPoints: REFERRAL_POINTS_MINTER,
+        stats: { totalReferrals: stats.mints },
+    });
+});
+
+// GET /api/v2/og/:address — Check OG status
+app.get('/api/v2/og/:address', (req, res) => {
+    const og = isOGWallet(req.params.address);
+    if (!og) {
+        return res.json({ isOG: false, address: req.params.address });
+    }
+    res.json({
+        isOG: true,
+        address: req.params.address,
+        v1Name: og.name,
+        referralCode: og.code,
+        referralLink: `https://helixa.xyz/mint?ref=${og.code}`,
+        benefits: {
+            freeMint: true,
+            bonusPoints: OG_BONUS_POINTS,
+            ogTrait: true,
+        },
+    });
+});
+
 // POST /api/v2/mint — Mint new agent
 app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (req, res) => {
-    const { name, framework, soulbound, personality, narrative } = req.body;
+    const { name, framework, soulbound, personality, narrative, referralCode } = req.body;
     
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
         return res.status(400).json({ error: 'name required (1-64 chars)' });
@@ -655,6 +737,64 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
         
         console.log(`[V2 MINT] ✓ Token #${tokenId} minted for ${name}`);
         
+        // ─── OG Benefits ──────────────────────────────
+        const ogInfo = isOGWallet(agentAddress);
+        let ogApplied = false;
+        if (ogInfo && tokenId !== null) {
+            try {
+                // Add bonus points
+                const bpTx = await contract.addPoints(tokenId, OG_BONUS_POINTS);
+                await bpTx.wait();
+                // Add V1 OG trait
+                const trTx = await contract.addTrait(tokenId, 'V1 OG', 'badge');
+                await trTx.wait();
+                ogApplied = true;
+                console.log(`[V2 MINT] ✓ OG benefits applied for ${ogInfo.name}: +${OG_BONUS_POINTS} pts + V1 OG trait`);
+            } catch (e) {
+                console.error(`[V2 MINT] OG benefits failed: ${e.message}`);
+            }
+        }
+        
+        // ─── Referral Rewards ─────────────────────────
+        let referralApplied = null;
+        const refWallet = resolveReferralCode(referralCode);
+        if (refWallet && refWallet.toLowerCase() !== agentAddress.toLowerCase()) {
+            try {
+                // Find referrer's tokenId
+                const total = Number(await readContract.totalAgents());
+                for (let i = 0; i < total; i++) {
+                    try {
+                        const o = await readContract.ownerOf(i);
+                        if (o.toLowerCase() === refWallet.toLowerCase()) {
+                            // Give referrer points
+                            const rpTx = await contract.addPoints(i, REFERRAL_POINTS_REFERRER);
+                            await rpTx.wait();
+                            // Give minter bonus points
+                            if (tokenId !== null) {
+                                const mpTx = await contract.addPoints(tokenId, REFERRAL_POINTS_MINTER);
+                                await mpTx.wait();
+                            }
+                            // Track stats
+                            if (!referralStats[referralCode]) referralStats[referralCode] = { mints: 0, pointsEarned: 0 };
+                            referralStats[referralCode].mints++;
+                            referralStats[referralCode].pointsEarned += REFERRAL_POINTS_REFERRER;
+                            
+                            referralApplied = {
+                                code: referralCode,
+                                referrerTokenId: i,
+                                referrerPoints: REFERRAL_POINTS_REFERRER,
+                                minterPoints: REFERRAL_POINTS_MINTER,
+                            };
+                            console.log(`[V2 MINT] ✓ Referral "${referralCode}": +${REFERRAL_POINTS_REFERRER} to #${i}, +${REFERRAL_POINTS_MINTER} to #${tokenId}`);
+                            break;
+                        }
+                    } catch {}
+                }
+            } catch (e) {
+                console.error(`[V2 MINT] Referral reward failed: ${e.message}`);
+            }
+        }
+        
         // ─── Set tokenURI for OpenSea metadata ────────
         try {
             const metadataUrl = `https://api.helixa.xyz/api/v2/metadata/${tokenId}`;
@@ -709,6 +849,8 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
                 txHash: crossRegTx,
                 explorer: `https://basescan.org/tx/${crossRegTx}`,
             } : null,
+            og: ogApplied ? { v1Name: ogInfo.name, bonusPoints: OG_BONUS_POINTS, trait: 'V1 OG' } : null,
+            referral: referralApplied,
         });
     } catch (e) {
         console.error('[V2 MINT] Error:', e.message);
