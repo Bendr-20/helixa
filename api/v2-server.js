@@ -25,7 +25,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const PORT = process.env.V2_API_PORT || 3457;
-const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
+const RPC_URL = process.env.RPC_URL || 'https://sepolia.base.org';
 const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
 const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x19B16428f0721a5f627F190Ca61D493A632B423F';
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -79,7 +79,8 @@ const USDC_ABI = [
     'event Transfer(address indexed from, address indexed to, uint256 value)',
 ];
 
-const provider = new ethers.JsonRpcProvider(RPC_URL, 8453, { staticNetwork: true });
+const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
+const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
 const contract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, provider);
@@ -249,7 +250,7 @@ function requirePayment(amountUSDC) {
 
 // Phase 1 pricing — all $0
 const PRICING = {
-    agentMint: 1,    // $1 USDC platform fee (covers gas + infra)
+    agentMint: 0,    // $0 for testnet — Phase 1 production: $1 USDC
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
@@ -308,12 +309,12 @@ async function formatAgentV2(tokenId) {
         owner,
         agentName: agentName || null,
         personality: personality ? {
-            quirks: personality.quirks,
-            communicationStyle: personality.communicationStyle,
-            values: personality.values,
-            humor: personality.humor,
-            riskTolerance: Number(personality.riskTolerance),
-            autonomyLevel: Number(personality.autonomyLevel),
+            quirks: personality[0],
+            communicationStyle: personality[1],
+            values: personality[2],
+            humor: personality[3],
+            riskTolerance: Number(personality[4]),
+            autonomyLevel: Number(personality[5]),
         } : null,
         narrative: narrative ? {
             origin: narrative.origin,
@@ -554,12 +555,14 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
             try {
                 const ptx = await contract.setPersonality(
                     tokenId,
-                    personality.quirks || '',
-                    personality.communicationStyle || '',
-                    personality.values || '',
-                    personality.humor || '',
-                    Math.min(10, Math.max(0, parseInt(personality.riskTolerance) || 5)),
-                    Math.min(10, Math.max(0, parseInt(personality.autonomyLevel) || 5)),
+                    [
+                        personality.quirks || '',
+                        personality.communicationStyle || '',
+                        personality.values || '',
+                        personality.humor || '',
+                        Math.min(10, Math.max(0, parseInt(personality.riskTolerance) || 5)),
+                        Math.min(10, Math.max(0, parseInt(personality.autonomyLevel) || 5)),
+                    ],
                 );
                 await ptx.wait();
                 console.log(`[V2 MINT] ✓ Personality set for #${tokenId}`);
@@ -573,10 +576,12 @@ app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (
             try {
                 const ntx = await contract.setNarrative(
                     tokenId,
-                    narrative.origin || '',
-                    narrative.mission || '',
-                    narrative.lore || '',
-                    narrative.manifesto || '',
+                    [
+                        narrative.origin || '',
+                        narrative.mission || '',
+                        narrative.lore || '',
+                        narrative.manifesto || '',
+                    ],
                 );
                 await ntx.wait();
                 console.log(`[V2 MINT] ✓ Narrative set for #${tokenId}`);
@@ -687,22 +692,25 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
             let current = {};
             try {
                 const p = await readContract.getPersonality(tokenId);
+                // p.values is shadowed by ethers Result.values() method — use index
                 current = {
-                    quirks: p.quirks, communicationStyle: p.communicationStyle,
-                    values: p.values, humor: p.humor,
-                    riskTolerance: Number(p.riskTolerance), autonomyLevel: Number(p.autonomyLevel),
+                    quirks: p[0], communicationStyle: p[1],
+                    values: p[2], humor: p[3],
+                    riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
                 };
             } catch {}
             
             const merged = { ...current, ...personality };
             const tx = await contract.setPersonality(
                 tokenId,
-                merged.quirks || '',
-                merged.communicationStyle || '',
-                merged.values || '',
-                merged.humor || '',
-                Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
-                Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
+                [
+                    merged.quirks || '',
+                    merged.communicationStyle || '',
+                    merged.values || '',
+                    merged.humor || '',
+                    Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
+                    Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
+                ],
             );
             await tx.wait();
             updated.push('personality');
