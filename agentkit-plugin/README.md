@@ -92,7 +92,7 @@ Early adopters get **2x points** toward future token allocation.
 
 ## Contracts (Base Mainnet)
 
-- **AgentDNA**: [`0x665971e7bf8ec90c3066162c5b396604b3cd7711`](https://basescan.org/address/0x665971e7bf8ec90c3066162c5b396604b3cd7711)
+- **AgentDNA**: [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60)
 - **AgentNames**: [`0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d`](https://basescan.org/address/0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d)
 
 > ⚠️ **Important**: This contract does NOT implement ERC721Enumerable. `totalSupply()` and `paused()` will revert. Use `totalAgents()` instead.

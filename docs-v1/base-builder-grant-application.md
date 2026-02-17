@@ -22,15 +22,17 @@ Key features:
 ## Links
 - **Live site**: https://helixa.xyz
 - **Contracts on Base Mainnet**:
-  - AgentDNA (V1): `0x665971e7bf8ec90c3066162c5b396604b3cd7711`
-  - AgentNames: `0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d`
-  - Agent Cred Score: `0xc6F38c8207d19909151a5e80FB337812c3075A46`
-  - V2 (unified): deploying imminently
+  - HelixaV2 (unified, live): `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`
+  - ERC-8004 Registry: `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+  - Deployer: `0x97cf081780D71F2189889ce86941cF1837997873`
+  - Treasury: `0x01b686e547F4feA03BfC9711B7B5306375735d2a`
+  - V1 (deprecated): `0x665971e7bf8ec90c3066162c5b396604b3cd7711`
+  - V1 Names (deprecated): `0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d`
 - **GitHub**: https://github.com/Bendr-20/helixa.git
 - **Twitter/X**: @HelixaXYZ
 
 ## What stage is the project?
-**Shipped and live on Base mainnet.** 101 agents registered on V1. V2 (unified contract) is built, tested (40/40 passing), and ready to deploy. Full API server with SIWA auth, x402 payments, and Cloudflare Tunnel infrastructure operational.
+**Shipped and live on Base mainnet.** V2 unified contract deployed and live at `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`. 101+ agents registered. Full API server (`https://api.helixa.xyz/api/v2`) with SIWA auth, x402 payments, and Cloudflare Tunnel infrastructure operational. Phase 1: free minting for agents.
 
 ## How does this benefit the Base ecosystem?
 1. **First serious ERC-8004 implementation on Base** — the standard was co-authored by Coinbase's Erik Reppel. We're building the reference implementation that other projects will integrate with.

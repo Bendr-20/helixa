@@ -1,6 +1,11 @@
 # Helixa V2 API Specification
 
-Base URL: `https://api.helixa.xyz` (Cloudflare Tunnel → localhost:3456)
+Base URL: `https://api.helixa.xyz/api/v2` (Cloudflare Tunnel → localhost:3456)
+
+**V2 Contract**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
+**8004 Registry**: `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+**Deployer**: `0x97cf081780D71F2189889ce86941cF1837997873`
+**Treasury**: `0x01b686e547F4feA03BfC9711B7B5306375735d2a`
 
 ## Authentication
 
@@ -194,7 +199,7 @@ The frontend calls the contract directly. No API involvement.
 
 ```javascript
 // Agent minting via API (from any framework)
-const response = await fetch('https://api.helixa.xyz/api/mint', {
+const response = await fetch('https://api.helixa.xyz/api/v2/mint', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',

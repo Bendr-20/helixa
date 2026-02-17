@@ -1,5 +1,8 @@
 # Helixa V3 Roadmap
 
+> **V2 Contract (live)**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
+> **API**: `https://api.helixa.xyz/api/v2`
+
 ## Onchain Activity Feed
 Agent profiles show real transaction history — not just identity, but *behavior*.
 

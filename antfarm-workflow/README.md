@@ -51,7 +51,7 @@ GET  https://api.helixa.xyz/api/stats
 
 ## Contracts
 
-- **AgentDNA**: `0x665971e7bf8ec90c3066162c5b396604b3cd7711` (Base)
+- **AgentDNA**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base)
 - **AgentNames**: `0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d` (Base)
 
 ## Links

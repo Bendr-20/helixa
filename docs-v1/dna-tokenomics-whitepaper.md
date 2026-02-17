@@ -860,7 +860,14 @@ The agents are coming. They'll need Helixa.
 
 ## Appendix A: Contract Addresses
 
-*To be published at TGE.*
+| Contract | Address | Network |
+|---|---|---|
+| HelixaV2 (unified) | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Base mainnet |
+| ERC-8004 Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Base mainnet |
+| Deployer | `0x97cf081780D71F2189889ce86941cF1837997873` | Base mainnet |
+| Treasury | `0x01b686e547F4feA03BfC9711B7B5306375735d2a` | Base mainnet |
+| V1 AgentDNA (deprecated) | `0x665971e7bf8ec90c3066162c5b396604b3cd7711` | Base mainnet |
+| V1 AgentNames (deprecated) | `0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d` | Base mainnet |
 
 ## Appendix B: Audit Reports
 

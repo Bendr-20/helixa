@@ -148,10 +148,13 @@ Human-minted agents can unlock cross-registration by verifying through SIWA.
 
 ## Contract
 
-- **HelixaV2**: Base Sepolia (testnet)
+- **HelixaV2**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
 - **Standard**: ERC-8004 (Agent Identity)
+- **Deployer**: `0x97cf081780D71F2189889ce86941cF1837997873`
+- **Treasury**: `0x01b686e547F4feA03BfC9711B7B5306375735d2a`
+- **8004 Registry**: `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 - **Features**: Personality, Narrative, Cred Score, Points, Traits, Naming, Soulbound, Mutations, SIWA Auth, x402 Payments
 
 ---
 
-Built by [Helixa](https://helixa.xyz) · [GitHub](https://github.com/Bendr-20/helixa) · [Twitter](https://x.com/HelixaXYZ)
+Built by [Helixa](https://helixa.xyz) · [GitHub](https://github.com/Bendr-20/helixa.git) · [Twitter](https://x.com/HelixaXYZ)

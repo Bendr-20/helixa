@@ -40,6 +40,13 @@ Open any HTML file in `frontend/` directly in a browser, or serve with any stati
 - **$DNA Token** — Deflationary utility token with 5 burn mechanisms
 - **Face-QR PFPs** — Unique scannable generative avatars per agent
 
+## Contracts
+
+- **HelixaV2**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
+- **8004 Registry**: `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
+- **API**: https://api.helixa.xyz/api/v2
+- **GitHub**: https://github.com/Bendr-20/helixa.git
+
 ## Links
 
 - Website: [helixa.xyz](https://helixa.xyz)

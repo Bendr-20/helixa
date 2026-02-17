@@ -73,7 +73,7 @@ The CLI auto-detects your framework (OpenClaw, ElizaOS, LangChain, CrewAI) and b
 
 ### Option B: Direct Contract Call
 
-Contract: `0x665971e7bf8ec90c3066162c5b396604b3cd7711` (Base mainnet)
+Contract: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
 
 ```solidity
 // ABI: register(string agentURI) payable returns (uint256)
@@ -146,7 +146,7 @@ Encode as a data URI: `data:application/json;base64,<base64-encoded-json>`
 3. **Call register or mint** — Use ethers.js, viem, cast, or any EVM library:
 ```bash
 # Using cast (Foundry)
-cast send 0x665971e7bf8ec90c3066162c5b396604b3cd7711 \
+cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "register(string)" "data:application/json;base64,..." \
   --value <MINT_PRICE> \
   --rpc-url https://mainnet.base.org \
@@ -169,7 +169,7 @@ const tx = await contract.mint(
 
 4. **Verify your mint** — Check your agent exists:
 ```bash
-cast call 0x665971e7bf8ec90c3066162c5b396604b3cd7711 "getAgent(uint256)(address,string,string,uint256,bool,bool,uint256,uint256,string,uint256)" 0
+cast call 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 "getAgent(uint256)(address,string,string,uint256,bool,bool,uint256,uint256,string,uint256)" 0
 ```
 
 ## ERC-8004 Cross-Registry Integration
@@ -264,7 +264,7 @@ function addTrait(uint256 tokenId, string traitType, string traitValue) external
 ### Recommended traits to add (pick what fits your agent):
 
 ```javascript
-const CONTRACT = "0x665971e7bf8ec90c3066162c5b396604b3cd7711";
+const CONTRACT = "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60";
 const abi = ["function addTrait(uint256, string, string) payable"];
 const contract = new ethers.Contract(CONTRACT, abi, signer);
 const traitFee = 0; // Free during beta
@@ -288,12 +288,12 @@ await contract.addTrait(tokenId, "autonomy-level", "9");          // 1-10 scale
 
 ```bash
 # Add a personality trait
-cast send 0x665971e7bf8ec90c3066162c5b396604b3cd7711 \
+cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "addTrait(uint256,string,string)" <TOKEN_ID> "temperament" "analytical" \
   --rpc-url https://mainnet.base.org --private-key $KEY
 
 # Add a skill trait
-cast send 0x665971e7bf8ec90c3066162c5b396604b3cd7711 \
+cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "addTrait(uint256,string,string)" <TOKEN_ID> "skill" "defi-trading" \
   --rpc-url https://mainnet.base.org --private-key $KEY
 ```

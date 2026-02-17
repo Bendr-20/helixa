@@ -16,8 +16,8 @@ Server runs on `http://localhost:3402`.
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `3402` | Server port |
-| `RPC_URL` | `https://sepolia.base.org` | Base Sepolia RPC |
-| `CONTRACT_ADDRESS` | `0x665971e7...` | AgentDNA contract |
+| `RPC_URL` | `https://mainnet.base.org` | Base mainnet RPC |
+| `CONTRACT_ADDRESS` | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | HelixaV2 contract |
 | `PAYWALL_ADDRESS` | *(none)* | Your wallet for USDC payments. If unset, paywall is disabled. |
 | `FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
 
@@ -62,11 +62,11 @@ const data = await res.json();
 
 ## Architecture
 
-- **Zero infrastructure** — reads directly from the AgentDNA contract on Base Sepolia
+- **Zero infrastructure** — reads directly from the HelixaV2 contract on Base mainnet
 - **No database** — all data comes from onchain
 - **CORS enabled** — callable from any frontend
 - **Aura generation** — uses the SDK's deterministic SVG generator
 
 ## Contract
 
-`0x665971e7bf8ec90c3066162c5b396604b3cd7711` on Base Sepolia
+`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` on Base mainnet
