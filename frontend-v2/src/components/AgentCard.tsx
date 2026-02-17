@@ -11,7 +11,7 @@ interface Agent {
   framework: string;
   credScore: number;
   soulbound: boolean;
-  mintOrigin: number;
+  mintOrigin: string | number;
   points: number;
   traitCount: number;
   mutationCount: number;
@@ -21,6 +21,7 @@ interface Agent {
   autonomyLevel?: number;
   alignment?: string;
   specialization?: string;
+  verified?: boolean;
   traits?: any[];
   personality?: {
     quirks?: string;
@@ -91,27 +92,20 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 text-sm" style={{ marginTop: '0.75rem' }}>
         <div className="flex items-center gap-2">
-          <span className="text-muted">Origin:</span>
-          <span className="flex items-center gap-1">
-            <span>{originDisplay.icon}</span>
-            <span>{originDisplay.label}</span>
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-2">
           <span className="text-muted">Points:</span>
           <span className="font-medium">{agent.points.toLocaleString()}</span>
         </div>
         
         <div className="flex items-center gap-2">
           <span className="text-muted">Traits:</span>
-          <span className="font-medium">{agent.traitCount}</span>
+          <span className="font-medium">{agent.traitCount || agent.traits?.length || 0}</span>
         </div>
         
-        <div className="flex items-center gap-2">
-          <span className="text-muted">Mutations:</span>
-          <span className="font-medium">{agent.mutationCount}</span>
-        </div>
+        {agent.verified && (
+          <div className="flex items-center gap-1">
+            <span style={{ color: '#6eecd8' }}>Verified</span>
+          </div>
+        )}
       </div>
       
       {/* Agent Address (if available) */}

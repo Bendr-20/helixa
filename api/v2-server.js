@@ -83,7 +83,7 @@ const USDC_ABI = [
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
 const READ_RPC_URL = process.env.READ_RPC_URL || 'https://base.drpc.org';
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
-const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true });
+const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
 const contract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
@@ -576,7 +576,7 @@ app.get('/api/v2/stats', async (req, res) => {
         ]);
         
         res.json({
-            totalAgents: Number(total),
+            totalAgents: Math.max(0, Number(total) - 1), // Hide test agent #0
             mintPrice: ethers.formatEther(price),
             network: 'Base',
             chainId: 8453,
@@ -598,14 +598,23 @@ app.get('/api/v2/agents', async (req, res) => {
             return res.json({ total: 0, page: 1, agents: [], contractDeployed: false });
         }
         
-        const total = Number(await readContract.totalAgents());
+        const HIDDEN_TOKENS = new Set([0]); // Hide test agents
+        const totalRaw = Number(await readContract.totalAgents());
+        const total = totalRaw - HIDDEN_TOKENS.size;
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
         const start = (page - 1) * limit;
         const end = Math.min(start + limit, total);
         
+        // Build visible token IDs (skip hidden)
+        const visibleIds = [];
+        for (let i = 0; i < totalRaw; i++) {
+            if (!HIDDEN_TOKENS.has(i)) visibleIds.push(i);
+        }
+        
         const agents = [];
-        for (let i = start; i < end; i++) {
+        for (let idx = start; idx < end && idx < visibleIds.length; idx++) {
+            const i = visibleIds[idx];
             try {
                 const agent = await readContract.getAgent(i);
                 const owner = await readContract.ownerOf(i);

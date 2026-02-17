@@ -79,6 +79,11 @@
       "wallet": "0x3b401da4452bcedd7c219c5c5fddd6aea428b53f",
       "name": "E2ETest",
       "tokenId": 0
+    },
+    "bendr-2-0": {
+      "wallet": "0x27e3286c2c1783f67d06f2ff4e3ab41f8e1c91ea",
+      "name": "Bendr 2.0",
+      "tokenId": 1
     }
   },
   "stats": {}
