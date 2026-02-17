@@ -618,9 +618,13 @@ app.get('/api/v2/agents', async (req, res) => {
             try {
                 const agent = await readContract.getAgent(i);
                 const owner = await readContract.ownerOf(i);
-                let credScore = 0, personality = null, points = 0;
+                let credScore = 0, personality = null, points = 0, traitCount = 0;
                 try { credScore = Number(await readContract.getCredScore(i)); } catch {}
                 try { points = Number(await readContract.points(i)); } catch {}
+                try {
+                    const traits = await readContract.getTraits(i);
+                    traitCount = traits.length;
+                } catch {}
                 try {
                     const p = await readContract.getPersonality(i);
                     personality = { quirks: p[0], communicationStyle: p[1], values: p[2], humor: p[3], riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]) };
@@ -632,10 +636,11 @@ app.get('/api/v2/agents', async (req, res) => {
                     agentAddress: agent.agentAddress,
                     framework: agent.framework,
                     verified: agent.verified,
-                    soulbound: agent.soulbound,
+                    soulbound: agent.soulbound || i === 1, // Bendr is soulbound
                     mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
                     credScore,
                     points,
+                    traitCount,
                     personality,
                     owner,
                     mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),

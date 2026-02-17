@@ -18,6 +18,7 @@ interface AgentData {
   owner: string;
   points: number;
   traits: string[];
+  traitCount: number;
   personality: any;
   narrative: any;
   credScore: number;
@@ -40,6 +41,7 @@ function normalizeAgent(raw: any): AgentData {
     owner: raw.owner || '',
     points: raw.points || 0,
     traits: raw.traits || [],
+    traitCount: raw.traitCount || raw.traits?.length || 0,
     personality: raw.personality || null,
     narrative: raw.narrative || null,
     credScore: raw.credScore || 0,
