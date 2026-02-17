@@ -21,6 +21,15 @@ interface Agent {
   autonomyLevel?: number;
   alignment?: string;
   specialization?: string;
+  traits?: any[];
+  personality?: {
+    quirks?: string;
+    communicationStyle?: string;
+    values?: string;
+    humor?: string;
+    riskTolerance?: number;
+    autonomyLevel?: number;
+  };
 }
 
 interface AgentCardProps {

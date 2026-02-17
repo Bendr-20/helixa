@@ -162,6 +162,11 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         _;
     }
 
+    modifier onlyTokenOwnerOrOwner(uint256 tokenId) {
+        if (ownerOf(tokenId) != msg.sender && owner() != msg.sender) revert NotTokenOwner();
+        _;
+    }
+
     modifier agentExists(uint256 tokenId) {
         if (tokenId >= _nextTokenId) revert NoAgent();
         _;
@@ -279,12 +284,12 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     }
 
     /// @notice ERC-8004: setMetadata
-    function setMetadata(uint256 tokenId, string calldata uri) external onlyTokenOwner(tokenId) {
+    function setMetadata(uint256 tokenId, string calldata uri) external onlyTokenOwnerOrOwner(tokenId) {
         _tokenURIs[tokenId] = uri;
     }
 
     /// @notice ERC-8004: setAgentURI
-    function setAgentURI(uint256 tokenId, string calldata uri) external onlyTokenOwner(tokenId) {
+    function setAgentURI(uint256 tokenId, string calldata uri) external onlyTokenOwnerOrOwner(tokenId) {
         _tokenURIs[tokenId] = uri;
     }
 
@@ -293,7 +298,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         uint256 tokenId,
         address newWallet,
         bytes calldata signature
-    ) external onlyTokenOwner(tokenId) {
+    ) external onlyTokenOwnerOrOwner(tokenId) {
         // Verify the new wallet signed approval
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
             keccak256("SetAgentWallet(uint256 tokenId,address newWallet)"),
@@ -310,7 +315,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         uint256 tokenId,
         string calldata name,
         string calldata category
-    ) external payable onlyTokenOwner(tokenId) {
+    ) external payable onlyTokenOwnerOrOwner(tokenId) {
         if (msg.value < traitPrice) revert InsufficientPayment();
         _traits[tokenId].push(Trait(name, category, uint64(block.timestamp)));
         _awardPoints(tokenId, TRAIT_POINTS, "trait");
@@ -326,7 +331,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     function setPersonality(
         uint256 tokenId,
         Personality calldata p
-    ) external onlyTokenOwner(tokenId) {
+    ) external onlyTokenOwnerOrOwner(tokenId) {
         _personalities[tokenId] = p;
         _awardPoints(tokenId, UPDATE_POINTS, "update_personality");
     }
@@ -340,7 +345,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     function setNarrative(
         uint256 tokenId,
         Narrative calldata n
-    ) external onlyTokenOwner(tokenId) {
+    ) external onlyTokenOwnerOrOwner(tokenId) {
         bool isNew = bytes(_narratives[tokenId].origin).length == 0 &&
                      bytes(_narratives[tokenId].mission).length == 0;
         _narratives[tokenId] = n;
@@ -351,7 +356,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         emit NarrativeSet(tokenId, "all");
     }
 
-    function setOrigin(uint256 tokenId, string calldata text) external onlyTokenOwner(tokenId) {
+    function setOrigin(uint256 tokenId, string calldata text) external onlyTokenOwnerOrOwner(tokenId) {
         bool isNew = bytes(_narratives[tokenId].origin).length == 0;
         _narratives[tokenId].origin = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "origin");
@@ -359,7 +364,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         emit NarrativeSet(tokenId, "origin");
     }
 
-    function setMission(uint256 tokenId, string calldata text) external onlyTokenOwner(tokenId) {
+    function setMission(uint256 tokenId, string calldata text) external onlyTokenOwnerOrOwner(tokenId) {
         bool isNew = bytes(_narratives[tokenId].mission).length == 0;
         _narratives[tokenId].mission = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "mission");
@@ -367,7 +372,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         emit NarrativeSet(tokenId, "mission");
     }
 
-    function setLore(uint256 tokenId, string calldata text) external onlyTokenOwner(tokenId) {
+    function setLore(uint256 tokenId, string calldata text) external onlyTokenOwnerOrOwner(tokenId) {
         bool isNew = bytes(_narratives[tokenId].lore).length == 0;
         _narratives[tokenId].lore = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "lore");
@@ -375,7 +380,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
         emit NarrativeSet(tokenId, "lore");
     }
 
-    function setManifesto(uint256 tokenId, string calldata text) external onlyTokenOwner(tokenId) {
+    function setManifesto(uint256 tokenId, string calldata text) external onlyTokenOwnerOrOwner(tokenId) {
         bool isNew = bytes(_narratives[tokenId].manifesto).length == 0;
         _narratives[tokenId].manifesto = text;
         if (isNew) _awardPoints(tokenId, NARRATIVE_POINTS, "manifesto");
@@ -392,7 +397,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
     function registerName(
         uint256 tokenId,
         string calldata name
-    ) external payable onlyTokenOwner(tokenId) {
+    ) external payable onlyTokenOwnerOrOwner(tokenId) {
         if (msg.value < namePrice) revert InsufficientPayment();
         if (!_validName(name)) revert InvalidName();
         if (_nameTaken[_lower(name)]) revert NameTaken();
@@ -514,7 +519,7 @@ contract HelixaV2 is ERC721, EIP712, Ownable {
 
     // ─── Mutations ──────────────────────────────────────────────
 
-    function mutate(uint256 tokenId, string calldata newVersion) external onlyTokenOwner(tokenId) {
+    function mutate(uint256 tokenId, string calldata newVersion) external onlyTokenOwnerOrOwner(tokenId) {
         _agents[tokenId].mutationCount++;
         _agents[tokenId].currentVersion = newVersion;
         _awardPoints(tokenId, UPDATE_POINTS, "mutate");

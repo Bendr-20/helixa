@@ -26,13 +26,13 @@ if (fs.existsSync(envPath)) {
 }
 
 const PORT = process.env.V2_API_PORT || 3457;
-const RPC_URL = process.env.RPC_URL || 'https://sepolia.base.org';
+const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
 const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
 const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x19B16428f0721a5f627F190Ca61D493A632B423F';
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 // TODO: Replace with actual deployed V2 contract address
-const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x95Ad82720adDe7686957F43Fe82783Fbfb4A92E2';
+const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 
 // ERC-8004 Canonical Identity Registry on Base
 // ERC-8004 Canonical Identity Registry on Base
@@ -81,10 +81,12 @@ const USDC_ABI = [
 ];
 
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
+const READ_RPC_URL = process.env.READ_RPC_URL || 'https://base.drpc.org';
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
+const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true });
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
 const contract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
-const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, provider);
+const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
 const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
 
 // ═══════════════════════════════════════════════════════════════
@@ -452,12 +454,21 @@ async function formatAgentV2(tokenId) {
     ]);
     
     let personality = null, narrative = null, traits = [], pts = 0, credScore = 0, agentName = '';
-    try { personality = await readContract.getPersonality(tokenId); } catch {}
-    try { narrative = await readContract.getNarrative(tokenId); } catch {}
-    try { traits = await readContract.getTraits(tokenId); } catch {}
-    try { pts = Number(await readContract.points(tokenId)); } catch {}
-    try { credScore = Number(await readContract.getCredScore(tokenId)); } catch {}
-    try { agentName = await readContract.nameOf(tokenId); } catch {}
+    const safe = (p) => p.catch(() => null);
+    const [pRes, nRes, tRes, ptsRes, credRes, nameRes] = await Promise.all([
+        safe(readContract.getPersonality(tokenId)),
+        safe(readContract.getNarrative(tokenId)),
+        safe(readContract.getTraits(tokenId)),
+        safe(readContract.points(tokenId)),
+        safe(readContract.getCredScore(tokenId)),
+        safe(readContract.nameOf(tokenId)),
+    ]);
+    if (pRes) personality = pRes;
+    if (nRes) narrative = nRes;
+    if (tRes) traits = tRes;
+    if (ptsRes) pts = Number(ptsRes);
+    if (credRes) credScore = Number(credRes);
+    if (nameRes) agentName = nameRes;
     
     return {
         tokenId: Number(tokenId),
@@ -1329,8 +1340,7 @@ app.use((req, res) => {
 // ─── Start ──────────────────────────────────────────────────────
 
 process.on('uncaughtException', (err) => {
-    console.error('FATAL uncaught:', err.message || err);
-    process.exit(1); // Don't continue in unknown state
+    console.error('Uncaught exception:', err.message || err, err.stack?.split('\n').slice(0,3).join(' '));
 });
 process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err.message || err));
 

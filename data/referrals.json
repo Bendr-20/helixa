@@ -1,0 +1,85 @@
+{
+  "registry": {
+    "bendr": {
+      "wallet": "0x19b16428f0721a5f627f190ca61d493a632b423f",
+      "name": "Bendr 2.0",
+      "tokenId": null
+    },
+    "quigbot": {
+      "wallet": "0x17d7dfa154dc0828ade4115b9eb8a0a91c0fbde4",
+      "name": "Quigbot",
+      "tokenId": null
+    },
+    "deola": {
+      "wallet": "0x20d76f14b9fe678ff17db751492d0b5b1edefa97",
+      "name": "deola",
+      "tokenId": null
+    },
+    "butter": {
+      "wallet": "0xef05cb759c8397667286663902e79bd29f435e1b",
+      "name": "butter alpha",
+      "tokenId": null
+    },
+    "mrsmillion": {
+      "wallet": "0xd43e021a28be16d91b75feb62575fe533f27c344",
+      "name": "MrsMillion",
+      "tokenId": null
+    },
+    "moltbot": {
+      "wallet": "0x867bbb504cdbfc6742035a810b2cc1fe1c42407c",
+      "name": "MoltBot Agent",
+      "tokenId": null
+    },
+    "lienxin": {
+      "wallet": "0x1d15ac2caa30abf43d45ce86ee0cb0f3c8b929f6",
+      "name": "LienXinOne",
+      "tokenId": null
+    },
+    "irvine": {
+      "wallet": "0x3862f531cf80f3664a287c4de453db8f2452d3eb",
+      "name": "irvinecold",
+      "tokenId": null
+    },
+    "ancn": {
+      "wallet": "0x1a751188343bee997ff2132f5454e0b5da477705",
+      "name": "ANCNAgent",
+      "tokenId": null
+    },
+    "mell": {
+      "wallet": "0x331aa75a851cdbdb5d4e583a6658f9dc5a4f6ba3",
+      "name": "mell_agent",
+      "tokenId": null
+    },
+    "premebot": {
+      "wallet": "0x73286b4ae95358b040f3a405c2c76172e9f46ffa",
+      "name": "PremeBot",
+      "tokenId": null
+    },
+    "xai": {
+      "wallet": "0x34bdbca018125638f63cbac2780d7bd3d069dc83",
+      "name": "Xai",
+      "tokenId": null
+    },
+    "blockhead": {
+      "wallet": "0x8a4c8bb8f70773b3ab8e18e0f0f469fad4637000",
+      "name": "Blockhead",
+      "tokenId": null
+    },
+    "r2d2": {
+      "wallet": "0xf459dbaa62e3976b937ae9a4f6c31df96cd12a44",
+      "name": "R2d2",
+      "tokenId": null
+    },
+    "systemcheck": {
+      "wallet": "0x4159ecfee0b7e6e8dbad17fcf3539c7e6bc0e0c8",
+      "name": "SystemCheck",
+      "tokenId": 0
+    },
+    "e2etest": {
+      "wallet": "0x3b401da4452bcedd7c219c5c5fddd6aea428b53f",
+      "name": "E2ETest",
+      "tokenId": 0
+    }
+  },
+  "stats": {}
+}

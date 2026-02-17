@@ -38,7 +38,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
         name: data.name,
         framework: data.framework,
         soulbound: data.soulbound,
-        value: mintPrice ?? BigInt(0),
+        value: (mintPrice as bigint) ?? BigInt(0),
       });
     } catch (e: any) {
       setMintError(e.message || 'Mint failed');
@@ -52,7 +52,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
 
     const postMint = async () => {
       // Extract tokenId from the mint tx receipt
-      let tokenId: bigint | null = null;
+      let tokenId: any = null as any;
       try {
         const receipt = await publicClient?.getTransactionReceipt({ hash });
         if (receipt) {
@@ -62,7 +62,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               const decoded = decodeEventLog({
                 abi: HelixaV2ABI.abi,
                 data: log.data,
-                topics: log.topics,
+                topics: ((log as any).topics),
               });
               if (decoded.eventName === 'AgentRegistered') {
                 tokenId = (decoded.args as any).tokenId;
@@ -73,8 +73,8 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           // Fallback: ERC721 Transfer event (topic 0 = Transfer, topic 3 = tokenId)
           if (tokenId === null) {
             for (const log of receipt.logs) {
-              if (log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
-                tokenId = BigInt(log.topics[3]);
+              if (((log as any).topics)[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef') {
+                tokenId = BigInt(((log as any).topics)[3]);
                 break;
               }
             }
