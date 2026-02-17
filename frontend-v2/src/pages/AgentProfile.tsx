@@ -169,9 +169,30 @@ export function AgentProfile() {
                 {agent.agentAddress && (
                   <div>
                     <span className="text-muted block text-sm mb-1">Agent Address</span>
-                    <code className="bg-gray-800 px-3 py-2 rounded text-sm block break-all">
-                      {agent.agentAddress}
-                    </code>
+                    <div 
+                      className="bg-gray-800 px-3 py-2 rounded text-sm flex items-center justify-between cursor-pointer hover:bg-gray-700 transition-colors"
+                      onClick={() => {
+                        navigator.clipboard.writeText(agent.agentAddress);
+                        const el = document.getElementById('copy-toast');
+                        if (el) { el.style.opacity = '1'; setTimeout(() => { el.style.opacity = '0'; }, 1500); }
+                      }}
+                      title="Click to copy"
+                    >
+                      <code>
+                        {agent.agentAddress.slice(0, 6)}...{agent.agentAddress.slice(-4)}
+                      </code>
+                      <span id="copy-toast" className="text-xs transition-opacity duration-300" style={{ opacity: 0, color: '#6eecd8' }}>Copied!</span>
+                      <a 
+                        href={`https://basescan.org/address/${agent.agentAddress}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs hover:underline"
+                        style={{ color: '#80d0ff' }}
+                      >
+                        View
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>

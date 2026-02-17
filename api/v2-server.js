@@ -477,7 +477,7 @@ async function formatAgentV2(tokenId) {
         framework: agent.framework,
         mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),
         verified: agent.verified,
-        soulbound: agent.soulbound,
+        soulbound: agent.soulbound || Number(tokenId) === 1, // Bendr is soulbound
         mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
         generation: Number(agent.generation),
         version: agent.currentVersion,
