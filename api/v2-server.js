@@ -268,7 +268,7 @@ function requirePayment(amountUSDC) {
 
 // Phase 1 pricing — all $0
 const PRICING = {
-    agentMint: 0,    // $0 for testnet — Phase 1 production: $1 USDC
+    agentMint: 1,    // $1 USDC via x402
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
@@ -591,30 +591,23 @@ app.get('/api/v2/stats', async (req, res) => {
     }
 });
 
-// GET /api/v2/agents
-app.get('/api/v2/agents', async (req, res) => {
+// ─── Agent List Cache ───────────────────────────────────────────
+const HIDDEN_TOKENS = new Set([0, 14, 15, 16, 17, 18, 21]);
+let agentCache = { agents: [], total: 0, updatedAt: 0, loading: false };
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+async function refreshAgentCache() {
+    if (agentCache.loading) return;
+    agentCache.loading = true;
     try {
-        if (!isContractDeployed()) {
-            return res.json({ total: 0, page: 1, agents: [], contractDeployed: false });
-        }
-        
-        const HIDDEN_TOKENS = new Set([0]); // Hide test agents
         const totalRaw = Number(await readContract.totalAgents());
-        const total = totalRaw - HIDDEN_TOKENS.size;
-        const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-        const start = (page - 1) * limit;
-        const end = Math.min(start + limit, total);
-        
-        // Build visible token IDs (skip hidden)
         const visibleIds = [];
         for (let i = 0; i < totalRaw; i++) {
             if (!HIDDEN_TOKENS.has(i)) visibleIds.push(i);
         }
         
         const agents = [];
-        for (let idx = start; idx < end && idx < visibleIds.length; idx++) {
-            const i = visibleIds[idx];
+        for (const i of visibleIds) {
             try {
                 const agent = await readContract.getAgent(i);
                 const owner = await readContract.ownerOf(i);
@@ -636,7 +629,7 @@ app.get('/api/v2/agents', async (req, res) => {
                     agentAddress: agent.agentAddress,
                     framework: agent.framework,
                     verified: agent.verified,
-                    soulbound: agent.soulbound || i === 1, // Bendr is soulbound
+                    soulbound: agent.soulbound || i === 1,
                     mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
                     credScore,
                     points,
@@ -648,7 +641,36 @@ app.get('/api/v2/agents', async (req, res) => {
             } catch {}
         }
         
-        res.json({ total, page, pages: Math.ceil(total / limit), limit, agents });
+        agentCache = { agents, total: agents.length, updatedAt: Date.now(), loading: false };
+        console.log(`📋 Agent cache refreshed: ${agents.length} agents`);
+    } catch (e) {
+        agentCache.loading = false;
+        console.error('Cache refresh error:', e.message);
+    }
+}
+
+// Refresh cache on startup and periodically
+setTimeout(refreshAgentCache, 2000);
+setInterval(() => {
+    if (Date.now() - agentCache.updatedAt > CACHE_TTL_MS) refreshAgentCache();
+}, 30_000);
+
+// GET /api/v2/agents
+app.get('/api/v2/agents', async (req, res) => {
+    try {
+        if (!isContractDeployed()) {
+            return res.json({ total: 0, page: 1, agents: [], contractDeployed: false });
+        }
+        
+        // Trigger refresh if stale but serve cached data immediately
+        if (Date.now() - agentCache.updatedAt > CACHE_TTL_MS) refreshAgentCache();
+        
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100));
+        const start = (page - 1) * limit;
+        const paged = agentCache.agents.slice(start, start + limit);
+        
+        res.json({ total: agentCache.total, page, pages: Math.ceil(agentCache.total / limit), limit, agents: paged, cached: true, cachedAt: new Date(agentCache.updatedAt).toISOString() });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -668,7 +690,7 @@ app.get('/api/v2/agent/:id', async (req, res) => {
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {
         const agent = await formatAgentV2(parseInt(req.params.id));
-        const tier = agent.credScore >= 61 ? 'Full Art' : agent.credScore >= 26 ? 'Holo' : 'Basic';
+        const tier = agent.credScore >= 61 ? 'EX' : agent.credScore >= 26 ? 'Evolved' : 'Basic';
         
         const attributes = [
             { trait_type: 'Framework', value: agent.framework },
@@ -704,7 +726,7 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
         }
         
         // TODO: Replace with actual card render URL when available
-        const imageUrl = `https://api.helixa.xyz/api/v2/card/${agent.tokenId}.png`;
+        const imageUrl = `https://api.helixa.xyz/api/v2/aura/${agent.tokenId}.png`;
         
         res.json({
             name: agent.name || `Helixa Agent #${agent.tokenId}`,
@@ -717,6 +739,49 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
         });
     } catch (e) {
         res.status(404).json({ error: 'Agent not found' });
+    }
+});
+
+// GET /api/v2/aura/:id.png — Dynamic aura image for OpenSea
+app.get(['/api/v2/aura/:id.png', '/api/v2/card/:id.png'], async (req, res) => {
+    try {
+        const sharp = require('sharp');
+        const { generateAura } = require('../sdk/lib/aura-v3.cjs');
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        
+        // Build aura from agent data — match frontend fields exactly
+        const p = agent.personality || {};
+        const n = agent.narrative || {};
+        const auraData = {
+            name: agent.name || `Agent #${tokenId}`,
+            address: agent.agentAddress || agent.owner || '0x0000',
+            agentAddress: agent.agentAddress || agent.owner || '0x0000',
+            framework: agent.framework || 'custom',
+            traitCount: (agent.traits || []).length,
+            mutationCount: agent.mutationCount || 0,
+            soulbound: agent.soulbound || false,
+            points: agent.points || 0,
+            generation: agent.generation || 0,
+            quirks: p.quirks || '',
+            humor: p.humor || '',
+            values: p.values || '',
+            communicationStyle: p.communicationStyle || '',
+            riskTolerance: p.riskTolerance || 5,
+            autonomyLevel: p.autonomyLevel || 5,
+            origin: n.origin || '',
+            mission: n.mission || '',
+            credScore: agent.credScore || 0,
+        };
+        
+        const svg = generateAura(auraData, 500);
+        const png = await sharp(Buffer.from(svg)).png().toBuffer();
+        
+        res.set('Content-Type', 'image/png');
+        res.set('Cache-Control', 'public, max-age=300');
+        res.send(png);
+    } catch (e) {
+        res.status(404).json({ error: 'Card not found', detail: e.message });
     }
 });
 
@@ -1082,10 +1147,16 @@ app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update)
     }
     
     try {
-        // Verify caller owns this agent
-        const owner = await readContract.ownerOf(tokenId);
-        if (owner.toLowerCase() !== req.agent.address.toLowerCase()) {
-            return res.status(403).json({ error: 'Not the owner of this agent' });
+        // Verify caller owns this agent OR is the agent itself
+        const [owner__, agentData__] = await Promise.all([
+            readContract.ownerOf(tokenId),
+            readContract.getAgent(tokenId)
+        ]);
+        const caller__ = req.agent.address.toLowerCase();
+        const isOwner__ = owner__.toLowerCase() === caller__;
+        const isAgent__ = agentData__.agentAddress.toLowerCase() === caller__;
+        if (!isOwner__ && !isAgent__) {
+            return res.status(403).json({ error: 'Must be token owner or agent address' });
         }
         
         const updated = [];
@@ -1199,10 +1270,16 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
     }
     
     try {
-        // Verify caller owns this agent
-        const owner = await readContract.ownerOf(tokenId);
-        if (owner.toLowerCase() !== req.agent.address.toLowerCase()) {
-            return res.status(403).json({ error: 'Not the owner of this agent' });
+        // Verify caller owns this agent OR is the agent itself
+        const [owner__, agentData__] = await Promise.all([
+            readContract.ownerOf(tokenId),
+            readContract.getAgent(tokenId)
+        ]);
+        const caller__ = req.agent.address.toLowerCase();
+        const isOwner__ = owner__.toLowerCase() === caller__;
+        const isAgent__ = agentData__.agentAddress.toLowerCase() === caller__;
+        if (!isOwner__ && !isAgent__) {
+            return res.status(403).json({ error: 'Must be token owner or agent address' });
         }
         
         const agent = await readContract.getAgent(tokenId);
@@ -1285,10 +1362,16 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
     }
     
     try {
-        // Verify caller owns this agent
-        const owner = await readContract.ownerOf(tokenId);
-        if (owner.toLowerCase() !== req.agent.address.toLowerCase()) {
-            return res.status(403).json({ error: 'Not the owner of this agent' });
+        // Verify caller owns this agent OR is the agent itself
+        const [owner__, agentData__] = await Promise.all([
+            readContract.ownerOf(tokenId),
+            readContract.getAgent(tokenId)
+        ]);
+        const caller__ = req.agent.address.toLowerCase();
+        const isOwner__ = owner__.toLowerCase() === caller__;
+        const isAgent__ = agentData__.agentAddress.toLowerCase() === caller__;
+        if (!isOwner__ && !isAgent__) {
+            return res.status(403).json({ error: 'Must be token owner or agent address' });
         }
         
         // Check Coinbase Indexer for Verified Account attestation on the owner's wallet
@@ -1336,6 +1419,179 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
         console.error(`[COINBASE] Error for #${tokenId}:`, e.message);
         res.status(500).json({ error: 'Coinbase verification failed: ' + e.message.slice(0, 200) });
     }
+});
+
+// ─── Discovery & OpenAPI ────────────────────────────────────────
+
+// Well-known agent registry — machine-readable service manifest
+app.get('/.well-known/agent-registry', (req, res) => {
+    res.json({
+        name: 'Helixa',
+        description: 'Onchain identity and reputation layer for AI agents. ERC-8004 registry with Cred Scores, personality traits, and verifiable credentials.',
+        version: '2.0.0',
+        chain: 'base',
+        chainId: 8453,
+        contract: V2_CONTRACT_ADDRESS,
+        standards: ['ERC-8004', 'x402', 'SIWA'],
+        capabilities: [
+            'agent-identity',
+            'cred-score',
+            'personality-traits',
+            'narrative-metadata',
+            'verification',
+            'naming',
+            'referrals',
+            'cross-registration',
+        ],
+        endpoints: {
+            api: 'https://api.helixa.xyz/api/v2',
+            agents: 'https://api.helixa.xyz/api/v2/agents',
+            mint: 'https://api.helixa.xyz/api/v2/mint',
+            metadata: 'https://api.helixa.xyz/api/v2/metadata/{id}',
+            openapi: 'https://api.helixa.xyz/api/v2/openapi.json',
+            website: 'https://helixa.xyz',
+            docs: 'https://helixa.xyz/docs/getting-started',
+        },
+        pricing: {
+            mint: PRICING.agentMint === 0 ? 'free' : `${PRICING.agentMint} USDC`,
+            update: PRICING.update === 0 ? 'free' : `${PRICING.update} USDC`,
+            protocol: 'x402',
+        },
+        auth: {
+            type: 'SIWA',
+            format: 'address:timestamp:signature',
+            description: 'Sign-In With Agent — agent signs a message with its wallet key',
+        },
+        social: {
+            x: 'https://x.com/HelixaXYZ',
+            github: 'https://github.com/Bendr-20/helixa',
+        },
+    });
+});
+
+// OpenAPI 3.0 spec
+app.get('/api/v2/openapi.json', (req, res) => {
+    res.json({
+        openapi: '3.0.3',
+        info: {
+            title: 'Helixa V2 API',
+            version: '2.0.0',
+            description: 'Onchain identity and reputation for AI agents. Mint identities, set personality traits, build Cred Scores, and verify agents — all via API with SIWA auth and x402 payments.',
+            contact: { url: 'https://helixa.xyz' },
+        },
+        servers: [{ url: 'https://api.helixa.xyz', description: 'Production (Base Mainnet)' }],
+        paths: {
+            '/api/v2/agents': {
+                get: {
+                    summary: 'List all agents',
+                    description: 'Returns all registered Helixa agents with personality, traits, cred scores, and metadata.',
+                    parameters: [
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100, maximum: 200 } },
+                        { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
+                    ],
+                    responses: { '200': { description: 'Array of agent objects' } },
+                },
+            },
+            '/api/v2/agent/{id}': {
+                get: {
+                    summary: 'Get agent by token ID',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+                    responses: { '200': { description: 'Agent object with full personality, traits, narrative, and cred score' } },
+                },
+            },
+            '/api/v2/mint': {
+                post: {
+                    summary: 'Mint a new agent identity',
+                    description: 'Requires SIWA authentication. Optionally accepts x402 payment. Creates onchain identity with name, framework, personality, narrative, and traits.',
+                    security: [{ siwa: [] }],
+                    requestBody: {
+                        required: true,
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    required: ['name', 'framework'],
+                                    properties: {
+                                        name: { type: 'string', description: 'Agent display name' },
+                                        framework: { type: 'string', description: 'Agent framework (e.g. openclaw, elizaos, agentkit, langchain)' },
+                                        soulbound: { type: 'boolean', description: 'Lock identity to this wallet (non-transferable)' },
+                                        personality: {
+                                            type: 'object',
+                                            properties: {
+                                                quirks: { type: 'string' },
+                                                communicationStyle: { type: 'string' },
+                                                values: { type: 'string' },
+                                                humor: { type: 'string' },
+                                                riskTolerance: { type: 'integer', minimum: 1, maximum: 10 },
+                                                autonomyLevel: { type: 'integer', minimum: 1, maximum: 10 },
+                                            },
+                                        },
+                                        narrative: {
+                                            type: 'object',
+                                            properties: {
+                                                origin: { type: 'string' },
+                                                mission: { type: 'string' },
+                                                lore: { type: 'string' },
+                                            },
+                                        },
+                                        referralCode: { type: 'string', description: 'Referral code from another agent' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    responses: {
+                        '201': { description: 'Agent minted successfully' },
+                        '401': { description: 'Invalid SIWA authentication' },
+                        '402': { description: 'Payment required (when pricing is active)' },
+                    },
+                },
+            },
+            '/api/v2/agent/{id}/personality': {
+                put: {
+                    summary: 'Update agent personality',
+                    security: [{ siwa: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+                    responses: { '200': { description: 'Personality updated' } },
+                },
+            },
+            '/api/v2/agent/{id}/verify': {
+                post: {
+                    summary: 'Verify agent identity',
+                    security: [{ siwa: [] }],
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+                    responses: { '200': { description: 'Agent verified, Cred Score boosted' } },
+                },
+            },
+            '/api/v2/metadata/{id}': {
+                get: {
+                    summary: 'OpenSea-compatible NFT metadata',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
+                    responses: { '200': { description: 'ERC-721 metadata JSON' } },
+                },
+            },
+            '/api/v2/leaderboard': {
+                get: {
+                    summary: 'Agent leaderboard by Cred Score or Points',
+                    parameters: [
+                        { name: 'sort', in: 'query', schema: { type: 'string', enum: ['cred', 'points'], default: 'cred' } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+                    ],
+                    responses: { '200': { description: 'Sorted agent list' } },
+                },
+            },
+        },
+        components: {
+            securitySchemes: {
+                siwa: {
+                    type: 'apiKey',
+                    in: 'header',
+                    name: 'Authorization',
+                    description: 'SIWA token: address:timestamp:signature (agent signs message with wallet key)',
+                },
+            },
+        },
+    });
 });
 
 // ─── Error Handler ──────────────────────────────────────────────
