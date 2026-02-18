@@ -283,12 +283,37 @@ export function AgentProfile() {
                 </div>
               )}
 
+              {/* Social Verifications */}
+              {agent.traits && agent.traits.some((t: any) => t.category === 'verification') && (
+                <div className="card">
+                  <h2 className="text-xl font-semibold mb-4">Verified Accounts</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {agent.traits.filter((t: any) => t.category === 'verification').map((t: any, i: number) => {
+                      const platform = t.name.replace('-verified', '');
+                      const icons: Record<string, { icon: string; color: string; label: string }> = {
+                        x: { icon: '𝕏', color: '#1DA1F2', label: 'X / Twitter' },
+                        github: { icon: '🐙', color: '#8b5cf6', label: 'GitHub' },
+                        farcaster: { icon: '🟣', color: '#855DCD', label: 'Farcaster' },
+                      };
+                      const info = icons[platform] || { icon: '✓', color: '#6eecd8', label: platform };
+                      return (
+                        <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: `${info.color}15`, border: `1px solid ${info.color}40` }}>
+                          <span className="text-lg">{info.icon}</span>
+                          <span className="font-medium" style={{ color: info.color }}>{info.label}</span>
+                          <span className="text-green-400 text-sm">✓ Verified</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Traits */}
               {agent.traits && agent.traits.length > 0 && (
                 <div className="card">
                   <h2 className="text-xl font-semibold mb-4">Traits</h2>
                   <div className="flex flex-wrap gap-2">
-                    {agent.traits.map((trait: any, i: number) => (
+                    {agent.traits.filter((t: any) => t.category !== 'verification').map((trait: any, i: number) => (
                       <span key={i} className="badge">
                         {typeof trait === 'string' ? trait : `${trait.name} (${trait.category})`}
                       </span>

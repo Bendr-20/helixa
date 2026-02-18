@@ -101,9 +101,17 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
           <span className="font-medium">{agent.traitCount || agent.traits?.length || 0}</span>
         </div>
         
-        {agent.verified && (
-          <div className="flex items-center gap-1">
-            <span style={{ color: '#6eecd8' }}>Verified</span>
+        {agent.traits?.some((t: any) => t.category === 'verification') && (
+          <div className="col-span-2 flex items-center gap-2">
+            {agent.traits.filter((t: any) => t.category === 'verification').map((t: any, i: number) => {
+              const p = t.name.replace('-verified', '');
+              const icons: Record<string, string> = { x: '𝕏', github: '🐙', farcaster: '🟣' };
+              return (
+                <span key={i} className="badge badge-sm" style={{ background: 'rgba(110, 236, 216, 0.15)', color: '#6eecd8', border: '1px solid rgba(110, 236, 216, 0.3)' }}>
+                  {icons[p] || '✓'} {p}
+                </span>
+              );
+            })}
           </div>
         )}
       </div>
