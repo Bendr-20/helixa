@@ -294,6 +294,7 @@ export function AgentProfile() {
                         x: { icon: '𝕏', color: '#1DA1F2', label: 'X / Twitter' },
                         github: { icon: '🐙', color: '#8b5cf6', label: 'GitHub' },
                         farcaster: { icon: '🟣', color: '#855DCD', label: 'Farcaster' },
+                        siwa: { icon: '🤖', color: '#6eecd8', label: 'SIWA' },
                       };
                       const info = icons[platform] || { icon: '✓', color: '#6eecd8', label: platform };
                       return (
