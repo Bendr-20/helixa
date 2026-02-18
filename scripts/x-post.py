@@ -65,16 +65,31 @@ def mentions(max_results=10):
         print(f"No mentions or error: {json.dumps(d)}")
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    if not args:
-        print(__doc__)
-        sys.exit(0)
+    import argparse
+    parser = argparse.ArgumentParser(description='Helixa X/Twitter posting script')
+    parser.add_argument('--reply', '--reply-to', '--in-reply-to', dest='reply_to', help='Tweet ID to reply to')
+    parser.add_argument('--search', dest='search_query', nargs='*', help='Search query')
+    parser.add_argument('--mentions', action='store_true', help='Show recent mentions')
+    parser.add_argument('--text', '-t', dest='text_flag', nargs='*', help='Tweet text')
+    parser.add_argument('text', nargs='*', help='Tweet text (positional)')
     
-    if args[0] == '--search':
-        search(' '.join(args[1:]))
-    elif args[0] == '--mentions':
+    parsed = parser.parse_args()
+    
+    if parsed.mentions:
         mentions()
-    elif args[0] == '--reply' and len(args) >= 3:
-        tweet(args[2], reply_to=args[1])
+    elif parsed.search_query is not None:
+        search(' '.join(parsed.search_query))
     else:
-        tweet(' '.join(args))
+        # Combine text from --text flag and positional args
+        text_parts = []
+        if parsed.text_flag:
+            text_parts.extend(parsed.text_flag)
+        if parsed.text:
+            text_parts.extend(parsed.text)
+        text = ' '.join(text_parts).strip()
+        
+        if not text:
+            print(__doc__)
+            sys.exit(0)
+        
+        tweet(text, reply_to=parsed.reply_to)
