@@ -124,8 +124,10 @@ function verifySIWA(address, timestamp, signature) {
         
         if (recovered.toLowerCase() !== address.toLowerCase()) return false;
         
-        const ts = parseInt(timestamp);
+        let ts = parseInt(timestamp);
         if (isNaN(ts)) return false;
+        // Auto-detect seconds vs milliseconds (seconds timestamps are < 1e12)
+        if (ts < 1e12) ts = ts * 1000;
         if (Date.now() - ts > SIWA_EXPIRY_MS) return false;
         
         return true;
