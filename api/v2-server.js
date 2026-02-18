@@ -1626,11 +1626,35 @@ async function requireAgentAuth(req, res, tokenId) {
         readContract.owner(),
     ]);
     const caller = req.agent.address.toLowerCase();
-    if (owner.toLowerCase() !== caller && agentData.agentAddress.toLowerCase() !== caller && contractOwner.toLowerCase() !== caller) {
+    const isOwner = owner.toLowerCase() === caller;
+    const isAgent = agentData.agentAddress.toLowerCase() === caller;
+    const isContractOwner = contractOwner.toLowerCase() === caller;
+    if (!isOwner && !isAgent && !isContractOwner) {
         res.status(403).json({ error: 'Must be token owner, agent address, or contract owner' });
         return false;
     }
+    // Auto-grant siwa-verified trait on first successful SIWA auth (non-contract-owner)
+    if ((isOwner || isAgent) && !isContractOwner) {
+        autoGrantSIWATrait(tokenId).catch(() => {});
+    }
     return true;
+}
+
+const siwaGrantedSet = new Set(); // in-memory dedup
+async function autoGrantSIWATrait(tokenId) {
+    if (siwaGrantedSet.has(tokenId)) return;
+    siwaGrantedSet.add(tokenId);
+    try {
+        // Check if already has the trait
+        const traits = await readContract.getTraits(tokenId);
+        if (traits.some(t => t.name === 'siwa-verified')) return;
+        const tx = await contract.addTrait(tokenId, 'siwa-verified', 'verification');
+        await tx.wait();
+        console.log(`[SIWA] ✓ Auto-granted siwa-verified to #${tokenId} (tx: ${tx.hash})`);
+    } catch (e) {
+        siwaGrantedSet.delete(tokenId);
+        console.error(`[SIWA] Auto-grant failed for #${tokenId}: ${e.message.slice(0, 100)}`);
+    }
 }
 
 async function addVerificationTrait(tokenId, traitName) {
