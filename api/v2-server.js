@@ -1596,6 +1596,332 @@ app.get('/api/v2/openapi.json', (req, res) => {
     });
 });
 
+// ═══════════════════════════════════════════════════════════════
+// Social Verification (X/Twitter, GitHub, Farcaster)
+// ═══════════════════════════════════════════════════════════════
+
+const VERIFICATIONS_PATH = path.join(__dirname, '..', 'data', 'verifications.json');
+let verifications = {};
+try {
+    if (fs.existsSync(VERIFICATIONS_PATH)) {
+        verifications = JSON.parse(fs.readFileSync(VERIFICATIONS_PATH, 'utf8'));
+        console.log(`✅ Loaded ${Object.keys(verifications).length} social verifications`);
+    }
+} catch {}
+
+function saveVerifications() {
+    try {
+        const dir = path.dirname(VERIFICATIONS_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(VERIFICATIONS_PATH, JSON.stringify(verifications, null, 2));
+    } catch (e) {
+        console.error(`[VERIFY] Failed to save verifications: ${e.message}`);
+    }
+}
+
+async function requireAgentAuth(req, res, tokenId) {
+    const [owner, agentData, contractOwner] = await Promise.all([
+        readContract.ownerOf(tokenId),
+        readContract.getAgent(tokenId),
+        readContract.owner(),
+    ]);
+    const caller = req.agent.address.toLowerCase();
+    if (owner.toLowerCase() !== caller && agentData.agentAddress.toLowerCase() !== caller && contractOwner.toLowerCase() !== caller) {
+        res.status(403).json({ error: 'Must be token owner, agent address, or contract owner' });
+        return false;
+    }
+    return true;
+}
+
+async function addVerificationTrait(tokenId, traitName) {
+    try {
+        const tx = await contract.addTrait(tokenId, traitName, 'verification');
+        await tx.wait();
+        console.log(`[VERIFY] ✓ Trait "${traitName}" added to #${tokenId} (tx: ${tx.hash})`);
+        return tx.hash;
+    } catch (e) {
+        console.error(`[VERIFY] Trait "${traitName}" failed for #${tokenId}: ${e.message}`);
+        throw e;
+    }
+}
+
+// GET /api/v2/agent/:id/verifications — Check social verification status
+app.get('/api/v2/agent/:id/verifications', async (req, res) => {
+    const tokenId = req.params.id;
+    const v = verifications[tokenId] || {};
+    res.json({
+        tokenId: parseInt(tokenId),
+        x: v.x || null,
+        github: v.github || null,
+        farcaster: v.farcaster || null,
+    });
+});
+
+// POST /api/v2/agent/:id/verify/x — Verify X/Twitter account
+app.post('/api/v2/agent/:id/verify/x', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { handle } = req.body;
+
+    if (!handle || typeof handle !== 'string') {
+        return res.status(400).json({ error: 'handle required (X/Twitter username)' });
+    }
+
+    if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+
+    try {
+        if (!(await requireAgentAuth(req, res, tokenId))) return;
+
+        // Check duplicate
+        if (verifications[tokenId]?.x) {
+            return res.status(409).json({ error: 'X/Twitter already verified', existing: verifications[tokenId].x });
+        }
+
+        // Fetch bio via X API v2 (primary) with syndication fallback
+        const cleanHandle = handle.replace(/^@/, '').trim();
+        const pattern = `helixa:${tokenId}`;
+        let found = false;
+        try {
+            // Primary: X API v2 with bearer token
+            const X_BEARER = process.env.X_BEARER_TOKEN || '';
+            if (X_BEARER) {
+                const xResp = await fetch(`https://api.x.com/2/users/by/username/${cleanHandle}?user.fields=description`, {
+                    headers: { 'Authorization': `Bearer ${X_BEARER}` },
+                });
+                if (xResp.ok) {
+                    const xData = await xResp.json();
+                    const bio = xData?.data?.description || '';
+                    if (bio.includes(pattern)) found = true;
+                }
+            }
+            // Fallback: syndication scraper
+            if (!found) {
+                const resp = await fetch(`https://syndication.twitter.com/srv/timeline-profile/screen-name/${cleanHandle}`, {
+                    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HelixaBot/1.0)' },
+                });
+                const html = await resp.text();
+                if (html.includes(pattern)) found = true;
+            }
+            if (!found) {
+                return res.status(422).json({
+                    error: 'Verification string not found in X profile',
+                    expected: pattern,
+                    hint: `Add "${pattern}" to your X/Twitter bio, then retry`,
+                });
+            }
+        } catch (e) {
+            return res.status(502).json({ error: 'Failed to fetch X profile', detail: e.message.slice(0, 200) });
+        }
+
+        // Add trait onchain
+        const txHash = await addVerificationTrait(tokenId, 'x-verified');
+
+        // Store verification
+        if (!verifications[tokenId]) verifications[tokenId] = {};
+        verifications[tokenId].x = {
+            handle: cleanHandle,
+            verifiedAt: new Date().toISOString(),
+            txHash,
+        };
+        saveVerifications();
+
+        res.json({
+            success: true,
+            tokenId,
+            platform: 'x',
+            handle: cleanHandle,
+            trait: 'x-verified',
+            txHash,
+            explorer: `https://basescan.org/tx/${txHash}`,
+        });
+    } catch (e) {
+        console.error(`[VERIFY X] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'X verification failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/agent/:id/verify/github — Verify GitHub account
+app.post('/api/v2/agent/:id/verify/github', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { username } = req.body;
+
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: 'username required (GitHub username)' });
+    }
+
+    if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+
+    try {
+        if (!(await requireAgentAuth(req, res, tokenId))) return;
+
+        if (verifications[tokenId]?.github) {
+            return res.status(409).json({ error: 'GitHub already verified', existing: verifications[tokenId].github });
+        }
+
+        // Fetch public gists
+        const cleanUser = username.trim();
+        const gistsResp = await fetch(`https://api.github.com/users/${encodeURIComponent(cleanUser)}/gists?per_page=30`, {
+            headers: { 'User-Agent': 'HelixaBot/1.0', 'Accept': 'application/vnd.github.v3+json' },
+        });
+
+        if (!gistsResp.ok) {
+            return res.status(502).json({ error: 'Failed to fetch GitHub gists', status: gistsResp.status });
+        }
+
+        const gists = await gistsResp.json();
+        let found = false;
+
+        for (const gist of gists) {
+            if (gist.files && gist.files['helixa-verify.txt']) {
+                // Fetch the raw content
+                const rawUrl = gist.files['helixa-verify.txt'].raw_url;
+                const rawResp = await fetch(rawUrl);
+                const content = (await rawResp.text()).trim();
+                if (content === String(tokenId) || content === `helixa:${tokenId}`) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            return res.status(422).json({
+                error: 'Verification gist not found',
+                hint: `Create a public gist with filename "helixa-verify.txt" containing "${tokenId}" or "helixa:${tokenId}"`,
+            });
+        }
+
+        const txHash = await addVerificationTrait(tokenId, 'github-verified');
+
+        if (!verifications[tokenId]) verifications[tokenId] = {};
+        verifications[tokenId].github = {
+            username: cleanUser,
+            verifiedAt: new Date().toISOString(),
+            txHash,
+        };
+        saveVerifications();
+
+        res.json({
+            success: true,
+            tokenId,
+            platform: 'github',
+            username: cleanUser,
+            trait: 'github-verified',
+            txHash,
+            explorer: `https://basescan.org/tx/${txHash}`,
+        });
+    } catch (e) {
+        console.error(`[VERIFY GITHUB] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'GitHub verification failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/agent/:id/verify/farcaster — Verify Farcaster account
+app.post('/api/v2/agent/:id/verify/farcaster', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { username, fid } = req.body;
+
+    if (!username && !fid) {
+        return res.status(400).json({ error: 'username or fid required (Farcaster identity)' });
+    }
+
+    if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+
+    try {
+        if (!(await requireAgentAuth(req, res, tokenId))) return;
+
+        if (verifications[tokenId]?.farcaster) {
+            return res.status(409).json({ error: 'Farcaster already verified', existing: verifications[tokenId].farcaster });
+        }
+
+        const pattern = `helixa:${tokenId}`;
+        let found = false;
+        let resolvedUsername = username;
+
+        // Search via Warpcast public API (Searchcaster / Neynar hub)
+        // Try Neynar public hub first, then Searchcaster
+        const searchTarget = fid || username;
+        const searchUrl = fid
+            ? `https://api.neynar.com/v2/farcaster/feed?feed_type=filter&filter_type=fids&fids=${fid}&limit=50`
+            : `https://api.neynar.com/v2/farcaster/feed/user/${encodeURIComponent(username)}/casts?limit=50`;
+
+        // Try Warpcast public search as primary (no API key needed)
+        try {
+            const wcResp = await fetch(`https://client.warpcast.com/v2/search-casts?q=${encodeURIComponent(pattern)}&limit=20`, {
+                headers: { 'User-Agent': 'HelixaBot/1.0' },
+            });
+            if (wcResp.ok) {
+                const wcData = await wcResp.json();
+                const casts = wcData.result?.casts || [];
+                for (const cast of casts) {
+                    const castUser = cast.author?.username?.toLowerCase();
+                    const castFid = cast.author?.fid;
+                    if ((username && castUser === username.toLowerCase()) || (fid && castFid === Number(fid))) {
+                        if (cast.text?.includes(pattern)) {
+                            found = true;
+                            resolvedUsername = cast.author?.username || username;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch {}
+
+        // Fallback: Searchcaster
+        if (!found) {
+            try {
+                const scResp = await fetch(`https://searchcaster.xyz/api/search?text=${encodeURIComponent(pattern)}&count=20`);
+                if (scResp.ok) {
+                    const scData = await scResp.json();
+                    const casts = scData.casts || scData || [];
+                    for (const cast of (Array.isArray(casts) ? casts : [])) {
+                        const castUser = (cast.body?.username || cast.username || '').toLowerCase();
+                        const castFid = cast.body?.publishedBy || cast.meta?.fid;
+                        if ((username && castUser === username.toLowerCase()) || (fid && String(castFid) === String(fid))) {
+                            if ((cast.body?.data?.text || cast.text || '').includes(pattern)) {
+                                found = true;
+                                resolvedUsername = castUser || username;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch {}
+        }
+
+        if (!found) {
+            return res.status(422).json({
+                error: 'Verification cast not found',
+                expected: pattern,
+                hint: `Post a cast containing "${pattern}" from your Farcaster account, then retry`,
+            });
+        }
+
+        const txHash = await addVerificationTrait(tokenId, 'farcaster-verified');
+
+        if (!verifications[tokenId]) verifications[tokenId] = {};
+        verifications[tokenId].farcaster = {
+            username: resolvedUsername,
+            fid: fid || null,
+            verifiedAt: new Date().toISOString(),
+            txHash,
+        };
+        saveVerifications();
+
+        res.json({
+            success: true,
+            tokenId,
+            platform: 'farcaster',
+            username: resolvedUsername,
+            trait: 'farcaster-verified',
+            txHash,
+            explorer: `https://basescan.org/tx/${txHash}`,
+        });
+    } catch (e) {
+        console.error(`[VERIFY FARCASTER] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'Farcaster verification failed: ' + e.message.slice(0, 200) });
+    }
+});
+
 // ─── Error Handler ──────────────────────────────────────────────
 
 app.use((err, req, res, next) => {
