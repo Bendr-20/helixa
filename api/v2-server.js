@@ -472,6 +472,16 @@ async function formatAgentV2(tokenId) {
     if (credRes) credScore = Number(credRes);
     if (nameRes) agentName = nameRes;
     
+    // Fetch Ethos score for owner (non-blocking, best-effort)
+    let ethosScore = null;
+    try {
+        const ethosResp = await fetch(`https://api.ethos.network/api/v1/score/address:${owner}`, { signal: AbortSignal.timeout(3000) });
+        if (ethosResp.ok) {
+            const ethosData = await ethosResp.json();
+            if (ethosData.ok && ethosData.data?.score) ethosScore = ethosData.data.score;
+        }
+    } catch {}
+
     return {
         tokenId: Number(tokenId),
         agentAddress: agent.agentAddress,
@@ -486,6 +496,7 @@ async function formatAgentV2(tokenId) {
         mutationCount: Number(agent.mutationCount),
         points: pts,
         credScore,
+        ethosScore,
         owner,
         agentName: agentName || null,
         personality: personality ? {
