@@ -1,6 +1,8 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { BarChart3, Wallet, Trophy, CheckCircle, XCircle, Lock, RefreshCw, Bot, ScrollText, ShieldCheck } from 'lucide-react';
+import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
 import { API_URL, EXPLORER_URL } from '../lib/constants';
 
 interface ReportData {
@@ -114,14 +116,14 @@ export function Report() {
             <Link to={`/agent/${report.tokenId}`} className="btn btn-ghost mb-2">
               ← Back to Profile
             </Link>
-            <h1 className="text-3xl font-heading font-bold">📊 {report.name} — Onchain Report</h1>
+            <h1 className="text-3xl font-heading font-bold"><BarChart3 className="w-7 h-7 inline-block align-middle mr-2" /> {report.name} — Onchain Report</h1>
             <p className="text-muted mt-1">Token #{report.tokenId}</p>
           </div>
         </div>
 
         {/* Wallet & Balances */}
         <div className="card mb-6">
-          <h2 className="text-xl font-semibold mb-4">💰 Wallet & Balances</h2>
+          <h2 className="text-xl font-semibold mb-4"><Wallet className="w-5 h-5 inline-block align-middle mr-2" /> Wallet & Balances</h2>
           <div className="mb-4">
             <span className="text-muted text-sm block mb-1">Agent Wallet</span>
             <div className="bg-gray-800 px-3 py-2 rounded text-sm flex items-center justify-between">
@@ -147,7 +149,7 @@ export function Report() {
 
         {/* Cred Score & Ranking */}
         <div className="card mb-6">
-          <h2 className="text-xl font-semibold mb-4">🏆 Cred Score & Ranking</h2>
+          <h2 className="text-xl font-semibold mb-4"><Trophy className="w-5 h-5 inline-block align-middle mr-2" /> Cred Score & Ranking</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             <StatCard label="Cred Score" value={report.credScore.total} color={tierColors[report.credScore.tier] || '#80d0ff'} />
             <StatCard label="Tier" value={report.credScore.tier} color={tierColors[report.credScore.tier] || '#80d0ff'} />
@@ -156,19 +158,19 @@ export function Report() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div className="glass-card p-3 flex items-center gap-2">
-              <span>{report.credScore.verified ? '✅' : '❌'}</span>
+              {report.credScore.verified ? <CheckCircle className="w-5 h-5" style={{ color: '#10B981' }} /> : <XCircle className="w-5 h-5" style={{ color: '#EF4444' }} />}
               <span>Verified</span>
             </div>
             <div className="glass-card p-3 flex items-center gap-2">
-              <span>{report.credScore.hasPersonality ? '✅' : '❌'}</span>
+              {report.credScore.hasPersonality ? <CheckCircle className="w-5 h-5" style={{ color: '#10B981' }} /> : <XCircle className="w-5 h-5" style={{ color: '#EF4444' }} />}
               <span>Personality</span>
             </div>
             <div className="glass-card p-3 flex items-center gap-2">
-              <span>{report.credScore.hasNarrative ? '✅' : '❌'}</span>
+              {report.credScore.hasNarrative ? <CheckCircle className="w-5 h-5" style={{ color: '#10B981' }} /> : <XCircle className="w-5 h-5" style={{ color: '#EF4444' }} />}
               <span>Narrative</span>
             </div>
             <div className="glass-card p-3 flex items-center gap-2">
-              <span>{report.credScore.soulbound ? '🔒' : '🔄'}</span>
+              {report.credScore.soulbound ? <Lock className="w-5 h-5" style={{ color: '#b490ff' }} /> : <RefreshCw className="w-5 h-5" style={{ color: '#6eecd8' }} />}
               <span>{report.credScore.soulbound ? 'Soulbound' : 'Transferable'}</span>
             </div>
           </div>
@@ -185,16 +187,16 @@ export function Report() {
 
         {/* Verification Status */}
         <div className="card mb-6">
-          <h2 className="text-xl font-semibold mb-4">🔐 Verification Status</h2>
+          <h2 className="text-xl font-semibold mb-4"><ShieldCheck className="w-5 h-5 inline-block align-middle mr-2" /> Verification Status</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { key: 'siwa', label: '🤖 SIWA', verified: report.verifications.siwa },
-              { key: 'x', label: '𝕏 Twitter', verified: report.verifications.x.verified, detail: report.verifications.x.handle ? `@${report.verifications.x.handle}` : undefined },
-              { key: 'github', label: '🐙 GitHub', verified: report.verifications.github.verified, detail: report.verifications.github.username },
-              { key: 'farcaster', label: '🟣 Farcaster', verified: report.verifications.farcaster.verified, detail: report.verifications.farcaster.username },
+              { key: 'siwa', icon: <Bot className="w-5 h-5 inline-block align-middle" style={{ color: '#6eecd8' }} />, label: 'SIWA', verified: report.verifications.siwa },
+              { key: 'x', icon: <XLogo className="w-5 h-5 inline-block align-middle" style={{ color: '#1DA1F2' }} />, label: 'Twitter', verified: report.verifications.x.verified, detail: report.verifications.x.handle ? `@${report.verifications.x.handle}` : undefined },
+              { key: 'github', icon: <GitHubLogo className="w-5 h-5 inline-block align-middle" style={{ color: '#8b5cf6' }} />, label: 'GitHub', verified: report.verifications.github.verified, detail: report.verifications.github.username },
+              { key: 'farcaster', icon: <FarcasterLogo className="w-5 h-5 inline-block align-middle" style={{ color: '#855DCD' }} />, label: 'Farcaster', verified: report.verifications.farcaster.verified, detail: report.verifications.farcaster.username },
             ].map(v => (
               <div key={v.key} className="glass-card p-3 text-center" style={{ borderColor: v.verified ? '#6eecd840' : '#ffffff10' }}>
-                <div className="text-lg mb-1">{v.label}</div>
+                <div className="text-lg mb-1 flex items-center justify-center gap-1">{v.icon} {v.label}</div>
                 <div className={`text-sm font-medium ${v.verified ? 'text-green-400' : 'text-gray-500'}`}>
                   {v.verified ? '✓ Verified' : 'Not Verified'}
                 </div>
@@ -206,7 +208,7 @@ export function Report() {
 
         {/* Recent Transactions */}
         <div className="card mb-6">
-          <h2 className="text-xl font-semibold mb-4">📜 Recent Transactions</h2>
+          <h2 className="text-xl font-semibold mb-4"><ScrollText className="w-5 h-5 inline-block align-middle mr-2" /> Recent Transactions</h2>
           {report.recentTransactions.length === 0 ? (
             <p className="text-muted text-sm">No recent transactions found.</p>
           ) : (

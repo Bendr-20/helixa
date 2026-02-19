@@ -1,7 +1,9 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { BarChart3, Lock, RefreshCw, CheckCircle, XCircle, Bot } from 'lucide-react';
 import { AuraPreview } from '../components/AuraPreview';
 import { CredBadge } from '../components/CredBadge';
+import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
 import { useAgent } from '../hooks/useAgents';
 import { ORIGIN_DISPLAY, EXPLORER_URL, CONTRACT_ADDRESS } from '../lib/constants';
 
@@ -178,7 +180,7 @@ export function AgentProfile() {
                 )}
 
                 <Link to={`/report/${agent.tokenId}`} className="btn btn-secondary text-xs mt-4 w-full">
-                  📊 Onchain Report
+                  <BarChart3 className="w-4 h-4 inline-block align-middle mr-1" /> Onchain Report
                 </Link>
                 <a
                   href={`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}?a=${agent.tokenId}`}
@@ -211,12 +213,12 @@ export function AgentProfile() {
                   <div>
                     <span className="text-muted block text-sm">Type</span>
                     <span className={`badge mt-1 ${agent.soulbound ? 'bg-purple-900/30 text-purple-300' : 'bg-green-900/30 text-green-300'}`}>
-                      {agent.soulbound ? '🔒 Soulbound' : '🔄 Transferable'}
+                      {agent.soulbound ? <><Lock className="w-4 h-4 inline-block align-middle mr-1" style={{ color: '#b490ff' }} /> Soulbound</> : <><RefreshCw className="w-4 h-4 inline-block align-middle mr-1" /> Transferable</>}
                     </span>
                   </div>
                   <div>
                     <span className="text-muted block text-sm">Verified</span>
-                    <span className="font-medium mt-1">{agent.verified ? '✅ Yes' : '❌ No'}</span>
+                    <span className="font-medium mt-1 flex items-center gap-1">{agent.verified ? <><CheckCircle className="w-4 h-4" style={{ color: '#10B981' }} /> Yes</> : <><XCircle className="w-4 h-4" style={{ color: '#EF4444' }} /> No</>}</span>
                   </div>
                 </div>
 
@@ -344,16 +346,16 @@ export function AgentProfile() {
                   <div className="flex flex-wrap gap-3">
                     {agent.traits.filter((t: any) => t.category === 'verification').map((t: any, i: number) => {
                       const platform = t.name.replace('-verified', '');
-                      const icons: Record<string, { icon: string; color: string; label: string }> = {
-                        x: { icon: '𝕏', color: '#1DA1F2', label: 'X / Twitter' },
-                        github: { icon: '🐙', color: '#8b5cf6', label: 'GitHub' },
-                        farcaster: { icon: '🟣', color: '#855DCD', label: 'Farcaster' },
-                        siwa: { icon: '🤖', color: '#6eecd8', label: 'SIWA' },
+                      const icons: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
+                        x: { icon: <XLogo className="w-5 h-5" style={{ color: '#1DA1F2' }} />, color: '#1DA1F2', label: 'X / Twitter' },
+                        github: { icon: <GitHubLogo className="w-5 h-5" style={{ color: '#8b5cf6' }} />, color: '#8b5cf6', label: 'GitHub' },
+                        farcaster: { icon: <FarcasterLogo className="w-5 h-5" style={{ color: '#855DCD' }} />, color: '#855DCD', label: 'Farcaster' },
+                        siwa: { icon: <Bot className="w-5 h-5" style={{ color: '#6eecd8' }} />, color: '#6eecd8', label: 'SIWA' },
                       };
-                      const info = icons[platform] || { icon: '✓', color: '#6eecd8', label: platform };
+                      const info = icons[platform] || { icon: <CheckCircle className="w-5 h-5" style={{ color: '#6eecd8' }} />, color: '#6eecd8', label: platform };
                       return (
                         <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: `${info.color}15`, border: `1px solid ${info.color}40` }}>
-                          <span className="text-lg">{info.icon}</span>
+                          <span className="flex items-center">{info.icon}</span>
                           <span className="font-medium" style={{ color: info.color }}>{info.label}</span>
                           <span className="text-green-400 text-sm">✓ Verified</span>
                         </div>

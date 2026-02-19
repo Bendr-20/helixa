@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Lock, RefreshCw, Link as LinkIcon, Dna } from 'lucide-react';
 import { MintData } from './MintFlow';
 import { AuraPreview } from '../AuraPreview';
 import { useMint, useMintPrice, useHasMinted, useSetPersonality, useSetNarrative } from '../../hooks/useHelixa';
@@ -233,7 +234,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               <div className="flex justify-between">
                 <span className="text-muted">Type:</span>
                 <span className={`badge badge-sm ${data.soulbound ? 'bg-purple-900/30 text-purple-300' : 'bg-green-900/30 text-green-300'}`}>
-                  {data.soulbound ? '🔒 Soulbound' : '🔄 Transferable'}
+                  {data.soulbound ? <><Lock className="w-4 h-4 inline-block align-middle mr-1" style={{ color: '#b490ff' }} /> Soulbound</> : <><RefreshCw className="w-4 h-4 inline-block align-middle mr-1" /> Transferable</>}
                 </span>
               </div>
             </div>
@@ -270,7 +271,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           {isWrongChain && !isBusy && (
             <div className="card bg-orange-900/30 border-orange-500 border-2">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🔗</span>
+                <LinkIcon className="w-6 h-6" style={{ color: '#80d0ff' }} />
                 <div>
                   <h4 className="font-semibold text-orange-400">Wrong Network</h4>
                   <p className="text-sm text-orange-300">Please switch to <strong>Base mainnet</strong> in your wallet to mint. You're currently on chain {chainId}.</p>
@@ -353,9 +354,9 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           ) : alreadyMinted ? (
             <>🚫 Already Minted</>
           ) : isWrongChain ? (
-            <>🔗 Switch to Base</>
+            <><LinkIcon className="w-4 h-4 inline-block align-middle mr-1" /> Switch to Base</>
           ) : (
-            <>🧬 Mint Agent — {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}</>
+            <><Dna className="w-4 h-4 inline-block align-middle mr-1" /> Mint Agent — {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}</>
           )}
         </button>
       </div>

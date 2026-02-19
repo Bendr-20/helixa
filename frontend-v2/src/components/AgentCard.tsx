@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { CheckCircle } from 'lucide-react';
 import { AuraPreview } from './AuraPreview';
 import { CredBadge } from './CredBadge';
+import { XLogo, GitHubLogo, FarcasterLogo } from './Icons';
 import { ORIGIN_DISPLAY } from '../lib/constants';
 
 interface Agent {
@@ -105,10 +107,14 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
           <div className="col-span-2 flex items-center gap-2">
             {agent.traits.filter((t: any) => t.category === 'verification').map((t: any, i: number) => {
               const p = t.name.replace('-verified', '');
-              const icons: Record<string, string> = { x: '𝕏', github: '🐙', farcaster: '🟣' };
+              const icons: Record<string, React.ReactNode> = {
+                x: <XLogo className="w-3.5 h-3.5 inline-block align-middle" />,
+                github: <GitHubLogo className="w-3.5 h-3.5 inline-block align-middle" />,
+                farcaster: <FarcasterLogo className="w-3.5 h-3.5 inline-block align-middle" />,
+              };
               return (
-                <span key={i} className="badge badge-sm" style={{ background: 'rgba(110, 236, 216, 0.15)', color: '#6eecd8', border: '1px solid rgba(110, 236, 216, 0.3)' }}>
-                  {icons[p] || '✓'} {p}
+                <span key={i} className="badge badge-sm flex items-center gap-1" style={{ background: 'rgba(110, 236, 216, 0.15)', color: '#6eecd8', border: '1px solid rgba(110, 236, 216, 0.3)' }}>
+                  {icons[p] || <CheckCircle className="w-3.5 h-3.5 inline-block align-middle" />} {p}
                 </span>
               );
             })}
