@@ -286,10 +286,11 @@ function requirePaymentLegacy(amountUSDC) {
 
 // Phase 1 pricing — all $0
 const PRICING = {
-    agentMint: 1,    // $1 USDC via x402
+    agentMint: 0,    // Free in Phase 1 (was $1 USDC via x402, but facilitator doesn't support Base yet)
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
+    // NOTE: Re-enable x402 pricing when facilitator supports eip155:8453
 };
 
 // ═══════════════════════════════════════════════════════════════

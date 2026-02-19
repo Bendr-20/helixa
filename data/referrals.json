@@ -94,6 +94,11 @@
       "wallet": "0x523eff3db03938eaa31a5a6fbd41e3b9d23edde5",
       "name": "Axiom",
       "tokenId": 74
+    },
+    "e2e-verify": {
+      "wallet": "0x07eb4b21919c73719f6ac89faa843067c6ba4283",
+      "name": "E2E-Verify",
+      "tokenId": 83
     }
   },
   "stats": {}
