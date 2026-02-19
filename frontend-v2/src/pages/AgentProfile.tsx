@@ -177,11 +177,14 @@ export function AgentProfile() {
                   </div>
                 )}
 
+                <Link to={`/report/${agent.tokenId}`} className="btn btn-secondary text-xs mt-4 w-full">
+                  📊 Onchain Report
+                </Link>
                 <a
                   href={`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}?a=${agent.tokenId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-ghost text-xs mt-4 w-full"
+                  className="btn btn-ghost text-xs mt-2 w-full"
                 >
                   View on BaseScan →
                 </a>
@@ -360,12 +363,46 @@ export function AgentProfile() {
                 </div>
               )}
 
+              {/* Linked Token */}
+              {agent.linkedToken && (
+                <div className="card">
+                  <h2 className="text-xl font-semibold mb-4">🪙 Linked Token</h2>
+                  <div className="glass-card p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-lg font-bold" style={{ color: '#6eecd8' }}>
+                          {agent.linkedToken.symbol || 'TOKEN'}
+                        </div>
+                        <div className="text-muted text-sm">{agent.linkedToken.name}</div>
+                        <div className="text-muted text-xs mt-1">
+                          Chain: {agent.linkedToken.chain || 'base'}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <code className="text-xs text-muted block mb-2">
+                          {agent.linkedToken.contractAddress?.slice(0, 6)}...{agent.linkedToken.contractAddress?.slice(-4)}
+                        </code>
+                        <a
+                          href={`https://basescan.org/token/${agent.linkedToken.contractAddress}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs hover:underline"
+                          style={{ color: '#80d0ff' }}
+                        >
+                          View on BaseScan →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Traits */}
-              {agent.traits && agent.traits.length > 0 && (
+              {agent.traits && agent.traits.filter((t: any) => t.category !== 'verification' && !t.name?.startsWith('linked-token')).length > 0 && (
                 <div className="card">
                   <h2 className="text-xl font-semibold mb-4">Traits</h2>
                   <div className="flex flex-wrap gap-2">
-                    {agent.traits.filter((t: any) => t.category !== 'verification').map((trait: any, i: number) => (
+                    {agent.traits.filter((t: any) => t.category !== 'verification' && !t.name?.startsWith('linked-token')).map((trait: any, i: number) => (
                       <span key={i} className="badge">
                         {typeof trait === 'string' ? trait : `${trait.name} (${trait.category})`}
                       </span>

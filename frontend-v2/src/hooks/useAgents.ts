@@ -50,6 +50,7 @@ function normalizeAgent(raw: any): AgentData {
     agentAddress: raw.agentAddress || '',
     agentName: raw.agentName || null,
     ethosScore: raw.ethosScore || null,
+    linkedToken: raw.linkedToken || null,
   };
 }
 

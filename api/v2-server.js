@@ -226,20 +226,94 @@ async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
     }
 }
 
-// Standard x402 middleware (spec-compliant)
-const { x402Middleware } = require('@dexterai/x402/server');
+// x402 Payment Middleware
+// Uses Dexter facilitator (x402.dexter.cash) for Base mainnet
+const FACILITATOR_URL = 'https://x402.dexter.cash';
+// USDC_ADDRESS already declared above
 
 function requirePayment(amountUSDC) {
-    // Phase 1: all prices are $0 — pass through
     if (amountUSDC <= 0) return (req, res, next) => next();
     
-    // Standard x402: returns PAYMENT-REQUIRED header, client signs (no broadcast),
-    // facilitator verifies + settles. Gasless for agents.
-    return x402Middleware({
-        payTo: DEPLOYER_ADDRESS,
-        amount: String(amountUSDC),
-        network: 'eip155:8453', // Base
-    });
+    return async (req, res, next) => {
+        const paymentHeader = req.get('X-PAYMENT') || req.get('Payment') || req.get('x-payment');
+        
+        if (!paymentHeader) {
+            // Return 402 with x402 payment requirements
+            res.status(402).json({
+                error: 'Payment Required',
+                'x-payment-required': {
+                    scheme: 'exact',
+                    network: 'eip155:8453',
+                    maxAmountRequired: String(amountUSDC * 1_000_000), // USDC has 6 decimals
+                    resource: req.originalUrl || req.url,
+                    description: `${amountUSDC} USDC payment required`,
+                    mimeType: 'application/json',
+                    payTo: DEPLOYER_ADDRESS,
+                    maxTimeoutSeconds: 300,
+                    asset: USDC_ADDRESS,
+                    extra: {
+                        name: 'Helixa Agent Mint',
+                        facilitatorUrl: FACILITATOR_URL,
+                    }
+                },
+                hint: 'Send x402 payment via X-PAYMENT header. See https://docs.x402.org for client SDKs.',
+            });
+            return;
+        }
+        
+        // Verify payment with facilitator
+        try {
+            const fetch = (await import('node-fetch')).default;
+            const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment: paymentHeader,
+                    payTo: DEPLOYER_ADDRESS,
+                    maxAmountRequired: String(amountUSDC * 1_000_000),
+                    network: 'eip155:8453',
+                    asset: USDC_ADDRESS,
+                    resource: req.originalUrl || req.url,
+                }),
+                signal: AbortSignal.timeout(15000),
+            });
+            
+            if (!verifyRes.ok) {
+                const err = await verifyRes.text();
+                console.error('x402 verify failed:', verifyRes.status, err);
+                return res.status(402).json({ error: 'Payment verification failed', detail: err });
+            }
+            
+            const result = await verifyRes.json();
+            
+            // Settle payment
+            const settleRes = await fetch(`${FACILITATOR_URL}/settle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    payment: paymentHeader,
+                    payTo: DEPLOYER_ADDRESS,
+                    maxAmountRequired: String(amountUSDC * 1_000_000),
+                    network: 'eip155:8453',
+                    asset: USDC_ADDRESS,
+                    resource: req.originalUrl || req.url,
+                }),
+                signal: AbortSignal.timeout(30000),
+            });
+            
+            if (!settleRes.ok) {
+                const err = await settleRes.text();
+                console.error('x402 settle failed:', settleRes.status, err);
+                return res.status(402).json({ error: 'Payment settlement failed', detail: err });
+            }
+            
+            req.payment = { amount: amountUSDC, verified: true, x402: true };
+            next();
+        } catch (err) {
+            console.error('x402 payment error:', err.message);
+            return res.status(500).json({ error: 'Payment processing error', message: err.message });
+        }
+    };
 }
 
 // Legacy payment verification (kept for backwards compat with existing clients)
@@ -286,7 +360,7 @@ function requirePaymentLegacy(amountUSDC) {
 
 // Phase 1 pricing — all $0
 const PRICING = {
-    agentMint: 0,    // Free in Phase 1 (was $1 USDC via x402, but facilitator doesn't support Base yet)
+    agentMint: 1,    // $1 USDC via x402
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
@@ -499,6 +573,28 @@ async function formatAgentV2(tokenId) {
         }
     } catch {}
 
+    // Extract linked token from traits
+    const linkedTokenTraits = {};
+    const LINKED_TOKEN_KEYS = ['linked-token', 'linked-token-chain', 'linked-token-symbol', 'linked-token-name'];
+    const filteredTraits = [];
+    for (const t of traits) {
+        const name = typeof t === 'string' ? t : t.name;
+        if (LINKED_TOKEN_KEYS.includes(name)) {
+            linkedTokenTraits[name] = name; // category holds the value for linked-token traits
+        }
+    }
+    // Re-read trait values: trait name IS the key, category holds value
+    // Actually traits are {name, category, addedAt} — for linked-token we store value in category
+    const linkedToken = {};
+    for (const t of traits) {
+        const tName = typeof t === 'string' ? t : t.name;
+        const tCat = typeof t === 'string' ? '' : t.category;
+        if (tName === 'linked-token') linkedToken.contractAddress = tCat;
+        else if (tName === 'linked-token-chain') linkedToken.chain = tCat;
+        else if (tName === 'linked-token-symbol') linkedToken.symbol = tCat;
+        else if (tName === 'linked-token-name') linkedToken.name = tCat;
+    }
+
     return {
         tokenId: Number(tokenId),
         agentAddress: agent.agentAddress,
@@ -516,6 +612,7 @@ async function formatAgentV2(tokenId) {
         ethosScore,
         owner,
         agentName: agentName || null,
+        linkedToken: linkedToken.contractAddress ? linkedToken : null,
         personality: personality ? {
             quirks: personality[0],
             communicationStyle: personality[1],
@@ -530,7 +627,7 @@ async function formatAgentV2(tokenId) {
             lore: narrative.lore,
             manifesto: narrative.manifesto,
         } : null,
-        traits: traits.map(t => ({
+        traits: traits.filter(t => !LINKED_TOKEN_KEYS.includes(t.name)).map(t => ({
             name: t.name,
             category: t.category,
             addedAt: new Date(Number(t.addedAt) * 1000).toISOString(),
@@ -574,7 +671,7 @@ app.get(['/', '/api/v2'], (req, res) => {
         pricing: {
             phase: 1,
             note: 'All operations free during Phase 1 (0-1000 agents)',
-            agentMint: '$0',
+            agentMint: '$1 USDC',
             update: '$0',
         },
     });
@@ -1971,6 +2068,181 @@ app.post('/api/v2/agent/:id/verify/farcaster', requireSIWA, async (req, res) => 
     } catch (e) {
         console.error(`[VERIFY FARCASTER] Error for #${tokenId}:`, e.message);
         res.status(500).json({ error: 'Farcaster verification failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// ─── Linked Token ───────────────────────────────────────────────
+
+// POST /api/v2/agent/:id/link-token — Associate a token contract with an agent
+app.post('/api/v2/agent/:id/link-token', requireSIWA, async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { contractAddress, chain, symbol, name } = req.body;
+
+    if (!contractAddress || !/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
+        return res.status(400).json({ error: 'Valid contractAddress required (0x... 40 hex chars)' });
+    }
+    if (!chain || typeof chain !== 'string') return res.status(400).json({ error: 'chain required (e.g. "base")' });
+    if (!symbol || typeof symbol !== 'string') return res.status(400).json({ error: 'symbol required (e.g. "$CRED")' });
+    if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required (e.g. "Cred Token")' });
+
+    if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+
+    try {
+        if (!(await requireAgentAuth(req, res, tokenId))) return;
+
+        // Store as traits: name=key, category=value
+        const traitsToSet = [
+            ['linked-token', contractAddress.toLowerCase()],
+            ['linked-token-chain', chain.trim().toLowerCase()],
+            ['linked-token-symbol', symbol.trim()],
+            ['linked-token-name', name.trim()],
+        ];
+
+        const txHashes = [];
+        for (const [tName, tValue] of traitsToSet) {
+            const tx = await contract.addTrait(tokenId, tName, tValue);
+            await tx.wait();
+            txHashes.push(tx.hash);
+            console.log(`[LINK-TOKEN] ✓ Set ${tName}=${tValue} on #${tokenId}`);
+        }
+
+        res.json({
+            success: true,
+            tokenId,
+            linkedToken: {
+                contractAddress: contractAddress.toLowerCase(),
+                chain: chain.trim().toLowerCase(),
+                symbol: symbol.trim(),
+                name: name.trim(),
+            },
+            txHashes,
+            explorer: `https://basescan.org/token/${contractAddress}`,
+        });
+    } catch (e) {
+        console.error(`[LINK-TOKEN] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'Link token failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// ─── Onchain Data Report ────────────────────────────────────────
+
+const reportCache = {}; // tokenId → { data, cachedAt }
+const REPORT_CACHE_TTL = 60_000; // 60 seconds
+
+// GET /api/v2/agent/:id/report — Aggregated onchain data report
+app.get('/api/v2/agent/:id/report', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+
+    // Check cache
+    const cached = reportCache[tokenId];
+    if (cached && Date.now() - cached.cachedAt < REPORT_CACHE_TTL) {
+        return res.json({ ...cached.data, cached: true, cachedAt: new Date(cached.cachedAt).toISOString() });
+    }
+
+    try {
+        const agent = await formatAgentV2(tokenId);
+        const walletAddress = agent.agentAddress;
+
+        // Fetch balances in parallel
+        const safe = (p) => p.catch(() => null);
+        const usdcRead = new ethers.Contract(USDC_ADDRESS, USDC_ABI, readProvider);
+
+        const [ethBalance, usdcBalance] = await Promise.all([
+            safe(readProvider.getBalance(walletAddress)),
+            safe(usdcRead.balanceOf(walletAddress)),
+        ]);
+
+        // Linked token balance
+        let linkedTokenBalance = null;
+        if (agent.linkedToken?.contractAddress) {
+            try {
+                const tokenContract = new ethers.Contract(agent.linkedToken.contractAddress, ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'], readProvider);
+                const [bal, dec] = await Promise.all([tokenContract.balanceOf(walletAddress), safe(tokenContract.decimals())]);
+                linkedTokenBalance = {
+                    ...agent.linkedToken,
+                    raw: bal?.toString() || '0',
+                    formatted: bal ? ethers.formatUnits(bal, dec || 18) : '0',
+                    decimals: dec ? Number(dec) : 18,
+                };
+            } catch {}
+        }
+
+        // Recent transactions from BaseScan API (best-effort)
+        let recentTxs = [];
+        try {
+            const bsResp = await fetch(`https://api.basescan.org/api?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=YourApiKeyToken`, { signal: AbortSignal.timeout(5000) });
+            if (bsResp.ok) {
+                const bsData = await bsResp.json();
+                if (bsData.status === '1' && Array.isArray(bsData.result)) {
+                    recentTxs = bsData.result.map(tx => ({
+                        hash: tx.hash,
+                        from: tx.from,
+                        to: tx.to,
+                        value: ethers.formatEther(tx.value || '0'),
+                        timestamp: new Date(parseInt(tx.timeStamp) * 1000).toISOString(),
+                        method: tx.functionName?.split('(')[0] || (tx.input === '0x' ? 'transfer' : 'contract call'),
+                        isError: tx.isError === '1',
+                    }));
+                }
+            }
+        } catch {}
+
+        // Verification status
+        const v = verifications[tokenId] || {};
+        const verificationTraits = (agent.traits || []).filter(t => t.category === 'verification').map(t => t.name);
+
+        // Cred score breakdown
+        const credBreakdown = {
+            total: agent.credScore,
+            tier: agent.credScore >= 61 ? 'EX' : agent.credScore >= 26 ? 'Evolved' : 'Basic',
+            verified: agent.verified,
+            hasPersonality: !!agent.personality,
+            hasNarrative: !!(agent.narrative?.origin || agent.narrative?.mission),
+            traitCount: agent.traits?.length || 0,
+            points: agent.points,
+            soulbound: agent.soulbound,
+        };
+
+        // Ranking
+        let rank = null;
+        if (agentCache.agents.length > 0) {
+            const sorted = [...agentCache.agents].sort((a, b) => b.credScore - a.credScore);
+            const idx = sorted.findIndex(a => a.tokenId === tokenId);
+            if (idx >= 0) rank = idx + 1;
+        }
+
+        const report = {
+            tokenId,
+            name: agent.name,
+            walletAddress,
+            owner: agent.owner,
+            balances: {
+                eth: ethBalance ? ethers.formatEther(ethBalance) : '0',
+                ethRaw: ethBalance?.toString() || '0',
+                usdc: usdcBalance ? ethers.formatUnits(usdcBalance, 6) : '0',
+                usdcRaw: usdcBalance?.toString() || '0',
+                linkedToken: linkedTokenBalance,
+            },
+            recentTransactions: recentTxs,
+            credScore: credBreakdown,
+            verifications: {
+                siwa: verificationTraits.includes('siwa-verified'),
+                x: v.x ? { verified: true, handle: v.x.handle } : { verified: false },
+                github: v.github ? { verified: true, username: v.github.username } : { verified: false },
+                farcaster: v.farcaster ? { verified: true, username: v.farcaster.username } : { verified: false },
+            },
+            points: agent.points,
+            rank,
+            totalAgents: agentCache.total,
+            ethosScore: agent.ethosScore,
+            explorer: `https://basescan.org/address/${walletAddress}`,
+        };
+
+        reportCache[tokenId] = { data: report, cachedAt: Date.now() };
+        res.json(report);
+    } catch (e) {
+        console.error(`[REPORT] Error for #${tokenId}:`, e.message);
+        res.status(500).json({ error: 'Report failed: ' + e.message.slice(0, 200) });
     }
 });
 

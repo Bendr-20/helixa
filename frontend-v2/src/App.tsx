@@ -12,6 +12,7 @@ const pageImports = {
   leaderboard: () => import('./pages/Leaderboard').then(m => ({ default: m.Leaderboard })),
   manage: () => import('./pages/Manage').then(m => ({ default: m.Manage })),
   docs: () => import('./pages/Docs').then(m => ({ default: m.Docs })),
+  report: () => import('./pages/Report').then(m => ({ default: m.Report })),
 };
 
 const Home = lazy(pageImports.home);
@@ -21,6 +22,7 @@ const AgentProfile = lazy(pageImports.agentProfile);
 const Leaderboard = lazy(pageImports.leaderboard);
 const Manage = lazy(pageImports.manage);
 const Docs = lazy(pageImports.docs);
+const Report = lazy(pageImports.report);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -95,6 +97,7 @@ function AnimatedRoutes() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/manage" element={<Manage />} />
           <Route path="/docs" element={<Docs />} />
+          <Route path="/report/:id" element={<Report />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
