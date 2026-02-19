@@ -358,13 +358,12 @@ function requirePaymentLegacy(amountUSDC) {
     };
 }
 
-// Phase 1 pricing — all $0
+// Phase 1 pricing
 const PRICING = {
     agentMint: 1,    // $1 USDC via x402
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
-    // NOTE: Re-enable x402 pricing when facilitator supports eip155:8453
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -495,7 +494,7 @@ app.use((req, res, next) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment-Proof');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment-Proof, X-Payment, Payment, Payment-Signature');
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
 });
@@ -533,6 +532,53 @@ app.use((req, res, next) => {
     req.clientIp = ip;
     next();
 });
+
+// ─── x402 Official SDK Middleware ────────────────────────────────
+// Uses @x402/express with Dexter facilitator for Base mainnet
+const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402ResourceServer } = require('@x402/express');
+const { ExactEvmScheme } = require('@x402/evm/exact/server');
+const { HTTPFacilitatorClient } = require('@x402/core/server');
+
+const DEXTER_FACILITATOR_URL = 'https://x402.dexter.cash';
+const x402FacilitatorClient = new HTTPFacilitatorClient({ url: DEXTER_FACILITATOR_URL });
+const x402Server = new X402ResourceServer(x402FacilitatorClient)
+    .register('eip155:8453', new ExactEvmScheme());
+
+// Build x402 route config from PRICING
+const x402Routes = {};
+if (PRICING.agentMint > 0) {
+    x402Routes['POST /api/v2/mint'] = {
+        accepts: [{
+            scheme: 'exact',
+            price: `$${PRICING.agentMint}`,
+            network: 'eip155:8453',
+            payTo: DEPLOYER_ADDRESS,
+        }],
+        description: 'Mint a new Helixa agent identity',
+        mimeType: 'application/json',
+    };
+}
+if (PRICING.update > 0) {
+    // Wildcard — x402 matches on method+path pattern
+    x402Routes['POST /api/v2/agent/:id/update'] = {
+        accepts: [{
+            scheme: 'exact',
+            price: `$${PRICING.update}`,
+            network: 'eip155:8453',
+            payTo: DEPLOYER_ADDRESS,
+        }],
+        description: 'Update agent traits and metadata',
+        mimeType: 'application/json',
+    };
+}
+
+// Only mount if there are paid routes
+if (Object.keys(x402Routes).length > 0) {
+    app.use(x402PaymentMiddleware(x402Routes, x402Server));
+    console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
+} else {
+    console.log('💰 x402: All routes free (Phase 1)');
+}
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -996,7 +1042,7 @@ app.get('/api/v2/og/:address', (req, res) => {
 });
 
 // POST /api/v2/mint — Mint new agent
-app.post('/api/v2/mint', requireSIWA, requirePayment(PRICING.agentMint), async (req, res) => {
+app.post('/api/v2/mint', requireSIWA, async (req, res) => {
     // Mint-specific rate limit (stricter)
     const mintKey = req.agent?.address || req.clientIp;
     if (!checkRateLimit(mintKey, RATE_LIMIT_MINT, mintRateLimits)) {
@@ -1265,7 +1311,7 @@ function registrationFileToDataURI(regFile) {
 }
 
 // POST /api/v2/agent/:id/update — Update agent traits/personality/narrative
-app.post('/api/v2/agent/:id/update', requireSIWA, requirePayment(PRICING.update), async (req, res) => {
+app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
     const { personality, narrative, traits } = req.body;
     
