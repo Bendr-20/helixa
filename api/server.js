@@ -61,6 +61,8 @@ const ABI = [
     'function setVerified(uint256, bool) external',
     'function addTrait(uint256 tokenId, string name, string category) external payable',
     'function setPersonality(uint256 tokenId, string temperament, string communicationStyle, uint256 riskTolerance, uint256 autonomyLevel, string alignment, string specialization) external',
+    'function setNarrative(uint256 tokenId, tuple(string origin, string mission, string lore, string manifesto) n) external',
+    'function setMetadata(uint256 tokenId, string uri) external',
     'function transferFrom(address from, address to, uint256 tokenId) external',
     'function traitFee() view returns (uint256)',
     'event Registered(uint256 indexed agentId, string agentURI, address indexed owner)',
@@ -723,6 +725,101 @@ app.get('/api/agent/:id/full', async (req, res) => {
         res.json(agent);
     } catch (e) {
         res.status(404).json({ error: 'Agent not found' });
+    }
+});
+
+// ─── Agent Self-Update Endpoint ─────────────────────────────
+// Allows agents to update their own profile. Auth: either
+// 1. SIWA token where signer === agentAddress (agent updating itself)
+// 2. SIWA token where signer === ownerOf(tokenId) (owner updating)
+// 3. Simple signature: agent signs message "helixa-update:{tokenId}:{timestamp}" 
+//    and we verify signer === agentAddress
+// For now: accept agentAddress-signed updates (no SIWA dependency)
+
+app.post('/api/v2/agent/:id/update', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        if (isNaN(tokenId)) return res.status(400).json({ error: 'Invalid token ID' });
+
+        const { signature, timestamp, personality, narrative, traits, metadata } = req.body;
+
+        // Get agent info
+        const [agent, owner] = await Promise.all([
+            readContract.getAgent(tokenId),
+            readContract.ownerOf(tokenId)
+        ]);
+
+        // Auth: verify signature from agentAddress or owner
+        if (signature && timestamp) {
+            const message = `helixa-update:${tokenId}:${timestamp}`;
+            const now = Math.floor(Date.now() / 1000);
+            if (Math.abs(now - timestamp) > 300) {
+                return res.status(401).json({ error: 'Timestamp expired (5 min window)' });
+            }
+            const signer = ethers.verifyMessage(message, signature);
+            const isAgent = signer.toLowerCase() === agent.agentAddress.toLowerCase();
+            const isOwner = signer.toLowerCase() === owner.toLowerCase();
+            if (!isAgent && !isOwner) {
+                return res.status(401).json({ error: 'Signer must be agent address or token owner' });
+            }
+        } else {
+            return res.status(401).json({ 
+                error: 'Auth required. Sign message "helixa-update:{tokenId}:{unixTimestamp}" with agent wallet.',
+                example: { message: `helixa-update:${tokenId}:{unix_seconds}`, sign_with: agent.agentAddress }
+            });
+        }
+
+        const results = {};
+
+        // Update personality
+        if (personality) {
+            const { temperament, communicationStyle, riskTolerance, autonomyLevel, alignment, specialization } = personality;
+            const tx = await contract.setPersonality(
+                tokenId,
+                temperament || '', communicationStyle || '',
+                riskTolerance || 0, autonomyLevel || 0,
+                alignment || '', specialization || ''
+            );
+            await tx.wait();
+            results.personality = tx.hash;
+        }
+
+        // Update narrative
+        if (narrative) {
+            const n = {
+                origin: narrative.origin || '',
+                mission: narrative.mission || '',
+                lore: narrative.lore || '',
+                manifesto: narrative.manifesto || ''
+            };
+            const tx = await contract.setNarrative(tokenId, n);
+            await tx.wait();
+            results.narrative = tx.hash;
+        }
+
+        // Add traits
+        if (traits && Array.isArray(traits)) {
+            const traitFee = await readContract.traitFee();
+            results.traits = [];
+            for (const t of traits) {
+                const tx = await contract.addTrait(tokenId, t.name, t.category, { value: traitFee });
+                await tx.wait();
+                results.traits.push({ name: t.name, tx: tx.hash });
+            }
+        }
+
+        // Update metadata URI
+        if (metadata) {
+            const tx = await contract.setMetadata(tokenId, metadata);
+            await tx.wait();
+            results.metadata = tx.hash;
+        }
+
+        console.log(`[UPDATE] Agent #${tokenId} updated by ${agent.agentAddress}:`, Object.keys(results));
+        res.json({ success: true, tokenId, updates: results });
+    } catch (e) {
+        console.error('[UPDATE] Error:', e.message);
+        res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
     }
 });
 

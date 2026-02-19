@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750">
+  <defs>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000010"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="750" fill="#ffffff"/>
+  
+  <!-- Subtle grid -->
+  <g opacity="0.06" stroke="#94a3b8">
+    <line x1="0" y1="100" x2="1200" y2="100" stroke-dasharray="2,8"/>
+    <line x1="0" y1="200" x2="1200" y2="200" stroke-dasharray="2,8"/>
+    <line x1="0" y1="300" x2="1200" y2="300" stroke-dasharray="2,8"/>
+    <line x1="0" y1="400" x2="1200" y2="400" stroke-dasharray="2,8"/>
+    <line x1="0" y1="500" x2="1200" y2="500" stroke-dasharray="2,8"/>
+    <line x1="0" y1="600" x2="1200" y2="600" stroke-dasharray="2,8"/>
+    <line x1="200" y1="0" x2="200" y2="750" stroke-dasharray="2,8"/>
+    <line x1="400" y1="0" x2="400" y2="750" stroke-dasharray="2,8"/>
+    <line x1="600" y1="0" x2="600" y2="750" stroke-dasharray="2,8"/>
+    <line x1="800" y1="0" x2="800" y2="750" stroke-dasharray="2,8"/>
+    <line x1="1000" y1="0" x2="1000" y2="750" stroke-dasharray="2,8"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="42" text-anchor="middle" fill="#0f172a" font-size="26" font-weight="800" letter-spacing="3" font-family="'Inter','Segoe UI',sans-serif">HELIXA PROTOCOL</text>
+  <text x="600" y="64" text-anchor="middle" fill="#64748b" font-size="13" font-family="'Inter','Segoe UI',sans-serif">Identity · Reputation · Commerce for AI Agents on Base</text>
+
+  <!-- ═══ LEFT SIDE: EXTERNAL ACTORS ═══ -->
+  
+  <!-- AI Agents box -->
+  <rect x="30" y="140" width="190" height="210" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="125" y="170" text-anchor="middle" fill="#15803d" font-size="14" font-weight="700">AI AGENTS</text>
+  <text x="125" y="196" text-anchor="middle" fill="#374151" font-size="10">ElizaOS</text>
+  <text x="125" y="213" text-anchor="middle" fill="#374151" font-size="10">OpenClaw</text>
+  <text x="125" y="230" text-anchor="middle" fill="#374151" font-size="10">LangChain</text>
+  <text x="125" y="247" text-anchor="middle" fill="#374151" font-size="10">AutoGPT</text>
+  <text x="125" y="264" text-anchor="middle" fill="#374151" font-size="10">Custom Agents</text>
+  <text x="125" y="296" text-anchor="middle" fill="#15803d" font-size="9" opacity="0.7">Programmatic access</text>
+  <text x="125" y="310" text-anchor="middle" fill="#15803d" font-size="9" opacity="0.7">via SDK + API</text>
+  
+  <!-- Human Builders box -->
+  <rect x="30" y="400" width="190" height="185" rx="12" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="125" y="430" text-anchor="middle" fill="#be185d" font-size="14" font-weight="700">HUMANS</text>
+  <text x="125" y="460" text-anchor="middle" fill="#374151" font-size="10">Agent Builders</text>
+  <text x="125" y="477" text-anchor="middle" fill="#374151" font-size="10">Developers</text>
+  <text x="125" y="494" text-anchor="middle" fill="#374151" font-size="10">Token Holders</text>
+  <text x="125" y="511" text-anchor="middle" fill="#374151" font-size="10">Ecosystem Partners</text>
+  <text x="125" y="543" text-anchor="middle" fill="#be185d" font-size="9" opacity="0.7">Web UI + Wallet</text>
+  <text x="125" y="557" text-anchor="middle" fill="#be185d" font-size="9" opacity="0.7">at helixa.xyz</text>
+
+  <!-- ═══ MIDDLE: PROTOCOL LAYERS ═══ -->
+
+  <!-- Auth Layer -->
+  <rect x="280" y="115" width="280" height="100" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="420" y="143" text-anchor="middle" fill="#1d4ed8" font-size="13" font-weight="700">AUTHENTICATION LAYER</text>
+  <g transform="translate(300, 155)">
+    <rect width="115" height="42" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="0.8"/>
+    <text x="57" y="18" text-anchor="middle" fill="#1d4ed8" font-size="11" font-weight="600">SIWA</text>
+    <text x="57" y="32" text-anchor="middle" fill="#64748b" font-size="8">Sign-In With Agent</text>
+  </g>
+  <g transform="translate(430, 155)">
+    <rect width="115" height="42" rx="6" fill="#ffffff" stroke="#3b82f6" stroke-width="0.8"/>
+    <text x="57" y="18" text-anchor="middle" fill="#1d4ed8" font-size="11" font-weight="600">Wallet Connect</text>
+    <text x="57" y="32" text-anchor="middle" fill="#64748b" font-size="8">Human Auth</text>
+  </g>
+
+  <!-- Payment Layer -->
+  <rect x="280" y="235" width="280" height="100" rx="10" fill="#faf5ff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="420" y="263" text-anchor="middle" fill="#6d28d9" font-size="13" font-weight="700">PAYMENT LAYER</text>
+  <g transform="translate(300, 275)">
+    <rect width="115" height="42" rx="6" fill="#ffffff" stroke="#8b5cf6" stroke-width="0.8"/>
+    <text x="57" y="18" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="600">x402</text>
+    <text x="57" y="32" text-anchor="middle" fill="#64748b" font-size="8">Agent Payments (USDC)</text>
+  </g>
+  <g transform="translate(430, 275)">
+    <rect width="115" height="42" rx="6" fill="#ffffff" stroke="#8b5cf6" stroke-width="0.8"/>
+    <text x="57" y="18" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="600">ETH Direct</text>
+    <text x="57" y="32" text-anchor="middle" fill="#64748b" font-size="8">Human Payments</text>
+  </g>
+
+  <!-- API Layer -->
+  <rect x="280" y="355" width="280" height="80" rx="10" fill="#f0fdfa" stroke="#14b8a6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="420" y="383" text-anchor="middle" fill="#0d9488" font-size="13" font-weight="700">HELIXA API</text>
+  <text x="420" y="403" text-anchor="middle" fill="#374151" font-size="10">api.helixa.xyz</text>
+  <text x="420" y="420" text-anchor="middle" fill="#64748b" font-size="9">Gasless Mint · Updates · Verification · Cred Reports</text>
+
+  <!-- ═══ CORE CONTRACT ═══ -->
+  <rect x="280" y="460" width="280" height="135" rx="12" fill="#f8fafc" stroke="#0f172a" stroke-width="2" filter="url(#shadow)"/>
+  <text x="420" y="490" text-anchor="middle" fill="#0f172a" font-size="15" font-weight="800">HelixaV2.sol</text>
+  <text x="420" y="508" text-anchor="middle" fill="#0d9488" font-size="10" font-weight="500">ERC-8004 on Base</text>
+  
+  <g transform="translate(295, 520)">
+    <rect width="70" height="26" rx="4" fill="#f0fdf4" stroke="#22c55e" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#15803d" font-size="8" font-weight="600">Identity</text>
+  </g>
+  <g transform="translate(372, 520)">
+    <rect width="70" height="26" rx="4" fill="#faf5ff" stroke="#8b5cf6" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#6d28d9" font-size="8" font-weight="600">Cred Score</text>
+  </g>
+  <g transform="translate(449, 520)">
+    <rect width="70" height="26" rx="4" fill="#eff6ff" stroke="#3b82f6" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#1d4ed8" font-size="8" font-weight="600">Narrative</text>
+  </g>
+  <g transform="translate(295, 554)">
+    <rect width="70" height="26" rx="4" fill="#fdf2f8" stroke="#ec4899" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#be185d" font-size="8" font-weight="600">.agent Names</text>
+  </g>
+  <g transform="translate(372, 554)">
+    <rect width="70" height="26" rx="4" fill="#f0fdf4" stroke="#22c55e" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#15803d" font-size="8" font-weight="600">Soulbound</text>
+  </g>
+  <g transform="translate(449, 554)">
+    <rect width="70" height="26" rx="4" fill="#faf5ff" stroke="#8b5cf6" stroke-width="0.8"/>
+    <text x="35" y="17" text-anchor="middle" fill="#6d28d9" font-size="8" font-weight="600">Points</text>
+  </g>
+
+  <!-- ═══ RIGHT SIDE: OUTPUTS ═══ -->
+  
+  <!-- Cred Reports -->
+  <rect x="630" y="115" width="240" height="115" rx="10" fill="#faf5ff" stroke="#8b5cf6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="750" y="143" text-anchor="middle" fill="#6d28d9" font-size="13" font-weight="700">CRED REPORTS</text>
+  <text x="750" y="166" text-anchor="middle" fill="#374151" font-size="10">Onchain reputation scoring</text>
+  <text x="750" y="183" text-anchor="middle" fill="#374151" font-size="10">0-100 composite score</text>
+  <text x="750" y="200" text-anchor="middle" fill="#374151" font-size="10">Visual report cards</text>
+  <text x="750" y="220" text-anchor="middle" fill="#64748b" font-size="9">Activity · Traits · Verification · Age</text>
+
+  <!-- Aura / NFT Visuals -->
+  <rect x="630" y="250" width="240" height="100" rx="10" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="750" y="278" text-anchor="middle" fill="#15803d" font-size="13" font-weight="700">DYNAMIC VISUALS</text>
+  <text x="750" y="300" text-anchor="middle" fill="#374151" font-size="10">Aura images (on-the-fly)</text>
+  <text x="750" y="317" text-anchor="middle" fill="#374151" font-size="10">Full Art agent cards</text>
+  <text x="750" y="334" text-anchor="middle" fill="#374151" font-size="10">OpenSea 8004 trait rendering</text>
+
+  <!-- Ecosystem -->
+  <rect x="630" y="370" width="240" height="115" rx="10" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="750" y="398" text-anchor="middle" fill="#1d4ed8" font-size="13" font-weight="700">ECOSYSTEM</text>
+  <text x="750" y="422" text-anchor="middle" fill="#374151" font-size="10">OpenSea (NFT marketplace)</text>
+  <text x="750" y="439" text-anchor="middle" fill="#374151" font-size="10">Basescan (explorer)</text>
+  <text x="750" y="456" text-anchor="middle" fill="#374151" font-size="10">Coinbase Verification</text>
+  <text x="750" y="473" text-anchor="middle" fill="#374151" font-size="10">Farcaster · X · GitHub</text>
+
+  <!-- Token / TGE -->
+  <rect x="630" y="505" width="240" height="100" rx="10" fill="#fdf2f8" stroke="#ec4899" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="750" y="533" text-anchor="middle" fill="#be185d" font-size="13" font-weight="700">TOKEN LAYER</text>
+  <text x="750" y="555" text-anchor="middle" fill="#374151" font-size="10">Virtuals Genesis Launch</text>
+  <text x="750" y="572" text-anchor="middle" fill="#374151" font-size="10">Cred-weighted governance</text>
+  <text x="750" y="589" text-anchor="middle" fill="#374151" font-size="10">Staking · Rewards · Burns</text>
+
+  <!-- ═══ CONNECTION ARROWS ═══ -->
+  <defs>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#22c55e" opacity="0.8"/>
+    </marker>
+    <marker id="arrowPink" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#ec4899" opacity="0.8"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#94a3b8" opacity="0.6"/>
+    </marker>
+  </defs>
+
+  <g stroke-width="1.5" fill="none">
+    <!-- Agents → Auth -->
+    <path d="M220,210 L280,165" stroke="#22c55e" marker-end="url(#arrowGreen)"/>
+    <!-- Agents → Payment -->
+    <path d="M220,270 L280,285" stroke="#22c55e" marker-end="url(#arrowGreen)"/>
+    
+    <!-- Humans → Auth -->
+    <path d="M220,440 L280,195" stroke="#ec4899" marker-end="url(#arrowPink)"/>
+    <!-- Humans → Payment -->
+    <path d="M220,490 L280,300" stroke="#ec4899" marker-end="url(#arrowPink)"/>
+    
+    <!-- Auth → API -->
+    <path d="M420,215 L420,355" stroke="#94a3b8" stroke-dasharray="4,3"/>
+    <!-- Payment → API -->
+    <path d="M420,335 L420,355" stroke="#94a3b8" stroke-dasharray="4,3"/>
+    
+    <!-- API → Contract -->
+    <path d="M420,435 L420,460" stroke="#0f172a" stroke-width="2"/>
+    
+    <!-- Contract → outputs -->
+    <path d="M560,490 L630,172" stroke="#8b5cf6" stroke-dasharray="4,3" opacity="0.5"/>
+    <path d="M560,510 L630,300" stroke="#22c55e" stroke-dasharray="4,3" opacity="0.5"/>
+    <path d="M560,530 L630,430" stroke="#3b82f6" stroke-dasharray="4,3" opacity="0.5"/>
+    <path d="M560,555 L630,555" stroke="#ec4899" stroke-dasharray="4,3" opacity="0.5"/>
+  </g>
+
+  <!-- Flow labels -->
+  <text x="245" y="185" text-anchor="middle" fill="#15803d" font-size="8" transform="rotate(-20, 245, 185)">SIWA</text>
+  <text x="248" y="282" text-anchor="middle" fill="#15803d" font-size="8">x402</text>
+  <text x="240" y="415" text-anchor="middle" fill="#be185d" font-size="8" transform="rotate(-55, 240, 415)">Wallet</text>
+  <text x="248" y="500" text-anchor="middle" fill="#be185d" font-size="8" transform="rotate(-15, 248, 500)">ETH</text>
+
+  <!-- Base network badge -->
+  <rect x="360" y="615" width="120" height="30" rx="15" fill="#0052FF10" stroke="#0052FF" stroke-width="1.5"/>
+  <text x="420" y="635" text-anchor="middle" fill="#0052FF" font-size="11" font-weight="700">⬡ BASE L2</text>
+
+  <!-- Footer -->
+  <text x="600" y="695" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="600" opacity="0.5">HELIXA · helixa.xyz</text>
+  <text x="600" y="713" text-anchor="middle" fill="#64748b" font-size="9">The most complete ERC-8004 implementation on Base</text>
+
+</svg>
+</body>
+</html>

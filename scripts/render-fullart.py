@@ -150,9 +150,9 @@ def render_fullart(name="Bendr 2.0", framework="OpenClaw", aura_path=None,
     
     card.paste(robot_cropped, (0, 0), robot_cropped)
     
-    # TV screen center: original robot ~(448, 273), scaled then offset by crop
-    screen_cx = int(448 * robot_scale) - max(0, crop_x)
-    screen_cy = int(273 * robot_scale) - crop_y
+    # TV screen center: original robot ~(462, 235), scaled then offset by crop
+    screen_cx = int(462 * robot_scale) - max(0, crop_x)
+    screen_cy = int(255 * robot_scale) - crop_y
 
     # --- 3. Aura on TV screen ---
     if aura_path and os.path.exists(aura_path):
@@ -165,20 +165,25 @@ def render_fullart(name="Bendr 2.0", framework="OpenClaw", aura_path=None,
             aura = None
     
     if aura:
-        aura_size = 160  # fills the bigger TV screen
+        aura_size = 260  # fills the TV screen interior (~300px wide at 1.5x scale)
         aura = aura.resize((aura_size, aura_size), Image.LANCZOS)
-        # Make black background transparent if no alpha
         if aura.mode == 'RGB':
             aura = aura.convert('RGBA')
-        # Remove near-black pixels (background)
-        import numpy as np
-        arr = np.array(aura)
-        # Pixels where all RGB channels < 25 become transparent
-        mask = (arr[:,:,0] < 25) & (arr[:,:,1] < 25) & (arr[:,:,2] < 25)
-        arr[mask, 3] = 0
-        aura = Image.fromarray(arr)
         ax = screen_cx - aura_size // 2
         ay = screen_cy - aura_size // 2
+        
+        # Draw a dark screen backdrop first so the aura is visible
+        screen_layer = Image.new('RGBA', card.size, (0, 0, 0, 0))
+        sd = ImageDraw.Draw(screen_layer)
+        # Slightly rounded dark rect for the screen area
+        pad = 10
+        sd.rounded_rectangle(
+            [ax - pad, ay - pad, ax + aura_size + pad, ay + aura_size + pad],
+            radius=8, fill=(5, 5, 15, 220)
+        )
+        card = Image.alpha_composite(card, screen_layer)
+        
+        # Paste the aura WITH its black background (don't remove black — it IS the screen)
         card.paste(aura, (ax, ay), aura)
 
     # --- 4. Gradient overlay for text ---

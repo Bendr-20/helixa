@@ -1,0 +1,23 @@
+{
+  "1": {
+    "x": {
+      "handle": "BendrAI_eth",
+      "verifiedAt": "2026-02-18T22:41:24.878Z",
+      "txHash": "0x4818a103cb9250846d18728e45d90d3a5083bd8a6a5024659212acb48fd502b6"
+    }
+  },
+  "73": {
+    "x": {
+      "handle": "mferGPT",
+      "verifiedAt": "2026-02-18T22:49:58.835Z",
+      "txHash": "0x9241cd327c72b6ac80744d03e8f7c5380372010e5c1661f2a710bdb3bd1374fe"
+    }
+  },
+  "74": {
+    "x": {
+      "handle": "axiaborat",
+      "verifiedAt": "2026-02-18T22:49:58.835Z",
+      "txHash": "0x5432b122fe10e86e83b9c0a49f9a31e1d2faf331769d09dbf45c47e453ca0de0"
+    }
+  }
+}

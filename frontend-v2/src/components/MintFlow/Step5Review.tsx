@@ -3,7 +3,7 @@ import { MintData } from './MintFlow';
 import { AuraPreview } from '../AuraPreview';
 import { useMint, useMintPrice, useHasMinted, useSetPersonality, useSetNarrative } from '../../hooks/useHelixa';
 import { EXPLORER_URL, CONTRACT_ADDRESS } from '../../lib/constants';
-import { useAccount } from 'wagmi';
+import { useAccount, useChainId } from 'wagmi';
 import { parseAbiItem, decodeEventLog } from 'viem';
 import { usePublicClient } from 'wagmi';
 import HelixaV2ABI from '../../abi/HelixaV2.json';
@@ -15,19 +15,54 @@ interface Step5ReviewProps {
   onMintSuccess: (tokenId: string) => void;
 }
 
+function parseErrorMessage(error: any, mintPrice?: bigint): string {
+  const msg = error?.message || error?.toString() || 'Unknown error';
+  const shortMsg = error?.shortMessage || '';
+  const combined = `${msg} ${shortMsg}`;
+
+  if (/AlreadyMinted/i.test(combined)) {
+    return 'This wallet has already minted an agent. Each wallet can only mint one agent.';
+  }
+  if (/InsufficientPayment/i.test(combined)) {
+    const cost = mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'the required amount';
+    return `Not enough ETH sent. Required: ${cost}`;
+  }
+  if (/user rejected|user denied|rejected the request/i.test(combined)) {
+    return 'Transaction cancelled — you rejected the signature in your wallet.';
+  }
+  if (/chain mismatch|wrong network|chainId|network changed/i.test(combined)) {
+    return 'Please switch to Base mainnet in your wallet.';
+  }
+  // Trim long messages but keep them readable
+  const clean = shortMsg || msg;
+  return `Something went wrong: ${clean.length > 200 ? clean.slice(0, 200) + '…' : clean}`;
+}
+
 export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5ReviewProps) {
   const { mint, isPending, isConfirming, isConfirmed, hash, error } = useMint();
   const { setPersonality, isPending: isPendingPersonality, isConfirming: isConfirmingPersonality } = useSetPersonality();
   const { setNarrative, isPending: isPendingNarrative, isConfirming: isConfirmingNarrative } = useSetNarrative();
   const { data: mintPrice } = useMintPrice();
   const { address } = useAccount();
+  const chainId = useChainId();
   const { data: hasMinted } = useHasMinted(address);
   const publicClient = usePublicClient();
   const [mintStage, setMintStage] = useState<'idle' | 'minting' | 'personality' | 'narrative' | 'done'>('idle');
   const [mintError, setMintError] = useState<string | null>(null);
 
+  const isWrongChain = chainId !== 8453;
+  const alreadyMinted = hasMinted === true;
+
   const handleMint = async () => {
     if (!address) return;
+    if (isWrongChain) {
+      setMintError('Please switch to Base mainnet (Chain ID 8453) in your wallet before minting.');
+      return;
+    }
+    if (alreadyMinted) {
+      setMintError('This wallet has already minted an agent. Each wallet can only mint one agent.');
+      return;
+    }
     setMintError(null);
     setMintStage('minting');
 
@@ -41,7 +76,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
         value: (mintPrice as bigint) ?? BigInt(0),
       });
     } catch (e: any) {
-      setMintError(e.message || 'Mint failed');
+      setMintError(parseErrorMessage(e, mintPrice as bigint));
       setMintStage('idle');
     }
   };
@@ -134,7 +169,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   ].filter(Boolean).length;
 
   const isBusy = isPending || isConfirming || isPendingPersonality || isConfirmingPersonality || isPendingNarrative || isConfirmingNarrative;
-  const alreadyMinted = hasMinted === true;
+  const mintDisabled = isBusy || alreadyMinted || isWrongChain || !data.name;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -230,17 +265,34 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
       </div>
 
       {/* Status Messages */}
-      {(mintError || isBusy || alreadyMinted) && (
-        <div className="mt-8">
+      {(mintError || error || isBusy || alreadyMinted || isWrongChain) && (
+        <div className="mt-8 space-y-3">
+          {isWrongChain && !isBusy && (
+            <div className="card bg-orange-900/30 border-orange-500 border-2">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🔗</span>
+                <div>
+                  <h4 className="font-semibold text-orange-400">Wrong Network</h4>
+                  <p className="text-sm text-orange-300">Please switch to <strong>Base mainnet</strong> in your wallet to mint. You're currently on chain {chainId}.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {alreadyMinted && !isBusy && (
-            <div className="card bg-yellow-900/20 border-yellow-700">
-              <p className="text-sm text-yellow-300">⚠️ This wallet already has an agent minted. One per address.</p>
+            <div className="card bg-yellow-900/30 border-yellow-500 border-2">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🚫</span>
+                <div>
+                  <h4 className="font-semibold text-yellow-400">Already Minted</h4>
+                  <p className="text-sm text-yellow-300">This wallet has already minted an agent. Each wallet can only mint one agent.</p>
+                </div>
+              </div>
             </div>
           )}
           {(mintError || error) && (
             <div className="card bg-red-900/20 border-red-700">
               <h4 className="font-semibold text-red-400 mb-1">Mint Failed</h4>
-              <p className="text-sm text-red-300">{mintError || error?.message || 'Transaction failed.'}</p>
+              <p className="text-sm text-red-300">{mintError || parseErrorMessage(error, mintPrice as bigint)}</p>
             </div>
           )}
           {isPending && (
@@ -293,11 +345,15 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
         <button onClick={onPrev} disabled={isBusy} className="btn btn-secondary">← Back</button>
         <button
           onClick={handleMint}
-          disabled={isBusy || alreadyMinted || !data.name}
+          disabled={mintDisabled}
           className="btn btn-primary btn-lg glow"
         >
           {isBusy ? (
             <><div className="spinner w-4 h-4"></div> {isPending ? 'Sign...' : 'Minting...'}</>
+          ) : alreadyMinted ? (
+            <>🚫 Already Minted</>
+          ) : isWrongChain ? (
+            <>🔗 Switch to Base</>
           ) : (
             <>🧬 Mint Agent — {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}</>
           )}
