@@ -9,6 +9,8 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.77.0",
+    "@dexterai/x402": "^1.7.0",
     "@x402/core": "^2.3.1",
     "@x402/evm": "^2.3.1",
     "@x402/express": "^2.3.0",

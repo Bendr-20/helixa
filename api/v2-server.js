@@ -226,9 +226,25 @@ async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
     }
 }
 
+// Standard x402 middleware (spec-compliant)
+const { x402Middleware } = require('@dexterai/x402/server');
+
 function requirePayment(amountUSDC) {
+    // Phase 1: all prices are $0 — pass through
+    if (amountUSDC <= 0) return (req, res, next) => next();
+    
+    // Standard x402: returns PAYMENT-REQUIRED header, client signs (no broadcast),
+    // facilitator verifies + settles. Gasless for agents.
+    return x402Middleware({
+        payTo: DEPLOYER_ADDRESS,
+        amount: String(amountUSDC),
+        network: 'eip155:8453', // Base
+    });
+}
+
+// Legacy payment verification (kept for backwards compat with existing clients)
+function requirePaymentLegacy(amountUSDC) {
     return async (req, res, next) => {
-        // Phase 1: all prices are $0 — pass through
         if (amountUSDC <= 0) return next();
         
         const txHash = req.headers['x-payment-proof'];
