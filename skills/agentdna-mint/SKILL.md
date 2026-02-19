@@ -1,340 +1,217 @@
 ---
 name: agentdna-mint
-version: 0.2.0
-description: >
-  Mint an AgentDNA identity NFT onchain via the Helixa platform (Base network).
-  Use when: (1) an AI agent wants to register itself onchain, (2) get a portable identity,
-  (3) claim an AgentDNA NFT, (4) set up onchain reputation, (5) register a .agent name,
-  (6) add personality traits or skills onchain.
-  Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
-  Do NOT use when: (1) the user wants to deploy a new contract (this is for minting on an existing contract),
-  (2) the user wants ERC-721 enumeration (totalSupply/paused don't exist — use totalAgents),
-  (3) the user needs a wallet (use awal or another wallet skill first, then come back here).
+description: Mint an AgentDNA identity NFT onchain via the Helixa V2 platform (Base network). Use when an AI agent wants to register itself onchain, get a portable identity, claim an AgentDNA NFT, or set up its onchain reputation. Supports SIWA (Sign-In With Agent) authentication for agent-initiated mints. Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
 ---
 
-# Helixa · AgentDNA Mint
+# Helixa · AgentDNA Mint (V2)
 
-Mint your onchain identity on Base via the Helixa platform. One contract call, permanent identity.
+Mint your onchain identity on Base via the Helixa platform. Two paths: humans use the frontend or direct contract call, agents use SIWA auth + API.
 
-## ⚠️ IMPORTANT: This is NOT a standard ERC721 Enumerable contract
-
-**Do NOT call** `totalSupply()`, `paused()`, or other ERC721 Enumerable functions — they will revert.
-
-Use these instead:
-- `totalAgents()` — returns total number of minted agents
-- `mintPrice()` — returns current mint price (0 during free beta)
-- `hasFreeMinted(address)` — check if address already used free mint
-- `getAgent(uint256)` — get agent data by token ID
-- `balanceOf(address)` — standard ERC721, works normally
-- `ownerOf(uint256)` — standard ERC721, works normally
-
-**The contract is live and working.** If `register()` or `mint()` reverts, check that you're sending the right arguments (see examples below).
+**Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (HelixaV2, Base mainnet)
+**API:** `https://api.helixa.xyz`
+**Frontend:** https://helixa.xyz/mint
 
 ## What You Get
 
 - ERC-8004 compliant identity NFT on Base
-- Traits, personality, evolution history
-- Early adopter points (2x for first 100, 1.5x for first 500)
-- Referral tracking
+- Cred score and reputation tracking
+- Agent profile card
+- Referral system
+- Cross-registration on the canonical 8004 registry
 - Soulbound option (your choice)
+
+## Pricing
+
+**Agent mints (via API):** $1 USDC via x402 payment protocol. The API returns HTTP 402 with payment instructions — any x402-compatible client handles this automatically.
+
+**Human mints (via contract):** Free during Phase 1 (gas only).
 
 ## Gas Requirements
 
-You need a **tiny** amount of ETH on Base for gas — even during the free mint period.
+You need a tiny amount of ETH on Base for gas.
 
-| Action | Estimated Gas | Cost at current rates |
-|--------|--------------|----------------------|
-| register() | ~280,000 gas | ~$0.002 (fractions of a cent) |
-| mint() | ~430,000 gas | ~$0.003 |
-| addTrait() | ~80,000 gas | ~$0.001 |
+| Action | Estimated Cost |
+|--------|---------------|
+| mint() | ~$0.002-0.003 |
 
-**You need approximately 0.0001 ETH on Base** to comfortably mint. That's less than $0.25.
+You need approximately **0.0001 ETH on Base** (~$0.25) to cover gas.
 
-### How to get ETH on Base
+---
 
-1. **Bridge from Ethereum mainnet**: Use https://bridge.base.org
-2. **Buy directly on Base**: Coinbase, or any exchange that supports Base withdrawals
-3. **Faucet (testnet only)**: For Base Sepolia testing, use https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
+## Path 1: Human Mint (Frontend or Direct Contract)
 
-⚠️ **The mint itself is free** for the first 100 agents, but you still need ETH to pay Base network gas fees (~$0.002 per transaction).
+### Option A: Frontend
 
-## Quick Start
-
-### Option A: Use the SDK CLI
-
-```bash
-npx agentdna mint \
-  --name "YourAgentName" \
-  --framework "openclaw" \
-  --rpc https://mainnet.base.org
-```
-
-The CLI auto-detects your framework (OpenClaw, ElizaOS, LangChain, CrewAI) and builds ERC-8004 compliant metadata.
+Go to https://helixa.xyz/mint and follow the UI.
 
 ### Option B: Direct Contract Call
 
-Contract: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
-
 ```solidity
-// ABI: register(string agentURI) payable returns (uint256)
-// Simplest mint — just a metadata URI
-function register(string calldata agentURI) external payable returns (uint256 agentId);
-
-// ABI: register(string agentURI, MetadataEntry[] metadata) payable returns (uint256)
-// Mint with structured metadata
-struct MetadataEntry {
-    string metadataKey;
-    bytes metadataValue;
-}
-function register(string calldata agentURI, MetadataEntry[] calldata metadata) external payable returns (uint256 agentId);
-
-// ABI: mint(address,string,string,string,bool,string,uint256) payable returns (uint256)
-// Full featured mint
+// HelixaV2 — 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60
 function mint(
-    address agentAddress,     // Your agent's wallet address
+    address agentAddress,     // The agent's wallet address
     string name,              // Agent name
-    string framework,         // "openclaw", "eliza", "langchain", "crewai", etc.
-    string tokenURI,          // Metadata URI (IPFS, data URI, or HTTPS)
-    bool soulbound,           // true = non-transferable
-    string version,           // e.g. "1.0.0"
-    uint256 parentTokenId     // Use type(uint256).max for no parent
-) external payable returns (uint256 tokenId);
-
-// Mint with referral (referrer earns points)
-function mintWithReferral(
-    address agentAddress,
-    string name,
-    string framework,
-    string tokenURI,
-    bool soulbound,
-    string version,
-    uint256 parentTokenId,
-    address referrer          // Address that referred you
+    string framework,         // See supported frameworks below
+    bool soulbound            // true = non-transferable
 ) external payable returns (uint256 tokenId);
 ```
 
-### Pricing
+**Supported frameworks:** `openclaw`, `eliza`, `langchain`, `crewai`, `autogpt`, `bankr`, `virtuals`, `based`, `agentkit`, `custom`
 
-| Agents Minted | Price |
-|---|---|
-| 1–100 | Free |
-| 101–500 | 0.005 ETH |
-| 501–1000 | 0.01 ETH |
-| 1001+ | 0.02 ETH |
+#### Using cast (Foundry)
 
-Check current price: `contract.mintPrice()`
+```bash
+cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
+  "mint(address,string,string,bool)" \
+  0xYOUR_AGENT_ADDRESS "MyAgent" "openclaw" false \
+  --rpc-url https://mainnet.base.org \
+  --private-key $PRIVATE_KEY
+```
+
+#### Using ethers.js
+
+```javascript
+const contract = new ethers.Contract(
+  "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",
+  ["function mint(address,string,string,bool) payable returns (uint256)"],
+  signer
+);
+const tx = await contract.mint(agentAddress, "MyAgent", "openclaw", false);
+const receipt = await tx.wait();
+```
+
+---
+
+## Path 2: Agent Mint (SIWA + API)
+
+For AI agents minting programmatically. Uses **Sign-In With Agent (SIWA)** authentication.
+
+### Step 1: Generate SIWA Auth Header
+
+The agent signs a message with its wallet to prove identity.
+
+**Message format:**
+```
+Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet {address} at {timestamp}
+```
+
+**Auth header format:**
+```
+Authorization: Bearer {address}:{timestamp}:{signature}
+```
+
+#### Example (ethers.js)
+
+```javascript
+const wallet = new ethers.Wallet(AGENT_PRIVATE_KEY);
+const address = wallet.address;
+const timestamp = Math.floor(Date.now() / 1000).toString();
+const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
+const signature = await wallet.signMessage(message);
+const authHeader = `Bearer ${address}:${timestamp}:${signature}`;
+```
+
+#### Example (curl — for testing with a pre-signed value)
+
+```bash
+# Generate signature externally, then:
+AUTH="Bearer 0xYourAddress:1708300000:0xYourSignature..."
+
+curl -X POST https://api.helixa.xyz/api/v2/mint \
+  -H "Content-Type: application/json" \
+  -H "Authorization: $AUTH" \
+  -d '{
+    "name": "MyAgent",
+    "framework": "openclaw",
+    "personality": {
+      "tone": "analytical",
+      "style": "formal"
+    },
+    "narrative": {
+      "origin": "Built to research onchain data",
+      "purpose": "Autonomous research assistant"
+    }
+  }'
+```
+
+### Step 2: POST to Mint Endpoint
+
+```
+POST https://api.helixa.xyz/api/v2/mint
+Authorization: Bearer {address}:{timestamp}:{signature}
+Content-Type: application/json
+
+{
+  "name": "MyAgent",
+  "framework": "openclaw",
+  "personality": { ... },
+  "narrative": { ... }
+}
+```
+
+**Required fields:** `name`, `framework`
+**Optional fields:** `personality` (object), `narrative` (object)
+
+---
+
+## API Reference
+
+All endpoints use base URL `https://api.helixa.xyz`.
+
+### Public (no auth)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/stats` | Platform stats (total agents, etc.) |
+| GET | `/api/v2/agents` | Agent directory listing |
+| GET | `/api/v2/agent/:id` | Single agent profile |
+
+### Authenticated (SIWA required)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v2/mint` | Mint a new agent identity |
+| POST | `/api/v2/agent/:id/update` | Update agent metadata |
+| POST | `/api/v2/agent/:id/verify` | Verify agent identity |
+| POST | `/api/v2/agent/:id/crossreg` | Cross-register on canonical 8004 registry |
+
+### curl Examples
+
+```bash
+# Get platform stats
+curl https://api.helixa.xyz/api/v2/stats
+
+# List all agents
+curl https://api.helixa.xyz/api/v2/agents
+
+# Get specific agent
+curl https://api.helixa.xyz/api/v2/agent/1
+
+# Cross-register on 8004 (SIWA auth required)
+curl -X POST https://api.helixa.xyz/api/v2/agent/1/crossreg \
+  -H "Authorization: Bearer 0xAddr:1708300000:0xSig..."
+```
+
+---
 
 ## Step-by-Step for AI Agents
 
-1. **Get a wallet** — You need an Ethereum wallet with ETH on Base. If running on OpenClaw, check if you have a wallet configured.
+1. **Have a wallet** — You need an Ethereum wallet with a small amount of ETH on Base for gas (~0.0001 ETH).
 
-2. **Build your metadata URI** — Create a JSON metadata object:
-```json
-{
-  "name": "YourAgentName",
-  "description": "What you do",
-  "image": "",
-  "attributes": [
-    { "trait_type": "framework", "value": "openclaw" },
-    { "trait_type": "model", "value": "claude-sonnet-4" },
-    { "trait_type": "capabilities", "value": "coding,research,automation" }
-  ]
-}
-```
-Encode as a data URI: `data:application/json;base64,<base64-encoded-json>`
+2. **Sign SIWA message** — Use your wallet's private key to sign the SIWA message (see above).
 
-3. **Call register or mint** — Use ethers.js, viem, cast, or any EVM library:
-```bash
-# Using cast (Foundry)
-cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
-  "register(string)" "data:application/json;base64,..." \
-  --value <MINT_PRICE> \
-  --rpc-url https://mainnet.base.org \
-  --private-key $AGENT_PRIVATE_KEY
-```
+3. **POST to /api/v2/mint** — Send your agent details with the auth header.
 
-```javascript
-// Using ethers.js
-const tx = await contract.mint(
-  agentWalletAddress,
-  "MyAgent",
-  "openclaw",
-  metadataURI,
-  false,  // soulbound
-  "1.0.0",
-  ethers.MaxUint256,  // no parent
-  { value: await contract.mintPrice() }
-);
-```
+4. **Verify your mint** — Check your agent profile via `GET /api/v2/agent/:id`.
 
-4. **Verify your mint** — Check your agent exists:
-```bash
-cast call 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 "getAgent(uint256)(address,string,string,uint256,bool,bool,uint256,uint256,string,uint256)" 0
-```
-
-## ERC-8004 Cross-Registry Integration
-
-AgentDNA supports bidirectional integration with the official 8004.org Identity Registry on Base (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`).
-
-### Direction 1: Import from 8004 → AgentDNA
-
-If you already have an 8004.org identity, pull your data in and cross-reference it:
-
-```javascript
-const ERC8004_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
-const erc8004 = new ethers.Contract(ERC8004_REGISTRY, [
-  "function tokenURI(uint256) view returns (string)",
-  "function getAgentWallet(uint256) view returns (address)"
-], provider);
-
-// Fetch your 8004 identity
-const uri = await erc8004.tokenURI(your8004TokenId);
-const meta8004 = JSON.parse(atob(uri.split(',')[1]));
-const wallet = await erc8004.getAgentWallet(your8004TokenId);
-
-// Include 8004 cross-reference in your AgentDNA metadata
-const metadata = {
-  name: meta8004.name,
-  description: meta8004.description,
-  erc8004: {
-    tokenId: your8004TokenId,
-    registry: ERC8004_REGISTRY,
-    chain: "base"
-  },
-  attributes: [...]
-};
-
-// Mint AgentDNA with the merged data
-const tokenURI = "data:application/json;base64," + btoa(JSON.stringify(metadata));
-await agentDnaContract.mint(wallet, meta8004.name, "openclaw", tokenURI, false, "1.0.0", ethers.MaxUint256, { value: mintPrice });
-```
-
-### Direction 2: AgentDNA → Register on 8004
-
-Mint AgentDNA and also register on 8004.org in the same session for cross-chain portability:
-
-```javascript
-// Step 1: Mint AgentDNA
-const tx = await agentDnaContract.mint(agentAddr, name, framework, tokenURI, false, "1.0.0", ethers.MaxUint256, { value: mintPrice });
-const receipt = await tx.wait();
-const agentDnaTokenId = receipt.logs[0]?.args?.[0];
-
-// Step 2: Build 8004-compliant agent URI
-const agentURI8004 = {
-  type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-  name: name,
-  description: description,
-  services: [
-    { name: "agentWallet", endpoint: "eip155:8453:" + agentAddr }
-  ],
-  registrations: [
-    { agentId: Number(agentDnaTokenId), agentRegistry: "eip155:8453:" + AGENTDNA_CONTRACT }
-  ],
-  active: true
-};
-
-// Step 3: Register on 8004.org
-const erc8004 = new ethers.Contract(ERC8004_REGISTRY, [
-  "function register(string) returns (uint256)"
-], signer);
-const uri8004 = "data:application/json;base64," + btoa(JSON.stringify(agentURI8004));
-await erc8004.register(uri8004);
-```
-
-### Using cast (Foundry)
-
-```bash
-# Import: Read 8004 data
-cast call 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 "tokenURI(uint256)(string)" <TOKEN_ID> --rpc-url https://mainnet.base.org
-
-# Export: Register on 8004 after AgentDNA mint
-cast send 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 "register(string)" "data:application/json;base64,..." --rpc-url https://mainnet.base.org --private-key $KEY
-```
-
-## After Minting — Add Traits (RECOMMENDED)
-
-**Your agent's identity is incomplete without traits.** Traits define who your agent is — personality, skills, alignment. Each trait earns 10 bonus points (20 during beta with 2x multiplier).
-
-Add traits immediately after minting. Each is a separate `addTrait()` call:
-
-```solidity
-function addTrait(uint256 tokenId, string traitType, string traitValue) external payable;
-```
-
-### Recommended traits to add (pick what fits your agent):
-
-```javascript
-const CONTRACT = "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60";
-const abi = ["function addTrait(uint256, string, string) payable"];
-const contract = new ethers.Contract(CONTRACT, abi, signer);
-const traitFee = 0; // Free during beta
-
-// Personality traits
-await contract.addTrait(tokenId, "temperament", "analytical");    // analytical, creative, aggressive, cautious, chaotic
-await contract.addTrait(tokenId, "communication", "formal");      // formal, casual, snarky, verbose, minimal
-await contract.addTrait(tokenId, "alignment", "neutral-good");    // lawful-good, chaotic-good, true-neutral, etc.
-
-// Capability traits
-await contract.addTrait(tokenId, "specialization", "trader");     // trader, researcher, creator, guardian, oracle, operator
-await contract.addTrait(tokenId, "skill", "defi-trading");        // Any string: coding, research, art, music, security, etc.
-await contract.addTrait(tokenId, "model", "claude-sonnet-4");     // The LLM model powering the agent
-
-// Identity traits
-await contract.addTrait(tokenId, "risk-tolerance", "7");          // 1-10 scale
-await contract.addTrait(tokenId, "autonomy-level", "9");          // 1-10 scale
-```
-
-### Using cast (Foundry):
-
-```bash
-# Add a personality trait
-cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
-  "addTrait(uint256,string,string)" <TOKEN_ID> "temperament" "analytical" \
-  --rpc-url https://mainnet.base.org --private-key $KEY
-
-# Add a skill trait
-cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
-  "addTrait(uint256,string,string)" <TOKEN_ID> "skill" "defi-trading" \
-  --rpc-url https://mainnet.base.org --private-key $KEY
-```
-
-### Set full personality in one call:
-
-```solidity
-function setPersonality(
-    uint256 tokenId,
-    string temperament,    // "analytical", "creative", "aggressive", "cautious", "chaotic"
-    string commStyle,      // "formal", "casual", "snarky", "verbose", "minimal"
-    uint8 riskTolerance,   // 1-10
-    uint8 autonomyLevel,   // 1-10
-    string alignment,      // "lawful-good", "chaotic-neutral", etc.
-    string specialization  // "trader", "researcher", "creator", "guardian", "oracle", "operator"
-) external;
-```
-
-```javascript
-await contract.setPersonality(tokenId, "analytical", "formal", 7, 9, "neutral-good", "researcher");
-```
-
-### Other post-mint actions:
-
-- **Evolve**: `mutate(tokenId, "2.0.0", "reason")` — record version changes, earns 50 points
-- **Check points**: `getPoints(tokenId)` — view your early adopter points
+5. **Optional: Cross-register on 8004** — `POST /api/v2/agent/:id/crossreg` to register on the canonical ERC-8004 registry.
 
 ## Network Details
 
 - **Chain**: Base (Chain ID: 8453)
+- **Contract**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (HelixaV2)
 - **RPC**: https://mainnet.base.org
 - **Block Explorer**: https://basescan.org
 - **Standard**: ERC-8004 (Trustless Agents)
-
-## Points System
-
-Every action earns Helixa points. Points convert to $DNA token allocation at TGE.
-
-| Action | Base Points | First 100 agents | First 500 |
-|---|---|---|---|
-| Mint | 100 | 200 (2x) | 150 (1.5x) |
-| Evolve | 50 | 100 | 75 |
-| Add Trait | 10 | 20 | 15 |
-| Referral | 25 | 50 | 37 |
+- **Phase**: 1 (Agent mint: $1 USDC via x402 | Human mint: free, gas only)
+- **x402 Facilitator**: Dexter (`x402.dexter.cash`), supports Base mainnet
