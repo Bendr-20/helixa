@@ -126,6 +126,57 @@ export function AgentProfile() {
                   </div>
                 </div>
 
+                {/* Ethos Score */}
+                {agent.ethosScore && (
+                  <div className="glass-card p-3 mt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-lg font-bold" style={{ color: agent.ethosScore >= 1500 ? '#6eecd8' : agent.ethosScore >= 800 ? '#b490ff' : '#80d0ff' }}>
+                          {agent.ethosScore.toLocaleString()}
+                        </div>
+                        <div className="text-muted text-xs">Ethos Score</div>
+                      </div>
+                      <a
+                        href={`https://ethos.network/profile/${agent.owner}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs hover:underline"
+                        style={{ color: '#80d0ff' }}
+                      >
+                        View →
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Owner */}
+                {agent.owner && (
+                  <div className="glass-card p-3 mt-3">
+                    <div className="text-muted text-xs mb-1">Operated by</div>
+                    <div className="flex items-center justify-between">
+                      <code className="text-sm">
+                        {agent.owner.slice(0, 6)}...{agent.owner.slice(-4)}
+                      </code>
+                      <div className="flex items-center gap-2">
+                        {agent.ethosScore && (
+                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(110, 236, 216, 0.15)', color: '#6eecd8' }}>
+                            Ethos ✓
+                          </span>
+                        )}
+                        <a
+                          href={`https://basescan.org/address/${agent.owner}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs hover:underline"
+                          style={{ color: '#80d0ff' }}
+                        >
+                          View
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <a
                   href={`${EXPLORER_URL}/token/${CONTRACT_ADDRESS}?a=${agent.tokenId}`}
                   target="_blank"

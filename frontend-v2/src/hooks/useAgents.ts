@@ -25,6 +25,7 @@ interface AgentData {
   mintOrigin: string;
   agentAddress: string;
   agentName: string | null;
+  ethosScore: number | null;
 }
 
 function normalizeAgent(raw: any): AgentData {
@@ -48,6 +49,7 @@ function normalizeAgent(raw: any): AgentData {
     mintOrigin: raw.mintOrigin || 'UNKNOWN',
     agentAddress: raw.agentAddress || '',
     agentName: raw.agentName || null,
+    ethosScore: raw.ethosScore || null,
   };
 }
 
