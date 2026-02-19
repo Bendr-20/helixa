@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 
 const RPC = process.env.RPC_URL || "https://sepolia.base.org";
-const CONTRACT = process.env.CONTRACT_ADDRESS || "0x665971e7bf8ec90c3066162c5b396604b3cd7711";
+const CONTRACT = process.env.CONTRACT_ADDRESS || "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60";
 
 // Minimal ABI — only the view functions we need
 const ABI = [
