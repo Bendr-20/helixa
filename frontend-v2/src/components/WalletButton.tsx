@@ -111,7 +111,7 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             {/* Traditional wallet connectors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {connectors
-                .filter(c => c.id !== 'cdpEmbeddedWallet') // CDP handled above
+                .filter(c => c.id !== 'cdpEmbeddedWallet' && c.id !== 'injected') // CDP handled above, hide raw injected
                 .map((c) => (
                   <button
                     key={c.id}
