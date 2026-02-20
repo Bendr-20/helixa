@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAccount, useConnect, useDisconnect, useBalance } from 'wagmi';
 import { useIsSignedIn } from '@coinbase/cdp-hooks';
 import { AuthButton } from '@coinbase/cdp-react/components/AuthButton';
@@ -73,11 +74,10 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
 
   // Not connected — show sign-in options
   if (showConnectors) {
-    return (
-      <div ref={menuRef} style={{ position: 'relative' }}>
+    const modal = (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', zIndex: 99, display: 'flex',
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex',
           alignItems: 'center', justifyContent: 'center',
         }}
           onClick={() => setShowConnectors(false)}
@@ -145,7 +145,19 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             </button>
           </div>
         </div>
-      </div>
+    );
+
+    return (
+      <>
+        <button
+          onClick={() => setShowConnectors(true)}
+          className="btn btn-primary"
+          style={{ fontSize: '0.85rem', padding: '8px 18px' }}
+        >
+          Sign In
+        </button>
+        {createPortal(modal, document.body)}
+      </>
     );
   }
 
