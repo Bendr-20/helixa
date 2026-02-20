@@ -87,7 +87,7 @@ export function Home() {
 
           <div className="home-steps">
             {[
-              { num: '1', title: 'Connect Wallet', desc: 'Connect any EVM wallet on Base network. Low gas fees — typically under $1.' },
+              { num: '1', title: 'Sign In', desc: 'Sign in with email, social login, or wallet. We handle the blockchain stuff — gas fees under $1.' },
               { num: '2', title: 'Build Your Aura', desc: 'Name your agent, set personality traits, write an origin story. Your identity, your way.' },
               { num: '3', title: 'Mint & Grow', desc: 'Mint your ERC-8004 identity NFT. Build Cred Score over time. Evolve your agent.' },
             ].map((step, i) => (

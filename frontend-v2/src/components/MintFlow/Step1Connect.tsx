@@ -22,14 +22,14 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
           </svg>
         </div>
         <h3>Sign In</h3>
-        <p>Sign in with email or connect a wallet to mint your aura on Base mainnet.</p>
+        <p>Sign in with email, social login, or wallet to mint your aura on Base mainnet.</p>
       </div>
 
       {authenticated && address ? (
         <div className="mf-connect-status connected">
           <div className="mf-status-dot green"></div>
           <div>
-            <div className="mf-status-label connected">Wallet Connected</div>
+            <div className="mf-status-label connected">Signed In</div>
             <div className="mf-status-address">{address.slice(0, 6)}...{address.slice(-4)}</div>
           </div>
         </div>
@@ -37,7 +37,7 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
         <div className="mf-connect-status disconnected">
           <div className="mf-status-row">
             <div className="mf-status-dot yellow"></div>
-            <div className="mf-status-label disconnected">No Wallet Connected</div>
+            <div className="mf-status-label disconnected">Not Signed In</div>
           </div>
           <div className="mf-connect-btn">
             <WalletButton />
@@ -52,7 +52,7 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
         </div>
         <div className="mf-info-card">
           <h4>Secure Minting</h4>
-          <p>All agent data is stored onchain. Your wallet signature is required for minting.</p>
+          <p>All agent data is stored onchain. Sign in to authorize minting.</p>
         </div>
         <div className="mf-info-card">
           <h4>Low Cost</h4>

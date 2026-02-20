@@ -70,7 +70,7 @@ export function MintFlow({ onComplete }: MintFlowProps) {
   };
 
   const progress = ((currentStep - 1) / 3) * 100;
-  const stepTitles = ['Connect Wallet', 'Build Your Aura', 'Review & Mint', 'Success!'];
+  const stepTitles = ['Sign In', 'Build Your Aura', 'Review & Mint', 'Success!'];
 
   if (currentStep === 4 && mintedTokenId) {
     return <MintSuccess tokenId={mintedTokenId} agentData={mintData} />;

@@ -30,7 +30,7 @@ export function Manage() {
                 Connect to Manage Your Agents
               </h2>
               <p className="text-muted mb-8">
-                Connect your wallet to view and manage the agents you own.
+                Sign in to view and manage the agents you own.
               </p>
               
               <WalletButton />
@@ -65,7 +65,7 @@ export function Manage() {
           <div className="card mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold mb-1">Connected Wallet</h3>
+                <h3 className="font-semibold mb-1">Your Account</h3>
                 <code className="text-sm text-muted">{address}</code>
               </div>
               <div className="text-right">
