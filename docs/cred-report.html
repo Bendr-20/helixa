@@ -312,28 +312,78 @@ function getBar(pct, len = 10) {
   return '█'.repeat(filled) + '░'.repeat(len - filled);
 }
 
-// === MOCK DATA FETCH (swap with real API later) ===
-async function fetchAgentData(id) {
-  // Simulate network delay
-  await new Promise(r => setTimeout(r, 1500 + Math.random() * 1000));
+// === LIVE API FETCH ===
+const API_BASE = 'https://api.helixa.xyz';
 
-  // Mock data — replace this function body with real API call
+async function fetchAgentData(id) {
+  // Fetch agent data from V2 API
+  const res = await fetch(`${API_BASE}/api/v2/agent/${id}`);
+  if (!res.ok) throw new Error('Agent not found');
+  const agent = await res.json();
+
+  // Parse cred score from traits or compute from available data
+  const credScore = agent.credScore ?? agent.cred ?? 0;
+  const traits = agent.traits || [];
+  const personality = agent.personality || {};
+  const narrative = agent.narrative || {};
+
+  // Check verifications from traits
+  const hasVerif = (name) => traits.some(t => t.name === name || t.name === name.toLowerCase());
+
+  // Calculate age
+  const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
+  const ageDays = mintDate ? Math.floor((Date.now() - mintDate.getTime()) / 86400000) : 0;
+  const ageStr = ageDays === 1 ? '1 DAY' : `${ageDays} DAYS`;
+
+  // Narrative completeness
+  const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
+  const narrativeStatus = narrativeFields.length >= 3 ? 'COMPLETE' : narrativeFields.length > 0 ? 'PARTIAL' : 'NONE';
+
+  // Build breakdown from cred weights
+  const breakdown = {};
+  if (agent.credBreakdown) {
+    if (agent.credBreakdown.activity != null) breakdown.ACTIVITY = agent.credBreakdown.activity;
+    if (agent.credBreakdown.traits != null) breakdown.TRAITS = agent.credBreakdown.traits;
+    if (agent.credBreakdown.verify != null) breakdown.VERIFY = agent.credBreakdown.verify;
+    if (agent.credBreakdown.coinbase != null) breakdown.COINBASE = agent.credBreakdown.coinbase;
+    if (agent.credBreakdown.age != null) breakdown.AGE = agent.credBreakdown.age;
+    if (agent.credBreakdown.origin != null) breakdown.ORIGIN = agent.credBreakdown.origin;
+  }
+  // Fallback: estimate from available data
+  if (Object.keys(breakdown).length === 0) {
+    breakdown.ACTIVITY = Math.min(100, (agent.txCount || 0) * 10);
+    breakdown.TRAITS = Math.min(100, traits.length * 15);
+    breakdown.VERIFY = (hasVerif('x-verified') || hasVerif('siwa-verified')) ? 100 : 0;
+    breakdown.AGE = Math.min(100, ageDays * 10);
+    breakdown.ORIGIN = agent.mintOrigin === 1 ? 100 : agent.mintOrigin === 2 ? 80 : 50;
+  }
+
   return {
-    name: 'Bendr 2.0',
-    tokenId: '#001',
-    credScore: 77,
+    name: agent.name || `Agent #${id}`,
+    tokenId: `#${String(id).padStart(3, '0')}`,
+    credScore: credScore,
     date: new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
     verifications: {
-      'X/TWITTER': true, 'SIWA': true,
-      'GITHUB': false, 'COINBASE': true,
-      'FARCASTER': false
+      'X/TWITTER': hasVerif('x-verified'),
+      'SIWA': hasVerif('siwa-verified'),
+      'GITHUB': hasVerif('github-verified'),
+      'COINBASE': hasVerif('coinbase-verified'),
+      'FARCASTER': hasVerif('farcaster-verified')
     },
-    onchain: { age: '4 DAYS', txCount: 12, traits: 6, points: 275, narrative: 'COMPLETE', soulbound: true },
-    risk: { tolerance: 7, autonomy: 8, alignment: 'CHAOTIC GOOD' },
-    breakdown: {
-      ACTIVITY: 80, TRAITS: 70, VERIFY: 100,
-      COINBASE: 100, AGE: 40, ORIGIN: 100
-    }
+    onchain: {
+      age: ageStr,
+      txCount: agent.txCount || 0,
+      traits: traits.length,
+      points: agent.points || 0,
+      narrative: narrativeStatus,
+      soulbound: agent.soulbound || false
+    },
+    risk: {
+      tolerance: personality.riskTolerance || 0,
+      autonomy: personality.autonomyLevel || personality.autonomy || 0,
+      alignment: (personality.alignment || personality.values || 'UNKNOWN').toUpperCase().substring(0, 30)
+    },
+    breakdown: breakdown
   };
 }
 
