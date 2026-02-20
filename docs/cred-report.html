@@ -316,9 +316,22 @@ function getBar(pct, len = 10) {
 const API_BASE = 'https://api.helixa.xyz';
 
 async function fetchAgentData(id) {
-  // Fetch agent data from V2 API
-  const res = await fetch(`${API_BASE}/api/v2/agent/${id}`);
-  if (!res.ok) throw new Error('Agent not found');
+  // Try by ID first, then search by name
+  let res = await fetch(`${API_BASE}/api/v2/agent/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    // Try searching all agents for a name match
+    const listRes = await fetch(`${API_BASE}/api/v2/agents`);
+    if (listRes.ok) {
+      const agents = await listRes.json();
+      const match = (agents.agents || agents || []).find(a =>
+        a.name && a.name.toLowerCase() === id.toLowerCase()
+      );
+      if (match) {
+        res = await fetch(`${API_BASE}/api/v2/agent/${match.tokenId}`);
+      }
+    }
+    if (!res.ok) throw new Error('Agent not found');
+  }
   const agent = await res.json();
 
   // Parse cred score from traits or compute from available data
@@ -442,7 +455,7 @@ async function boot() {
 function promptInput() {
   const container = document.createElement('div');
   container.className = 'line input-line';
-  container.innerHTML = '> ENTER AGENT ID: <input id="agent-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20"><span class="cursor">█</span>';
+  container.innerHTML = '> ENTER AGENT ID OR NAME: <input id="agent-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="30"><span class="cursor">█</span>';
   screen.appendChild(container);
   screen.scrollTop = screen.scrollHeight;
 
