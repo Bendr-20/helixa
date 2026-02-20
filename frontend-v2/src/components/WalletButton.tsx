@@ -116,9 +116,9 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             {/* Traditional wallet connectors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {connectors
-                .filter(c => c.id !== 'cdpEmbeddedWallet' && c.name !== 'CDP' && !c.id.includes('cdp')) // CDP handled above
+                .filter(c => ['coinbaseWalletSDK', 'phantom'].includes(c.id) || c.name === 'Coinbase Wallet' || c.name === 'Phantom')
                 .map((c) => {
-                  const label = c.name === 'Phantom' ? '👻 Phantom' : c.name;
+                  const label = c.name;
                   return (
                   <button
                     key={c.id}
