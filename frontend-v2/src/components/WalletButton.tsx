@@ -93,10 +93,15 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             
             {/* CDP Email/Social login — primary */}
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text2, #999)', marginBottom: 8 }}>
-                Email or social login (no wallet needed)
+              <div style={{
+                border: '2px solid var(--color-mint, #6eecd8)', borderRadius: 12,
+                padding: 4, background: 'rgba(110, 236, 216, 0.05)',
+              }}>
+                <AuthButton />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text2, #999)', marginTop: 8, textAlign: 'center' }}>
+                Sign in with email or social — no wallet needed
               </p>
-              <AuthButton />
             </div>
             
             <div style={{
@@ -111,7 +116,7 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             {/* Traditional wallet connectors */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {connectors
-                .filter(c => c.id !== 'cdpEmbeddedWallet') // CDP handled above
+                .filter(c => c.id !== 'cdpEmbeddedWallet' && c.name !== 'CDP' && !c.id.includes('cdp')) // CDP handled above
                 .map((c) => {
                   const label = c.name === 'Phantom' ? '👻 Phantom' : c.name;
                   return (
