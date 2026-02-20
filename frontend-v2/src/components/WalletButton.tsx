@@ -93,10 +93,13 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             
             {/* CDP Email/Social login — primary */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{
-                border: '2px solid var(--color-mint, #6eecd8)', borderRadius: 12,
-                padding: 4, background: 'rgba(110, 236, 216, 0.05)',
-              }}>
+              <div
+                onClick={() => setShowConnectors(false)}
+                style={{
+                  border: '2px solid var(--color-mint, #6eecd8)', borderRadius: 12,
+                  padding: 4, background: 'rgba(110, 236, 216, 0.05)',
+                }}
+              >
                 <AuthButton />
               </div>
               <p style={{ fontSize: '0.75rem', color: 'var(--text2, #999)', marginTop: 8, textAlign: 'center' }}>
