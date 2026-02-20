@@ -4,7 +4,7 @@ set -euo pipefail
 # Deploy AgentTrustScore to Base mainnet
 # Required env vars: PRIVATE_KEY, RPC_URL, BASESCAN_API_KEY
 
-AGENT_DNA="0x665971e7bf8ec90c3066162c5b396604b3cd7711"
+AGENT_DNA="0x2e3B541C59D38b84E3Bc54e977200230A204Fe60"
 REGISTRY="0x0000000000000000000000000000000000000000"  # No cross-registry initially
 
 echo "Deploying AgentTrustScore..."

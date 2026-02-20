@@ -15,7 +15,7 @@ const DOCS = join(__dirname, '..', 'docs');
 const AURAS_DIR = join(DOCS, 'auras');
 const META_DIR = join(DOCS, 'metadata');
 
-const CONTRACT = '0x665971e7bf8ec90c3066162c5b396604b3cd7711';
+const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const RPC = 'https://mainnet.base.org';
 const BASE_URL = 'https://helixa.xyz';
 
