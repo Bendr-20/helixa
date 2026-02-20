@@ -316,23 +316,28 @@ function getBar(pct, len = 10) {
 const API_BASE = 'https://api.helixa.xyz';
 
 async function fetchAgentData(id) {
-  // Try by ID first, then search by name
-  let res = await fetch(`${API_BASE}/api/v2/agent/${encodeURIComponent(id)}`);
-  if (!res.ok) {
-    // Try searching all agents for a name match
-    const listRes = await fetch(`${API_BASE}/api/v2/agents`);
-    if (listRes.ok) {
-      const agents = await listRes.json();
-      const match = (agents.agents || agents || []).find(a =>
-        a.name && a.name.toLowerCase() === id.toLowerCase()
-      );
-      if (match) {
-        res = await fetch(`${API_BASE}/api/v2/agent/${match.tokenId}`);
-      }
-    }
+  // If numeric, fetch by ID directly. Otherwise search by name.
+  const isNumeric = /^\d+$/.test(id);
+  let agent = null;
+
+  if (isNumeric) {
+    const res = await fetch(`${API_BASE}/api/v2/agent/${id}`);
     if (!res.ok) throw new Error('Agent not found');
+    agent = await res.json();
+  } else {
+    // Search all agents for a name match (case-insensitive)
+    const listRes = await fetch(`${API_BASE}/api/v2/agents`);
+    if (!listRes.ok) throw new Error('Failed to search agents');
+    const data = await listRes.json();
+    const agents = data.agents || data || [];
+    const match = agents.find(a =>
+      a.name && a.name.toLowerCase() === id.toLowerCase()
+    );
+    if (!match) throw new Error('Agent not found');
+    const res = await fetch(`${API_BASE}/api/v2/agent/${match.tokenId}`);
+    if (!res.ok) throw new Error('Agent not found');
+    agent = await res.json();
   }
-  const agent = await res.json();
 
   // Parse cred score from traits or compute from available data
   const credScore = agent.credScore ?? agent.cred ?? 0;
