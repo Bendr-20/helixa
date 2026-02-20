@@ -104,6 +104,11 @@
       "wallet": "0x9ec2bf8010297eaff015fc5779f8698c6d794e6a",
       "name": "AYB",
       "tokenId": 95
+    },
+    "x402-e2e-test-177161": {
+      "wallet": "0x97cf081780d71f2189889ce86941cf1837997873",
+      "name": "x402-e2e-test-1771614314567",
+      "tokenId": 98
     }
   },
   "stats": {}
