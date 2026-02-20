@@ -93,7 +93,7 @@ const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
 // ERC-8021 Builder Code Attribution
 // ═══════════════════════════════════════════════════════════════
 // Appends builder code suffix to all write transactions for Base rewards
-const BUILDER_CODE = process.env.BUILDER_CODE || 'helixa';
+const BUILDER_CODE = process.env.BUILDER_CODE || 'bc_doy52p24';
 let ERC8021_SUFFIX;
 try {
     const { Attribution } = require('ox/erc8021');
