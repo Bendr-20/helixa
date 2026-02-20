@@ -85,9 +85,46 @@ const READ_RPC_URL = process.env.READ_RPC_URL || 'https://base.drpc.org';
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
 const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
-const contract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
+const rawContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
 const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
+
+// ═══════════════════════════════════════════════════════════════
+// ERC-8021 Builder Code Attribution
+// ═══════════════════════════════════════════════════════════════
+// Appends builder code suffix to all write transactions for Base rewards
+const BUILDER_CODE = process.env.BUILDER_CODE || 'helixa';
+let ERC8021_SUFFIX;
+try {
+    const { Attribution } = require('ox/erc8021');
+    ERC8021_SUFFIX = Attribution.toDataSuffix({ codes: [BUILDER_CODE] });
+    console.log(`[ERC-8021] Builder code "${BUILDER_CODE}" → suffix: ${ERC8021_SUFFIX}`);
+} catch (e) {
+    console.warn('[ERC-8021] ox not installed, attribution disabled:', e.message);
+    ERC8021_SUFFIX = null;
+}
+
+// Proxy that auto-appends ERC-8021 suffix to all contract write calls
+const contract = new Proxy(rawContract, {
+    get(target, prop) {
+        const val = target[prop];
+        if (typeof val === 'function' && !['connect', 'attach', 'interface', 'runner', 'target', 'filters', 'queryFilter', 'on', 'once', 'removeListener', 'getAddress', 'getDeployedCode', 'waitForDeployment'].includes(prop)) {
+            return async function (...args) {
+                // Only append suffix to write transactions (not view/pure calls)
+                // Detect by checking if last arg is an overrides object or if function is non-view
+                const fragment = target.interface.getFunction(prop);
+                if (fragment && !fragment.constant && ERC8021_SUFFIX) {
+                    // It's a write function — populate tx and append suffix
+                    const tx = await target[prop].populateTransaction(...args);
+                    tx.data = tx.data + ERC8021_SUFFIX.slice(2); // remove 0x prefix from suffix
+                    return wallet.sendTransaction(tx);
+                }
+                return val.apply(target, args);
+            };
+        }
+        return val;
+    }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // SIWA (Sign-In With Agent) Authentication
