@@ -1,0 +1,1 @@
+import{aN as e,aR as i}from"./vendor-wallet-F4boqawy.js";function a(t){return t?`${t.slice(0,5)}…${t.slice(-4)}`:""}function o({wei:t,precision:r=3}){return parseFloat(i(t)).toFixed(r).replace(/0+$/,"").replace(/\.$/,"")}function c({amount:t,decimals:r}){return e(BigInt(t),r)}export{c as i,a as n,o as t};

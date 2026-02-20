@@ -4,9 +4,10 @@ import { MintData } from './MintFlow';
 import { AuraPreview } from '../AuraPreview';
 import { useMint, useMintPrice, useHasMinted, useSetPersonality, useSetNarrative } from '../../hooks/useHelixa';
 import { EXPLORER_URL, CONTRACT_ADDRESS } from '../../lib/constants';
-import { useAccount, useChainId } from 'wagmi';
+import { useChainId } from 'wagmi';
 import { parseAbiItem, decodeEventLog } from 'viem';
 import { usePublicClient } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import HelixaV2ABI from '../../abi/HelixaV2.json';
 
 interface Step5ReviewProps {
@@ -44,7 +45,8 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   const { setPersonality, isPending: isPendingPersonality, isConfirming: isConfirmingPersonality } = useSetPersonality();
   const { setNarrative, isPending: isPendingNarrative, isConfirming: isConfirmingNarrative } = useSetNarrative();
   const { data: mintPrice } = useMintPrice();
-  const { address } = useAccount();
+  const { wallets } = useWallets();
+  const address = wallets[0]?.address as `0x${string}` | undefined;
   const chainId = useChainId();
   const { data: hasMinted } = useHasMinted(address);
   const publicClient = usePublicClient();

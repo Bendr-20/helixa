@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Step1Connect } from './Step1Connect';
 import { Step2BuildAura } from './Step2BuildAura';
 import { Step5Review } from './Step5Review';
@@ -52,7 +52,9 @@ export function MintFlow({ onComplete }: MintFlowProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [mintData, setMintData] = useState<MintData>(initialMintData);
   const [mintedTokenId, setMintedTokenId] = useState<string | null>(null);
-  const { isConnected } = useAccount();
+  const { authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const isConnected = authenticated && wallets.length > 0;
 
   const updateMintData = (updates: Partial<MintData>) => {
     setMintData(prev => ({ ...prev, ...updates }));

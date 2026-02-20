@@ -1,42 +1,19 @@
 import React from 'react';
-import { CDPReactProvider } from '@coinbase/cdp-react';
-import { createCDPEmbeddedWalletConnector } from '@coinbase/cdp-wagmi';
+import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider, createConfig } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http } from 'viem';
-import { coinbaseWallet, injected } from 'wagmi/connectors';
-import { CHAIN, BASE_RPC_URL } from '../lib/constants';
-import type { Config } from '@coinbase/cdp-core';
+import { base } from 'viem/chains';
 
-const CDP_PROJECT_ID = import.meta.env.VITE_CDP_PROJECT_ID || '3935377c-11d5-418b-bfa9-1308476c0f5a';
+const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID || 'cmlv6ibdm00350el2jsm8m8s6';
+const BASE_RPC_URL = 'https://base.drpc.org';
 
-const cdpConfig: Config = {
-  projectId: CDP_PROJECT_ID,
-  ethereum: {
-    createOnLogin: 'eoa',
-  },
-};
-
-const cdpConnector = createCDPEmbeddedWalletConnector({
-  cdpConfig,
-  providerConfig: {
-    chains: [CHAIN] as const,
-    transports: {
-      [CHAIN.id]: http(BASE_RPC_URL),
-    } as any,
-  },
-});
-
-const config = createConfig({
-  connectors: [
-    cdpConnector,
-    coinbaseWallet({ appName: 'Helixa' }),
-    injected({ target: 'phantom' }),
-  ],
-  chains: [CHAIN],
+// Wagmi config for contract reads — no connectors, Privy handles wallet connection
+const wagmiConfig = createConfig({
+  chains: [base],
   transports: {
-    [CHAIN.id]: http(BASE_RPC_URL),
-  } as any,
+    [base.id]: http(BASE_RPC_URL),
+  },
 });
 
 const queryClient = new QueryClient();
@@ -47,12 +24,29 @@ interface WalletProviderProps {
 
 export function WalletProvider({ children }: WalletProviderProps) {
   return (
-    <CDPReactProvider config={cdpConfig}>
-      <WagmiProvider config={config}>
+    <PrivyProvider
+      appId={PRIVY_APP_ID}
+      config={{
+        appearance: {
+          theme: 'dark',
+          accentColor: '#6eecd8',
+          logo: 'https://helixa.xyz/helixa-logo.jpg',
+        },
+        loginMethods: ['email', 'wallet', 'google', 'twitter', 'discord', 'apple'],
+        embeddedWallets: {
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
+        },
+        defaultChain: base,
+        supportedChains: [base],
+      }}
+    >
+      <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
       </WagmiProvider>
-    </CDPReactProvider>
+    </PrivyProvider>
   );
 }

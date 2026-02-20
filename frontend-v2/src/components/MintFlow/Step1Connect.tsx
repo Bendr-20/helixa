@@ -1,6 +1,6 @@
 import React from 'react';
 import { WalletButton } from '../WalletButton';
-import { useAccount } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 
 interface Step1ConnectProps {
   onNext: () => void;
@@ -8,11 +8,13 @@ interface Step1ConnectProps {
 }
 
 export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
-  const { address, isConnected } = useAccount();
+  const { authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const wallet = wallets[0];
+  const address = wallet?.address;
 
   return (
     <div className="mf-connect">
-      {/* Header */}
       <div className="mf-connect-header">
         <div className="mf-connect-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -23,13 +25,12 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
         <p>Sign in with email or connect a wallet to mint your aura on Base mainnet.</p>
       </div>
 
-      {/* Status */}
-      {isConnected ? (
+      {authenticated && address ? (
         <div className="mf-connect-status connected">
           <div className="mf-status-dot green"></div>
           <div>
             <div className="mf-status-label connected">Wallet Connected</div>
-            <div className="mf-status-address">{address?.slice(0, 6)}...{address?.slice(-4)}</div>
+            <div className="mf-status-address">{address.slice(0, 6)}...{address.slice(-4)}</div>
           </div>
         </div>
       ) : (
@@ -44,7 +45,6 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
         </div>
       )}
 
-      {/* Info Cards */}
       <div className="mf-info-cards">
         <div className="mf-info-card">
           <h4>Base Mainnet</h4>
@@ -60,7 +60,6 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
         </div>
       </div>
 
-      {/* Nav */}
       <div className="mf-nav">
         <div></div>
         <button onClick={onNext} disabled={!canProceed} className="btn btn-primary">

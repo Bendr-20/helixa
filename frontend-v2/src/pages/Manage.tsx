@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAccount } from 'wagmi';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { WalletButton } from '../components/WalletButton';
 import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
 
 export function Manage() {
-  const { address, isConnected } = useAccount();
+  const { authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const address = wallets[0]?.address as `0x${string}` | undefined;
+  const isConnected = authenticated && !!address;
   const { data: userAgents, isLoading } = useAgentsByOwner(address);
   const [agentNameInput, setAgentNameInput] = useState('');
   const [ensNameInput, setEnsNameInput] = useState('');
