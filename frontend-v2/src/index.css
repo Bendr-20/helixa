@@ -2728,3 +2728,10 @@ input[type="checkbox"] {
   opacity: 0.9;
   transform: translateY(-1px);
 }
+
+/* Ensure CDP auth popup renders above our sign-in modal */
+iframe[src*="coinbase"], iframe[src*="cdp"], div[class*="coinbase"], div[id*="coinbase"],
+iframe[title*="Sign"], div[style*="z-index: 2147483647"] {
+  z-index: 99999 !important;
+}
+
