@@ -1273,7 +1273,7 @@ app.post('/api/v2/mint', requireSIWA, async (req, res) => {
         try {
             const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
             
-            const registrationFile = build8004RegistrationFile(tokenId, name, fw);
+            const registrationFile = build8004RegistrationFile(tokenId, name, fw, req.body.narrative);
             const dataURI = registrationFileToDataURI(registrationFile);
             
             const regTx = await registryContract['register(string)'](dataURI);
@@ -1281,15 +1281,13 @@ app.post('/api/v2/mint', requireSIWA, async (req, res) => {
             const regReceipt = await regTx.wait();
             crossRegTx = regTx.hash;
             
-            // Extract agentId from Registered event
+            // Extract agentId from Transfer event (mint: from=0x0)
+            const transferSig = ethers.id('Transfer(address,address,uint256)');
             for (const log of regReceipt.logs) {
-                try {
-                    const parsed = registryContract.interface.parseLog(log);
-                    if (parsed?.name === 'Registered') {
-                        crossRegId = Number(parsed.args.agentId);
-                        break;
-                    }
-                } catch {}
+                if (log.address.toLowerCase() === ERC8004_REGISTRY.toLowerCase() && log.topics[0] === transferSig) {
+                    crossRegId = Number(BigInt(log.topics[3]));
+                    break;
+                }
             }
             
             console.log(`[8004 XREG] ✓ Cross-registered as 8004 Registry ID #${crossRegId}`);
@@ -1323,11 +1321,20 @@ app.post('/api/v2/mint', requireSIWA, async (req, res) => {
 });
 
 // ─── Helper: Build 8004 registration file ──────────────────────
-function build8004RegistrationFile(tokenId, name, framework) {
+function build8004RegistrationFile(tokenId, name, framework, narrative) {
+    // Use agent's own mission/origin for description if available
+    let description;
+    if (narrative?.mission) {
+        description = narrative.mission;
+    } else if (narrative?.origin) {
+        description = narrative.origin;
+    } else {
+        description = `${name} — AI agent on Base (${framework}).`;
+    }
     return {
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name,
-        description: `${name} — AI agent (${framework}) registered on Helixa, the most complete ERC-8004 implementation.`,
+        description,
         image: `https://api.helixa.xyz/api/v2/agent/${tokenId}/card.png`,
         services: [
             { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
@@ -1448,7 +1455,9 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
             try {
                 const agent = await readContract.getAgent(tokenId);
                 const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
-                const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework);
+                const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
+                const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
+                const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework, narrative);
                 const dataURI = registrationFileToDataURI(regFile);
                 
                 // Try to find agent's 8004 Registry ID via events or stored mapping
@@ -1495,7 +1504,9 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
         const agent = await readContract.getAgent(tokenId);
         const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
         
-        const registrationFile = build8004RegistrationFile(tokenId, agent.name, agent.framework);
+        const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
+        const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
+        const registrationFile = build8004RegistrationFile(tokenId, agent.name, agent.framework, narrative);
         const dataURI = registrationFileToDataURI(registrationFile);
         const regTx = await registryContract['register(string)'](dataURI);
         const regReceipt = await regTx.wait();
