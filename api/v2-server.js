@@ -28,7 +28,7 @@ if (fs.existsSync(envPath)) {
 const PORT = process.env.V2_API_PORT || 3457;
 const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
 const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
-const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x19B16428f0721a5f627F190Ca61D493A632B423F';
+const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x97cf081780D71F2189889ce86941cF1837997873';
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 // TODO: Replace with actual deployed V2 contract address
