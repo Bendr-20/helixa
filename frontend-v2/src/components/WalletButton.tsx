@@ -112,7 +112,9 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {connectors
                 .filter(c => c.id !== 'cdpEmbeddedWallet') // CDP handled above
-                .map((c) => (
+                .map((c) => {
+                  const label = c.name === 'Phantom' ? '👻 Phantom' : c.name;
+                  return (
                   <button
                     key={c.id}
                     onClick={() => { connect({ connector: c }); setShowConnectors(false); }}
@@ -125,9 +127,10 @@ export function WalletButton({ showBalance = false }: { showBalance?: boolean })
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
                   >
-                    {c.name}
+                    {label}
                   </button>
-                ))}
+                  );
+                })}
             </div>
             
             <button
