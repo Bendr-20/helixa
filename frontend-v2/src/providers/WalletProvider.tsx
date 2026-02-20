@@ -4,7 +4,7 @@ import { createCDPEmbeddedWalletConnector } from '@coinbase/cdp-wagmi';
 import { WagmiProvider, createConfig } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http } from 'viem';
-import { coinbaseWallet } from 'wagmi/connectors';
+import { coinbaseWallet, injected } from 'wagmi/connectors';
 import { CHAIN, BASE_RPC_URL } from '../lib/constants';
 import type { Config } from '@coinbase/cdp-core';
 
@@ -31,6 +31,7 @@ const config = createConfig({
   connectors: [
     cdpConnector,
     coinbaseWallet({ appName: 'Helixa' }),
+    injected({ target: 'phantom' }),
   ],
   chains: [CHAIN],
   transports: {
