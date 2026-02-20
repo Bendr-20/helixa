@@ -317,26 +317,30 @@ const API_BASE = 'https://api.helixa.xyz';
 
 async function fetchAgentData(id) {
   // If numeric, fetch by ID directly. Otherwise search by name.
-  const isNumeric = /^\d+$/.test(id);
+  const isNumeric = /^\d+$/.test(id.trim());
   let agent = null;
 
-  if (isNumeric) {
-    const res = await fetch(`${API_BASE}/api/v2/agent/${id}`);
-    if (!res.ok) throw new Error('Agent not found');
-    agent = await res.json();
-  } else {
-    // Search all agents for a name match (case-insensitive)
-    const listRes = await fetch(`${API_BASE}/api/v2/agents`);
-    if (!listRes.ok) throw new Error('Failed to search agents');
-    const data = await listRes.json();
-    const agents = data.agents || data || [];
-    const match = agents.find(a =>
-      a.name && a.name.toLowerCase() === id.toLowerCase()
-    );
-    if (!match) throw new Error('Agent not found');
-    const res = await fetch(`${API_BASE}/api/v2/agent/${match.tokenId}`);
-    if (!res.ok) throw new Error('Agent not found');
-    agent = await res.json();
+  try {
+    if (isNumeric) {
+      const res = await fetch(`${API_BASE}/api/v2/agent/${id.trim()}`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      agent = await res.json();
+    } else {
+      // Search all agents for a name match (case-insensitive)
+      const listRes = await fetch(`${API_BASE}/api/v2/agents`);
+      if (!listRes.ok) throw new Error(`Agent list returned ${listRes.status}`);
+      const data = await listRes.json();
+      const agents = data.agents || data || [];
+      const match = agents.find(a =>
+        a.name && a.name.toLowerCase() === id.trim().toLowerCase()
+      );
+      if (!match) throw new Error('NO MATCH FOR "' + id.trim() + '"');
+      const res = await fetch(`${API_BASE}/api/v2/agent/${match.tokenId}`);
+      if (!res.ok) throw new Error(`Agent ${match.tokenId} returned ${res.status}`);
+      agent = await res.json();
+    }
+  } catch (fetchErr) {
+    throw new Error(fetchErr.message || 'NETWORK ERROR');
   }
 
   // Parse cred score from traits or compute from available data
@@ -493,7 +497,7 @@ async function processReport(agentId) {
     data = await fetchAgentData(agentId);
   } catch (e) {
     proc.remove();
-    await typeLine('ERROR: AGENT NOT FOUND.', 40, 'highlight');
+    await typeLine('ERROR: ' + (e.message || 'AGENT NOT FOUND.'), 40, 'highlight');
     addLine('');
     promptInput();
     return;
