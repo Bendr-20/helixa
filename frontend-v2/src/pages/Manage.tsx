@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { WalletButton } from '../components/WalletButton';
 import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
 
@@ -30,7 +30,7 @@ export function Manage() {
                 Connect your wallet to view and manage the agents you own.
               </p>
               
-              <ConnectButton />
+              <WalletButton />
             </div>
           </div>
         </div>

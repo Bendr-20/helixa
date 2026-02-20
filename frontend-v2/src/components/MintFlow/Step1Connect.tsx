@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { WalletButton } from '../WalletButton';
 import { useAccount } from 'wagmi';
 
 interface Step1ConnectProps {
@@ -19,8 +19,8 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
             <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h3>Connect Your Wallet</h3>
-        <p>Connect your wallet to mint your aura on Base mainnet.</p>
+        <h3>Sign In</h3>
+        <p>Sign in with email or connect a wallet to mint your aura on Base mainnet.</p>
       </div>
 
       {/* Status */}
@@ -39,7 +39,7 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
             <div className="mf-status-label disconnected">No Wallet Connected</div>
           </div>
           <div className="mf-connect-btn">
-            <ConnectButton />
+            <WalletButton />
           </div>
         </div>
       )}

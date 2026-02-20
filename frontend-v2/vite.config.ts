@@ -11,7 +11,6 @@ export default defineConfig({
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-wallet': [
-            '@rainbow-me/rainbowkit',
             'wagmi',
             'viem',
             '@tanstack/react-query',

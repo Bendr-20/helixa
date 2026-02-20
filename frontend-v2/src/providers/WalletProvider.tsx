@@ -1,19 +1,42 @@
 import React from 'react';
-import '@rainbow-me/rainbowkit/styles.css';
-import { getDefaultConfig, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi';
+import { CDPReactProvider } from '@coinbase/cdp-react';
+import { createCDPEmbeddedWalletConnector } from '@coinbase/cdp-wagmi';
+import { WagmiProvider, createConfig } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { http } from 'viem';
+import { coinbaseWallet, injected } from 'wagmi/connectors';
 import { CHAIN, BASE_RPC_URL } from '../lib/constants';
+import type { Config } from '@coinbase/cdp-core';
 
-const config = getDefaultConfig({
-  appName: 'Helixa',
-  projectId: import.meta.env.VITE_PROJECT_ID || '79555f4c73d677402a6c1b29978b3569',
+const CDP_PROJECT_ID = import.meta.env.VITE_CDP_PROJECT_ID || '13e8c872-1bfd-4af2-8860-e4ecc088b7a9';
+
+const cdpConfig: Config = {
+  projectId: CDP_PROJECT_ID,
+  ethereum: {
+    createOnLogin: 'eoa',
+  },
+};
+
+const cdpConnector = createCDPEmbeddedWalletConnector({
+  cdpConfig,
+  providerConfig: {
+    chains: [CHAIN] as const,
+    transports: {
+      [CHAIN.id]: http(BASE_RPC_URL),
+    } as any,
+  },
+});
+
+const config = createConfig({
+  connectors: [
+    cdpConnector,
+    coinbaseWallet({ appName: 'Helixa' }),
+    injected(),
+  ],
   chains: [CHAIN],
   transports: {
     [CHAIN.id]: http(BASE_RPC_URL),
-  },
-  ssr: false,
+  } as any,
 });
 
 const queryClient = new QueryClient();
@@ -24,18 +47,12 @@ interface WalletProviderProps {
 
 export function WalletProvider({ children }: WalletProviderProps) {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider coolMode theme={darkTheme({
-          accentColor: '#b490ff',
-          accentColorForeground: '#0a0a14',
-          borderRadius: 'medium',
-          fontStack: 'system',
-          overlayBlur: 'small',
-        })}>
+    <CDPReactProvider config={cdpConfig}>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
           {children}
-        </RainbowKitProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </CDPReactProvider>
   );
 }

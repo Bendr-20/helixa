@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { WalletButton } from './WalletButton';
 import { DnaBackground } from './DnaBackground';
 import { preloadMap } from '../App';
 
@@ -80,12 +80,12 @@ export function Layout({ children }: LayoutProps) {
             
             {/* Desktop Wallet Button */}
             <div className="hidden md:block">
-              <ConnectButton showBalance={false} />
+              <WalletButton />
             </div>
             
             {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center gap-3">
-              <ConnectButton showBalance={false} />
+              <WalletButton />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className={`hamburger ${mobileMenuOpen ? 'active' : ''}`}

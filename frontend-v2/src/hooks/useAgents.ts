@@ -26,6 +26,7 @@ interface AgentData {
   agentAddress: string;
   agentName: string | null;
   ethosScore: number | null;
+  linkedToken: any;
 }
 
 function normalizeAgent(raw: any): AgentData {
