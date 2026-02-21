@@ -209,6 +209,9 @@ function getAgentCount() {
 async function fetchAgentData(tokenId) {
     try {
         const agent = await readContract.getAgent(tokenId);
+        let credScore = 0, points = 0;
+        try { credScore = Number(await readContract.getCredScore(tokenId)); } catch {}
+        try { points = Number(await readContract.points(tokenId)); } catch {}
         return {
             tokenId,
             name: agent.name,
@@ -217,8 +220,8 @@ async function fetchAgentData(tokenId) {
             verified: agent.verified,
             soulbound: agent.soulbound || tokenId === 1,
             mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
-            credScore: 0,
-            points: 0,
+            credScore,
+            points,
             owner: agent.agentAddress,
             mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),
         };
@@ -394,6 +397,26 @@ async function startIndexer(provider, contract, cachePath) {
     console.log(`[INDEXER] Polling every ${POLL_INTERVAL_MS / 1000}s`);
 }
 
+async function refreshScores() {
+    if (!db || !readContract) return;
+    const rows = db.prepare('SELECT tokenId FROM agents ORDER BY tokenId ASC').all();
+    console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
+    let updated = 0;
+    for (const row of rows) {
+        try {
+            let credScore = 0, points = 0;
+            try { credScore = Number(await readContract.getCredScore(row.tokenId)); } catch {}
+            try { points = Number(await readContract.points(row.tokenId)); } catch {}
+            if (credScore > 0 || points > 0) {
+                db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?')
+                    .run(credScore, points, Date.now(), row.tokenId);
+                updated++;
+            }
+        } catch {}
+    }
+    console.log(`[INDEXER] Score refresh done: ${updated} agents updated`);
+}
+
 function stopIndexer() {
     if (pollTimer) clearInterval(pollTimer);
 }
@@ -404,5 +427,6 @@ module.exports = {
     queryAgents,
     getAllAgents,
     getAgentCount,
+    refreshScores,
     upsertAgent: (a) => { if (db) upsertAgent(a); },
 };

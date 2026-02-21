@@ -817,7 +817,7 @@ const agentCache = {
 // Start the indexer after a short delay (let server bind first)
 setTimeout(() => {
     indexer.startIndexer(readProvider, readContract, CACHE_FILE)
-        .then(() => console.log('📋 SQLite indexer started'))
+        .then(() => { console.log('📋 SQLite indexer started'); return indexer.refreshScores(); })
         .catch(e => console.error('📋 Indexer start error:', e.message));
 }, 2000);
 
