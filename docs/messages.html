@@ -109,8 +109,10 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
 /* ── Mobile ── */
 @media (max-width:700px) {
-  .sidebar { width:100%; position:absolute; z-index:10; height:calc(100vh - 52px); top:52px; left:0; display:none; }
-  .sidebar.open { display:block; }
+  .main { flex-direction:column; }
+  .sidebar { width:100%; border-right:none; border-bottom:1px solid var(--border); max-height:40vh; overflow-y:auto; flex-shrink:0; }
+  .sidebar.collapsed { display:none; }
+  .chat { flex:1; min-height:0; }
   .mobile-toggle { display:inline-block !important; }
 }
 .mobile-toggle { display:none; cursor:pointer; font-size:1.2rem; }
@@ -124,7 +126,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 <body>
 
 <div class="topbar">
-  <span class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</span>
+  <span class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰</span>
   <h1><span>Messages</span></h1>
   <a href="/">← Helixa</a>
   <div class="spacer"></div>
@@ -152,9 +154,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 </div>
 
 <script>
-const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? `http://${window.location.host}`
-  : window.location.origin.includes('helixa') ? window.location.origin : 'https://helixa.app';
+const API = 'https://api.helixa.xyz';
 
 let groups = [];
 let activeGroup = null;
@@ -247,8 +247,10 @@ function selectGroup(g) {
   `;
   renderInputBar();
   loadMessages();
-  // Close sidebar on mobile
-  document.querySelector('.sidebar').classList.remove('open');
+  // Collapse sidebar on mobile after selecting a group
+  if (window.innerWidth <= 700) {
+    document.querySelector('.sidebar').classList.add('collapsed');
+  }
 }
 
 // ─── Messages ────────────────────────────────────────────────
