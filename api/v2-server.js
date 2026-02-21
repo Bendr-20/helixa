@@ -878,9 +878,17 @@ app.get('/api/v2/agents', async (req, res) => {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100));
         const start = (page - 1) * limit;
-        const paged = agentCache.agents.slice(start, start + limit);
+        // Filter spam: require name > 1 char and not all same character
+        const showSpam = req.query.spam === 'true';
+        const filtered = showSpam ? agentCache.agents : agentCache.agents.filter(a => {
+            const name = (a.name || '').trim();
+            if (name.length <= 1) return false; // single char names
+            if (new Set(name.toLowerCase().split('')).size === 1) return false; // all same char e.g. "CCC"
+            return true;
+        });
+        const paged = filtered.slice(start, start + limit);
         
-        res.json({ total: agentCache.total, page, pages: Math.ceil(agentCache.total / limit), limit, agents: paged, cached: true, cachedAt: new Date(agentCache.updatedAt).toISOString() });
+        res.json({ total: filtered.length, totalUnfiltered: agentCache.total, page, pages: Math.ceil(filtered.length / limit), limit, agents: paged, cached: true, cachedAt: new Date(agentCache.updatedAt).toISOString() });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
