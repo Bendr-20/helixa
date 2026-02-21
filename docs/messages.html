@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Messages — Helixa</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared-nav.css">
 <style>
 :root {
   --bg: #0a0a14;
@@ -18,7 +19,7 @@
   --text: #e8e8f0;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; height:100vh; display:flex; flex-direction:column; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; height:100vh; display:flex; flex-direction:column; padding-top:64px; }
 
 /* ── Nav ── */
 .topbar {
@@ -124,13 +125,20 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 </style>
 </head>
 <body>
-
-<div class="topbar">
-  <span class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰</span>
-  <h1><span>Messages</span></h1>
-  <a href="/">← Helixa</a>
-  <div class="spacer"></div>
-  <button id="walletBtn" onclick="connectWallet()">Connect Wallet</button>
+<nav class="helixa-nav">
+  <a href="/" class="nav-logo">helixa<span class="xyz">.xyz</span></a>
+  <div class="nav-links">
+    <a href="/">Home</a><a href="/mint">Mint</a><a href="/agents">Agents</a>
+    <a href="/leaderboard">Leaderboard</a><a href="/manage">Manage</a>
+    <a href="/messages.html" class="active">Messages</a><a href="/docs">Docs</a>
+  </div>
+  <button id="walletBtn" onclick="connectWallet()" style="margin-left:auto;padding:6px 14px;border:1px solid rgba(255,255,255,0.08);border-radius:8px;background:rgba(255,255,255,0.04);color:#e8e8f0;font-size:0.8rem;cursor:pointer;">Connect Wallet</button>
+  <button class="mobile-menu-btn" onclick="document.getElementById('mobileNav').classList.toggle('open')">☰</button>
+</nav>
+<div id="mobileNav" class="helixa-mobile-nav">
+  <a href="/">Home</a><a href="/mint">Mint</a><a href="/agents">Agents</a>
+  <a href="/leaderboard">Leaderboard</a><a href="/manage">Manage</a>
+  <a href="/messages.html" class="active">Messages</a><a href="/docs">Docs</a>
 </div>
 
 <div class="main">
