@@ -10,6 +10,7 @@ const navLinks = [
   { href: '/agents', label: 'Agents' },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/manage', label: 'Manage' },
+  { href: '/messages.html', label: 'Messages' },
   { href: '/docs', label: 'Docs' },
 ];
 
