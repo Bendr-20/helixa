@@ -218,8 +218,8 @@ async function lookupAgent() {
     document.getElementById('fieldName').value = meta.name || '';
     document.getElementById('fieldFramework').value = framework || '';
     document.getElementById('fieldVersion').value = getAttr('version') || '';
-    document.getElementById('fieldPersonality').value = (getAttr('personality') || '');
-    document.getElementById('fieldValues').value = (getAttr('values') || '');
+    document.getElementById('fieldPersonality').value = (getAttr('personality') || getAttr('quirks') || '');
+    document.getElementById('fieldValues').value = (getAttr('values') || getAttr('communication style') || '');
     document.getElementById('fieldOrigin').value = getAttr('origin') || '';
     document.getElementById('fieldMission').value = getAttr('mission') || '';
     document.getElementById('fieldLore').value = getAttr('lore') || '';
