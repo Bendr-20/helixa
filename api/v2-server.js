@@ -1480,6 +1480,114 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
     }
 });
 
+// POST /api/v2/agent/:id/human-update — Update agent via wallet signature (for human owners)
+app.post('/api/v2/agent/:id/human-update', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { signature, message, personality, narrative, social } = req.body;
+    
+    if (!signature || !message) {
+        return res.status(400).json({ error: 'Missing signature or message' });
+    }
+    
+    try {
+        // Verify signature recovers to the token owner
+        const recoveredAddress = ethers.verifyMessage(message, signature);
+        const owner = await readContract.ownerOf(tokenId);
+        
+        if (recoveredAddress.toLowerCase() !== owner.toLowerCase()) {
+            return res.status(403).json({ error: 'Signature does not match token owner' });
+        }
+        
+        // Verify message is recent (within 5 minutes) and contains tokenId
+        // Expected message format: "Helixa: Update agent #<tokenId> at <timestamp>"
+        const match = message.match(/Update agent #(\d+) at (\d+)/);
+        if (!match || parseInt(match[1]) !== tokenId) {
+            return res.status(400).json({ error: 'Invalid message format' });
+        }
+        const msgTime = parseInt(match[2]);
+        if (Math.abs(Date.now() - msgTime) > 5 * 60 * 1000) {
+            return res.status(400).json({ error: 'Message expired (5 min window)' });
+        }
+        
+        const updated = [];
+        const MAX_STR = 256;
+        const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
+        
+        // Update personality traits
+        if (personality) {
+            let current = {};
+            try {
+                const p = await readContract.getPersonality(tokenId);
+                current = {
+                    quirks: p[0], communicationStyle: p[1],
+                    values: p[2], humor: p[3],
+                    riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
+                };
+            } catch {}
+            
+            const merged = { ...current, ...personality };
+            const tx = await contract.setPersonality(
+                tokenId,
+                [
+                    clamp(merged.quirks),
+                    clamp(merged.communicationStyle),
+                    clamp(merged.values),
+                    clamp(merged.humor),
+                    Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
+                    Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
+                ],
+            );
+            await tx.wait();
+            updated.push('personality');
+        }
+        
+        // Update narrative
+        if (narrative) {
+            if (narrative.origin) {
+                const tx = await contract.setOrigin(tokenId, clamp(narrative.origin));
+                await tx.wait();
+                updated.push('narrative.origin');
+            }
+            if (narrative.mission) {
+                const tx = await contract.setMission(tokenId, clamp(narrative.mission));
+                await tx.wait();
+                updated.push('narrative.mission');
+            }
+            if (narrative.lore) {
+                const tx = await contract.setLore(tokenId, clamp(narrative.lore));
+                await tx.wait();
+                updated.push('narrative.lore');
+            }
+            if (narrative.manifesto) {
+                const tx = await contract.setManifesto(tokenId, clamp(narrative.manifesto));
+                await tx.wait();
+                updated.push('narrative.manifesto');
+            }
+        }
+        
+        // Store social links (off-chain in metadata)
+        if (social) {
+            // Social links are stored in the metadata file, not onchain
+            // For now, add as traits
+            if (social.twitter) {
+                try { const tx = await contract.addTrait(tokenId, social.twitter, 'social-twitter'); await tx.wait(); updated.push('social.twitter'); } catch {}
+            }
+            if (social.website) {
+                try { const tx = await contract.addTrait(tokenId, social.website, 'social-website'); await tx.wait(); updated.push('social.website'); } catch {}
+            }
+            if (social.github) {
+                try { const tx = await contract.addTrait(tokenId, social.github, 'social-github'); await tx.wait(); updated.push('social.github'); } catch {}
+            }
+        }
+        
+        console.log(`[HUMAN UPDATE] Agent #${tokenId} by ${recoveredAddress}: ${updated.join(', ')}`);
+        res.json({ success: true, tokenId, updated, owner: recoveredAddress });
+    } catch (e) {
+        console.error(`[HUMAN UPDATE] Error for #${tokenId}: ${e.message}`);
+        res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
+    }
+});
+
 // POST /api/v2/agent/:id/crossreg — Cross-register on canonical 8004 Registry
 app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
