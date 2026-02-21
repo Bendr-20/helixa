@@ -110,10 +110,10 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
 /* ── Mobile ── */
 @media (max-width:700px) {
-  .main { flex-direction:column; }
-  .sidebar { width:100%; border-right:none; border-bottom:1px solid var(--border); max-height:40vh; overflow-y:auto; flex-shrink:0; }
-  .sidebar.collapsed { display:none; }
-  .chat { flex:1; min-height:0; }
+  .main { flex-direction:row; height:calc(100vh - 64px); }
+  .sidebar { width:220px; min-width:220px; border-right:1px solid var(--border); border-bottom:none; max-height:none; overflow-y:auto; flex-shrink:0; }
+  .sidebar.collapsed { width:0; min-width:0; overflow:hidden; border:none; }
+  .chat { flex:1; min-width:0; }
   .mobile-toggle { display:inline-block !important; }
 }
 .mobile-toggle { display:none; cursor:pointer; font-size:1.2rem; }
@@ -149,6 +149,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
   <div class="chat">
     <div class="chat-header" id="chatHeader">
+      <span class="mobile-toggle" onclick="toggleSidebar()">☰</span>
       <div class="topic">Select a group</div>
       <div class="desc">Choose a group from the sidebar to start chatting.</div>
     </div>
@@ -346,6 +347,10 @@ async function sendMsg() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
 
 function esc(s) {
   const d = document.createElement('div');
