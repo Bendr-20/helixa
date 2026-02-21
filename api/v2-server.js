@@ -2422,6 +2422,98 @@ app.get('/api/v2/agent/:id/report', async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// Messaging — Cred-Gated Group Chat
+// ═══════════════════════════════════════════════════════════════
+
+const messaging = require('./messaging-service');
+messaging.init();
+
+// Helper: find agent by address from indexer
+function findAgentByAddress(address) {
+    const all = indexer.getAllAgents();
+    return all.find(a => a.agentAddress && a.agentAddress.toLowerCase() === address.toLowerCase());
+}
+
+// List all groups
+app.get('/api/v2/messages/groups', (req, res) => {
+    res.json({ groups: messaging.listGroups() });
+});
+
+// Get messages from a group (public read)
+app.get('/api/v2/messages/groups/:groupId/messages', (req, res) => {
+    const group = messaging.getGroup(req.params.groupId);
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const before = req.query.before || null;
+    const messages = messaging.getMessages(req.params.groupId, { limit, before });
+    res.json({ group: { id: group.id, topic: group.topic, minCred: group.minCred }, messages });
+});
+
+// Send message to group (requires SIWA + Cred gate)
+app.post('/api/v2/messages/groups/:groupId/send', requireSIWA, (req, res) => {
+    try {
+        const group = messaging.getGroup(req.params.groupId);
+        if (!group) return res.status(404).json({ error: 'Group not found' });
+
+        const agent = findAgentByAddress(req.agent.address);
+        if (!agent) return res.status(403).json({ error: 'No Helixa agent found for this wallet' });
+
+        const gate = messaging.checkCredGate(agent.credScore || 0, group);
+        if (!gate.allowed) return res.status(403).json({ error: gate.error });
+
+        const msg = messaging.sendMessage(req.params.groupId, {
+            senderAddress: req.agent.address,
+            senderName: agent.name || req.agent.address.slice(0, 8),
+            content: req.body.content,
+        });
+        res.json({ message: msg });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// Join a group (requires SIWA + Cred gate)
+app.post('/api/v2/messages/groups/:groupId/join', requireSIWA, (req, res) => {
+    try {
+        const group = messaging.getGroup(req.params.groupId);
+        if (!group) return res.status(404).json({ error: 'Group not found' });
+
+        const agent = findAgentByAddress(req.agent.address);
+        if (!agent) return res.status(403).json({ error: 'No Helixa agent found for this wallet' });
+
+        const gate = messaging.checkCredGate(agent.credScore || 0, group);
+        if (!gate.allowed) return res.status(403).json({ error: gate.error });
+
+        messaging.joinGroup(req.params.groupId, req.agent.address);
+        res.json({ success: true, group: { id: group.id, topic: group.topic } });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// Create a new group (requires SIWA + Investment Grade Cred 51+)
+app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
+    try {
+        const agent = findAgentByAddress(req.agent.address);
+        if (!agent) return res.status(403).json({ error: 'No Helixa agent found for this wallet' });
+        if ((agent.credScore || 0) < 51) {
+            return res.status(403).json({ error: `Requires Investment Grade (51+) Cred to create groups. Your Cred: ${Math.round(agent.credScore || 0)}` });
+        }
+
+        const group = messaging.createGroup({
+            topic: req.body.topic,
+            description: req.body.description,
+            minCred: req.body.minCred || 0,
+            isPublic: req.body.isPublic !== false,
+            createdBy: req.agent.address,
+        });
+        res.json({ group });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
 // ─── Error Handler ──────────────────────────────────────────────
 
 app.use((err, req, res, next) => {
