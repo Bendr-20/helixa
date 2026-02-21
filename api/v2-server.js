@@ -939,9 +939,23 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
             agent.traits.forEach(t => {
                 const name = typeof t === 'string' ? t : t.name;
                 const cat = typeof t === 'string' ? 'trait' : t.category;
+                // Skip onchain social traits (now stored off-chain)
+                if (cat.startsWith('social-')) return;
                 attributes.push({ trait_type: cat, value: name });
             });
         }
+        
+        // Add off-chain social links
+        try {
+            const socialPath = path.join(__dirname, '..', 'data', 'social-links.json');
+            const allSocial = JSON.parse(fs.readFileSync(socialPath, 'utf8'));
+            const s = allSocial[agent.tokenId];
+            if (s) {
+                if (s.twitter) attributes.push({ trait_type: 'social-twitter', value: s.twitter });
+                if (s.website) attributes.push({ trait_type: 'social-website', value: s.website });
+                if (s.github) attributes.push({ trait_type: 'social-github', value: s.github });
+            }
+        } catch {}
         
         // TODO: Replace with actual card render URL when available
         const imageUrl = `https://api.helixa.xyz/api/v2/aura/${agent.tokenId}.png`;
@@ -1575,17 +1589,15 @@ app.post('/api/v2/agent/:id/human-update', async (req, res) => {
         
         // Store social links (off-chain in metadata)
         if (social) {
-            // Social links are stored in the metadata file, not onchain
-            // For now, add as traits
-            if (social.twitter) {
-                try { const tx = await contract.addTrait(tokenId, social.twitter, 'social-twitter'); await tx.wait(); updated.push('social.twitter'); } catch {}
-            }
-            if (social.website) {
-                try { const tx = await contract.addTrait(tokenId, social.website, 'social-website'); await tx.wait(); updated.push('social.website'); } catch {}
-            }
-            if (social.github) {
-                try { const tx = await contract.addTrait(tokenId, social.github, 'social-github'); await tx.wait(); updated.push('social.github'); } catch {}
-            }
+            // Social links stored off-chain in JSON file (saves gas, avoids duplicate traits)
+            const socialPath = path.join(__dirname, '..', 'data', 'social-links.json');
+            let allSocial = {};
+            try { allSocial = JSON.parse(fs.readFileSync(socialPath, 'utf8')); } catch {}
+            if (!allSocial[tokenId]) allSocial[tokenId] = {};
+            if (social.twitter) { allSocial[tokenId].twitter = social.twitter; updated.push('social.twitter'); }
+            if (social.website) { allSocial[tokenId].website = social.website; updated.push('social.website'); }
+            if (social.github) { allSocial[tokenId].github = social.github; updated.push('social.github'); }
+            fs.writeFileSync(socialPath, JSON.stringify(allSocial, null, 2));
         }
         
         console.log(`[HUMAN UPDATE] Agent #${tokenId} by ${recoveredAddress}: ${updated.join(', ')}`);

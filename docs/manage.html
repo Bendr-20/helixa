@@ -223,9 +223,9 @@ async function lookupAgent() {
     document.getElementById('fieldOrigin').value = getAttr('origin') || '';
     document.getElementById('fieldMission').value = getAttr('mission') || '';
     document.getElementById('fieldLore').value = getAttr('lore') || '';
-    document.getElementById('fieldTwitter').value = getAttr('twitter') || '';
-    document.getElementById('fieldWebsite').value = getAttr('website') || '';
-    document.getElementById('fieldGithub').value = getAttr('github') || '';
+    document.getElementById('fieldTwitter').value = getAttr('social-twitter') || getAttr('twitter') || '';
+    document.getElementById('fieldWebsite').value = getAttr('social-website') || getAttr('website') || '';
+    document.getElementById('fieldGithub').value = getAttr('social-github') || getAttr('github') || '';
 
     document.getElementById('agentInfo').style.display = 'block';
     showStatus('Loaded ' + meta.name + ' (#' + tokenId + ')', 'success');
