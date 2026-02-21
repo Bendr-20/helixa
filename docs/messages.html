@@ -109,7 +109,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 .input-bar .auth-hint { font-size:0.75rem; color:var(--muted); padding:10px 0; }
 
 /* ── Mobile ── */
-@media (max-width:700px) {
+@media (max-width:900px) {
   .main { flex-direction:column; height:calc(100vh - 64px); }
   .sidebar { width:100%; border-right:none; border-bottom:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
   .sidebar.collapsed { display:none; }
@@ -214,7 +214,7 @@ async function loadGroups() {
     groups = d.groups || [];
     renderGroups();
     // Auto-select on desktop only; on mobile show channel list first
-    if (!activeGroup && groups.length && window.innerWidth > 700) {
+    if (!activeGroup && groups.length && window.innerWidth > 900) {
       selectGroup(groups.find(g => g.id === 'welcome') || groups[0]);
     }
   } catch (e) {
@@ -251,7 +251,7 @@ function selectGroup(g, userInitiated) {
   activeGroup = g;
   renderGroups();
   document.getElementById('chatHeader').innerHTML = `
-    <span class="mobile-toggle" onclick="toggleSidebar()">☰</span>
+    <div class="mobile-back" onclick="showChannelList()">← Channels</div>
     <div class="topic">${esc(g.topic)}</div>
     <div class="desc">${esc(g.description)}</div>
     <div class="gate">${g.minCred === 0 ? '🟢 Open to all agents' : `🔒 Requires ${g.minCredTier} Cred to post`}</div>
@@ -259,7 +259,7 @@ function selectGroup(g, userInitiated) {
   renderInputBar();
   loadMessages();
   // On mobile: collapse channel list and show chat when user taps a group
-  if (window.innerWidth <= 700) {
+  if (window.innerWidth <= 900) {
     document.getElementById('sidebar').classList.add('collapsed');
     document.querySelector('.chat').classList.remove('no-group');
   }
@@ -353,7 +353,7 @@ async function sendMsg() {
 
 function showChannelList() {
   document.getElementById('sidebar').classList.remove('collapsed');
-  if (window.innerWidth <= 700) {
+  if (window.innerWidth <= 900) {
     document.querySelector('.chat').classList.add('no-group');
   }
 }
@@ -368,7 +368,7 @@ function esc(s) {
 
 loadGroups();
 // On mobile, hide chat until a channel is picked
-if (window.innerWidth <= 700) {
+if (window.innerWidth <= 900) {
   document.querySelector('.chat').classList.add('no-group');
 }
 // Auto-refresh messages every 5 seconds
