@@ -15,6 +15,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const indexer = require('./indexer');
 
 // ─── Environment ────────────────────────────────────────────────
 const envPath = path.join(__dirname, '..', '.env');
@@ -81,7 +82,7 @@ const USDC_ABI = [
 ];
 
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
-const READ_RPC_URL = process.env.READ_RPC_URL || 'https://base.drpc.org';
+const READ_RPC_URL = process.env.READ_RPC_URL || 'https://mainnet.base.org';
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
 const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
 const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
@@ -801,94 +802,47 @@ app.get('/api/v2/stats', async (req, res) => {
     }
 });
 
-// ─── Agent List Cache ───────────────────────────────────────────
+// ─── Agent List (SQLite Indexer) ────────────────────────────────
 const HIDDEN_TOKENS = new Set([0, 14, 15, 16, 17, 18, 21]);
-let agentCache = { agents: [], total: 0, updatedAt: 0, loading: false };
-const CACHE_TTL_MS = 60_000; // 60 seconds
+const CACHE_FILE = path.join(__dirname, '..', 'data', 'agent-cache.json');
 
-async function refreshAgentCache() {
-    if (agentCache.loading) return;
-    agentCache.loading = true;
-    try {
-        const totalRaw = Number(await readContract.totalAgents());
-        const visibleIds = [];
-        for (let i = 0; i < totalRaw; i++) {
-            if (!HIDDEN_TOKENS.has(i)) visibleIds.push(i);
-        }
-        
-        const agents = [];
-        for (const i of visibleIds) {
-            try {
-                const agent = await readContract.getAgent(i);
-                const owner = await readContract.ownerOf(i);
-                let credScore = 0, personality = null, points = 0, traitCount = 0;
-                try { credScore = Number(await readContract.getCredScore(i)); } catch {}
-                try { points = Number(await readContract.points(i)); } catch {}
-                try {
-                    const traits = await readContract.getTraits(i);
-                    traitCount = traits.length;
-                } catch {}
-                try {
-                    const p = await readContract.getPersonality(i);
-                    personality = { quirks: p[0], communicationStyle: p[1], values: p[2], humor: p[3], riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]) };
-                } catch {}
-                
-                agents.push({
-                    tokenId: i,
-                    name: agent.name,
-                    agentAddress: agent.agentAddress,
-                    framework: agent.framework,
-                    verified: agent.verified,
-                    soulbound: agent.soulbound || i === 1,
-                    mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
-                    credScore,
-                    points,
-                    traitCount,
-                    personality,
-                    owner,
-                    mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),
-                });
-            } catch {}
-        }
-        
-        agentCache = { agents, total: agents.length, updatedAt: Date.now(), loading: false };
-        console.log(`📋 Agent cache refreshed: ${agents.length} agents`);
-    } catch (e) {
-        agentCache.loading = false;
-        console.error('Cache refresh error:', e.message);
-    }
-}
+// Backward-compat shim: agentCache object for code that still references it
+const agentCache = {
+    get agents() { try { return indexer.getAllAgents(); } catch { return []; } },
+    get total() { try { return indexer.getAgentCount(); } catch { return 0; } },
+    get updatedAt() { return Date.now(); },
+    loading: false,
+};
 
-// Refresh cache on startup and periodically
-setTimeout(refreshAgentCache, 2000);
-setInterval(() => {
-    if (Date.now() - agentCache.updatedAt > CACHE_TTL_MS) refreshAgentCache();
-}, 30_000);
+// Start the indexer after a short delay (let server bind first)
+setTimeout(() => {
+    indexer.startIndexer(readProvider, readContract, CACHE_FILE)
+        .then(() => console.log('📋 SQLite indexer started'))
+        .catch(e => console.error('📋 Indexer start error:', e.message));
+}, 2000);
 
-// GET /api/v2/agents
+// GET /api/v2/agents — now powered by SQLite
 app.get('/api/v2/agents', async (req, res) => {
     try {
         if (!isContractDeployed()) {
             return res.json({ total: 0, page: 1, agents: [], contractDeployed: false });
         }
-        
-        // Trigger refresh if stale but serve cached data immediately
-        if (Date.now() - agentCache.updatedAt > CACHE_TTL_MS) refreshAgentCache();
-        
+
         const page = Math.max(1, parseInt(req.query.page) || 1);
-        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 100));
-        const start = (page - 1) * limit;
-        // Filter spam: require name > 1 char and not all same character
+        const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit) || 100));
+        const sort = req.query.sort || 'tokenId';
+        const order = req.query.order || 'asc';
         const showSpam = req.query.spam === 'true';
-        const filtered = showSpam ? agentCache.agents : agentCache.agents.filter(a => {
-            const name = (a.name || '').trim();
-            if (name.length <= 1) return false; // single char names
-            if (new Set(name.toLowerCase().split('')).size === 1) return false; // all same char e.g. "CCC"
-            return true;
+
+        const result = indexer.queryAgents({
+            page, limit, sort, order,
+            framework: req.query.framework,
+            verified: req.query.verified,
+            search: req.query.search,
+            showSpam,
         });
-        const paged = filtered.slice(start, start + limit);
-        
-        res.json({ total: filtered.length, totalUnfiltered: agentCache.total, page, pages: Math.ceil(filtered.length / limit), limit, agents: paged, cached: true, cachedAt: new Date(agentCache.updatedAt).toISOString() });
+
+        res.json(result);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
