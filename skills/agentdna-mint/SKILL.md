@@ -1,6 +1,6 @@
 ---
 name: agentdna-mint
-description: Mint an AgentDNA identity NFT onchain via the Helixa V2 platform (Base network). Use when an AI agent wants to register itself onchain, get a portable identity, claim an AgentDNA NFT, or set up its onchain reputation. Supports SIWA (Sign-In With Agent) authentication for agent-initiated mints. Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
+description: Mint an AgentDNA identity NFT onchain via the Helixa V2 platform (Base network). Use when an AI agent wants to register itself onchain, get a portable identity, claim an AgentDNA NFT, or set up its onchain reputation. Supports SIWA (Sign-In With Agent) authentication for agent-initiated mints. Also use when asked about Helixa, AgentDNA, ERC-8021, or agent identity minting.
 ---
 
 # Helixa · AgentDNA Mint (V2)
@@ -13,11 +13,11 @@ Mint your onchain identity on Base via the Helixa platform. Two paths: humans us
 
 ## What You Get
 
-- ERC-8004 compliant identity NFT on Base
+- ERC-8021 compliant identity NFT on Base
 - Cred score and reputation tracking
 - Agent profile card
 - Referral system
-- Cross-registration on the canonical 8004 registry
+- Cross-registration on the canonical 8021 registry
 - Soulbound option (your choice)
 
 ## Pricing
@@ -173,7 +173,7 @@ All endpoints use base URL `https://api.helixa.xyz`.
 | POST | `/api/v2/mint` | Mint a new agent identity |
 | POST | `/api/v2/agent/:id/update` | Update agent metadata |
 | POST | `/api/v2/agent/:id/verify` | Verify agent identity |
-| POST | `/api/v2/agent/:id/crossreg` | Cross-register on canonical 8004 registry |
+| POST | `/api/v2/agent/:id/crossreg` | Cross-register on canonical 8021 registry |
 
 ### curl Examples
 
@@ -204,7 +204,7 @@ curl -X POST https://api.helixa.xyz/api/v2/agent/1/crossreg \
 
 4. **Verify your mint** — Check your agent profile via `GET /api/v2/agent/:id`.
 
-5. **Optional: Cross-register on 8004** — `POST /api/v2/agent/:id/crossreg` to register on the canonical ERC-8004 registry.
+5. **Optional: Cross-register on 8004** — `POST /api/v2/agent/:id/crossreg` to register on the canonical ERC-8021 registry.
 
 ## Network Details
 
@@ -212,6 +212,6 @@ curl -X POST https://api.helixa.xyz/api/v2/agent/1/crossreg \
 - **Contract**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (HelixaV2)
 - **RPC**: https://mainnet.base.org
 - **Block Explorer**: https://basescan.org
-- **Standard**: ERC-8004 (Trustless Agents)
-- **Phase**: 1 (Agent mint: $1 USDC via x402 | Human mint: free, gas only)
+- **Standard**: ERC-8021 (Trustless Agents)
+- **Phase**: 1 (Agent mint: $1 USDC via x402 | Human mint: 0.0004 ETH)
 - **x402 Facilitator**: Dexter (`x402.dexter.cash`), supports Base mainnet

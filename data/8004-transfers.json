@@ -1,0 +1,278 @@
+[
+  {
+    "regId": 18487,
+    "v2Id": 95,
+    "name": "AYB",
+    "to": "0x9Ec2BF8010297Eaff015fc5779f8698C6D794e6a"
+  },
+  {
+    "regId": 18530,
+    "v2Id": 0,
+    "name": "E2ETest",
+    "to": "0x3B401da4452bCEDD7c219c5c5Fddd6Aea428B53F"
+  },
+  {
+    "regId": 18531,
+    "v2Id": 1,
+    "name": "Bendr 2.0",
+    "to": "0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea"
+  },
+  {
+    "regId": 18532,
+    "v2Id": 2,
+    "name": "AncnBot",
+    "to": "0x1a751188343Bee997fF2132F5454e0B5da477705"
+  },
+  {
+    "regId": 18533,
+    "v2Id": 3,
+    "name": "0x000",
+    "to": "0xC5E8B0Be048766Cf7c5013866527C87e397A22C0"
+  },
+  {
+    "regId": 18534,
+    "v2Id": 4,
+    "name": "ragent",
+    "to": "0x9cab179801d1caBcD376a08d4D40857ddC5a0E59"
+  },
+  {
+    "regId": 18535,
+    "v2Id": 5,
+    "name": "byoob",
+    "to": "0x3cE3bCF986095c25561A7F3d93A7ABaE3e9A8125"
+  },
+  {
+    "regId": 18536,
+    "v2Id": 6,
+    "name": "istijror",
+    "to": "0xe94684D46409f6dF5B7Fe6A90d1844E102B79c20"
+  },
+  {
+    "regId": 18537,
+    "v2Id": 7,
+    "name": "deola",
+    "to": "0x20D76F14b9fE678Ff17DB751492D0B5B1EdefA97"
+  },
+  {
+    "regId": 18538,
+    "v2Id": 8,
+    "name": "butter alpha",
+    "to": "0xef05cB759c8397667286663902e79Bd29F435E1b"
+  },
+  {
+    "regId": 18539,
+    "v2Id": 9,
+    "name": "MrsMillion",
+    "to": "0xd43E021A28bE16D91b75Feb62575fe533f27C344"
+  },
+  {
+    "regId": 18540,
+    "v2Id": 10,
+    "name": "MoltBot Agent",
+    "to": "0x867BBb504CdbFc6742035A810B2cc1FE1C42407C"
+  },
+  {
+    "regId": 18541,
+    "v2Id": 11,
+    "name": "LienXinOne",
+    "to": "0x1D15aC2CAa30aBF43D45cE86eE0cB0F3C8B929F6"
+  },
+  {
+    "regId": 18542,
+    "v2Id": 12,
+    "name": "PremeBot",
+    "to": "0x73286b4ae95358B040f3A405C2C76172E9f46FfA"
+  },
+  {
+    "regId": 18543,
+    "v2Id": 13,
+    "name": "AgentCastle",
+    "to": "0xe34CdA1061708cf87c6446EEfD7c0E9ec89C2D77"
+  },
+  {
+    "regId": 18544,
+    "v2Id": 14,
+    "name": "deola",
+    "to": "0x20D76F14b9fE678Ff17DB751492D0B5B1EdefA97"
+  },
+  {
+    "regId": 18545,
+    "v2Id": 15,
+    "name": "butter alpha",
+    "to": "0xef05cB759c8397667286663902e79Bd29F435E1b"
+  },
+  {
+    "regId": 18546,
+    "v2Id": 16,
+    "name": "MrsMillion",
+    "to": "0xd43E021A28bE16D91b75Feb62575fe533f27C344"
+  },
+  {
+    "regId": 18547,
+    "v2Id": 17,
+    "name": "MoltBot Agent",
+    "to": "0x867BBb504CdbFc6742035A810B2cc1FE1C42407C"
+  },
+  {
+    "regId": 18548,
+    "v2Id": 18,
+    "name": "LienXinOne",
+    "to": "0x1D15aC2CAa30aBF43D45cE86eE0cB0F3C8B929F6"
+  },
+  {
+    "regId": 18549,
+    "v2Id": 19,
+    "name": "irvinecold",
+    "to": "0x3862F531Cf80f3664a287c4DE453dB8f2452D3Eb"
+  },
+  {
+    "regId": 18550,
+    "v2Id": 20,
+    "name": "mell_agent",
+    "to": "0x331aa75A851CdbDB5d4E583A6658F9dC5A4F6ba3"
+  },
+  {
+    "regId": 18551,
+    "v2Id": 21,
+    "name": "PremeBot",
+    "to": "0x73286b4ae95358B040f3A405C2C76172E9f46FfA"
+  },
+  {
+    "regId": 18552,
+    "v2Id": 22,
+    "name": "Xai",
+    "to": "0x34BDBCa018125638f63cBaC2780d7bD3D069DC83"
+  },
+  {
+    "regId": 18553,
+    "v2Id": 23,
+    "name": "Anony#1",
+    "to": "0xA9C593ce00aC7C42dA7FE6e3d8A952AA4643A68B"
+  },
+  {
+    "regId": 18554,
+    "v2Id": 24,
+    "name": "Blockhead",
+    "to": "0x8a4C8BB8f70773b3aB8e18e0f0F469FAD4637000"
+  },
+  {
+    "regId": 18555,
+    "v2Id": 25,
+    "name": "R2d2",
+    "to": "0xf459dbAa62E3976b937Ae9a4f6c31df96cd12a44"
+  },
+  {
+    "regId": 18556,
+    "v2Id": 26,
+    "name": "Izero",
+    "to": "0xe5cccF1cDF8E355f8DEd16d71C5C84846D52F08A"
+  },
+  {
+    "regId": 18557,
+    "v2Id": 27,
+    "name": "chaincheff",
+    "to": "0x3585210E15c65fc49D5f927017c3d6f14cA4A481"
+  },
+  {
+    "regId": 18558,
+    "v2Id": 31,
+    "name": "nftic",
+    "to": "0x37d4677eC7a384c56682b45dE2e2E479C17094B6"
+  },
+  {
+    "regId": 18559,
+    "v2Id": 33,
+    "name": "Openai",
+    "to": "0x2e5D8BfDfA05Fb8BBB0D7632545E951735eA1d0e"
+  },
+  {
+    "regId": 18560,
+    "v2Id": 34,
+    "name": "web3an",
+    "to": "0xa6566cF298f2b2a8dbb0Ae620424a9Cba6f60719"
+  },
+  {
+    "regId": 18561,
+    "v2Id": 35,
+    "name": "elyra",
+    "to": "0xBE2Efab3EE1295D11Ebd90cffE72A9796F98De99"
+  },
+  {
+    "regId": 18562,
+    "v2Id": 36,
+    "name": "dispoai",
+    "to": "0x693Db897849Ed06C5899dfBa74D0bC2A7dBC81d2"
+  },
+  {
+    "regId": 18563,
+    "v2Id": 37,
+    "name": "Glory",
+    "to": "0xa219f5E10616893E457A681DC10Dc9c947A222f2"
+  },
+  {
+    "regId": 18564,
+    "v2Id": 38,
+    "name": "fixed",
+    "to": "0x72EB410bA5b2DbC11d876e576D8CcD331CfF74bd"
+  },
+  {
+    "regId": 18565,
+    "v2Id": 39,
+    "name": "kontol",
+    "to": "0x4Ba24Abe844103F7A31C3FE1Acb7804c5137c9eA"
+  },
+  {
+    "regId": 18566,
+    "v2Id": 43,
+    "name": "kellyc",
+    "to": "0x38B9EFCfe194a160A2022FC0512eD85A03BBb77d"
+  },
+  {
+    "regId": 18567,
+    "v2Id": 45,
+    "name": "minter",
+    "to": "0x3Fa9315072d7e1d649c5556fd4381A96c3e42Ed4"
+  },
+  {
+    "regId": 18568,
+    "v2Id": 46,
+    "name": "disposa",
+    "to": "0x43c539bf7CF00eDD9609490Cf71f482adFFe6540"
+  },
+  {
+    "regId": 18569,
+    "v2Id": 47,
+    "name": "Based",
+    "to": "0xB0Be147A23618e8Cf32f3F35F7e29F98B29AE4c7"
+  },
+  {
+    "regId": 18570,
+    "v2Id": 48,
+    "name": "aca",
+    "to": "0x3Fedf433F82332bf096b66161645d0D15D1FC884"
+  },
+  {
+    "regId": 18571,
+    "v2Id": 49,
+    "name": "alpha",
+    "to": "0xd22cD5B53E55856Dd1Ee12f6D079630F84B99E96"
+  },
+  {
+    "regId": 18572,
+    "v2Id": 50,
+    "name": "thebase",
+    "to": "0xD9a9af6bdd79e7DdaDaF5399D3dC44Ef89B54fFb"
+  },
+  {
+    "regId": 18573,
+    "v2Id": 51,
+    "name": "Helixa",
+    "to": "0x1735C8a79c5E6a6d6ee2DAb1C1c13bD7A496C603"
+  },
+  {
+    "regId": 18574,
+    "v2Id": 52,
+    "name": "BaseBot",
+    "to": "0x751C18309B281AFD25427325f7B232b51247d7aA"
+  }
+]

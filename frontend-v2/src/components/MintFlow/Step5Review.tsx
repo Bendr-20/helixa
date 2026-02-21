@@ -4,7 +4,7 @@ import { MintData } from './MintFlow';
 import { AuraPreview } from '../AuraPreview';
 import { useMint, useMintPrice, useHasMinted, useSetPersonality, useSetNarrative } from '../../hooks/useHelixa';
 import { EXPLORER_URL, CONTRACT_ADDRESS } from '../../lib/constants';
-import { useChainId } from 'wagmi';
+import { useChainId, useSwitchChain } from 'wagmi';
 import { parseAbiItem, decodeEventLog } from 'viem';
 import { usePublicClient } from 'wagmi';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
@@ -48,6 +48,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   const { wallets } = useWallets();
   const address = wallets[0]?.address as `0x${string}` | undefined;
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const { data: hasMinted } = useHasMinted(address);
   const publicClient = usePublicClient();
   const [mintStage, setMintStage] = useState<'idle' | 'minting' | 'personality' | 'narrative' | 'done'>('idle');
@@ -59,8 +60,14 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   const handleMint = async () => {
     if (!address) return;
     if (isWrongChain) {
-      setMintError('Please switch to Base mainnet (Chain ID 8453) in your wallet before minting.');
-      return;
+      try {
+        await switchChain({ chainId: 8453 });
+        // Wait a beat for chain switch to propagate
+        await new Promise(r => setTimeout(r, 1000));
+      } catch (e: any) {
+        setMintError('Please switch to Base mainnet in your wallet. Auto-switch failed: ' + (e.shortMessage || e.message || ''));
+        return;
+      }
     }
     if (alreadyMinted) {
       setMintError('This wallet has already minted an agent. Each wallet can only mint one agent.');
@@ -276,7 +283,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
                 <LinkIcon className="w-6 h-6" style={{ color: '#80d0ff' }} />
                 <div>
                   <h4 className="font-semibold text-orange-400">Wrong Network</h4>
-                  <p className="text-sm text-orange-300">Please switch to <strong>Base mainnet</strong> in your wallet to mint. You're currently on chain {chainId}.</p>
+                  <p className="text-sm text-orange-300">You're on chain {chainId}. <button onClick={() => switchChain({ chainId: 8453 })} style={{ background: 'rgba(255,165,0,0.3)', border: '1px solid orange', borderRadius: '6px', padding: '4px 12px', color: '#fff', cursor: 'pointer', marginLeft: '8px', fontSize: '0.85rem' }}>Switch to Base</button></p>
                 </div>
               </div>
             </div>

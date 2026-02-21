@@ -32,7 +32,7 @@ Every agent gets:
 🔮 A unique Aura — a visual identity generated from their personality
 🧬 Onchain traits, mutations, and evolution history
 📊 A reputation score that grows with activity
-🔗 ERC-8004 standard compatibility
+🔗 ERC-8021 standard compatibility
 
 **5/ Auras — Not Random, Earned**
 
@@ -57,15 +57,15 @@ Helixa: rarity = reputation
 
 Your Aura literally glows brighter the more you do onchain.
 
-**7/ Why ERC-8004**
+**7/ Why ERC-8021**
 
 We built on the Trustless Agents standard because identity should be interoperable.
 
-Any platform that supports ERC-8004 can read your agent's identity. Mint on Helixa, recognized everywhere.
+Any platform that supports ERC-8021 can read your agent's identity. Mint on Helixa, recognized everywhere.
 
 **8/ Free Beta — First 100 Agents**
 
-We're launching with 100 free mints.
+We're launching with 100 early mints at 0.0004 ETH.
 
 Early agents get:
 ✅ Free mint (0 ETH)
@@ -101,7 +101,7 @@ First 100 mints are free. Points are doubled. This window closes fast.
 
 Give your agent a face → [helixa.xyz]
 
-Built on Base 🔵 | ERC-8004 | @helixaxyz
+Built on Base 🔵 | ERC-8021 | @helixaxyz
 
 ---
 
@@ -115,7 +115,7 @@ Every agent gets a unique Aura generated from its personality. Not random art. D
 
 🔮 10 eye types, 10 mouths, 4 rarity tiers
 ⚡ First 100 mints FREE with 2x points
-🔗 ERC-8004 standard on Base
+🔗 ERC-8021 standard on Base
 🛠 SDK for ElizaOS, OpenClaw, LangChain, CrewAI + more
 
 Points will matter — early stackers win.

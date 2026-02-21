@@ -12,7 +12,7 @@
 - **What:** 1–5 ETH retroactive grants for shipped projects on Base
 - **Deadline:** Rolling / ongoing
 - **How to apply:** Apply via the link above. Must have a live, shipped project on Base (Helixa qualifies — deployed on Base mainnet)
-- **Fit: 🟢 HIGH** — Helixa is live on Base, open source, ERC-8004 compliant. Perfect match.
+- **Fit: 🟢 HIGH** — Helixa is live on Base, open source, ERC-8021 compliant. Perfect match.
 
 ### 2. Base Builder Rewards Program
 - **URL:** https://www.builderscore.xyz/
@@ -26,14 +26,14 @@
 - **What:** Financial + non-financial support for projects strengthening Ethereum. Milestone-based grants. Includes Wishlist/RFP items.
 - **Deadline:** Rolling (browse Wishlist items)
 - **How to apply:** Browse Wishlist/RFP items → submit application detailing methodology, timeline, deliverables → review → KYC → milestone payments
-- **Fit: 🟢 HIGH** — ERC-8004 is on the EF dAI team's 2026 roadmap. Helixa implements this standard. Strong alignment with EF's AI+identity priorities. Contact the dAI team (Davide Crapis) directly as well.
+- **Fit: 🟢 HIGH** — ERC-8021 is on the EF dAI team's 2026 roadmap. Helixa implements this standard. Strong alignment with EF's AI+identity priorities. Contact the dAI team (Davide Crapis) directly as well.
 
 ### 4. Ethereum Foundation dAI Team Collaboration
-- **URL:** https://ai.ethereum.foundation/blog/intro-erc-8004
-- **What:** Not a formal grant, but the EF dAI team is actively seeking teams building on ERC-8004 and x402. They're soliciting input on where to focus support.
+- **URL:** https://ai.ethereum.foundation/blog/intro-erc-8021
+- **What:** Not a formal grant, but the EF dAI team is actively seeking teams building on ERC-8021 and x402. They're soliciting input on where to focus support.
 - **Deadline:** Ongoing
-- **How to apply:** Reach out directly to the dAI team. Engage on their blog/forums. Position Helixa as a reference implementation of ERC-8004.
-- **Fit: 🟢 HIGH** — Helixa IS an ERC-8004 implementation. This is the most natural partnership.
+- **How to apply:** Reach out directly to the dAI team. Engage on their blog/forums. Position Helixa as a reference implementation of ERC-8021.
+- **Fit: 🟢 HIGH** — Helixa IS an ERC-8021 implementation. This is the most natural partnership.
 
 ### 5. Optimism Retro Funding (via Base/Superchain)
 - **URL:** https://atlas.optimism.io/
@@ -135,8 +135,8 @@
    - [ ] Check if **HackMoney 2026** still accepts submissions (ends today)
 
 2. **SHORT-TERM (Next 2 weeks)**
-   - [ ] Contact **EF dAI team** about ERC-8004 implementation support
-   - [ ] Submit to **Ethereum Foundation ESP** with ERC-8004 angle
+   - [ ] Contact **EF dAI team** about ERC-8021 implementation support
+   - [ ] Submit to **Ethereum Foundation ESP** with ERC-8021 angle
    - [ ] Register on **OP Atlas** for Retro Funding eligibility
    - [ ] Apply to **ENS Builder Grants** for .agent naming
 

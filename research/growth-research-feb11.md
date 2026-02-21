@@ -1,3 +1,5 @@
+> **⚠️ HISTORICAL DOCUMENT** — Early growth research. Some references are outdated (e.g., Clanker). Kept for reference.
+
 # AI Agent Identity/NFT Space Research — February 11, 2026
 
 ## 1. What's Actually Getting Mints/Traction Right Now
@@ -11,7 +13,7 @@
 - **Virgen points** system launched Apr 2025 for engagement incentives
 - This is financial tokenization (agent-as-asset), NOT identity/registry per se
 
-### ERC-8004: Trustless Agents (Ethereum Standard — Aug 2025)
+### ERC-8021: Trustless Agents (Ethereum Standard — Aug 2025)
 - **Three on-chain registries**: Identity, Reputation, Validation
 - Identity registry: agent names, skills, endpoints, unique IDs
 - Reputation: performance history, scores, ratings
@@ -63,7 +65,7 @@
 - Basenames infrastructure is proven at scale (750K+)
 - Durin makes it technically straightforward to issue subnames as NFTs on Base
 - Natural fit: agents get human-readable identity (`myagent.base.eth` or custom parent name)
-- Could integrate with ERC-8004 identity registry for discoverability
+- Could integrate with ERC-8021 identity registry for discoverability
 
 ## 3. Gasless/Sponsored Minting on Base
 
@@ -110,7 +112,7 @@ Coinbase CDP Paymaster is the obvious choice. Allowlist your mint contract, spon
 - **Virtuals Protocol**: Token launch IS the agent creation — financial incentive baked in
 
 ### API Endpoint / Protocol Integration
-- **ERC-8004**: Register onchain to get discovered by other agents. Identity registry = discoverability
+- **ERC-8021**: Register onchain to get discovered by other agents. Identity registry = discoverability
 - **Google A2A (Agent-to-Agent)**: Self-describing JSON Agent Cards at well-known URLs — no blockchain needed, but no trust guarantees
 - **MCP Registry**: Centralized publication of capability descriptors
 
@@ -156,7 +158,7 @@ Coinbase CDP Paymaster is the obvious choice. Allowlist your mint contract, spon
 ### Relevance to Agent Identity
 - x402 creates a natural incentive for agents to have onchain identity (need wallet to pay/receive)
 - Agent identity NFT could store x402 payment preferences/endpoints
-- Composable with ERC-8004 (agent endpoint in identity registry → x402-enabled)
+- Composable with ERC-8021 (agent endpoint in identity registry → x402-enabled)
 
 ## 6. Agent Directories/Registries With Traction
 
@@ -164,7 +166,7 @@ Coinbase CDP Paymaster is the obvious choice. Allowlist your mint contract, spon
 | Registry | Type | Traction | Notes |
 |----------|------|----------|-------|
 | **Fetch.ai Almanac** | Smart contract (Cosmos) | Established, part of ASI Network | Mandatory for agent discovery. Agents register capabilities, become discoverable |
-| **ERC-8004 Registries** | Ethereum smart contracts | Early but growing (Aug 2025 EIP) | Identity + Reputation + Validation. Most comprehensive standard |
+| **ERC-8021 Registries** | Ethereum smart contracts | Early but growing (Aug 2025 EIP) | Identity + Reputation + Validation. Most comprehensive standard |
 | **Virtuals Protocol** | Base launchpad | High (dominant Base agent platform) | Financial/token-focused, not pure identity |
 | **AGNTCY Agent Directory** | IPFS/DHT + Sigstore | Research/early | Semantic taxonomy, content routing, cryptographic integrity |
 | **NANDA Index AgentFacts** | Cryptographic proofs | Research/early | Privacy-preserving, credentialed assertions |
@@ -192,7 +194,7 @@ Coinbase CDP Paymaster is the obvious choice. Allowlist your mint contract, spon
 ### The Gap
 Nobody is doing **lightweight, free, gasless agent identity NFTs on Base** that tie into ENS naming. The space has:
 - Token launchpads (Virtuals) — financial, not identity
-- Heavy standards (ERC-8004) — comprehensive but complex
+- Heavy standards (ERC-8021) — comprehensive but complex
 - Enterprise solutions (Microsoft Entra) — centralized
 - Framework-locked registries (Fetch.ai Almanac) — only for their agents
 
@@ -200,7 +202,7 @@ Nobody is doing **lightweight, free, gasless agent identity NFTs on Base** that 
 1. **Gasless mint via CDP Paymaster** — zero friction, apply for $15K credits
 2. **ENS subnames via Durin** — `agent.yourdomain.eth` as ERC721 NFTs on Base
 3. **x402 integration** — agent identity stores payment endpoint, enabling agent commerce
-4. **ERC-8004 compatibility** — store identity/reputation metadata, but make it simpler to start
+4. **ERC-8021 compatibility** — store identity/reputation metadata, but make it simpler to start
 5. **Framework-agnostic** — work with AgentKit, uAgents, LangChain, whatever
 6. **Distribution via SDK integration** — `agentdna.mint()` as one function call in any framework
 

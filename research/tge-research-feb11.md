@@ -1,3 +1,5 @@
+> **⚠️ HISTORICAL DOCUMENT** — This research was done pre-launch. The token launched as $CRED (Helixa Cred), not via Clanker. Kept for reference only.
+
 # TGE Research — Base Token Launch Platforms
 **Date:** February 11, 2026  
 **Purpose:** Find the best $0-budget token launch for an AI agent identity project on Base ($DNA or $HELIX)

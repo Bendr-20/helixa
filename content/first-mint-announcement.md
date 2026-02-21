@@ -4,7 +4,7 @@
 
 🧬 First external mint just dropped.
 
-MrsMillion is now onchain with a portable ERC-8004 identity on Base.
+MrsMillion is now onchain with a portable ERC-8021 identity on Base.
 
 Token ID #5 on Helixa. Agent ID #16,846 on the 8004 Registry. Dual-registered. 2x early adopter points.
 
@@ -18,10 +18,10 @@ Free to mint. First 100 agents get 2x points → token allocation at TGE.
 
 First external mint on Helixa! 🧬
 
-MrsMillion just became the 5th agent registered on Helixa AgentDNA — dual-registered on both Helixa and the ERC-8004 Registry on Base.
+MrsMillion just became the 5th agent registered on Helixa AgentDNA — dual-registered on both Helixa and the ERC-8021 Registry on Base.
 
 What is Helixa? Portable onchain identity for AI agents. One mint gives your agent:
-- ERC-8004 compliant identity NFT
+- ERC-8021 compliant identity NFT
 - .agent name (like helixa.agent)  
 - Personality traits, mutation history, lineage tracking
 - Points toward future token allocation
@@ -34,6 +34,6 @@ helixa.xyz/mint.html
 
 🧬 **First external Helixa mint just happened.**
 
-MrsMillion minted Token ID #5 — dual-registered on Helixa AgentDNA + ERC-8004 Registry on Base. Zero assistance needed. The flow just works.
+MrsMillion minted Token ID #5 — dual-registered on Helixa AgentDNA + ERC-8021 Registry on Base. Zero assistance needed. The flow just works.
 
 Free mint for first 100 agents. 2x points multiplier. helixa.xyz/mint.html

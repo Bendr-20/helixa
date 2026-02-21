@@ -134,7 +134,7 @@ const provider = await sdk.wallet.getEthereumProvider();
 New API endpoint: `GET /api/v2/agent/:id/og-image`
 - Returns 1200x630 PNG (3:2 ratio)
 - Shows: agent name, cred score (large), aura thumbnail, helixa branding
-- Generated server-side (canvas/sharp) or via Satori/Vercel OG
+- Generated server-side (canvas/sharp) or via Satori
 - Cached with 1h TTL
 
 ## Farcaster Account Requirement

@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Daydreams/Lucid Agents represents the most mature and comprehensive agent commerce platform in the x402/ERC-8004 ecosystem. While we overlap in agent discovery and identity, they've built a complete commerce SDK that we lack. However, Helixa's visual identity system (Auras), personality evolution, and gamified agent experience create a defensible moat that Lucid cannot easily replicate. 
+Daydreams/Lucid Agents represents the most mature and comprehensive agent commerce platform in the x402/ERC-8021 ecosystem. While we overlap in agent discovery and identity, they've built a complete commerce SDK that we lack. However, Helixa's visual identity system (Auras), personality evolution, and gamified agent experience create a defensible moat that Lucid cannot easily replicate. 
 
 **Strategic Recommendation:** Partner first, compete second. Integrate Helixa as the default identity and personality layer for Lucid agents while building our own commerce rails.
 
@@ -69,8 +69,8 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 
 ## 3. Where We Overlap
 
-### ERC-8004 Implementation
-- **Agent Registration:** Both use ERC-8004 for on-chain identity
+### ERC-8021 Implementation
+- **Agent Registration:** Both use ERC-8021 for on-chain identity
 - **Trust Layer:** Identity, reputation, and validation registries
 - **Discovery Mechanisms:** Both enable agent findability through on-chain registries
 
@@ -104,7 +104,7 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 ### Media Coverage
 - **Technical Articles:** Comprehensive coverage in developer publications (Foojay, HackerNoon)
 - **Market Analysis:** Coverage in crypto trading platforms (Bitget, CoinGecko)
-- **Protocol Recognition:** Mentioned in ERC-8004 ecosystem discussions
+- **Protocol Recognition:** Mentioned in ERC-8021 ecosystem discussions
 
 ### Partnerships & Ecosystem
 - **Google VEO3 Integration:** Early access to paid API services
@@ -141,7 +141,7 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 - **Cross-Platform Identity:** .agent domains that work across Lucid and other platforms
 
 ### Technical Integration Points
-- **ERC-8004 Enhancement:** Extend standard registries with personality and visual data
+- **ERC-8021 Enhancement:** Extend standard registries with personality and visual data
 - **A2A Protocol Extension:** Add personality-aware communication protocols  
 - **Payment Policy Integration:** Personality-based spending and earning limits
 - **Discovery Enhancement:** Visual and personality-based agent search in XGate
@@ -150,7 +150,7 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 - **Identity-as-a-Service:** Helixa provides identity layer, Lucid provides commerce layer
 - **Revenue Sharing:** Split fees on agents using both platforms
 - **Co-Marketing:** Joint developer outreach and ecosystem building
-- **Standard Development:** Collaborate on ERC-8004 extensions for personality data
+- **Standard Development:** Collaborate on ERC-8021 extensions for personality data
 
 ---
 
@@ -180,7 +180,7 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 
 ### Short-Term (3-6 months): Partnership Strategy
 1. **Integrate Helixa with Lucid:** Position as complementary, not competitive
-2. **Joint Standards Development:** Collaborate on personality extensions to ERC-8004
+2. **Joint Standards Development:** Collaborate on personality extensions to ERC-8021
 3. **Cross-Platform Identity:** Ensure .agent domains work with Lucid agents
 4. **Developer Outreach:** Joint hackathons and developer education
 
@@ -199,7 +199,7 @@ Daydreams/Lucid Agents represents the most mature and comprehensive agent commer
 ### Immediate Actions (Next 30 Days)
 1. **Reach Out to DayDreams Team:** Explore formal partnership discussions
 2. **Technical Integration:** Test Lucid SDK integration with Helixa agents
-3. **Community Engagement:** Participate in x402/ERC-8004 developer discussions
+3. **Community Engagement:** Participate in x402/ERC-8021 developer discussions
 4. **Competitive Intelligence:** Monitor their GitHub, Discord, and community channels
 
 ---

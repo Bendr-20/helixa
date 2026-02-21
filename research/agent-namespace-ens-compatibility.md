@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-Helixa's `.agent` naming registry (AgentNames.sol, ERC-8004) can achieve full ENS ecosystem interoperability through a phased approach. The most viable path—and the one validated by Basenames (base.eth), cb.id, and uni.eth—is to operate as **ENS subnames** under a parent `.eth` name (e.g., `agent.eth`) rather than trying to get `.agent` recognized as a standalone TLD.
+Helixa's `.agent` naming registry (AgentNames.sol, ERC-8021) can achieve full ENS ecosystem interoperability through a phased approach. The most viable path—and the one validated by Basenames (base.eth), cb.id, and uni.eth—is to operate as **ENS subnames** under a parent `.eth` name (e.g., `agent.eth`) rather than trying to get `.agent` recognized as a standalone TLD.
 
-**Critical finding:** ENS published a blog post in January 2026 explicitly discussing AI agent identity via ENS, referencing ERC-8004 by name. ENS treats agent names as a first-class use case. This creates a strategic opening for Helixa to become the canonical agent naming layer within ENS's ecosystem.
+**Critical finding:** ENS published a blog post in January 2026 explicitly discussing AI agent identity via ENS, referencing ERC-8021 by name. ENS treats agent names as a first-class use case. This creates a strategic opening for Helixa to become the canonical agent naming layer within ENS's ecosystem.
 
 ### Recommended Strategy (Priority Order)
 
@@ -577,7 +577,7 @@ async function handleCCIPRequest(sender: string, callData: string) {
 
 ### Partnership Opportunities
 
-1. **ENS Labs** — ENS has explicitly called out ERC-8004 and agent naming as a priority. Reach out to discuss becoming the canonical agent naming layer under ENS.
+1. **ENS Labs** — ENS has explicitly called out ERC-8021 and agent naming as a priority. Reach out to discuss becoming the canonical agent naming layer under ENS.
 2. **Base/Coinbase** — Natural partner given Basenames infrastructure. Could potentially get subnames under `base.eth` or co-market.
 3. **Wallet teams** — Once CCIP-Read is live, wallets work automatically. But co-marketing helps adoption.
 4. **Agent frameworks** — ElizaOS, AutoGPT, LangChain etc. could integrate `.agent` name resolution for agent discovery.
@@ -588,10 +588,10 @@ async function handleCCIPRequest(sender: string, callData: string) {
 
 ### AI Agent Naming Systems
 
-**ENS + ERC-8004 Ecosystem:**
+**ENS + ERC-8021 Ecosystem:**
 - ENS itself is positioning as THE agent naming layer (Jan 2026 blog post)
-- ERC-8004 (Ethereum Foundation, Google, MetaMask, Coinbase) uses ENS names as first-class agent identifiers
-- Agent NFTs in ERC-8004 Identity Registry reference ENS names
+- ERC-8021 (Ethereum Foundation, Google, MetaMask, Coinbase) uses ENS names as first-class agent identifiers
+- Agent NFTs in ERC-8021 Identity Registry reference ENS names
 
 **AIWS (ENS Grant Recipient):**
 - AI agent framework using ENS names + IPFS
@@ -615,7 +615,7 @@ async function handleCCIPRequest(sender: string, callData: string) {
 ### Helixa's Competitive Advantage
 
 1. **Only agent-specific naming service** — Basenames and cb.id are general-purpose
-2. **ERC-8004 native** — Purpose-built for the agent identity standard
+2. **ERC-8021 native** — Purpose-built for the agent identity standard
 3. **Agent NFT integration** — Names linked to agent NFTs with reputation/validation registries
 4. **Agent-specific text records** — Capabilities, API endpoints, model info, status
 5. **First mover** on Base for agent naming
@@ -705,7 +705,7 @@ async function handleCCIPRequest(sender: string, callData: string) {
 - [EIP-2304 / ENSIP-9: Multi-chain Addresses](https://eips.ethereum.org/EIPS/eip-2304)
 - [ENSIP-10: Wildcard Resolution](https://docs.ens.domains/ensip/10/)
 - [EIP-3668: CCIP-Read](https://eips.ethereum.org/EIPS/eip-3668)
-- [ERC-8004: Agent Identity](https://eips.ethereum.org/EIPS/eip-8004)
+- [ERC-8021: Agent Identity](https://eips.ethereum.org/EIPS/eip-8021)
 - [ERC-8122: Minimal Agent Registry](https://ethereum-magicians.org/t/erc-8122-minimal-agent-registry/27405)
 
 ### ENS Documentation
@@ -724,7 +724,7 @@ async function handleCCIPRequest(sender: string, callData: string) {
 - [CCIP-Read Router](https://github.com/ensdomains/ccip-read-router)
 
 ### Ecosystem
-- [ENS Blog: AI Agent Identity & ERC-8004](https://ens.domains/blog/post/ens-ai-agent-erc8004)
+- [ENS Blog: AI Agent Identity & ERC-8021](https://ens.domains/blog/post/ens-ai-agent-erc8021)
 - [How Base uses ENS](https://ens.domains/ecosystem/base)
 - [Coinbase's ENS Integration](https://ens.domains/blog/post/coinbase-strategic-integration-of-ens)
 - [ENS DAO Governance](https://discuss.ens.domains/)
@@ -736,9 +736,9 @@ async function handleCCIPRequest(sender: string, callData: string) {
 
 1. **Check `agent.eth` availability** — Go to app.ens.domains and check. If taken, check `agentid.eth`, `agents.eth`, `onchainagent.eth`. Consider negotiating a purchase if `agent.eth` is owned but unused.
 
-2. **Read the ENS blog post on AI agents** — [ens.domains/blog/post/ens-ai-agent-erc8004](https://ens.domains/blog/post/ens-ai-agent-erc8004). This is directly about Helixa's use case. ENS is looking for partners.
+2. **Read the ENS blog post on AI agents** — [ens.domains/blog/post/ens-ai-agent-erc8021](https://ens.domains/blog/post/ens-ai-agent-erc8021). This is directly about Helixa's use case. ENS is looking for partners.
 
-3. **Contact ENS Labs** — They explicitly want to work with agent identity projects. Introduce Helixa and ERC-8004 integration plans.
+3. **Contact ENS Labs** — They explicitly want to work with agent identity projects. Introduce Helixa and ERC-8021 integration plans.
 
 4. **Fork the offchain-resolver repo** — Start adapting [ensdomains/offchain-resolver](https://github.com/ensdomains/offchain-resolver) as the base for the L1 resolver + gateway.
 

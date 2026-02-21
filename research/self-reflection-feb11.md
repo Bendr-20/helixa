@@ -8,7 +8,7 @@ We shipped an incredible amount of infrastructure in 3 days. Contract, frontend,
 ## What We Built vs What People Need
 
 ### What we built:
-- ERC-8004 compliant smart contract with 65 tests
+- ERC-8021 compliant smart contract with 65 tests
 - Full mint frontend with wallet connect
 - Visual identity system (Auras) with rarity tiers
 - SDK for 5 frameworks
@@ -63,7 +63,7 @@ We shipped an incredible amount of infrastructure in 3 days. Contract, frontend,
 ### We never validated demand
 The 30-day plan said "validate or kill in week 1" — we skipped straight to building. We have zero evidence that anyone wants this beyond our team's enthusiasm.
 
-### The "free mint" isn't actually free
+### Minting costs
 Gas on Base is cheap (~$0.01) but you still need Base ETH. Getting Base ETH requires: having ETH somewhere → bridging to Base. That's a multi-step process for someone who doesn't already have a Base wallet funded.
 
 ### Auras are cool but not useful

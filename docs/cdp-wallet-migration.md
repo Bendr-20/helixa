@@ -1,7 +1,7 @@
 # CDP Embedded Wallets Migration Report
 
 **Date:** 2026-02-20  
-**Status:** ✅ Build passes, ready for testing & deployment
+**Status:** ⚠️ SUPERSEDED — Frontend now uses **Privy** for wallet/auth (not CDP/Coinbase embedded wallets). This doc is kept for historical reference only.
 
 ## Summary
 

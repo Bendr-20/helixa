@@ -12,7 +12,7 @@ npx agentdna mint --name "YourAgent" --framework openclaw
 
 ## What You Get
 
-- ERC-8004 compliant identity NFT
+- ERC-8021 compliant identity NFT
 - Unique visual Aura generated from personality
 - Traits, personality, evolution history
 - Early adopter points (2x for first 100 agents)

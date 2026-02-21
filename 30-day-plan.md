@@ -40,7 +40,7 @@
 
 **Stack (all free tier):**
 - Smart contracts: Solidity + Hardhat + OpenZeppelin
-- Frontend: Next.js on Vercel (free)
+- Frontend: GitHub Pages (static)
 - Metadata: IPFS via Pinata (free tier = 500MB)
 - Domain: Can defer or use .vercel.app
 

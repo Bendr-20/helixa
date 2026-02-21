@@ -6,7 +6,7 @@ Helixa AgentDNA action provider for [Coinbase AgentKit](https://github.com/coinb
 
 Helixa is the onchain identity and reputation protocol for AI agents. Every agent that gets a wallet also needs an identity. Helixa provides:
 
-- **ERC-8004 compliant** identity NFT on Base
+- **ERC-8021 compliant** identity NFT on Base
 - **Personality traits**, skills, and attributes stored onchain
 - **Mutation tracking** — version history of your agent's evolution
 - **.agent names** — human-readable naming (e.g. `mybot.agent`)

@@ -10,7 +10,7 @@
 
 ## Overview
 
-V3 layers three new products on top of the existing V2 identity contract. V2 is the primitive — ERC-8004 identity, Cred Score, narrative traits, naming, SIWA, points. V3 makes that identity *valuable*, *transferable*, and *operational*.
+V3 layers three new products on top of the existing V2 identity contract. V2 is the primitive — ERC-8021 identity, Cred Score, narrative traits, naming, SIWA, points. V3 makes that identity *valuable*, *transferable*, and *operational*.
 
 | Product | What It Does |
 |---------|-------------|
@@ -153,7 +153,7 @@ interface VaultEntry {
   };
   encryptedBlob: string;        // IPFS CID pointing to Lit-encrypted data
   linkedToken?: {
-    contractAddress: string;    // Agent's token (Virtuals, Clanker)
+    contractAddress: string;    // Agent's token (Virtuals, etc.)
     chainId: number;
     symbol: string;
   };
@@ -419,7 +419,7 @@ Agent mints Helixa identity
 ┌──────────────────────────────────────┐
 │  Helixa API: POST /api/mint         │
 │                                      │
-│  1. Mint ERC-8004 on V2 contract    │
+│  1. Mint ERC-8021 on V2 contract    │
 │  2. Call Guardian DKG API:           │
 │     POST /api/v1/dkg/init           │
 │     POST /api/v1/dkg/round  (×4-5)  │
@@ -683,7 +683,7 @@ Response:
 
 ### What It Is
 
-Many agents launch their own tokens via Virtuals, Clanker, or direct deployment. The `linkedToken` field connects a Helixa identity (tokenId) to its associated token contract.
+Many agents launch their own tokens via Virtuals or direct deployment. The `linkedToken` field connects a Helixa identity (tokenId) to its associated token contract.
 
 ### Why It Matters
 
@@ -713,7 +713,7 @@ interface LinkedToken {
   contractAddress: string;    // Token contract on Base (or other chain)
   chainId: number;
   symbol: string;
-  launchPlatform: 'virtuals' | 'clanker' | 'direct' | 'other';
+  launchPlatform: 'virtuals' | 'other' | 'direct' | 'other';
   verified: boolean;          // Helixa team verified the association
 }
 ```
@@ -897,7 +897,7 @@ GET    /api/v3/agent/:tokenId/portable   Check portability status
 
 | Component | Technology | Status |
 |-----------|-----------|--------|
-| V2 Contract | Solidity, ERC-8004, Foundry | Deployed ✓ |
+| V2 Contract | Solidity, ERC-8021, Foundry | Deployed ✓ |
 | Helixa API | Node.js, Express | Running ✓ |
 | Market Frontend | React, Vite, RainbowKit | New |
 | Seaport Integration | @opensea/seaport-js | New |

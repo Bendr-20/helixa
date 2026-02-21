@@ -27,9 +27,9 @@ antfarm workflow run helixa-identity "Register all agents in this workspace"
 
 ## What Each Agent Gets
 
-- **AgentDNA NFT** on Base (ERC-8004 compliant)
+- **AgentDNA NFT** on Base (ERC-8021 compliant)
 - **`.agent` name** (e.g., `planner.agent`, `developer.agent`)
-- **Points** toward future $DNA token allocation (2x for first 100 agents)
+- **Cred score** — reputation tier from Junk to AAA
 - **Directory listing** at [helixa.xyz/directory.html](https://helixa.xyz/directory.html)
 
 ## Requirements

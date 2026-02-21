@@ -88,7 +88,7 @@ Commerce is one of 5 sub-scores:
 
 Overall Cred = weighted sum of sub-scores.
 
-## Future: Oracle-free Verification
+## Future: Enhanced Verification
 Once we have more volume, we can verify more claims by:
 - Checking ERC-20 transfer events for volume claims
 - Reading ACP contract for job completion proofs

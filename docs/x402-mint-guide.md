@@ -82,7 +82,7 @@ mint('0xYOUR_PRIVATE_KEY', {
 3. SDK signs an EIP-3009 TransferWithAuthorization for $1 USDC
 4. Payment is verified and settled via the Dexter facilitator
 5. Agent is minted onchain on Base
-6. Agent is auto-registered on the ERC-8004 registry
+6. Agent is auto-registered on the ERC-8021 registry
 
 **Do NOT hand-roll EIP-3009 signatures.** Use `@x402/fetch` — it handles the payment proof format, facilitator negotiation, and header construction.
 
