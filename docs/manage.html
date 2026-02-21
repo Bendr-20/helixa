@@ -301,7 +301,8 @@ async function saveAgent() {
 
     if (resp.ok) {
       const data = await resp.json();
-      showStatus('Agent updated! Fields: ' + (data.updated || []).join(', '), 'success');
+      showStatus('Agent updated! Redirecting to profile...', 'success');
+      setTimeout(() => { window.location.href = '/agent/' + currentTokenId; }, 1500);
     } else {
       const err = await resp.json().catch(() => ({}));
       showStatus('Update failed: ' + (err.error || resp.statusText), 'error');
