@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { WalletButton } from '../components/WalletButton';
@@ -6,6 +6,16 @@ import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
 
 export function Manage() {
+  // Redirect to standalone manage page which works better
+  useEffect(() => {
+    window.location.href = '/manage.html' + window.location.search;
+  }, []);
+
+  // Return nothing while redirecting — prevents flash of broken React UI
+  return null;
+}
+
+export function Manage_DISABLED() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
   const address = wallets[0]?.address as `0x${string}` | undefined;
@@ -149,12 +159,13 @@ export function Manage() {
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </Link>
-                        <button
+                        <a
+                          href={`/manage.html?id=${agent.tokenId}`}
                           className="w-8 h-8 bg-gray-800/80 rounded-full flex items-center justify-center text-xs hover:bg-gray-700/80 transition-colors"
                           title="Edit Agent"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
