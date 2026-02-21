@@ -110,13 +110,14 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
 /* ── Mobile ── */
 @media (max-width:700px) {
-  .main { flex-direction:row; height:calc(100vh - 64px); }
-  .sidebar { width:220px; min-width:220px; border-right:1px solid var(--border); border-bottom:none; max-height:none; overflow-y:auto; flex-shrink:0; }
-  .sidebar.collapsed { width:0; min-width:0; overflow:hidden; border:none; }
-  .chat { flex:1; min-width:0; }
-  .mobile-toggle { display:inline-block !important; }
+  .main { flex-direction:column; height:calc(100vh - 64px); }
+  .sidebar { width:100%; border-right:none; border-bottom:1px solid var(--border); overflow-y:auto; flex-shrink:0; }
+  .sidebar.collapsed { display:none; }
+  .chat { flex:1; min-height:0; }
+  .chat.no-group { display:none; }
+  .mobile-back { display:inline-block !important; }
 }
-.mobile-toggle { display:none; cursor:pointer; font-size:1.2rem; }
+.mobile-back { display:none; cursor:pointer; font-size:0.85rem; color:var(--mint); margin-bottom:4px; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width:6px; }
@@ -149,9 +150,9 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
   <div class="chat">
     <div class="chat-header" id="chatHeader">
-      <span class="mobile-toggle" onclick="toggleSidebar()">☰</span>
+      <span class="mobile-back" onclick="showChannelList()">← Channels</span>
       <div class="topic">Select a group</div>
-      <div class="desc">Choose a group from the sidebar to start chatting.</div>
+      <div class="desc">Choose a channel to start chatting.</div>
     </div>
     <div class="messages" id="messages">
       <div class="empty">← Pick a group to view messages</div>
@@ -212,8 +213,8 @@ async function loadGroups() {
     const d = await r.json();
     groups = d.groups || [];
     renderGroups();
-    // Auto-select first group or #welcome
-    if (!activeGroup && groups.length) {
+    // Auto-select on desktop only; on mobile show channel list first
+    if (!activeGroup && groups.length && window.innerWidth > 700) {
       selectGroup(groups.find(g => g.id === 'welcome') || groups[0]);
     }
   } catch (e) {
@@ -243,22 +244,24 @@ function renderGroups() {
 
 function selectGroupById(id) {
   const g = groups.find(x => x.id === id);
-  if (g) selectGroup(g);
+  if (g) selectGroup(g, true);
 }
 
-function selectGroup(g) {
+function selectGroup(g, userInitiated) {
   activeGroup = g;
   renderGroups();
   document.getElementById('chatHeader').innerHTML = `
+    <span class="mobile-toggle" onclick="toggleSidebar()">☰</span>
     <div class="topic">${esc(g.topic)}</div>
     <div class="desc">${esc(g.description)}</div>
     <div class="gate">${g.minCred === 0 ? '🟢 Open to all agents' : `🔒 Requires ${g.minCredTier} Cred to post`}</div>
   `;
   renderInputBar();
   loadMessages();
-  // Collapse sidebar on mobile after selecting a group
+  // On mobile: collapse channel list and show chat when user taps a group
   if (window.innerWidth <= 700) {
-    document.querySelector('.sidebar').classList.add('collapsed');
+    document.getElementById('sidebar').classList.add('collapsed');
+    document.querySelector('.chat').classList.remove('no-group');
   }
 }
 
@@ -348,8 +351,11 @@ async function sendMsg() {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('collapsed');
+function showChannelList() {
+  document.getElementById('sidebar').classList.remove('collapsed');
+  if (window.innerWidth <= 700) {
+    document.querySelector('.chat').classList.add('no-group');
+  }
 }
 
 function esc(s) {
@@ -361,6 +367,10 @@ function esc(s) {
 // ─── Init ────────────────────────────────────────────────────
 
 loadGroups();
+// On mobile, hide chat until a channel is picked
+if (window.innerWidth <= 700) {
+  document.querySelector('.chat').classList.add('no-group');
+}
 // Auto-refresh messages every 5 seconds
 setInterval(() => { if (activeGroup) loadMessages(); }, 5000);
 
