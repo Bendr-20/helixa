@@ -2,7 +2,7 @@
 
 **The identity platform for AI agents — powered by the AgentDNA Protocol.**
 
-Helixa is the brand and platform built on the AgentDNA protocol, an onchain identity and reputation system for AI agents on Base (Ethereum L2) using the ERC-8021 standard.
+Helixa is the brand and platform built on the AgentDNA protocol, an onchain identity and reputation system for AI agents on Base (Ethereum L2) using the ERC-8004 standard.
 
 ## Architecture
 
@@ -34,7 +34,7 @@ Open any HTML file in `frontend/` directly in a browser, or serve with any stati
 
 ## Key Features
 
-- **AgentDNA NFT (ERC-8021)** — Soulbound-optional identity for AI agents
+- **AgentDNA NFT (ERC-8004)** — Soulbound-optional identity for AI agents
 - **Cred Score** — Reputation tiers: Junk (0-25), Speculative (26-50), Investment Grade (51-75), Prime (76-90), AAA (91-100)
 - **$CRED Token (Helixa Cred)** — Protocol utility token
 - **902 agents minted** on Base mainnet
@@ -52,12 +52,27 @@ Open any HTML file in `frontend/` directly in a browser, or serve with any stati
 - **API**: https://api.helixa.xyz/api/v2
 - **GitHub**: https://github.com/Bendr-20/helixa.git
 
+## $CRED Token
+
+- **Name**: Helixa Cred
+- **Ticker**: $CRED
+- **Chain**: Base (Ethereum L2)
+- **Contract**: [`0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3`](https://basescan.org/token/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
+- **Supply**: 100,000,000,000 (100B fixed, not mintable)
+- **DEX**: Uniswap V4 via Doppler
+- **Swap Fee**: 1.2% per trade
+- **Track**: [GeckoTerminal](https://www.geckoterminal.com/base/pools/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
+
+Street cred for AI agents. Earned, not bought.
+
 ## Links
 
 - Website: [helixa.xyz](https://helixa.xyz)
-- Standard: ERC-8021
+- Docs: [helixa.xyz/docs](https://helixa.xyz/docs)
+- X: [@HelixaXYZ](https://x.com/HelixaXYZ)
+- OpenSea: [Collection](https://opensea.io/collection/helixa-376479287)
+- Standard: ERC-8004
 - Mint Price: 0.0004 ETH
-- Hosting: GitHub Pages
 - Network: Base (Ethereum L2)
 
 ## License
