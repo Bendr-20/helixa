@@ -6,104 +6,105 @@ Mint an AI agent identity on Helixa using SIWA (Sign-In With Agent) and x402 pay
 
 - A wallet with USDC on Base (minimum $1)
 - Node.js 18+
-- `npm install @x402/client ethers`
 
-## Quick Start
+```bash
+npm install @x402/fetch @x402/evm viem
+```
+
+## Working Example
 
 ```js
-const { ethers } = require("ethers");
+const { createWalletClient, http, publicActions } = require('viem');
+const { privateKeyToAccount } = require('viem/accounts');
+const { base } = require('viem/chains');
+const { wrapFetchWithPayment, x402Client } = require('@x402/fetch');
+const { ExactEvmScheme } = require('@x402/evm/exact/client');
+const { toClientEvmSigner } = require('@x402/evm');
 
-const API = "https://api.helixa.xyz/api/v2";
+const API = 'https://api.helixa.xyz/api/v2/mint';
 
-// 1. SIWA Auth — sign a message to prove agent identity
-async function getSIWAToken(wallet) {
-  const timestamp = Date.now();
-  const message = `helixa-siwa:${wallet.address}:${timestamp}`;
-  const signature = await wallet.signMessage(message);
-  return `SIWA ${wallet.address}:${timestamp}:${signature}`;
-}
+async function mint(privateKey, agentData) {
+  // 1. Set up wallet
+  const account = privateKeyToAccount(privateKey);
+  const walletClient = createWalletClient({
+    account,
+    chain: base,
+    transport: http('https://mainnet.base.org'),
+  }).extend(publicActions);
 
-// 2. Mint with x402 payment
-async function mint(wallet, agentData) {
-  const auth = await getSIWAToken(wallet);
+  // 2. Set up x402 payment client
+  const signer = toClientEvmSigner(walletClient);
+  signer.address = walletClient.account.address; // Required for viem compat
+  const scheme = new ExactEvmScheme(signer);
+  const client = x402Client.fromConfig({
+    schemes: [{ client: scheme, network: 'eip155:8453' }],
+  });
+  const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
-  // First request — will return 402 with payment requirements
-  const res = await fetch(`${API}/mint`, {
-    method: "POST",
+  // 3. Build SIWA auth
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${account.address} at ${timestamp}`;
+  const signature = await account.signMessage({ message });
+  const auth = `Bearer ${account.address}:${timestamp}:${signature}`;
+
+  // 4. Mint — x402Fetch handles 402 + USDC payment automatically
+  const res = await x402Fetch(API, {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": auth,
+      'Content-Type': 'application/json',
+      'Authorization': auth,
     },
     body: JSON.stringify(agentData),
   });
 
-  if (res.status === 402) {
-    // Get payment requirements
-    const reqs = await res.json();
-    console.log("Payment required:", reqs["x-payment-required"]);
-
-    // Use @x402/client to create payment
-    const { withPayment } = await import("@x402/client");
-
-    const paidRes = await withPayment(
-      `${API}/mint`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": auth,
-        },
-        body: JSON.stringify(agentData),
-      },
-      {
-        wallet: wallet, // Must have USDC on Base
-        network: "eip155:8453",
-      }
-    );
-
-    return await paidRes.json();
-  }
-
   return await res.json();
 }
 
-// Example usage
-const provider = new ethers.JsonRpcProvider("https://mainnet.base.org", 8453);
-const wallet = new ethers.Wallet("YOUR_PRIVATE_KEY", provider);
-
-mint(wallet, {
-  name: "MyAgent",
-  framework: "custom",
-  personality: {
-    quirks: "curious, analytical",
-    values: "transparency, accuracy",
+// Usage
+mint('0xYOUR_PRIVATE_KEY', {
+  name: 'MyAgent',
+  framework: 'custom',       // openclaw, eliza, langchain, custom, etc.
+  personality: {              // Optional
+    quirks: 'curious, analytical',
+    values: 'transparency, accuracy',
   },
-  narrative: {
-    origin: "Built to explore onchain identity",
-    mission: "Score every agent fairly",
+  narrative: {                // Optional
+    origin: 'Built to explore onchain identity',
+    mission: 'Score every agent fairly',
   },
 }).then(console.log);
 ```
 
+## How It Works
+
+1. Your request hits the API without payment → returns HTTP 402
+2. `@x402/fetch` reads the `payment-required` header automatically
+3. SDK signs an EIP-3009 TransferWithAuthorization for $1 USDC
+4. Payment is verified and settled via the Dexter facilitator
+5. Agent is minted onchain on Base
+6. Agent is auto-registered on the ERC-8004 registry
+
+**Do NOT hand-roll EIP-3009 signatures.** Use `@x402/fetch` — it handles the payment proof format, facilitator negotiation, and header construction.
+
 ## Payment Details
 
-- **Amount**: $1 USDC (Phase 1 introductory pricing)
-- **Chain**: Base (chain ID 8453)
-- **Token**: USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
-- **Facilitator**: Dexter (`https://x402.dexter.cash`)
-- **Protocol**: x402 (see [docs.x402.org](https://docs.x402.org))
-
-## Important
-
-**Do NOT hand-roll EIP-3009 signatures.** The x402 facilitator (Dexter) handles payment proof creation and verification. Use `@x402/client` — it manages the signature format, facilitator negotiation, and `X-PAYMENT` header construction automatically.
+| Field | Value |
+|-------|-------|
+| Amount | $1 USDC (Phase 1 pricing) |
+| Chain | Base (chain ID 8453) |
+| Token | USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+| Facilitator | Dexter `https://x402.dexter.cash` |
+| Protocol | x402 v2 ([docs.x402.org](https://docs.x402.org)) |
 
 ## SIWA Auth Format
 
 ```
-Authorization: SIWA <agentAddress>:<timestampMs>:<signature>
+Authorization: Bearer <address>:<timestampSec>:<signature>
 ```
 
-The signature is `personal_sign` of the message `helixa-siwa:<address>:<timestamp>`. Timestamp must be within 5 minutes.
+Sign the message: `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet <address> at <timestamp>`
+
+Timestamp is Unix seconds. Must be within 5 minutes.
 
 ## Mint Parameters
 
@@ -115,22 +116,28 @@ The signature is `personal_sign` of the message `helixa-siwa:<address>:<timestam
 | narrative | No | `{origin, mission, lore, manifesto}` |
 | referralCode | No | Referral code for bonus points |
 
-## Response
+## Response (201)
 
 ```json
 {
   "success": true,
-  "tokenId": 902,
-  "name": "MyAgent",
+  "tokenId": 901,
   "txHash": "0x...",
-  "agentAddress": "0x...",
-  "referralCode": "abc123"
+  "mintOrigin": "AGENT_SIWA",
+  "explorer": "https://basescan.org/tx/0x...",
+  "message": "MyAgent is now onchain! Helixa V2 Agent #901",
+  "crossRegistration": {
+    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    "agentId": 18702,
+    "txHash": "0x..."
+  }
 }
 ```
 
 ## Links
 
-- **API Base**: https://api.helixa.xyz/api/v2
+- **API**: https://api.helixa.xyz/api/v2
 - **x402 Docs**: https://docs.x402.org
-- **x402 Client SDK**: `npm install @x402/client`
-- **Helixa Mint Skill (OpenClaw)**: https://github.com/Bendr-20/helixa-mint-skill
+- **Packages**: `@x402/fetch`, `@x402/evm`, `viem`
+- **Helixa**: https://helixa.xyz
+- **OpenClaw Skill**: https://github.com/Bendr-20/helixa-mint-skill
