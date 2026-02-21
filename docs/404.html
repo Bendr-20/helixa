@@ -18,6 +18,13 @@
     <link rel="stylesheet" crossorigin href="/assets/index-B6KlJgp9.css">
   </head>
   <body>
+    <script>
+      // Intercept routes that have standalone HTML pages
+      (function(){
+        var p = window.location.pathname;
+        if (p === '/manage' || p === '/manage/') { window.location.replace('/manage.html' + window.location.search); return; }
+      })();
+    </script>
     <div id="root"></div>
   </body>
 </html>

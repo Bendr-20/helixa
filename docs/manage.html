@@ -180,10 +180,11 @@ async function lookupAgent() {
     // Try as token ID first
     let tokenId = parseInt(input);
     if (isNaN(tokenId)) {
-      // Search by name
-      const resp = await fetch(API + '/agents');
-      const agents = await resp.json();
-      const match = agents.find(a => a.name?.toLowerCase() === input.toLowerCase());
+      // Search by name via API
+      const resp = await fetch(API + '/agents?search=' + encodeURIComponent(input) + '&limit=5');
+      const data = await resp.json();
+      const agents = data.agents || data;
+      const match = agents.find(a => a.name?.toLowerCase() === input.toLowerCase()) || agents[0];
       if (!match) { showStatus('Agent not found: ' + input, 'error'); return; }
       tokenId = match.tokenId;
     }
