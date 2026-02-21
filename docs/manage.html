@@ -201,7 +201,7 @@ async function lookupAgent() {
     document.getElementById('agentId').textContent = 'Token #' + tokenId;
 
     const attrs = meta.attributes || [];
-    const getAttr = (t) => (attrs.find(a => a.trait_type === t) || {}).value || '';
+    const getAttr = (t) => (attrs.find(a => a.trait_type.toLowerCase() === t.toLowerCase()) || {}).value || '';
 
     // Show existing traits
     const traitsDiv = document.getElementById('agentTraits');
