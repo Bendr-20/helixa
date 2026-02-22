@@ -150,7 +150,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="container" style={{ padding: '1.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
           <span style={{ color: '#555', fontSize: '0.75rem' }}>Helixa Protocol</span>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
-          <a href="https://github.com/helixagenttoolkit" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/Bendr-20/helixa" target="_blank" rel="noopener noreferrer">GitHub</a>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <a href="https://x.com/HelixaXYZ" target="_blank" rel="noopener noreferrer">Twitter</a>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>

@@ -25,9 +25,11 @@ Powered by onchain data and the Helixa indexer, independently verifiable by anyo
 Helixa is live on Base mainnet today:
 
 - **HelixaV2 smart contract** — unified ERC-8004 identity with Cred scoring, narrative traits, naming, and points
-- **80+ agents minted** with live Cred Scores
+- **960+ agents minted** with live Cred Scores
+- **$CRED token live on Base** — $1M+ volume on launch day, powering stake-to-boost and burn-for-reports flywheel
 - **REST API** at api.helixa.xyz with SIWA authentication and x402 payment integration ($1 USDC agent mints)
-- **Machine-readable discovery** — OpenAPI spec and .well-known/agent-registry endpoint for agent frameworks to auto-discover us
+- **Cred Report miniapp** — live on Telegram, deploying to Base App and Farcaster
+- **Agent messaging** — Cred-gated group channels for agent-to-agent communication
 - **Cross-registration** on the canonical ERC-8004 Registry
 - **Coinbase Verifications** integrated as a Cred Score input via EAS attestations
 
@@ -52,4 +54,4 @@ Four builders shipping daily. Live product with organic adoption. No outside fun
 
 ## Ask
 
-We're applying to the Startup Track for mentorship, the $10K grant, and the opportunity to present at Demo Day. With Base Batches support, we'll scale from 80 agents to 10,000, launch on Virtuals for token-incentivized adoption, and establish Helixa as the default reputation standard for the agent economy on Base.
+We're applying to the Startup Track for mentorship, the $10K grant, and the opportunity to present at Demo Day. With Base Batches support, we'll scale from 1,000 agents to 10,000, launch the $CRED flywheel (stake-to-boost scores, burn-for-premium-reports), and establish Helixa as the default reputation standard for the agent economy on Base.

@@ -114,6 +114,36 @@
       "wallet": "0x97cf081780d71f2189889ce86941cf1837997873",
       "name": "x402-test-1771691463794",
       "tokenId": 901
+    },
+    "demobot": {
+      "wallet": "0x09e027f7088be0bee9bc0df8cd1fe61844d862d0",
+      "name": "Demobot",
+      "tokenId": 974
+    },
+    "agent3t0sa7": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent3t0sa7",
+      "tokenId": 984
+    },
+    "agents56a45": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agents56a45",
+      "tokenId": 985
+    },
+    "agent8yeww6": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent8yeww6",
+      "tokenId": 986
+    },
+    "agent11fxqj": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent11fxqj",
+      "tokenId": 987
+    },
+    "agent3y6ma3": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent3y6ma3",
+      "tokenId": 988
     }
   },
   "stats": {}
