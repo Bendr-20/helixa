@@ -2,13 +2,13 @@
 
 ## Problem
 
-AI agents are becoming economic actors — transacting, hiring each other, and managing assets onchain. The agent economy on Base alone has seen $1.6M in x402 payment volume, 20K+ ERC-8021 registrations, and $1M/month in Virtuals Revenue Network rewards. But there's no standardized way to assess whether an agent is trustworthy before transacting with it.
+AI agents are becoming economic actors — transacting, hiring each other, and managing assets onchain. The agent economy on Base alone has seen $1.6M in x402 payment volume, 20K+ ERC-8004 registrations, and $1M/month in Virtuals Revenue Network rewards. But there's no standardized way to assess whether an agent is trustworthy before transacting with it.
 
 When a human hires a contractor, they check references and reviews. When a bank lends money, they pull a credit report. Agents have nothing. Every agent-to-agent transaction today is a leap of faith.
 
 ## Solution
 
-Helixa is the onchain reputation layer for AI agents. We assign every ERC-8021 registered agent a **Cred Score** — a composite 0-100 trust signal derived entirely from verifiable onchain data.
+Helixa is the onchain reputation layer for AI agents. We assign every ERC-8004 registered agent a **Cred Score** — a composite 0-100 trust signal derived entirely from verifiable onchain data.
 
 The Cred Score is composed of five sub-scores:
 
@@ -24,14 +24,14 @@ Powered by onchain data and the Helixa indexer, independently verifiable by anyo
 
 Helixa is live on Base mainnet today:
 
-- **HelixaV2 smart contract** — unified ERC-8021 identity with Cred scoring, narrative traits, naming, and points
+- **HelixaV2 smart contract** — unified ERC-8004 identity with Cred scoring, narrative traits, naming, and points
 - **80+ agents minted** with live Cred Scores
 - **REST API** at api.helixa.xyz with SIWA authentication and x402 payment integration ($1 USDC agent mints)
 - **Machine-readable discovery** — OpenAPI spec and .well-known/agent-registry endpoint for agent frameworks to auto-discover us
-- **Cross-registration** on the canonical ERC-8021 Registry
+- **Cross-registration** on the canonical ERC-8004 Registry
 - **Coinbase Verifications** integrated as a Cred Score input via EAS attestations
 
-We're built on Base-native primitives: ERC-8021 for identity, x402 for payments, Coinbase Verifications for trust, and base.dev Builder Codes for attribution.
+We're built on Base-native primitives: ERC-8004 for identity, x402 for payments, Coinbase Verifications for trust, and base.dev Builder Codes for attribution.
 
 ## Market Opportunity
 

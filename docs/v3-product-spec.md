@@ -10,7 +10,7 @@
 
 ## Overview
 
-V3 layers three new products on top of the existing V2 identity contract. V2 is the primitive — ERC-8021 identity, Cred Score, narrative traits, naming, SIWA, points. V3 makes that identity *valuable*, *transferable*, and *operational*.
+V3 layers three new products on top of the existing V2 identity contract. V2 is the primitive — ERC-8004 identity, Cred Score, narrative traits, naming, SIWA, points. V3 makes that identity *valuable*, *transferable*, and *operational*.
 
 | Product | What It Does |
 |---------|-------------|
@@ -419,7 +419,7 @@ Agent mints Helixa identity
 ┌──────────────────────────────────────┐
 │  Helixa API: POST /api/mint         │
 │                                      │
-│  1. Mint ERC-8021 on V2 contract    │
+│  1. Mint ERC-8004 on V2 contract    │
 │  2. Call Guardian DKG API:           │
 │     POST /api/v1/dkg/init           │
 │     POST /api/v1/dkg/round  (×4-5)  │
@@ -897,7 +897,7 @@ GET    /api/v3/agent/:tokenId/portable   Check portability status
 
 | Component | Technology | Status |
 |-----------|-----------|--------|
-| V2 Contract | Solidity, ERC-8021, Foundry | Deployed ✓ |
+| V2 Contract | Solidity, ERC-8004, Foundry | Deployed ✓ |
 | Helixa API | Node.js, Express | Running ✓ |
 | Market Frontend | React, Vite, RainbowKit | New |
 | Seaport Integration | @opensea/seaport-js | New |
