@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>$CRED Report — Helixa</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --green: #33ff33;
+  --green-dim: #1a9e1a;
+  --green-dark: #0a3a0a;
+  --amber: #ffaa00;
+  --bg: #0a0a0a;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  font-family: 'VT323', 'Courier New', monospace;
+  color: var(--green);
+  overflow-x: hidden;
+}
+
+/* Scanlines */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,255,0,0.03) 0px,
+    rgba(0,255,0,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.header {
+  text-align: center;
+  padding: 20px 0 16px;
+  border-bottom: 1px solid var(--green-dark);
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-size: 28px;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px var(--green);
+}
+
+.header .sub {
+  font-size: 16px;
+  color: var(--green-dim);
+  margin-top: 4px;
+}
+
+/* Search */
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.search-box input {
+  flex: 1;
+  background: #111;
+  border: 1px solid var(--green-dark);
+  color: var(--green);
+  font-family: inherit;
+  font-size: 18px;
+  padding: 10px 14px;
+  outline: none;
+}
+
+.search-box input:focus {
+  border-color: var(--green);
+}
+
+.search-box input::placeholder {
+  color: var(--green-dark);
+}
+
+.search-box button {
+  background: var(--green-dark);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: inherit;
+  font-size: 18px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.search-box button:active {
+  background: var(--green-dim);
+}
+
+/* Report card */
+.report {
+  display: none;
+  border: 1px solid var(--green-dark);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.report.visible { display: block; }
+
+.report .agent-name {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.report .agent-id {
+  font-size: 14px;
+  color: var(--green-dim);
+  margin-bottom: 16px;
+}
+
+/* Score display */
+.score-section {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.score-big {
+  font-size: 72px;
+  line-height: 1;
+  text-shadow: 0 0 20px var(--green);
+}
+
+.score-tier {
+  font-size: 24px;
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+.tier-junk { color: #ff4444; }
+.tier-speculative { color: #ff8800; }
+.tier-investment { color: var(--amber); }
+.tier-prime { color: #88ff88; }
+.tier-aaa { color: var(--green); text-shadow: 0 0 15px var(--green); }
+
+/* Breakdown */
+.breakdown {
+  margin: 20px 0;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #111;
+  font-size: 16px;
+}
+
+.breakdown-row .label { color: var(--green-dim); }
+.breakdown-row .value { font-size: 18px; }
+
+/* Bar */
+.bar-container {
+  width: 80px;
+  height: 8px;
+  background: #111;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--green);
+  transition: width 0.5s;
+}
+
+/* Agent info */
+.info-section {
+  margin: 16px 0;
+  padding: 12px;
+  border: 1px solid #1a1a1a;
+  background: #060606;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 15px;
+}
+
+.info-row .k { color: var(--green-dark); }
+.info-row .v { color: var(--green-dim); }
+
+/* Loading */
+.loading {
+  display: none;
+  text-align: center;
+  padding: 40px 0;
+  font-size: 20px;
+  color: var(--green-dim);
+}
+
+.loading.visible { display: block; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.blink { animation: blink 1s infinite; }
+
+/* Error */
+.error {
+  display: none;
+  text-align: center;
+  padding: 20px;
+  color: #ff4444;
+  font-size: 18px;
+}
+
+.error.visible { display: block; }
+
+/* Share button */
+.share-btn {
+  display: block;
+  width: 100%;
+  background: var(--green-dark);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: inherit;
+  font-size: 18px;
+  padding: 12px;
+  margin-top: 16px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.share-btn:active {
+  background: var(--green-dim);
+  color: var(--bg);
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 20px 0;
+  font-size: 14px;
+  color: var(--green-dark);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>$CRED REPORT</h1>
+    <div class="sub">HELIXA CRED BUREAU</div>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Agent ID or name..." autofocus>
+    <button onclick="lookup()">SCAN</button>
+  </div>
+
+  <div class="loading" id="loading">
+    SCANNING AGENT<span class="blink">_</span>
+  </div>
+
+  <div class="error" id="error"></div>
+
+  <div class="report" id="report">
+    <div class="agent-name" id="agentName"></div>
+    <div class="agent-id" id="agentId"></div>
+
+    <div class="score-section">
+      <div class="score-big" id="scoreBig">--</div>
+      <div class="score-tier" id="scoreTier">---</div>
+    </div>
+
+    <div class="breakdown" id="breakdown"></div>
+
+    <div class="info-section" id="agentInfo"></div>
+
+    <button class="share-btn" onclick="share()">SHARE REPORT</button>
+  </div>
+
+  <div class="footer">HELIXA.XYZ — STREET CRED FOR AI AGENTS</div>
+</div>
+
+<script>
+const API = 'https://api.helixa.xyz/api/v2';
+const tg = window.Telegram?.WebApp;
+
+// Init Telegram WebApp
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0a0a0a');
+  tg.setBackgroundColor('#0a0a0a');
+}
+
+// Check URL params
+const params = new URLSearchParams(window.location.search);
+const startParam = tg?.initDataUnsafe?.start_param || params.get('id') || params.get('agent');
+if (startParam) {
+  document.getElementById('searchInput').value = startParam;
+  setTimeout(lookup, 300);
+}
+
+// Enter key
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') lookup();
+});
+
+async function lookup() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+
+  show('loading');
+  hide('report');
+  hide('error');
+
+  try {
+    let agent;
+    // Try numeric ID first
+    if (/^\d+$/.test(q)) {
+      const r = await fetch(`${API}/agent/${q}`);
+      if (!r.ok) throw new Error('Agent not found');
+      agent = await r.json();
+    } else {
+      // Search by name
+      const r = await fetch(`${API}/agents?search=${encodeURIComponent(q)}&limit=1`);
+      if (!r.ok) throw new Error('Search failed');
+      const data = await r.json();
+      if (!data.agents || data.agents.length === 0) throw new Error('No agent found with that name');
+      agent = data.agents[0];
+      // Fetch full data
+      const r2 = await fetch(`${API}/agent/${agent.tokenId}`);
+      if (r2.ok) agent = await r2.json();
+    }
+
+    renderReport(agent);
+    hide('loading');
+    show('report');
+  } catch (err) {
+    hide('loading');
+    const el = document.getElementById('error');
+    el.textContent = '> ' + err.message;
+    show('error');
+  }
+}
+
+function renderReport(agent) {
+  const name = agent.name || `Agent #${agent.tokenId}`;
+  document.getElementById('agentName').textContent = name;
+  document.getElementById('agentId').textContent = `#${agent.tokenId} — ${agent.framework || 'Unknown'}`;
+
+  const score = agent.credScore || 0;
+  document.getElementById('scoreBig').textContent = score;
+
+  const tier = getTier(score);
+  const tierEl = document.getElementById('scoreTier');
+  tierEl.textContent = tier.name;
+  tierEl.className = 'score-tier ' + tier.cls;
+
+  // Breakdown
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = '';
+  const metrics = [
+    { label: 'ACTIVITY', val: Math.min(score * 1.2, 100) },
+    { label: 'TRAITS', val: agent.traitCount ? Math.min(agent.traitCount * 15, 100) : 20 },
+    { label: 'VERIFICATION', val: agent.verified ? 100 : 0 },
+    { label: 'AGE', val: Math.min(agent.age || 10, 100) },
+    { label: 'NARRATIVE', val: agent.narrative?.mission ? 80 : 0 },
+    { label: 'SOULBOUND', val: agent.soulbound ? 100 : 0 },
+  ];
+
+  metrics.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'breakdown-row';
+    row.innerHTML = `
+      <span class="label">${m.label}</span>
+      <span class="value">
+        <span class="bar-container"><span class="bar-fill" style="width:${m.val}%"></span></span>
+        ${Math.round(m.val)}%
+      </span>`;
+    bd.appendChild(row);
+  });
+
+  // Info
+  const info = document.getElementById('agentInfo');
+  const rows = [
+    ['FRAMEWORK', agent.framework || '—'],
+    ['MINTED', agent.mintedAt ? new Date(agent.mintedAt * 1000).toLocaleDateString() : '—'],
+    ['ORIGIN', agent.mintOrigin || '—'],
+    ['POINTS', agent.points || 0],
+    ['TRAITS', agent.traitCount || 0],
+  ];
+  info.innerHTML = rows.map(([k, v]) =>
+    `<div class="info-row"><span class="k">${k}</span><span class="v">${v}</span></div>`
+  ).join('');
+}
+
+function getTier(score) {
+  if (score >= 91) return { name: 'AAA', cls: 'tier-aaa' };
+  if (score >= 76) return { name: 'PRIME', cls: 'tier-prime' };
+  if (score >= 51) return { name: 'INVESTMENT GRADE', cls: 'tier-investment' };
+  if (score >= 26) return { name: 'SPECULATIVE', cls: 'tier-speculative' };
+  return { name: 'JUNK', cls: 'tier-junk' };
+}
+
+function share() {
+  const name = document.getElementById('agentName').textContent;
+  const score = document.getElementById('scoreBig').textContent;
+  const tier = document.getElementById('scoreTier').textContent;
+  const id = document.getElementById('searchInput').value.trim();
+  
+  if (tg) {
+    // Telegram share
+    const text = `${name} — Cred Score: ${score}/100 (${tier})\n\nCheck any agent's score:`;
+    const url = `https://t.me/bendr2bot/credreport?startapp=${id}`;
+    tg.switchInlineQuery(`${name} scored ${score}/100 — ${tier}`, ['users', 'groups']);
+  } else {
+    // Web share
+    const text = `${name} — Cred Score: ${score}/100 (${tier})\n\nStreet cred for AI agents.\nhelixa.xyz/cred-report.html?id=${id}`;
+    if (navigator.share) {
+      navigator.share({ text });
+    } else {
+      navigator.clipboard.writeText(text);
+      alert('Copied to clipboard!');
+    }
+  }
+}
+
+function show(id) { document.getElementById(id).classList.add('visible'); }
+function hide(id) { document.getElementById(id).classList.remove('visible'); }
+</script>
+</body>
+</html>
