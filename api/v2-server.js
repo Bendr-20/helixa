@@ -503,6 +503,7 @@ function registerReferralCode(code, wallet, name, tokenId) {
 // ═══════════════════════════════════════════════════════════════
 
 const app = express();
+app.set('trust proxy', true);
 app.use(express.json({ limit: '200kb' }));
 
 // ─── Security Headers ──────────────────────────────────────────

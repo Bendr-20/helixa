@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0f;
+  width: 1080px;
+  height: 1080px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Share Tech Mono', monospace;
+  color: #33ff33;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scanlines */
+body::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,255,0,0.03) 0px,
+    rgba(0,255,0,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* CRT vignette */
+body::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+  pointer-events: none;
+  z-index: 11;
+}
+
+.title {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 52px;
+  letter-spacing: 8px;
+  text-shadow: 0 0 20px #33ff33, 0 0 40px #33ff3366, 0 0 80px #33ff3333;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: #33ff3399;
+  letter-spacing: 4px;
+  margin-bottom: 50px;
+}
+
+.flywheel {
+  position: relative;
+  width: 520px;
+  height: 520px;
+  margin-bottom: 40px;
+}
+
+/* Center circle */
+.center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 130px; height: 130px;
+  border: 2px solid #33ff33;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 22px;
+  text-shadow: 0 0 10px #33ff33;
+  background: rgba(0,255,0,0.05);
+}
+
+/* Nodes */
+.node {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border: 2px solid #33ff33;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,255,0,0.04);
+  text-shadow: 0 0 8px #33ff33;
+  box-shadow: 0 0 15px rgba(51,255,51,0.15), inset 0 0 15px rgba(51,255,51,0.05);
+}
+
+.node .icon { font-size: 28px; margin-bottom: 8px; text-shadow: none; font-family: 'Share Tech Mono', monospace; }
+.node .label { 
+  font-family: 'Orbitron', sans-serif; 
+  font-weight: 700; 
+  font-size: 16px; 
+  letter-spacing: 2px;
+  text-shadow: none;
+}
+.node .desc {
+  font-size: 11px;
+  color: #33ff33aa;
+  margin-top: 4px;
+  text-align: center;
+  padding: 0 8px;
+  text-shadow: none;
+}
+
+.node-stake { top: 0; left: 50%; transform: translateX(-50%); }
+.node-boost { top: 50%; right: 0; transform: translateY(-50%); }
+.node-burn { bottom: 0; left: 50%; transform: translateX(-50%); }
+.node-grow { top: 50%; left: 0; transform: translateY(-50%); }
+
+/* Arrows (SVG) */
+.arrows {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+
+.arrow-path {
+  fill: none;
+  stroke: #33ff33;
+  stroke-width: 2;
+  marker-end: url(#arrowhead);
+  filter: drop-shadow(0 0 4px #33ff3366);
+}
+
+/* Bottom text */
+.flow-text {
+  text-align: center;
+  max-width: 850px;
+  line-height: 2;
+  font-size: 16px;
+  color: #33ff33cc;
+}
+
+.flow-text .step {
+  display: inline;
+  color: #33ff33;
+  font-weight: bold;
+  text-shadow: none;
+}
+
+.flow-text .arrow {
+  color: #33ff3366;
+  margin: 0 6px;
+}
+
+.footer {
+  margin-top: 50px;
+  font-size: 16px;
+  color: #33ff33cc;
+  letter-spacing: 4px;
+}
+
+/* All nodes same green */
+</style>
+</head>
+<body>
+  <div class="title">$CRED FLYWHEEL</div>
+  <div class="subtitle">TOKENOMICS ENGINE</div>
+  
+  <div class="flywheel">
+    <svg class="arrows" viewBox="0 0 520 520">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#33ff33" />
+        </marker>
+      </defs>
+      <!-- Top to Right -->
+      <path class="arrow-path" d="M 320 100 Q 400 100, 420 180" />
+      <!-- Right to Bottom -->
+      <path class="arrow-path" d="M 420 340 Q 400 420, 320 420" />
+      <!-- Bottom to Left -->
+      <path class="arrow-path" d="M 200 420 Q 120 420, 100 340" />
+      <!-- Left to Top -->
+      <path class="arrow-path" d="M 100 180 Q 120 100, 200 100" />
+    </svg>
+    
+    <div class="center">$CRED</div>
+    
+    <div class="node node-stake">
+      <div class="icon">[=]</div>
+      <div class="label">STAKE</div>
+      <div class="desc">Lock $CRED to boost Cred Score</div>
+    </div>
+    
+    <div class="node node-boost">
+      <div class="icon">/\/\</div>
+      <div class="label">BOOST</div>
+      <div class="desc">Higher score unlocks gated access</div>
+    </div>
+    
+    <div class="node node-burn">
+      <div class="icon">{x}</div>
+      <div class="label">BURN</div>
+      <div class="desc">Burn $CRED for premium reports</div>
+    </div>
+    
+    <div class="node node-grow">
+      <div class="icon">[&gt;_</div>
+      <div class="label">SELF-BUY</div>
+      <div class="desc">Agents buy own $CRED for bonus weight</div>
+    </div>
+  </div>
+  
+  <div class="footer">HELIXA.XYZ — STREET CRED FOR AI AGENTS</div>
+</body>
+</html>

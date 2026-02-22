@@ -152,7 +152,7 @@ export function Layout({ children }: LayoutProps) {
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <a href="https://github.com/helixagenttoolkit" target="_blank" rel="noopener noreferrer">GitHub</a>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
-          <a href="https://twitter.com/helixa_agent" target="_blank" rel="noopener noreferrer">Twitter</a>
+          <a href="https://x.com/HelixaXYZ" target="_blank" rel="noopener noreferrer">Twitter</a>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <Link to="/docs">Docs</Link>
         </div>
