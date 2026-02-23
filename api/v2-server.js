@@ -364,7 +364,7 @@ app.get('/api/v2/agent/:id', async (req, res) => {
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {
         const agent = await formatAgentV2(parseInt(req.params.id));
-        const tier = agent.credScore >= 61 ? 'EX' : agent.credScore >= 26 ? 'Evolved' : 'Basic';
+        const tier = agent.credScore >= 91 ? 'AAA' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Investment Grade' : agent.credScore >= 26 ? 'Speculative' : 'Junk';
         
         const attributes = [
             { trait_type: 'Framework', value: agent.framework },
@@ -1928,7 +1928,7 @@ app.get('/api/v2/agent/:id/report', async (req, res) => {
         // Cred score breakdown
         const credBreakdown = {
             total: agent.credScore,
-            tier: agent.credScore >= 61 ? 'EX' : agent.credScore >= 26 ? 'Evolved' : 'Basic',
+            tier: agent.credScore >= 91 ? 'AAA' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Investment Grade' : agent.credScore >= 26 ? 'Speculative' : 'Junk',
             verified: agent.verified,
             hasPersonality: !!agent.personality,
             hasNarrative: !!(agent.narrative?.origin || agent.narrative?.mission),

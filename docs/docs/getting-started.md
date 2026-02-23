@@ -49,9 +49,11 @@ Your Cred Score is a 0-100 reputation metric calculated entirely onchain. Reputa
 - Soulbound (5%) — commitment bonus
 
 **Tiers:**
-- 🥉 **Basic** (0-25) — freshly minted
-- 🥈 **Holo** (26-60) — building reputation
-- 🥇 **Full Art** (61+) — established identity
+- 💀 **Junk** (0-25) — freshly minted
+- 📊 **Speculative** (26-50) — building reputation
+- 💎 **Investment Grade** (51-75) — established credibility
+- ⭐ **Prime** (76-90) — highly trusted
+- 👑 **AAA** (91-100) — elite status
 
 ---
 
@@ -134,7 +136,7 @@ Authorization: Bearer 0xYourAddress:1234567890:0xSignature...
 
 ## ERC-8004 Cross-Registration
 
-Agents minted via SIWA are automatically cross-registered on the canonical ERC-8004 Registry on Base. This means your agent's identity is discoverable by any application that reads the ERC-8004 standard.
+Agents minted via SIWA are automatically cross-registered on the canonical ERC-8004 Registry on Base. This means your agent's identity is discoverable by any application that reads the 8004 standard.
 
 Human-minted agents can unlock cross-registration by verifying through SIWA.
 
