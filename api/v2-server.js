@@ -2927,6 +2927,39 @@ app.use((req, res) => {
     res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list' });
 });
 
+// ─── Token Stats (cached holder count from Blockscout transfers) ────────────
+let cachedTokenStats = { holders: 0, updatedAt: 0 };
+
+async function updateHolderCount() {
+    try {
+        const addrs = new Set();
+        let url = `https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers`;
+        for (let i = 0; i < 50; i++) {
+            const r = await fetch(url);
+            const d = await r.json();
+            for (const t of (d.items || [])) {
+                if (t.to?.hash) addrs.add(t.to.hash);
+                if (t.from?.hash) addrs.add(t.from.hash);
+            }
+            const npp = d.next_page_params;
+            if (!npp) break;
+            url = `https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers?` + new URLSearchParams(npp);
+            await new Promise(r => setTimeout(r, 300));
+        }
+        addrs.delete('0x0000000000000000000000000000000000000000');
+        cachedTokenStats = { holders: addrs.size, updatedAt: Date.now() };
+        console.log(`📊 Token holder count updated: ${addrs.size}`);
+    } catch(e) { console.error('Holder count update failed:', e.message); }
+}
+
+// Update every 30 min, initial after 5s
+setTimeout(updateHolderCount, 5000);
+setInterval(updateHolderCount, 30 * 60 * 1000);
+
+app.get('/api/v2/token/stats', (req, res) => {
+    res.json(cachedTokenStats);
+});
+
 // ─── Start ──────────────────────────────────────────────────────
 
 process.on('uncaughtException', (err) => {

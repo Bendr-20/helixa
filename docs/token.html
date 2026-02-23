@@ -224,22 +224,12 @@ async function loadStats() {
     const cd = await cr.json();
     if (cd.transfers_count) document.getElementById('transfers').textContent = Number(cd.transfers_count).toLocaleString();
 
-    // Count unique addresses from recent transfers (Blockscout holder_count is inaccurate for bonding curve tokens)
-    const addrs = new Set();
-    let url = 'https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers';
-    for (let i = 0; i < 10; i++) {
-      const tr = await fetch(url);
-      const td = await tr.json();
-      for (const t of (td.items || [])) {
-        if (t.to?.hash) addrs.add(t.to.hash);
-        if (t.from?.hash) addrs.add(t.from.hash);
-      }
-      const npp = td.next_page_params;
-      if (!npp) break;
-      url = `https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers?${new URLSearchParams(npp)}`;
-    }
-    addrs.delete('0x0000000000000000000000000000000000000000');
-    if (addrs.size > 0) document.getElementById('holders').textContent = addrs.size.toLocaleString() + '+';
+    // Holder count from our API (server-side cached, paginates all Blockscout transfers)
+    try {
+      const hr = await fetch('https://api.helixa.xyz/api/v2/token/stats');
+      const hd = await hr.json();
+      if (hd.holders > 0) document.getElementById('holders').textContent = hd.holders.toLocaleString();
+    } catch(e) {}
   } catch(e) {}
 }
 
