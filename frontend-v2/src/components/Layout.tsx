@@ -69,15 +69,6 @@ export function Layout({ children }: LayoutProps) {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
               {navLinks.map((link) => (
-                link.href.includes('.html') ? (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
-                >
-                  {link.label}
-                </a>
-                ) : (
                 <Link
                   key={link.href}
                   to={link.href}
@@ -86,7 +77,6 @@ export function Layout({ children }: LayoutProps) {
                 >
                   {link.label}
                 </Link>
-                )
               ))}
             </div>
             
@@ -117,15 +107,6 @@ export function Layout({ children }: LayoutProps) {
         <div className="mobile-nav md:hidden">
           <div className="mobile-nav-content">
             {navLinks.map((link) => (
-              link.href.includes('.html') ? (
-              <a
-                key={link.href}
-                href={link.href}
-                className={`mobile-nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
-              >
-                {link.label}
-              </a>
-              ) : (
               <Link
                 key={link.href}
                 to={link.href}
@@ -134,7 +115,6 @@ export function Layout({ children }: LayoutProps) {
               >
                 {link.label}
               </Link>
-              )
             ))}
           </div>
         </div>

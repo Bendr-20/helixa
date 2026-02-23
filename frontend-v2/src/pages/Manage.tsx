@@ -150,7 +150,7 @@ export function Manage() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </Link>
                         <a
-                          href={`/manage.html?id=${agent.tokenId}`}
+                          href={`/agent/${agent.tokenId}`}
                           className="w-8 h-8 bg-gray-800/80 rounded-full flex items-center justify-center text-xs hover:bg-gray-700/80 transition-colors"
                           title="Edit Agent"
                         >
