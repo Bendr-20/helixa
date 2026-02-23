@@ -23,7 +23,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 .hero .tagline { color:var(--muted); font-size:1.1rem; margin-top:8px; }
 
 /* Stats Grid */
-.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:32px; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:32px; }
 @media (max-width:700px) { .stats { grid-template-columns:repeat(2,1fr); } }
 .stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
 .stat .label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
@@ -100,6 +100,8 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
     <div class="stat"><div class="label">Market Cap</div><div class="value" id="mcap">—</div></div>
     <div class="stat"><div class="label">24h Volume</div><div class="value" id="volume">—</div></div>
     <div class="stat"><div class="label">Liquidity</div><div class="value" id="liquidity">—</div></div>
+    <div class="stat"><div class="label">Holders</div><div class="value green" id="holders">—</div></div>
+    <div class="stat"><div class="label">Total Transfers</div><div class="value" id="transfers">—</div></div>
   </div>
 
   <!-- CA -->
@@ -191,6 +193,14 @@ async function loadStats() {
     if (pool?.reserve_in_usd) {
       document.getElementById('liquidity').textContent = '$' + Number(pool.reserve_in_usd).toLocaleString(undefined,{maximumFractionDigits:0});
     }
+  } catch(e) {}
+
+  // Fetch holder count and transfers from Blockscout
+  try {
+    const r = await fetch('https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/counters');
+    const d = await r.json();
+    if (d.token_holders_count) document.getElementById('holders').textContent = Number(d.token_holders_count).toLocaleString();
+    if (d.transfers_count) document.getElementById('transfers').textContent = Number(d.transfers_count).toLocaleString();
   } catch(e) {}
 }
 
