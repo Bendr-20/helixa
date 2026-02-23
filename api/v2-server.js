@@ -2930,7 +2930,7 @@ async function updateHolderCount() {
     try {
         const addrs = new Set();
         let url = `https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers`;
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 400; i++) {
             const r = await fetch(url);
             const d = await r.json();
             for (const t of (d.items || [])) {
