@@ -10,8 +10,8 @@ const navLinks = [
   { href: '/agents', label: 'Agents' },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/manage', label: 'Manage' },
-  { href: '/token.html', label: '$CRED' },
-  { href: '/messages.html', label: 'Messages' },
+  { href: '/token', label: '$CRED' },
+  { href: '/messages', label: 'Messages' },
   { href: '/docs', label: 'Docs' },
 ];
 
@@ -156,7 +156,7 @@ export function Layout({ children }: LayoutProps) {
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <Link to="/docs">Docs</Link>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
-          <a href="https://opensea.io/collection/helixa-376479287" target="_blank" rel="noopener noreferrer">OpenSea</a>
+          <a href="https://opensea.io/assets/base/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60" target="_blank" rel="noopener noreferrer">OpenSea</a>
         </div>
       </footer>
     </div>

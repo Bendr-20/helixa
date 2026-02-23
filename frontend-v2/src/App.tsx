@@ -13,6 +13,9 @@ const pageImports = {
   manage: () => import('./pages/Manage').then(m => ({ default: m.Manage })),
   docs: () => import('./pages/Docs').then(m => ({ default: m.Docs })),
   report: () => import('./pages/Report').then(m => ({ default: m.Report })),
+  token: () => import('./pages/Token').then(m => ({ default: m.Token })),
+  messages: () => import('./pages/Messages').then(m => ({ default: m.Messages })),
+  credReport: () => import('./pages/CredReport').then(m => ({ default: m.CredReport })),
 };
 
 const Home = lazy(pageImports.home);
@@ -23,6 +26,9 @@ const Leaderboard = lazy(pageImports.leaderboard);
 const Manage = lazy(pageImports.manage);
 const Docs = lazy(pageImports.docs);
 const Report = lazy(pageImports.report);
+const Token = lazy(pageImports.token);
+const MessagesPage = lazy(pageImports.messages);
+const CredReport = lazy(pageImports.credReport);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -42,6 +48,9 @@ export const preloadMap: Record<string, () => void> = {
   '/leaderboard': pageImports.leaderboard,
   '/docs': pageImports.docs,
   '/manage': pageImports.manage,
+  '/token': pageImports.token,
+  '/messages': pageImports.messages,
+  '/cred-report': pageImports.credReport,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -98,6 +107,9 @@ function AnimatedRoutes() {
           <Route path="/manage" element={<Manage />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/report/:id" element={<Report />} />
+          <Route path="/token" element={<Token />} />
+          <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/cred-report" element={<CredReport />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
