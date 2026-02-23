@@ -2232,7 +2232,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             paidAmount: `$${PRICING.credReport} USDC`,
             network: 'eip155:8453',
         });
-        const receiptSignature = crypto.createHmac('sha256', DEPLOYER_KEY.slice(0, 32))
+        const receiptSignature = crypto.createHmac('sha256', process.env.RECEIPT_HMAC_SECRET || DEPLOYER_KEY.slice(0, 32))
             .update(receiptPayload).digest('hex');
 
         // Ethos score
@@ -2348,7 +2348,7 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
     if (!payload || !signature) {
         return res.status(400).json({ error: 'payload and signature required' });
     }
-    const expected = crypto.createHmac('sha256', DEPLOYER_KEY.slice(0, 32))
+    const expected = crypto.createHmac('sha256', process.env.RECEIPT_HMAC_SECRET || DEPLOYER_KEY.slice(0, 32))
         .update(payload).digest('hex');
     const valid = expected === signature;
     let parsed = null;
