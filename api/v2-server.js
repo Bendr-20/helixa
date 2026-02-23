@@ -282,11 +282,16 @@ app.get('/api/v2/stats', async (req, res) => {
             });
         }
         
-        const [total, price, balance] = await Promise.all([
+        const queries = [
             readContract.totalAgents(),
             readContract.mintPrice(),
-            provider.getBalance(wallet.address),
-        ]);
+        ];
+        if (wallet) queries.push(provider.getBalance(wallet.address));
+        
+        const results = await Promise.all(queries);
+        const total = results[0];
+        const price = results[1];
+        const balance = results[2] || 0n;
         
         res.json({
             totalAgents: Math.max(0, Number(total) - 1), // Hide test agent #0
@@ -296,7 +301,7 @@ app.get('/api/v2/stats', async (req, res) => {
             contract: V2_CONTRACT_ADDRESS,
             contractDeployed: true,
             phase: 1,
-            gasWallet: wallet.address,
+            gasWallet: wallet ? wallet.address : DEPLOYER_ADDRESS,
             gasBalance: ethers.formatEther(balance),
         });
     } catch (e) {
