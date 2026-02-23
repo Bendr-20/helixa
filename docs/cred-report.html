@@ -601,6 +601,25 @@ async function processReport(agentId) {
   await typeLine(`   RECOMMENDATION: ${rec}`, 30, 'highlight');
   addLine('');
 
+  // Paywall for full report
+  addLine('╔══════════════════════════════════════╗');
+  addLine('║  FULL DETAILED REPORT AVAILABLE      ║');
+  addLine('║                                      ║');
+  addLine('║  Includes:                           ║');
+  addLine('║  • Weighted score breakdown           ║');
+  addLine('║  • Personalized recommendations       ║');
+  addLine('║  • Narrative analysis                 ║');
+  addLine('║  • Percentile ranking                 ║');
+  addLine('║  • Signed payment receipt             ║');
+  addLine('║                                      ║');
+  addLine('║  Price: $1 USDC via x402 (Base)       ║');
+  addLine('╚══════════════════════════════════════╝');
+  addLine('');
+  await typeLine('  API: GET /api/v2/agent/' + agentId + '/cred-report', 25, 'highlight');
+  await typeLine('  Requires x402 payment header.', 25);
+  await typeLine('  See docs.x402.org for client SDKs.', 25);
+  addLine('');
+
   // Action buttons
   const actions = document.createElement('div');
   actions.className = 'actions';
@@ -626,8 +645,16 @@ async function processReport(agentId) {
     }
   };
 
+  const apiBtn = document.createElement('button');
+  apiBtn.className = 'btn';
+  apiBtn.textContent = '[ VIEW API ]';
+  apiBtn.onclick = () => {
+    window.open(`${API_BASE}/api/v2/agent/${agentId}/cred`, '_blank');
+  };
+
   actions.appendChild(newBtn);
   actions.appendChild(shareBtn);
+  actions.appendChild(apiBtn);
   screen.appendChild(actions);
   screen.scrollTop = screen.scrollHeight;
 }

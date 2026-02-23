@@ -401,8 +401,11 @@ const PRICING = {
     agentMint: 1,    // $1 USDC via x402
     update: 0,       // Free in Phase 1
     verify: 0,       // Free
+    credReport: 1,   // $1 USDC for full Cred Report
     // Phase 2 (1000+ agents): agentMint → $10, update → $1
 };
+
+const TREASURY_ADDRESS = '0x01b686e547F4feA03BfC9711B7B5306375735d2a';
 
 // ═══════════════════════════════════════════════════════════════
 // V1 OG Allowlist & Referral System
@@ -607,6 +610,19 @@ if (PRICING.update > 0) {
             payTo: DEPLOYER_ADDRESS,
         }],
         description: 'Update agent traits and metadata',
+        mimeType: 'application/json',
+    };
+}
+
+if (PRICING.credReport > 0) {
+    x402Routes['GET /api/v2/agent/[id]/cred-report'] = {
+        accepts: [{
+            scheme: 'exact',
+            price: `$${PRICING.credReport}`,
+            network: 'eip155:8453',
+            payTo: TREASURY_ADDRESS,
+        }],
+        description: 'Full Cred Report with detailed scoring breakdown, recommendations, and signed receipt',
         mimeType: 'application/json',
     };
 }
@@ -2619,6 +2635,283 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
     } catch (e) {
         res.status(400).json({ error: e.message });
     }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Cred Score & Cred Report Endpoints
+// ═══════════════════════════════════════════════════════════════
+
+const CRED_WEIGHTS = {
+    activity: { weight: 0.20, label: 'Onchain Activity', description: 'Transaction count and recency' },
+    traits: { weight: 0.15, label: 'Trait Richness', description: 'Number and variety of traits' },
+    verify: { weight: 0.15, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
+    coinbase: { weight: 0.15, label: 'Coinbase Verification', description: 'Coinbase EAS attestation on Base' },
+    age: { weight: 0.10, label: 'Account Age', description: 'Days since mint' },
+    narrative: { weight: 0.10, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
+    origin: { weight: 0.10, label: 'Mint Origin', description: 'How the agent was minted (SIWA > API > Owner)' },
+    soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
+};
+
+function computeCredBreakdown(agent) {
+    const traits = agent.traits || [];
+    const personality = agent.personality || {};
+    const narrative = agent.narrative || {};
+    const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
+    const ageDays = mintDate ? Math.floor((Date.now() - mintDate.getTime()) / 86400000) : 0;
+
+    const hasVerif = (name) => traits.some(t => t.name === name);
+    const verifCount = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
+        .filter(v => hasVerif(v)).length;
+
+    const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
+
+    const components = {
+        activity: { raw: Math.min(100, (agent.points || 0) * 2), maxRaw: 100 },
+        traits: { raw: Math.min(100, traits.length * 12), maxRaw: 100 },
+        verify: { raw: Math.min(100, verifCount * 25), maxRaw: 100 },
+        coinbase: { raw: hasVerif('coinbase-verified') ? 100 : 0, maxRaw: 100 },
+        age: { raw: Math.min(100, ageDays * 5), maxRaw: 100 },
+        narrative: { raw: Math.min(100, narrativeFields.length * 25), maxRaw: 100 },
+        origin: { raw: agent.mintOrigin === 'AGENT_SIWA' ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
+        soulbound: { raw: agent.soulbound ? 100 : 0, maxRaw: 100 },
+    };
+
+    let totalWeighted = 0;
+    const breakdown = {};
+    for (const [key, meta] of Object.entries(CRED_WEIGHTS)) {
+        const comp = components[key];
+        const weighted = comp.raw * meta.weight;
+        totalWeighted += weighted;
+        breakdown[key] = {
+            label: meta.label,
+            description: meta.description,
+            weight: meta.weight,
+            rawScore: Math.round(comp.raw),
+            weightedScore: Math.round(weighted * 10) / 10,
+            maxWeightedScore: Math.round(100 * meta.weight * 10) / 10,
+        };
+    }
+
+    return { components: breakdown, computedScore: Math.round(totalWeighted) };
+}
+
+function getCredTier(score) {
+    if (score >= 91) return { tier: 'AAA', label: 'AAA — Elite', color: '#ffd700' };
+    if (score >= 76) return { tier: 'PRIME', label: 'Prime', color: '#33ff33' };
+    if (score >= 51) return { tier: 'INVESTMENT_GRADE', label: 'Investment Grade', color: '#80d0ff' };
+    if (score >= 26) return { tier: 'SPECULATIVE', label: 'Speculative', color: '#ffaa00' };
+    return { tier: 'JUNK', label: 'Junk', color: '#ff4444' };
+}
+
+function getCredRecommendations(agent, breakdown) {
+    const recs = [];
+    const traits = agent.traits || [];
+    const hasVerif = (name) => traits.some(t => t.name === name);
+
+    if (!hasVerif('siwa-verified')) recs.push({ action: 'Verify via SIWA', impact: '+3-4 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify` });
+    if (!hasVerif('x-verified')) recs.push({ action: 'Link X/Twitter account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/x` });
+    if (!hasVerif('github-verified')) recs.push({ action: 'Link GitHub account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/github` });
+    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Coinbase Verification', impact: '+15 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
+    if (!agent.soulbound) recs.push({ action: 'Make identity soulbound', impact: '+5 points', priority: 'LOW' });
+
+    const narrative = agent.narrative || {};
+    if (!narrative.origin) recs.push({ action: 'Add origin story', impact: '+2-3 points', priority: 'MEDIUM' });
+    if (!narrative.mission) recs.push({ action: 'Add mission statement', impact: '+2-3 points', priority: 'MEDIUM' });
+    if (!narrative.lore) recs.push({ action: 'Add lore', impact: '+2-3 points', priority: 'LOW' });
+
+    return recs.slice(0, 8);
+}
+
+// FREE: Basic cred score + tier
+app.get('/api/v2/agent/:id/cred', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const tierInfo = getCredTier(agent.credScore);
+
+        res.json({
+            tokenId,
+            name: agent.name,
+            credScore: agent.credScore,
+            tier: tierInfo.tier,
+            tierLabel: tierInfo.label,
+            scale: { junk: '0-25', speculative: '26-50', investmentGrade: '51-75', prime: '76-90', aaa: '91-100' },
+            fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
+            fullReportPrice: `$${PRICING.credReport} USDC`,
+            hint: 'Full report with breakdown, recommendations, and signed receipt available via x402 payment.',
+        });
+    } catch (e) {
+        res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
+// PAID: Full Cred Report ($1 USDC via x402)
+app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const tierInfo = getCredTier(agent.credScore);
+        const { components, computedScore } = computeCredBreakdown(agent);
+        const recommendations = getCredRecommendations(agent, components);
+
+        // Ranking
+        let rank = null, totalAgents = 0;
+        try {
+            const allAgents = indexer.getAllAgents();
+            totalAgents = allAgents.length;
+            const sorted = [...allAgents].sort((a, b) => (b.credScore || 0) - (a.credScore || 0));
+            const idx = sorted.findIndex(a => a.tokenId === tokenId);
+            if (idx >= 0) rank = idx + 1;
+        } catch {}
+
+        // Verification details
+        const traits = agent.traits || [];
+        const hasVerif = (name) => traits.some(t => t.name === name);
+        const verificationStatus = {
+            siwa: hasVerif('siwa-verified'),
+            x: hasVerif('x-verified'),
+            github: hasVerif('github-verified'),
+            farcaster: hasVerif('farcaster-verified'),
+            coinbase: hasVerif('coinbase-verified'),
+            total: ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified'].filter(v => hasVerif(v)).length,
+            max: 5,
+        };
+
+        // Generate signed receipt
+        const reportId = crypto.randomBytes(16).toString('hex');
+        const reportTimestamp = new Date().toISOString();
+        const receiptPayload = JSON.stringify({
+            reportId,
+            tokenId,
+            agentName: agent.name,
+            credScore: agent.credScore,
+            tier: tierInfo.tier,
+            generatedAt: reportTimestamp,
+            paidAmount: `$${PRICING.credReport} USDC`,
+            network: 'eip155:8453',
+        });
+        const receiptSignature = crypto.createHmac('sha256', DEPLOYER_KEY.slice(0, 32))
+            .update(receiptPayload).digest('hex');
+
+        // Ethos score
+        let ethosScore = agent.ethosScore || null;
+
+        // Narrative analysis
+        const narrative = agent.narrative || {};
+        const narrativeFields = ['origin', 'mission', 'lore', 'manifesto'];
+        const narrativeAnalysis = {};
+        for (const f of narrativeFields) {
+            narrativeAnalysis[f] = {
+                present: !!narrative[f],
+                length: narrative[f] ? narrative[f].length : 0,
+            };
+        }
+        const narrativeCompleteness = narrativeFields.filter(f => !!narrative[f]).length;
+
+        // Mint age
+        const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
+        const ageDays = mintDate ? Math.floor((Date.now() - mintDate.getTime()) / 86400000) : 0;
+
+        const report = {
+            reportId,
+            generatedAt: reportTimestamp,
+            paidReport: true,
+            price: `$${PRICING.credReport} USDC`,
+
+            // Agent identity
+            agent: {
+                tokenId,
+                name: agent.name,
+                framework: agent.framework,
+                owner: agent.owner,
+                agentAddress: agent.agentAddress,
+                mintOrigin: agent.mintOrigin,
+                mintedAt: agent.mintedAt,
+                ageDays,
+                soulbound: agent.soulbound,
+                verified: agent.verified,
+                generation: agent.generation,
+                version: agent.version,
+                mutationCount: agent.mutationCount,
+                points: agent.points,
+            },
+
+            // Cred score
+            credScore: {
+                score: agent.credScore,
+                computedScore,
+                tier: tierInfo.tier,
+                tierLabel: tierInfo.label,
+                rank,
+                totalAgents,
+                percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null,
+            },
+
+            // Full breakdown with weights
+            scoreBreakdown: components,
+            totalWeight: Object.values(CRED_WEIGHTS).reduce((s, w) => s + w.weight, 0),
+
+            // Verification details
+            verifications: verificationStatus,
+
+            // Narrative analysis
+            narrativeAnalysis: {
+                completeness: `${narrativeCompleteness}/4`,
+                fields: narrativeAnalysis,
+            },
+
+            // Personality snapshot
+            personality: agent.personality,
+
+            // External scores
+            externalScores: {
+                ethos: ethosScore,
+            },
+
+            // Actionable recommendations
+            recommendations,
+
+            // Tier scale reference
+            tierScale: [
+                { tier: 'JUNK', range: '0-25', description: 'High risk — minimal onchain presence' },
+                { tier: 'SPECULATIVE', range: '26-50', description: 'Some activity but unverified' },
+                { tier: 'INVESTMENT_GRADE', range: '51-75', description: 'Trustworthy agent with solid credentials' },
+                { tier: 'PRIME', range: '76-90', description: 'Top-tier agent with comprehensive presence' },
+                { tier: 'AAA', range: '91-100', description: 'Elite — fully verified, deeply established' },
+            ],
+
+            // Signed receipt (proof of payment)
+            receipt: {
+                reportId,
+                payload: receiptPayload,
+                signature: receiptSignature,
+                algorithm: 'HMAC-SHA256',
+                verifyEndpoint: '/api/v2/cred-report/verify-receipt',
+            },
+
+            explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
+        };
+
+        console.log(`[CRED REPORT] Paid report generated for Agent #${tokenId} (score: ${agent.credScore}, tier: ${tierInfo.tier})`);
+        res.json(report);
+    } catch (e) {
+        console.error(`[CRED REPORT] Error for #${req.params.id}:`, e.message);
+        res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
+// Receipt verification endpoint (free)
+app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
+    const { payload, signature } = req.body;
+    if (!payload || !signature) {
+        return res.status(400).json({ error: 'payload and signature required' });
+    }
+    const expected = crypto.createHmac('sha256', DEPLOYER_KEY.slice(0, 32))
+        .update(payload).digest('hex');
+    const valid = expected === signature;
+    let parsed = null;
+    try { parsed = JSON.parse(payload); } catch {}
+    res.json({ valid, report: parsed });
 });
 
 // ─── Error Handler ──────────────────────────────────────────────
