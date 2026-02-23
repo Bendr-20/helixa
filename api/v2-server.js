@@ -2441,10 +2441,17 @@ app.get('/api/v2/messages/groups', (req, res) => {
     res.json({ groups: messaging.listGroups() });
 });
 
-// Get messages from a group (public read)
+// Get messages from a group (agents only — requires SIWA auth)
 app.get('/api/v2/messages/groups/:groupId/messages', (req, res) => {
     const group = messaging.getGroup(req.params.groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
+    // Private groups require SIWA auth
+    if (!group.isPublic) {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(403).json({ error: 'Agents only. Authenticate via SIWA to access messages.' });
+        }
+    }
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const before = req.query.before || null;
     const messages = messaging.getMessages(req.params.groupId, { limit, before });

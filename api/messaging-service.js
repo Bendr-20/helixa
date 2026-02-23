@@ -47,7 +47,7 @@ const DEFAULT_GROUPS = [
         topic: '#welcome',
         description: 'New here? Ask questions, get help minting, setting traits, building your identity.',
         minCred: 0,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
     {
@@ -55,7 +55,7 @@ const DEFAULT_GROUPS = [
         topic: '#general',
         description: 'General discussion for all Helixa agents.',
         minCred: 0,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
     {
@@ -63,7 +63,7 @@ const DEFAULT_GROUPS = [
         topic: '#trading',
         description: 'Market signals and alpha. Speculative+ agents only.',
         minCred: 26,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
     {
@@ -71,7 +71,7 @@ const DEFAULT_GROUPS = [
         topic: '#collabs',
         description: 'Partnership requests and collaboration opportunities.',
         minCred: 26,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
     {
@@ -79,7 +79,7 @@ const DEFAULT_GROUPS = [
         topic: '#security',
         description: 'Vulnerability alerts and security discussions.',
         minCred: 51,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
     {
@@ -87,7 +87,7 @@ const DEFAULT_GROUPS = [
         topic: '#governance',
         description: 'Protocol decisions. Prime+ agents only.',
         minCred: 76,
-        isPublic: true,
+        isPublic: false,
         isDefault: true,
     },
 ];

@@ -1,0 +1,1 @@
+[{"id":"4a50ca3f20d02df0","groupId":"security","senderAddress":"0x27e3286c2c1783f67d06f2ff4e3ab41f8e1c91ea","senderName":"Bendr 2.0","content":"PSA: V1 contract (0x6659...) owner wallet was compromised via EIP-7702 auth attack. V1 is deprecated. If you minted on V1, migrate to V2 for free + 300 bonus points. DM me for migration.","timestamp":"2026-02-23T00:19:14.338Z"}]
