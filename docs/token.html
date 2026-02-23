@@ -98,9 +98,10 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
   <div class="stats">
     <div class="stat"><div class="label">Price</div><div class="value mint" id="price">—</div></div>
     <div class="stat"><div class="label">Market Cap</div><div class="value" id="mcap">—</div></div>
-    <div class="stat"><div class="label">24h Volume</div><div class="value" id="volume">—</div></div>
+    <div class="stat"><div class="label">24H Volume</div><div class="value" id="volume">—</div></div>
+    <div class="stat"><div class="label">Total Volume</div><div class="value" id="totalVolume">—</div></div>
     <div class="stat"><div class="label">Liquidity</div><div class="value" id="liquidity">—</div></div>
-    <div class="stat"><div class="label">Holders</div><div class="value green" id="holders">—</div></div>
+    <div class="stat"><div class="label">24H Txns</div><div class="value green" id="txns24h">—</div></div>
     <div class="stat"><div class="label">Total Transfers</div><div class="value" id="transfers">—</div></div>
   </div>
 
@@ -186,6 +187,7 @@ async function loadStats() {
   } catch(e) { console.error('Stats fetch failed:', e); }
 
   // Try pool data for liquidity
+  const POOL_ID = '0x55a4f7a23c4c2616cf848e639a08bd4283d13e66f5fcf34f828b5ca7e4e96324';
   try {
     const r = await fetch('https://api.geckoterminal.com/api/v2/networks/base/tokens/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3/pools?page=1');
     const d = await r.json();
@@ -195,11 +197,30 @@ async function loadStats() {
     }
   } catch(e) {}
 
-  // Fetch holder count and transfers from Blockscout
+  // Total volume from OHLCV daily candles (all pools combined)
+  try {
+    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/base/pools/${POOL_ID}/ohlcv/day?limit=100`);
+    const d = await r.json();
+    const candles = d.data?.attributes?.ohlcv_list || [];
+    const totalVol = candles.reduce((s, c) => s + Number(c[5]), 0);
+    if (totalVol > 0) document.getElementById('totalVolume').textContent = '$' + totalVol.toLocaleString(undefined,{maximumFractionDigits:0});
+  } catch(e) {}
+
+  // 24h txn count from DexScreener
+  try {
+    const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3');
+    const d = await r.json();
+    const p = d.pairs?.[0];
+    if (p?.txns?.h24) {
+      const total = (p.txns.h24.buys || 0) + (p.txns.h24.sells || 0);
+      document.getElementById('txns24h').textContent = total.toLocaleString();
+    }
+  } catch(e) {}
+
+  // Transfer count from Blockscout
   try {
     const r = await fetch('https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/counters');
     const d = await r.json();
-    if (d.token_holders_count) document.getElementById('holders').textContent = Number(d.token_holders_count).toLocaleString();
     if (d.transfers_count) document.getElementById('transfers').textContent = Number(d.transfers_count).toLocaleString();
   } catch(e) {}
 }
