@@ -2922,10 +2922,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal server error', errorId: errId });
 });
 
-// 404 handler
-app.use((req, res) => {
-    res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list' });
-});
 
 // ─── Token Stats (cached holder count from Blockscout transfers) ────────────
 let cachedTokenStats = { holders: 0, updatedAt: 0 };
@@ -2958,6 +2954,12 @@ setInterval(updateHolderCount, 30 * 60 * 1000);
 
 app.get('/api/v2/token/stats', (req, res) => {
     res.json(cachedTokenStats);
+});
+
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list' });
 });
 
 // ─── Start ──────────────────────────────────────────────────────
