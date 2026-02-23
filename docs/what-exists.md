@@ -99,7 +99,7 @@ Phase 2 (1000+ agents): agentMint → $10, update → $1
 | ID | Description | Status |
 |----|-------------|--------|
 | `6e985444` | Daily 8am CST morning update | Active |
-| `09323ba8` | Sock puppet minting (~5/hr) | Active (deployer funded) |
+| `09323ba8` | Auto-minting (~5/hr) | Active (deployer funded) |
 | `9cb301b1` | Molten check every 4 hours | Active |
 | `115d1fc9` | Based DAO auction monitor | Disabled |
 

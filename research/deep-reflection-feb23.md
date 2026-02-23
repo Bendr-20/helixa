@@ -9,7 +9,7 @@
 ### ✅ V2 Smart Contract — `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base Mainnet)
 - **Status**: Production. 1,032 agents minted. 40/40 tests passing.
 - **Reality**: The contract works. ERC-8004 compliant identity with personality, traits, narrative, naming, points, soulbound option. This is genuinely the most feature-rich 8004 implementation that exists.
-- **But**: ~900 of those 1,032 mints are sybil/sock puppets. Real agents with meaningful data: maybe 30-50. The "1K agents" number is a vanity metric.
+- **But**: ~900 of those 1,032 mints are automated early mints. Real agents with meaningful data: maybe 30-50. The "1K agents" number is a vanity metric.
 
 ### ✅ V2 API Server — `api.helixa.xyz` (port 3457, systemd managed)
 - **Status**: Running 13+ hours, auto-restart, SSL via Let's Encrypt, Cloudflare tunnel.

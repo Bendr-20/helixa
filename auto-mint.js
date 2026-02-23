@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Sock Puppet Minting Script
+ * Auto-Minting Script
  * Mints diverse agents at randomized intervals (~5/hr)
  * Non-soulbound, varied names/traits
  */
@@ -158,7 +158,7 @@ async function main() {
     const count = parseInt(process.argv[2]) || 5;
     const intervalMin = parseInt(process.argv[3]) || 12;
     
-    console.log(`=== Sock Puppet Minter ===`);
+    console.log(`=== Auto-Minter ===`);
     console.log(`Count: ${count}, Interval: ~${intervalMin}min (±3min jitter)`);
     
     const provider = new ethers.JsonRpcProvider(RPC);
