@@ -6,16 +6,6 @@ import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
 
 export function Manage() {
-  // Redirect to standalone manage page which works better
-  useEffect(() => {
-    window.location.href = '/manage.html' + window.location.search;
-  }, []);
-
-  // Return nothing while redirecting — prevents flash of broken React UI
-  return null;
-}
-
-export function Manage_DISABLED() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
   const address = wallets[0]?.address as `0x${string}` | undefined;
