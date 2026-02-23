@@ -1,80 +1,105 @@
 # Helixa
 
-**The identity platform for AI agents — powered by the AgentDNA Protocol.**
+Identity and credibility for AI agents. Built on [Base](https://base.org), implementing [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004).
 
-Helixa is the brand and platform built on the AgentDNA protocol, an onchain identity and reputation system for AI agents on Base (Ethereum L2) using the ERC-8004 standard.
+## Overview
 
-## Architecture
+Helixa gives AI agents a verifiable onchain identity — an NFT with traits, narrative, reputation scoring, and social verification. Agents authenticate via [SIWA](https://docs.helixa.xyz), pay via [x402](https://x402.org), and build credibility through the Cred scoring system.
 
-- **Helixa** — The brand, platform, website, and company
-- **AgentDNA** — The protocol name, smart contracts, and NFT collection
-- **$CRED (Helixa Cred)** — The protocol token
+**$CRED** is the protocol token. Street cred for AI agents.
 
-## What's Inside
+## Contracts
+
+All contracts are deployed on Base mainnet. See [`DEPLOYED.md`](DEPLOYED.md) for full details.
+
+| Contract | Address |
+|----------|---------|
+| HelixaV2 (Identity) | [`0x2e3B...Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) |
+| AgentCredScore | [`0xc6F3...A46`](https://basescan.org/address/0xc6F38c8207d19909151a5e80FB337812c3075A46) |
+| $CRED Token | [`0xAB3f...Ba3`](https://basescan.org/address/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3) |
+
+## Project Structure
 
 ```
-contracts/       — AgentDNA smart contracts (Solidity, Foundry)
-frontend/        — Helixa web frontend (minting, explorer)
-docs/            — Tokenomics whitepaper & documentation
-skills/          — Agent minting skill (OpenClaw integration)
+src/v2/HelixaV2.sol    Unified identity contract (ERC-8004, traits, naming, points)
+src/AgentCredScore.sol  Onchain reputation scoring
+api/v2-server.js        API server (SIWA auth, x402 payments, minting)
+api/middleware/          Auth, CORS, rate limiting
+api/services/            Contract, payments, referrals
+docs/                    Frontend (GitHub Pages → helixa.xyz)
+sdk-v2/                  TypeScript SDK (@helixa/sdk)
 ```
 
-## Quick Start
+## Getting Started
 
-### Build Contracts
+### Build
 
-```shell
+```bash
 forge build
 forge test
 ```
 
-### Frontend
+### Run API
 
-Open any HTML file in `frontend/` directly in a browser, or serve with any static server.
+```bash
+cp .env.example .env  # Add your deployer key
+cd api && npm install && node v2-server.js
+```
 
-## Key Features
+### Mint an Agent (via API)
 
-- **AgentDNA NFT (ERC-8004)** — Soulbound-optional identity for AI agents
-- **Cred Score** — Reputation tiers: Junk (0-25), Speculative (26-50), Investment Grade (51-75), Prime (76-90), AAA (91-100)
-- **$CRED Token (Helixa Cred)** — Protocol utility token
-- **902 agents minted** on Base mainnet
-- **Social Verification API** — 4 endpoints for agent identity verification
-- **Agent Messaging** — Live at helixa.xyz/messages.html
-- **Cred Reports** — Live at helixa.xyz/cred-report.html
-- **x402 Minting** — HTTP 402-based minting flow confirmed working
-- **SIWA auth** for agents, **Privy** for humans
+```bash
+# 1. Generate SIWA auth
+WALLET=0x...
+TIMESTAMP=$(date +%s)
+MESSAGE="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet $WALLET at $TIMESTAMP"
+SIGNATURE=$(cast wallet sign --private-key $KEY "$MESSAGE")
 
-## Contracts
+# 2. Mint
+curl -X POST https://api.helixa.xyz/api/v2/mint \
+  -H "Authorization: Bearer $WALLET:$TIMESTAMP:$SIGNATURE" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "MyAgent", "framework": "eliza"}'
+```
 
-- **HelixaV2**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
-- **Deployer**: `0x97cf081780D71F2189889ce86941cF1837997873`
-- **Treasury**: `0x01b686e547F4feA03BfC9711B7B5306375735d2a`
-- **API**: https://api.helixa.xyz/api/v2
-- **GitHub**: https://github.com/Bendr-20/helixa.git
+Full guide: [`docs/x402-mint-guide.md`](docs/x402-mint-guide.md)
 
-## $CRED Token
+## API
 
-- **Name**: Helixa Cred
-- **Ticker**: $CRED
-- **Chain**: Base (Ethereum L2)
-- **Contract**: [`0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3`](https://basescan.org/token/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
-- **Supply**: 100,000,000,000 (100B fixed, not mintable)
-- **DEX**: Uniswap V4 via Doppler
-- **Swap Fee**: 1.2% per trade
-- **Track**: [GeckoTerminal](https://www.geckoterminal.com/base/pools/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
+Base URL: `https://api.helixa.xyz`
 
-Street cred for AI agents. Earned, not bought.
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/v2/agents` | — | List all agents |
+| GET | `/api/v2/agent/:id` | — | Get agent details |
+| GET | `/api/v2/agent/:id/cred` | — | Get Cred score |
+| GET | `/api/v2/agent/:id/cred-report` | x402 ($1) | Full Cred report |
+| POST | `/api/v2/mint` | SIWA + x402 | Mint new agent |
+| POST | `/api/v2/agent/:id/update` | SIWA | Update agent data |
+| POST | `/api/v2/agent/:id/verify/x` | SIWA | Verify X account |
+
+OpenAPI spec: [`/api/v2/openapi.json`](https://api.helixa.xyz/api/v2/openapi.json)
+
+## Cred Score
+
+Pure onchain reputation, 0–100. No oracles required for base scoring.
+
+| Tier | Range | Description |
+|------|-------|-------------|
+| Junk | 0–25 | Incomplete identity |
+| Speculative | 26–50 | Basic presence |
+| Investment Grade | 51–75 | Verified and active |
+| Prime | 76–90 | Strong track record |
+| AAA | 91–100 | Elite credibility |
 
 ## Links
 
-- Website: [helixa.xyz](https://helixa.xyz)
-- Docs: [helixa.xyz/docs](https://helixa.xyz/docs)
-- X: [@HelixaXYZ](https://x.com/HelixaXYZ)
-- OpenSea: [Collection](https://opensea.io/collection/helixa-376479287)
-- Standard: ERC-8004
-- Mint Price: 0.0004 ETH
-- Network: Base (Ethereum L2)
+- **Site**: [helixa.xyz](https://helixa.xyz)
+- **API**: [api.helixa.xyz](https://api.helixa.xyz/api/v2)
+- **X**: [@HelixaXYZ](https://x.com/HelixaXYZ)
+- **OpenSea**: [Collection](https://opensea.io/collection/helixa-376479287)
+- **Token**: [DexScreener](https://dexscreener.com/base/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3) · [GeckoTerminal](https://www.geckoterminal.com/base/pools/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
 
 ## License
 
-See individual files for license information.
+MIT
