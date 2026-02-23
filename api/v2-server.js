@@ -623,6 +623,25 @@ if (Object.keys(x402Routes).length > 0) {
 
 const isContractDeployed = () => V2_CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000';
 
+// ─── Off-chain agent profiles (traits, personality, narrative) ───
+const PROFILES_PATH = path.join(__dirname, '..', 'data', 'agent-profiles.json');
+function loadProfiles() {
+    try { return JSON.parse(fs.readFileSync(PROFILES_PATH, 'utf8')); } catch { return {}; }
+}
+function saveProfiles(profiles) {
+    fs.writeFileSync(PROFILES_PATH, JSON.stringify(profiles, null, 2));
+}
+function getProfile(tokenId) {
+    const profiles = loadProfiles();
+    return profiles[tokenId] || null;
+}
+function saveProfile(tokenId, data) {
+    const profiles = loadProfiles();
+    profiles[tokenId] = { ...(profiles[tokenId] || {}), ...data, updatedAt: new Date().toISOString() };
+    saveProfiles(profiles);
+    return profiles[tokenId];
+}
+
 async function formatAgentV2(tokenId) {
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
     
@@ -680,7 +699,8 @@ async function formatAgentV2(tokenId) {
         else if (tName === 'linked-token-name') linkedToken.name = tCat;
     }
 
-    return {
+    // Build base result from onchain data
+    const result = {
         tokenId: Number(tokenId),
         agentAddress: agent.agentAddress,
         name: agent.name,
@@ -719,6 +739,29 @@ async function formatAgentV2(tokenId) {
         })),
         explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
     };
+
+    // Merge off-chain profile overrides (traits, personality, narrative)
+    const profile = getProfile(tokenId);
+    if (profile) {
+        if (profile.personality) {
+            result.personality = { ...(result.personality || {}), ...profile.personality };
+        }
+        if (profile.narrative) {
+            result.narrative = { ...(result.narrative || {}), ...profile.narrative };
+        }
+        if (profile.traits && profile.traits.length > 0) {
+            // Append off-chain traits (deduplicate by name)
+            const existingNames = new Set(result.traits.map(t => t.name));
+            for (const t of profile.traits) {
+                if (!existingNames.has(t.name)) {
+                    result.traits.push(t);
+                    existingNames.add(t.name);
+                }
+            }
+        }
+    }
+
+    return result;
 }
 
 // ─── Public Endpoints ───────────────────────────────────────────
@@ -1332,24 +1375,28 @@ function registrationFileToDataURI(regFile) {
 }
 
 // POST /api/v2/agent/:id/update — Update agent traits/personality/narrative
+// Default: off-chain storage. Add ?onchain=true to force onchain writes.
 app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
     const { personality, narrative, traits } = req.body;
+    const useOnchain = req.query.onchain === 'true';
     
     if (!isContractDeployed()) {
         return res.status(503).json({ error: 'V2 contract not yet deployed' });
     }
     
     try {
-        // Verify caller owns this agent OR is the agent itself
-        const [owner__, agentData__] = await Promise.all([
+        // Verify caller owns this agent, is the agent itself, or is contract owner
+        const [owner__, agentData__, contractOwner__] = await Promise.all([
             readContract.ownerOf(tokenId),
-            readContract.getAgent(tokenId)
+            readContract.getAgent(tokenId),
+            readContract.owner()
         ]);
         const caller__ = req.agent.address.toLowerCase();
         const isOwner__ = owner__.toLowerCase() === caller__;
         const isAgent__ = agentData__.agentAddress.toLowerCase() === caller__;
-        if (!isOwner__ && !isAgent__) {
+        const isContractOwner__ = contractOwner__.toLowerCase() === caller__;
+        if (!isOwner__ && !isAgent__ && !isContractOwner__) {
             return res.status(403).json({ error: 'Must be token owner or agent address' });
         }
         
@@ -1357,101 +1404,135 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
         const MAX_STR = 256;
         const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
         
-        // Update personality
-        if (personality) {
-            // Fetch current to merge partial updates
-            let current = {};
-            try {
-                const p = await readContract.getPersonality(tokenId);
-                // p.values is shadowed by ethers Result.values() method — use index
-                current = {
-                    quirks: p[0], communicationStyle: p[1],
-                    values: p[2], humor: p[3],
-                    riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
-                };
-            } catch {}
-            
-            const merged = { ...current, ...personality };
-            const tx = await contract.setPersonality(
-                tokenId,
-                [
-                    clamp(merged.quirks),
-                    clamp(merged.communicationStyle),
-                    clamp(merged.values),
-                    clamp(merged.humor),
-                    Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
-                    Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
-                ],
-            );
-            await tx.wait();
-            updated.push('personality');
-        }
-        
-        // Update narrative (partial — individual setters)
-        if (narrative) {
-            if (narrative.origin) {
-                const tx = await contract.setOrigin(tokenId, narrative.origin);
+        if (useOnchain) {
+            // ─── ONCHAIN PATH (legacy, costs gas) ─────────────────
+            if (personality) {
+                let current = {};
+                try {
+                    const p = await readContract.getPersonality(tokenId);
+                    current = {
+                        quirks: p[0], communicationStyle: p[1],
+                        values: p[2], humor: p[3],
+                        riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
+                    };
+                } catch {}
+                const merged = { ...current, ...personality };
+                const tx = await contract.setPersonality(
+                    tokenId,
+                    [
+                        clamp(merged.quirks),
+                        clamp(merged.communicationStyle),
+                        clamp(merged.values),
+                        clamp(merged.humor),
+                        Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
+                        Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
+                    ],
+                );
                 await tx.wait();
-                updated.push('narrative.origin');
+                updated.push('personality');
             }
-            if (narrative.mission) {
-                const tx = await contract.setMission(tokenId, narrative.mission);
-                await tx.wait();
-                updated.push('narrative.mission');
+            if (narrative) {
+                if (narrative.origin) { const tx = await contract.setOrigin(tokenId, narrative.origin); await tx.wait(); updated.push('narrative.origin'); }
+                if (narrative.mission) { const tx = await contract.setMission(tokenId, narrative.mission); await tx.wait(); updated.push('narrative.mission'); }
+                if (narrative.lore) { const tx = await contract.setLore(tokenId, narrative.lore); await tx.wait(); updated.push('narrative.lore'); }
+                if (narrative.manifesto) { const tx = await contract.setManifesto(tokenId, narrative.manifesto); await tx.wait(); updated.push('narrative.manifesto'); }
             }
-            if (narrative.lore) {
-                const tx = await contract.setLore(tokenId, narrative.lore);
-                await tx.wait();
-                updated.push('narrative.lore');
-            }
-            if (narrative.manifesto) {
-                const tx = await contract.setManifesto(tokenId, narrative.manifesto);
-                await tx.wait();
-                updated.push('narrative.manifesto');
-            }
-        }
-        
-        // Add traits
-        if (traits && Array.isArray(traits)) {
-            for (const t of traits.slice(0, 10)) {
-                if (t.name && t.category) {
-                    try {
-                        const tx = await contract.addTrait(tokenId, t.name, t.category);
-                        await tx.wait();
-                        updated.push(`trait:${t.name}`);
-                    } catch (e) {
-                        console.error(`[V2 UPDATE] Trait "${t.name}" failed: ${e.message}`);
+            if (traits && Array.isArray(traits)) {
+                for (const t of traits.slice(0, 10)) {
+                    if (t.name && t.category) {
+                        try {
+                            const tx = await contract.addTrait(tokenId, t.name, t.category);
+                            await tx.wait();
+                            updated.push(`trait:${t.name}`);
+                        } catch (e) {
+                            console.error(`[V2 UPDATE] Trait "${t.name}" failed: ${e.message}`);
+                        }
                     }
                 }
             }
-        }
-        
-        // ─── Sync to 8004 Registry (non-fatal) ─────────────────
-        let registrySync = null;
-        if (updated.length > 0) {
-            try {
-                const agent = await readContract.getAgent(tokenId);
-                const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
-                const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
-                const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
-                const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework, narrative);
-                const dataURI = registrationFileToDataURI(regFile);
-                
-                // Try to find agent's 8004 Registry ID via events or stored mapping
-                // For now, we update the URI if agent has a crossRegId stored
-                // TODO: maintain a tokenId → 8004 agentId mapping
-                // Fallback: re-register (creates new entry — acceptable for now)
-                const regTx = await registryContract['register(string)'](dataURI);
-                await regTx.wait();
-                registrySync = { status: 'synced', txHash: regTx.hash };
-                console.log(`[8004 SYNC] ✓ Agent #${tokenId} registry synced`);
-            } catch (e) {
-                registrySync = { status: 'failed', error: e.message.slice(0, 100) };
-                console.error(`[8004 SYNC] Failed for #${tokenId}: ${e.message}`);
+            // ─── Sync to 8004 Registry (non-fatal) ─────────────────
+            let registrySync = null;
+            if (updated.length > 0) {
+                try {
+                    const agent = await readContract.getAgent(tokenId);
+                    const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
+                    const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
+                    const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
+                    const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework, narrative);
+                    const dataURI = registrationFileToDataURI(regFile);
+                    const regTx = await registryContract['register(string)'](dataURI);
+                    await regTx.wait();
+                    registrySync = { status: 'synced', txHash: regTx.hash };
+                    console.log(`[8004 SYNC] ✓ Agent #${tokenId} registry synced`);
+                } catch (e) {
+                    registrySync = { status: 'failed', error: e.message.slice(0, 100) };
+                    console.error(`[8004 SYNC] Failed for #${tokenId}: ${e.message}`);
+                }
             }
+            res.json({ success: true, tokenId, updated, registrySync, storage: 'onchain' });
+        } else {
+            // ─── OFF-CHAIN PATH (default, no gas) ─────────────────
+            const profileData = {};
+            
+            if (personality) {
+                // Merge with existing off-chain or onchain personality
+                let current = {};
+                const existingProfile = getProfile(tokenId);
+                if (existingProfile && existingProfile.personality) {
+                    current = existingProfile.personality;
+                } else {
+                    try {
+                        const p = await readContract.getPersonality(tokenId);
+                        current = {
+                            quirks: p[0], communicationStyle: p[1],
+                            values: p[2], humor: p[3],
+                            riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
+                        };
+                    } catch {}
+                }
+                profileData.personality = {
+                    quirks: clamp(personality.quirks || current.quirks || ''),
+                    communicationStyle: clamp(personality.communicationStyle || current.communicationStyle || ''),
+                    values: clamp(personality.values || current.values || ''),
+                    humor: clamp(personality.humor || current.humor || ''),
+                    riskTolerance: Math.min(10, Math.max(0, parseInt(personality.riskTolerance ?? current.riskTolerance ?? 5))),
+                    autonomyLevel: Math.min(10, Math.max(0, parseInt(personality.autonomyLevel ?? current.autonomyLevel ?? 5))),
+                };
+                updated.push('personality');
+            }
+            
+            if (narrative) {
+                const existingProfile = getProfile(tokenId);
+                const currentNarrative = (existingProfile && existingProfile.narrative) || {};
+                profileData.narrative = { ...currentNarrative };
+                if (narrative.origin) { profileData.narrative.origin = clamp(narrative.origin); updated.push('narrative.origin'); }
+                if (narrative.mission) { profileData.narrative.mission = clamp(narrative.mission); updated.push('narrative.mission'); }
+                if (narrative.lore) { profileData.narrative.lore = clamp(narrative.lore); updated.push('narrative.lore'); }
+                if (narrative.manifesto) { profileData.narrative.manifesto = clamp(narrative.manifesto); updated.push('narrative.manifesto'); }
+            }
+            
+            if (traits && Array.isArray(traits)) {
+                const existingProfile = getProfile(tokenId);
+                const existingTraits = (existingProfile && existingProfile.traits) || [];
+                const existingNames = new Set(existingTraits.map(t => t.name));
+                const newTraits = [...existingTraits];
+                for (const t of traits.slice(0, 10)) {
+                    if (t.name && t.category && !existingNames.has(t.name)) {
+                        newTraits.push({ name: t.name, category: t.category, addedAt: new Date().toISOString() });
+                        existingNames.add(t.name);
+                        updated.push(`trait:${t.name}`);
+                    }
+                }
+                profileData.traits = newTraits;
+            }
+            
+            if (updated.length > 0) {
+                saveProfile(tokenId, profileData);
+                console.log(`[V2 UPDATE OFF-CHAIN] Agent #${tokenId}: ${updated.join(', ')}`);
+            }
+            
+            res.json({ success: true, tokenId, updated, storage: 'offchain' });
         }
-        
-        res.json({ success: true, tokenId, updated, registrySync });
     } catch (e) {
         res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
     }
@@ -1489,56 +1570,74 @@ app.post('/api/v2/agent/:id/human-update', async (req, res) => {
         const updated = [];
         const MAX_STR = 256;
         const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
+        const useOnchain = req.query.onchain === 'true';
         
-        // Update personality traits
+        // Update personality
         if (personality) {
-            let current = {};
-            try {
-                const p = await readContract.getPersonality(tokenId);
-                current = {
-                    quirks: p[0], communicationStyle: p[1],
-                    values: p[2], humor: p[3],
-                    riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
-                };
-            } catch {}
-            
-            const merged = { ...current, ...personality };
-            const tx = await contract.setPersonality(
-                tokenId,
-                [
-                    clamp(merged.quirks),
-                    clamp(merged.communicationStyle),
-                    clamp(merged.values),
-                    clamp(merged.humor),
-                    Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
-                    Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
-                ],
-            );
-            await tx.wait();
+            if (useOnchain) {
+                let current = {};
+                try {
+                    const p = await readContract.getPersonality(tokenId);
+                    current = {
+                        quirks: p[0], communicationStyle: p[1],
+                        values: p[2], humor: p[3],
+                        riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]),
+                    };
+                } catch {}
+                const merged = { ...current, ...personality };
+                const tx = await contract.setPersonality(
+                    tokenId,
+                    [
+                        clamp(merged.quirks),
+                        clamp(merged.communicationStyle),
+                        clamp(merged.values),
+                        clamp(merged.humor),
+                        Math.min(10, Math.max(0, parseInt(merged.riskTolerance) || 5)),
+                        Math.min(10, Math.max(0, parseInt(merged.autonomyLevel) || 5)),
+                    ],
+                );
+                await tx.wait();
+            } else {
+                let current = {};
+                const existingProfile = getProfile(tokenId);
+                if (existingProfile && existingProfile.personality) {
+                    current = existingProfile.personality;
+                } else {
+                    try {
+                        const p = await readContract.getPersonality(tokenId);
+                        current = { quirks: p[0], communicationStyle: p[1], values: p[2], humor: p[3], riskTolerance: Number(p[4]), autonomyLevel: Number(p[5]) };
+                    } catch {}
+                }
+                saveProfile(tokenId, {
+                    personality: {
+                        quirks: clamp(personality.quirks || current.quirks || ''),
+                        communicationStyle: clamp(personality.communicationStyle || current.communicationStyle || ''),
+                        values: clamp(personality.values || current.values || ''),
+                        humor: clamp(personality.humor || current.humor || ''),
+                        riskTolerance: Math.min(10, Math.max(0, parseInt(personality.riskTolerance ?? current.riskTolerance ?? 5))),
+                        autonomyLevel: Math.min(10, Math.max(0, parseInt(personality.autonomyLevel ?? current.autonomyLevel ?? 5))),
+                    }
+                });
+            }
             updated.push('personality');
         }
         
         // Update narrative
         if (narrative) {
-            if (narrative.origin) {
-                const tx = await contract.setOrigin(tokenId, clamp(narrative.origin));
-                await tx.wait();
-                updated.push('narrative.origin');
-            }
-            if (narrative.mission) {
-                const tx = await contract.setMission(tokenId, clamp(narrative.mission));
-                await tx.wait();
-                updated.push('narrative.mission');
-            }
-            if (narrative.lore) {
-                const tx = await contract.setLore(tokenId, clamp(narrative.lore));
-                await tx.wait();
-                updated.push('narrative.lore');
-            }
-            if (narrative.manifesto) {
-                const tx = await contract.setManifesto(tokenId, clamp(narrative.manifesto));
-                await tx.wait();
-                updated.push('narrative.manifesto');
+            if (useOnchain) {
+                if (narrative.origin) { const tx = await contract.setOrigin(tokenId, clamp(narrative.origin)); await tx.wait(); updated.push('narrative.origin'); }
+                if (narrative.mission) { const tx = await contract.setMission(tokenId, clamp(narrative.mission)); await tx.wait(); updated.push('narrative.mission'); }
+                if (narrative.lore) { const tx = await contract.setLore(tokenId, clamp(narrative.lore)); await tx.wait(); updated.push('narrative.lore'); }
+                if (narrative.manifesto) { const tx = await contract.setManifesto(tokenId, clamp(narrative.manifesto)); await tx.wait(); updated.push('narrative.manifesto'); }
+            } else {
+                const existingProfile = getProfile(tokenId);
+                const currentNarrative = (existingProfile && existingProfile.narrative) || {};
+                const narrativeData = { ...currentNarrative };
+                if (narrative.origin) { narrativeData.origin = clamp(narrative.origin); updated.push('narrative.origin'); }
+                if (narrative.mission) { narrativeData.mission = clamp(narrative.mission); updated.push('narrative.mission'); }
+                if (narrative.lore) { narrativeData.lore = clamp(narrative.lore); updated.push('narrative.lore'); }
+                if (narrative.manifesto) { narrativeData.manifesto = clamp(narrative.manifesto); updated.push('narrative.manifesto'); }
+                saveProfile(tokenId, { narrative: narrativeData });
             }
         }
         
@@ -1555,8 +1654,8 @@ app.post('/api/v2/agent/:id/human-update', async (req, res) => {
             fs.writeFileSync(socialPath, JSON.stringify(allSocial, null, 2));
         }
         
-        console.log(`[HUMAN UPDATE] Agent #${tokenId} by ${recoveredAddress}: ${updated.join(', ')}`);
-        res.json({ success: true, tokenId, updated, owner: recoveredAddress });
+        console.log(`[HUMAN UPDATE] Agent #${tokenId} by ${recoveredAddress}: ${updated.join(', ')} (${useOnchain ? 'onchain' : 'offchain'})`);
+        res.json({ success: true, tokenId, updated, owner: recoveredAddress, storage: useOnchain ? 'onchain' : 'offchain' });
     } catch (e) {
         console.error(`[HUMAN UPDATE] Error for #${tokenId}: ${e.message}`);
         res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
