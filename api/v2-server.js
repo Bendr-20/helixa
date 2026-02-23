@@ -2,642 +2,84 @@
 /**
  * Helixa V2 API Server
  * 
- * Features:
- *   - SIWA (Sign-In With Agent) authentication
- *   - x402 payment middleware (simplified, Phase 1: all free)
- *   - Clean V2 contract integration
- * 
- * Port: 3457 (separate from V1 on 3456)
+ * Identity & Credibility infrastructure for AI agents on Base.
+ * Implements ERC-8004, SIWA auth, x402 payments, Cred scoring.
  */
 
-const { ethers } = require('ethers');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const indexer = require('./indexer');
 
-// ─── Environment ────────────────────────────────────────────────
-const envPath = path.join(__dirname, '..', '.env');
-if (fs.existsSync(envPath)) {
-    fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
-        const [key, ...val] = line.split('=');
-        if (key && val.length) process.env[key.trim()] = val.join('=').trim();
-    });
-}
+// ─── Services ───────────────────────────────────────────────────
+const {
+    ethers, provider, readProvider, wallet,
+    contract, rawContract, readContract, usdcContract,
+    V2_ABI, V2_CONTRACT_ADDRESS, DEPLOYER_KEY, DEPLOYER_ADDRESS,
+    USDC_ADDRESS, ERC8004_REGISTRY, ERC8004_REGISTRY_ABI,
+    COINBASE_INDEXER, COINBASE_INDEXER_ABI, COINBASE_VERIFIED_ACCOUNT_SCHEMA,
+    EAS_CONTRACT, EAS_ABI, TREASURY_ADDRESS, CHAIN_ID, RPC_URL, isContractDeployed,
+} = require('./services/contract');
 
+const { requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
+const { securityHeaders, cors } = require('./middleware/cors');
+const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
+const {
+    verifyUSDCPayment, requirePayment, requirePaymentLegacy,
+    PRICING, usedPayments, saveUsedPayments,
+} = require('./services/payments');
+const {
+    V1_OG_WALLETS, REFERRAL_CODES, referralRegistry, referralStats,
+    OG_BONUS_POINTS, REFERRAL_POINTS_REFERRER, REFERRAL_POINTS_MINTER,
+    isOGWallet, resolveReferralCode, generateReferralCode, registerReferralCode,
+    saveReferralDB,
+} = require('./services/referrals');
+
+// ─── Express App ────────────────────────────────────────────────
 const PORT = process.env.V2_API_PORT || 3457;
-const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
-const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
-const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x97cf081780D71F2189889ce86941cF1837997873';
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-
-// TODO: Replace with actual deployed V2 contract address
-const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
-
-// ERC-8004 Canonical Identity Registry on Base
-// ERC-8004 Canonical Identity Registry on Base
-const ERC8004_REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
-
-// Coinbase Verifications (EAS on Base)
-const COINBASE_INDEXER = '0x2c7eE1E5f416dfF40054c27A62f7B357C4E8619C';
-const COINBASE_VERIFIED_ACCOUNT_SCHEMA = '0xf8b05c79f090979bf4a80270aba232dff11a10d9ca55c4f88de95317970f0de9';
-const EAS_CONTRACT = '0x4200000000000000000000000000000000000021';
-const COINBASE_INDEXER_ABI = [
-    'function getAttestationUid(address recipient, bytes32 schemaUid) external view returns (bytes32)',
-];
-const EAS_ABI = [
-    'function getAttestation(bytes32 uid) external view returns (tuple(bytes32 uid, bytes32 schema, uint64 time, uint64 expirationTime, uint64 revocationTime, bytes32 refUID, address attester, address recipient, bool revocable, bytes data))',
-];
-const ERC8004_REGISTRY_ABI = [
-    'function register(string agentURI) external returns (uint256 agentId)',
-    'function register(string agentURI, tuple(string metadataKey, bytes metadataValue)[] metadata) external returns (uint256 agentId)',
-    'function setAgentURI(uint256 agentId, string newURI) external',
-    'function getMetadata(uint256 agentId, string metadataKey) external view returns (bytes)',
-    'function setMetadata(uint256 agentId, string metadataKey, bytes metadataValue) external',
-];
-
-if (!DEPLOYER_KEY) {
-    console.error('ERROR: DEPLOYER_KEY not set in .env');
-    process.exit(1);
-}
-
-// ─── Contract Setup ─────────────────────────────────────────────
-const V2_ABI_PATH = path.join(__dirname, '..', 'out', 'HelixaV2.sol', 'HelixaV2.json');
-let V2_ABI;
-try {
-    const artifact = JSON.parse(fs.readFileSync(V2_ABI_PATH, 'utf8'));
-    V2_ABI = artifact.abi;
-    console.log(`✅ Loaded V2 ABI (${V2_ABI.filter(x => x.type === 'function').length} functions)`);
-} catch (e) {
-    console.error(`Failed to load V2 ABI from ${V2_ABI_PATH}: ${e.message}`);
-    console.error('Run: cd agentdna && forge build');
-    process.exit(1);
-}
-
-const USDC_ABI = [
-    'function balanceOf(address) view returns (uint256)',
-    'function transfer(address,uint256) returns (bool)',
-    'event Transfer(address indexed from, address indexed to, uint256 value)',
-];
-
-const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
-const READ_RPC_URL = process.env.READ_RPC_URL || 'https://mainnet.base.org';
-const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
-const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
-const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
-const rawContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
-const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
-const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
-
-// ═══════════════════════════════════════════════════════════════
-// ERC-8021 Builder Code Attribution
-// ═══════════════════════════════════════════════════════════════
-// Appends builder code suffix to all write transactions for Base rewards
-const BUILDER_CODE = process.env.BUILDER_CODE || 'bc_doy52p24';
-let ERC8021_SUFFIX;
-try {
-    const { Attribution } = require('ox/erc8021');
-    ERC8021_SUFFIX = Attribution.toDataSuffix({ codes: [BUILDER_CODE] });
-    console.log(`[ERC-8021] Builder code "${BUILDER_CODE}" → suffix: ${ERC8021_SUFFIX}`);
-} catch (e) {
-    console.warn('[ERC-8021] ox not installed, attribution disabled:', e.message);
-    ERC8021_SUFFIX = null;
-}
-
-// Proxy that auto-appends ERC-8021 suffix to all contract write calls
-const contract = new Proxy(rawContract, {
-    get(target, prop) {
-        const val = target[prop];
-        if (typeof val === 'function' && !['connect', 'attach', 'interface', 'runner', 'target', 'filters', 'queryFilter', 'on', 'once', 'removeListener', 'getAddress', 'getDeployedCode', 'waitForDeployment'].includes(prop)) {
-            return async function (...args) {
-                // Only append suffix to write transactions (not view/pure calls)
-                // Detect by checking if last arg is an overrides object or if function is non-view
-                const fragment = target.interface.getFunction(prop);
-                if (fragment && !fragment.constant && ERC8021_SUFFIX) {
-                    // It's a write function — populate tx and append suffix
-                    const tx = await target[prop].populateTransaction(...args);
-                    tx.data = tx.data + ERC8021_SUFFIX.slice(2); // remove 0x prefix from suffix
-                    return wallet.sendTransaction(tx);
-                }
-                return val.apply(target, args);
-            };
-        }
-        return val;
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════
-// SIWA (Sign-In With Agent) Authentication
-// ═══════════════════════════════════════════════════════════════
-//
-// Flow:
-//   1. Agent constructs message: "Sign-In With Agent: {domain} wants you to sign in with your wallet {address} at {timestamp}"
-//   2. Agent signs with their wallet private key
-//   3. Agent sends as Authorization header: "Bearer {address}:{timestamp}:{signature}"
-//   4. Server verifies signature, checks expiry (1 hour), attaches req.agent
-//
-
-const SIWA_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
-const SIWA_DOMAIN = 'api.helixa.xyz';
-
-function parseSIWA(authHeader) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-    const token = authHeader.slice(7);
-    const parts = token.split(':');
-    if (parts.length < 3) return null;
-    
-    const address = parts[0];
-    const timestamp = parts[1];
-    // Signature may contain colons (unlikely but safe)
-    const signature = parts.slice(2).join(':');
-    
-    return { address, timestamp, signature };
-}
-
-function verifySIWA(address, timestamp, signature) {
-    try {
-        const message = `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet ${address} at ${timestamp}`;
-        const recovered = ethers.verifyMessage(message, signature);
-        
-        if (recovered.toLowerCase() !== address.toLowerCase()) return false;
-        
-        let ts = parseInt(timestamp);
-        if (isNaN(ts)) return false;
-        // Auto-detect seconds vs milliseconds (seconds timestamps are < 1e12)
-        if (ts < 1e12) ts = ts * 1000;
-        if (Date.now() - ts > SIWA_EXPIRY_MS) return false;
-        
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function requireSIWA(req, res, next) {
-    const parsed = parseSIWA(req.headers.authorization);
-    if (!parsed) {
-        return res.status(401).json({
-            error: 'SIWA authentication required',
-            hint: 'Set Authorization: Bearer {address}:{timestamp}:{signature}',
-            message_format: `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
-        });
-    }
-    
-    if (!verifySIWA(parsed.address, parsed.timestamp, parsed.signature)) {
-        return res.status(401).json({ error: 'Invalid or expired SIWA token' });
-    }
-    
-    req.agent = {
-        address: ethers.getAddress(parsed.address), // checksummed
-        timestamp: parseInt(parsed.timestamp),
-    };
-    next();
-}
-
-
-// ═══════════════════════════════════════════════════════════════
-// x402 Payment Middleware
-// ═══════════════════════════════════════════════════════════════
-//
-// Simplified x402 flow:
-//   1. Client requests a paid endpoint without payment proof
-//   2. Server returns HTTP 402 with payment details:
-//      { amount, recipient, chain, asset, network }
-//   3. Client sends USDC to recipient, gets tx hash
-//   4. Client retries request with header: X-Payment-Proof: {txHash}
-//   5. Server verifies the USDC transfer onchain:
-//      - Correct recipient
-//      - Correct or greater amount
-//      - Transaction confirmed
-//   6. Request proceeds
-//
-// Phase 1: All prices are $0, so x402 gates are present but pass-through.
-//
-
-// Payment verification: track USED tx hashes to prevent replay
-const usedPayments = new Set();
-const USED_PAYMENTS_PATH = path.join(__dirname, '..', 'data', 'used-payments.json');
-try {
-    if (fs.existsSync(USED_PAYMENTS_PATH)) {
-        JSON.parse(fs.readFileSync(USED_PAYMENTS_PATH, 'utf8')).forEach(h => usedPayments.add(h));
-        console.log(`✅ Loaded ${usedPayments.size} used payment hashes`);
-    }
-} catch {}
-function saveUsedPayments() {
-    try {
-        const dir = path.dirname(USED_PAYMENTS_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(USED_PAYMENTS_PATH, JSON.stringify([...usedPayments]));
-    } catch {}
-}
-
-async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
-    if (usedPayments.has(txHash)) return false; // REPLAY BLOCKED
-    
-    try {
-        const receipt = await provider.getTransactionReceipt(txHash);
-        if (!receipt || receipt.status !== 1) return false;
-        
-        // Look for USDC Transfer event to our address
-        const transferTopic = ethers.id('Transfer(address,address,uint256)');
-        const recipientPadded = ethers.zeroPadValue(DEPLOYER_ADDRESS, 32).toLowerCase();
-        
-        for (const log of receipt.logs) {
-            if (log.address.toLowerCase() !== USDC_ADDRESS.toLowerCase()) continue;
-            if (log.topics[0] !== transferTopic) continue;
-            if (log.topics[2]?.toLowerCase() !== recipientPadded) continue;
-            
-            // USDC has 6 decimals
-            const amount = BigInt(log.data);
-            const expectedRaw = BigInt(Math.round(expectedAmountUSDC * 1e6));
-            
-            if (amount >= expectedRaw) {
-                usedPayments.add(txHash);
-                saveUsedPayments();
-                return true;
-            }
-        }
-        return false;
-    } catch {
-        return false;
-    }
-}
-
-// x402 Payment Middleware
-// Uses Dexter facilitator (x402.dexter.cash) for Base mainnet
-const FACILITATOR_URL = 'https://x402.dexter.cash';
-// USDC_ADDRESS already declared above
-
-function requirePayment(amountUSDC) {
-    if (amountUSDC <= 0) return (req, res, next) => next();
-    
-    return async (req, res, next) => {
-        const paymentHeader = req.get('X-PAYMENT') || req.get('Payment') || req.get('x-payment');
-        
-        if (!paymentHeader) {
-            // Return 402 with x402 payment requirements
-            res.status(402).json({
-                error: 'Payment Required',
-                'x-payment-required': {
-                    scheme: 'exact',
-                    network: 'eip155:8453',
-                    maxAmountRequired: String(amountUSDC * 1_000_000), // USDC has 6 decimals
-                    resource: req.originalUrl || req.url,
-                    description: `${amountUSDC} USDC payment required`,
-                    mimeType: 'application/json',
-                    payTo: DEPLOYER_ADDRESS,
-                    maxTimeoutSeconds: 300,
-                    asset: USDC_ADDRESS,
-                    extra: {
-                        name: 'Helixa Agent Mint',
-                        facilitatorUrl: FACILITATOR_URL,
-                    }
-                },
-                hint: 'Send x402 payment via X-PAYMENT header. See https://docs.x402.org for client SDKs.',
-            });
-            return;
-        }
-        
-        // Verify payment with facilitator
-        try {
-            const fetch = (await import('node-fetch')).default;
-            const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    payment: paymentHeader,
-                    payTo: DEPLOYER_ADDRESS,
-                    maxAmountRequired: String(amountUSDC * 1_000_000),
-                    network: 'eip155:8453',
-                    asset: USDC_ADDRESS,
-                    resource: req.originalUrl || req.url,
-                }),
-                signal: AbortSignal.timeout(15000),
-            });
-            
-            if (!verifyRes.ok) {
-                const err = await verifyRes.text();
-                console.error('x402 verify failed:', verifyRes.status, err);
-                return res.status(402).json({ error: 'Payment verification failed', detail: err });
-            }
-            
-            const result = await verifyRes.json();
-            
-            // Settle payment
-            const settleRes = await fetch(`${FACILITATOR_URL}/settle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    payment: paymentHeader,
-                    payTo: DEPLOYER_ADDRESS,
-                    maxAmountRequired: String(amountUSDC * 1_000_000),
-                    network: 'eip155:8453',
-                    asset: USDC_ADDRESS,
-                    resource: req.originalUrl || req.url,
-                }),
-                signal: AbortSignal.timeout(30000),
-            });
-            
-            if (!settleRes.ok) {
-                const err = await settleRes.text();
-                console.error('x402 settle failed:', settleRes.status, err);
-                return res.status(402).json({ error: 'Payment settlement failed', detail: err });
-            }
-            
-            req.payment = { amount: amountUSDC, verified: true, x402: true };
-            next();
-        } catch (err) {
-            console.error('x402 payment error:', err.message);
-            return res.status(500).json({ error: 'Payment processing error', message: err.message });
-        }
-    };
-}
-
-// Legacy payment verification (kept for backwards compat with existing clients)
-function requirePaymentLegacy(amountUSDC) {
-    return async (req, res, next) => {
-        if (amountUSDC <= 0) return next();
-        
-        const txHash = req.headers['x-payment-proof'];
-        if (!txHash) {
-            return res.status(402).json({
-                error: 'Payment Required',
-                x402: {
-                    protocol: 'x402',
-                    version: '1.0',
-                    amount: amountUSDC,
-                    asset: 'USDC',
-                    assetAddress: USDC_ADDRESS,
-                    recipient: DEPLOYER_ADDRESS,
-                    chain: 'base',
-                    chainId: 8453,
-                    network: 'eip155:8453',
-                },
-                hint: 'Send USDC to recipient, then retry with header X-Payment-Proof: {txHash}',
-            });
-        }
-        
-        if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
-            return res.status(400).json({ error: 'Invalid X-Payment-Proof tx hash' });
-        }
-        
-        const verified = await verifyUSDCPayment(txHash, amountUSDC);
-        if (!verified) {
-            return res.status(402).json({
-                error: 'Payment not verified',
-                detail: 'USDC transfer not found or insufficient amount',
-                expected: { amount: amountUSDC, recipient: DEPLOYER_ADDRESS, asset: USDC_ADDRESS },
-            });
-        }
-        
-        req.payment = { txHash, amount: amountUSDC, verified: true };
-        next();
-    };
-}
-
-// Phase 1 pricing
-const PRICING = {
-    agentMint: 1,    // $1 USDC via x402
-    update: 0,       // Free in Phase 1
-    verify: 0,       // Free
-    credReport: 1,   // $1 USDC for full Cred Report
-    // Phase 2 (1000+ agents): agentMint → $10, update → $1
-};
-
-const TREASURY_ADDRESS = '0x01b686e547F4feA03BfC9711B7B5306375735d2a';
-
-// ═══════════════════════════════════════════════════════════════
-// V1 OG Allowlist & Referral System
-// ═══════════════════════════════════════════════════════════════
-
-const OG_BONUS_POINTS = 200;
-const REFERRAL_POINTS_REFERRER = 50;
-const REFERRAL_POINTS_MINTER = 25;
-
-// V1 OG wallets → referral code (lowercase addresses)
-const V1_OG_WALLETS = {
-    '0x19b16428f0721a5f627f190ca61d493a632b423f': { name: 'Bendr 2.0', code: 'bendr', team: true },
-    '0x17d7dfa154dc0828ade4115b9eb8a0a91c0fbde4': { name: 'Quigbot', code: 'quigbot', team: true },
-    '0x20d76f14b9fe678ff17db751492d0b5b1edefa97': { name: 'deola', code: 'deola' },
-    '0xef05cb759c8397667286663902e79bd29f435e1b': { name: 'butter alpha', code: 'butter' },
-    '0xd43e021a28be16d91b75feb62575fe533f27c344': { name: 'MrsMillion', code: 'mrsmillion' },
-    '0x867bbb504cdbfc6742035a810b2cc1fe1c42407c': { name: 'MoltBot Agent', code: 'moltbot' },
-    '0x1d15ac2caa30abf43d45ce86ee0cb0f3c8b929f6': { name: 'LienXinOne', code: 'lienxin' },
-    '0x3862f531cf80f3664a287c4de453db8f2452d3eb': { name: 'irvinecold', code: 'irvine' },
-    '0x1a751188343bee997ff2132f5454e0b5da477705': { name: 'ANCNAgent', code: 'ancn' },
-    '0x331aa75a851cdbdb5d4e583a6658f9dc5a4f6ba3': { name: 'mell_agent', code: 'mell' },
-    '0x73286b4ae95358b040f3a405c2c76172e9f46ffa': { name: 'PremeBot', code: 'premebot' },
-    '0x34bdbca018125638f63cbac2780d7bd3d069dc83': { name: 'Xai', code: 'xai' },
-    '0x8a4c8bb8f70773b3ab8e18e0f0f469fad4637000': { name: 'Blockhead', code: 'blockhead' },
-    '0xf459dbaa62e3976b937ae9a4f6c31df96cd12a44': { name: 'R2d2', code: 'r2d2' },
-};
-
-// Reverse lookup: referral code → wallet address
-const REFERRAL_CODES = {};
-for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
-    REFERRAL_CODES[info.code] = addr;
-}
-
-// Dynamic referral registry: code → { wallet, name, tokenId }
-// Pre-seeded with OGs, new mints get added automatically
-const referralRegistry = {};
-for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
-    referralRegistry[info.code] = { wallet: addr, name: info.name, tokenId: null };
-}
-
-// Track referral usage (in-memory for now, persist to file later)
-const referralStats = {}; // code → { mints: 0, pointsEarned: 0 }
-
-// Persist referral registry to disk
-const REFERRAL_DB_PATH = path.join(__dirname, '..', 'data', 'referrals.json');
-function loadReferralDB() {
-    try {
-        if (fs.existsSync(REFERRAL_DB_PATH)) {
-            const data = JSON.parse(fs.readFileSync(REFERRAL_DB_PATH, 'utf8'));
-            Object.assign(referralRegistry, data.registry || {});
-            Object.assign(referralStats, data.stats || {});
-            console.log(`✅ Loaded ${Object.keys(referralRegistry).length} referral codes`);
-        }
-    } catch {}
-}
-function saveReferralDB() {
-    try {
-        const dir = path.dirname(REFERRAL_DB_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(REFERRAL_DB_PATH, JSON.stringify({ registry: referralRegistry, stats: referralStats }, null, 2));
-    } catch (e) {
-        console.error(`[REFERRAL] Failed to save DB: ${e.message}`);
-    }
-}
-loadReferralDB();
-
-function isOGWallet(address) {
-    return V1_OG_WALLETS[address.toLowerCase()] || null;
-}
-
-function resolveReferralCode(code) {
-    if (!code) return null;
-    const entry = referralRegistry[code.toLowerCase()];
-    return entry ? entry.wallet : null;
-}
-
-function generateReferralCode(name) {
-    // Sanitize: lowercase, alphanumeric + hyphens only, max 20 chars
-    let code = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20);
-    if (!code) code = 'agent';
-    // Deduplicate
-    if (!referralRegistry[code]) return code;
-    for (let i = 2; i < 100; i++) {
-        const candidate = `${code.slice(0, 17)}-${i}`;
-        if (!referralRegistry[candidate]) return candidate;
-    }
-    return `${code}-${Date.now().toString(36).slice(-4)}`;
-}
-
-function registerReferralCode(code, wallet, name, tokenId) {
-    referralRegistry[code] = { wallet: wallet.toLowerCase(), name, tokenId };
-    saveReferralDB();
-    return code;
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Express App
-// ═══════════════════════════════════════════════════════════════
-
 const app = express();
 app.set('trust proxy', true);
 app.use(express.json({ limit: '200kb' }));
+app.use(securityHeaders);
+app.use(cors);
+app.use(globalRateLimit);
 
-// ─── Security Headers ──────────────────────────────────────────
-app.use((req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    res.setHeader('Referrer-Policy', 'no-referrer');
-    next();
-});
-
-// ─── CORS (restricted) ─────────────────────────────────────────
-const ALLOWED_ORIGINS = [
-    'https://helixa.xyz',
-    'https://www.helixa.xyz',
-    'https://api.helixa.xyz',
-    'http://localhost:5173',
-    'http://localhost:3000',
-];
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin && ALLOWED_ORIGINS.includes(origin)) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (!origin) {
-        // Allow non-browser requests (curl, agents)
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Payment-Proof, X-Payment, Payment, Payment-Signature');
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    next();
-});
-
-// ─── Rate Limiting ──────────────────────────────────────────────
-const rateLimitWindows = {}; // ip → { count, resetAt }
-const RATE_LIMIT = { window: 60_000, maxRequests: 30 }; // 30 req/min
-const RATE_LIMIT_MINT = { window: 300_000, maxRequests: 3 }; // 3 mints per 5 min
-const mintRateLimits = {};
-
-function checkRateLimit(key, limits, store) {
-    const now = Date.now();
-    const entry = store[key];
-    if (!entry || now > entry.resetAt) {
-        store[key] = { count: 1, resetAt: now + limits.window };
-        return true;
-    }
-    entry.count++;
-    if (entry.count > limits.maxRequests) return false;
-    return true;
-}
-
-// Clean up stale entries every 5 min
-setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of Object.entries(rateLimitWindows)) { if (now > v.resetAt) delete rateLimitWindows[k]; }
-    for (const [k, v] of Object.entries(mintRateLimits)) { if (now > v.resetAt) delete mintRateLimits[k]; }
-}, 300_000);
-
-app.use((req, res, next) => {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
-    if (!checkRateLimit(ip, RATE_LIMIT, rateLimitWindows)) {
-        return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
-    }
-    req.clientIp = ip;
-    next();
-});
-
-// ─── x402 Official SDK Middleware ────────────────────────────────
-// Uses @x402/express with Dexter facilitator for Base mainnet
+// ─── x402 Official SDK Middleware ───────────────────────────────
 const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402ResourceServer } = require('@x402/express');
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
 
-const DEXTER_FACILITATOR_URL = 'https://x402.dexter.cash';
-const x402FacilitatorClient = new HTTPFacilitatorClient({ url: DEXTER_FACILITATOR_URL });
+const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
 
-// Build x402 route config from PRICING
 const x402Routes = {};
 if (PRICING.agentMint > 0) {
     x402Routes['POST /api/v2/mint'] = {
-        accepts: [{
-            scheme: 'exact',
-            price: `$${PRICING.agentMint}`,
-            network: 'eip155:8453',
-            payTo: DEPLOYER_ADDRESS,
-        }],
-        description: 'Mint a new Helixa agent identity',
-        mimeType: 'application/json',
+        accepts: [{ scheme: 'exact', price: `$${PRICING.agentMint}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
+        description: 'Mint a new Helixa agent identity', mimeType: 'application/json',
     };
 }
 if (PRICING.update > 0) {
-    // Wildcard — x402 matches on method+path pattern
     x402Routes['POST /api/v2/agent/:id/update'] = {
-        accepts: [{
-            scheme: 'exact',
-            price: `$${PRICING.update}`,
-            network: 'eip155:8453',
-            payTo: DEPLOYER_ADDRESS,
-        }],
-        description: 'Update agent traits and metadata',
-        mimeType: 'application/json',
+        accepts: [{ scheme: 'exact', price: `$${PRICING.update}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
+        description: 'Update agent traits and metadata', mimeType: 'application/json',
     };
 }
-
 if (PRICING.credReport > 0) {
     x402Routes['GET /api/v2/agent/[id]/cred-report'] = {
-        accepts: [{
-            scheme: 'exact',
-            price: `$${PRICING.credReport}`,
-            network: 'eip155:8453',
-            payTo: TREASURY_ADDRESS,
-        }],
-        description: 'Full Cred Report with detailed scoring breakdown, recommendations, and signed receipt',
-        mimeType: 'application/json',
+        accepts: [{ scheme: 'exact', price: `$${PRICING.credReport}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
+        description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
     };
 }
-
-// Only mount if there are paid routes
 if (Object.keys(x402Routes).length > 0) {
     app.use(x402PaymentMiddleware(x402Routes, x402Server));
     console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
-} else {
-    console.log('💰 x402: All routes free (Phase 1)');
 }
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-const isContractDeployed = () => V2_CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000';
 
 // ─── Off-chain agent profiles (traits, personality, narrative) ───
 const PROFILES_PATH = path.join(__dirname, '..', 'data', 'agent-profiles.json');
