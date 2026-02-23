@@ -2418,5 +2418,5 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`   Payments: x402 (Phase 1 — all free)`);
     console.log(`   RPC: ${RPC_URL}`);
     console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
-    console.log(`   Deployer: ${wallet.address}\n`);
+    console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
 });

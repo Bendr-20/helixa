@@ -48,8 +48,7 @@ const USDC_ABI = [
 ];
 
 if (!DEPLOYER_KEY) {
-    console.error('ERROR: DEPLOYER_KEY not set in .env');
-    process.exit(1);
+    console.warn('⚠️  DEPLOYER_KEY not set — running in READ-ONLY mode (no contract writes)');
 }
 
 // ─── Load V2 ABI ────────────────────────────────────────────────
@@ -68,8 +67,8 @@ try {
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
 const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
-const wallet = new ethers.Wallet(DEPLOYER_KEY, provider);
-const rawContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet);
+const wallet = DEPLOYER_KEY ? new ethers.Wallet(DEPLOYER_KEY, provider) : null;
+const rawContract = wallet ? new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet) : null;
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
 const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, provider);
 
@@ -84,7 +83,7 @@ try {
     console.warn('[ERC-8021] ox not available, attribution disabled');
 }
 
-const contract = new Proxy(rawContract, {
+const contract = rawContract ? new Proxy(rawContract, {
     get(target, prop) {
         const val = target[prop];
         if (typeof val === 'function' && !['connect', 'attach', 'interface', 'runner', 'target', 'filters', 'queryFilter', 'on', 'once', 'removeListener', 'getAddress', 'getDeployedCode', 'waitForDeployment'].includes(prop)) {
@@ -100,7 +99,7 @@ const contract = new Proxy(rawContract, {
         }
         return val;
     }
-});
+}) : null;
 
 const isContractDeployed = () => V2_CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000';
 
