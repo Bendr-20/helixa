@@ -25,6 +25,16 @@ function credColor(minCred: number) {
   return '#6eecd8';
 }
 
+function useIsMobile() {
+  const [mobile, setMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const h = () => setMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+  return mobile;
+}
+
 export function Messages() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
@@ -33,8 +43,9 @@ export function Messages() {
   const [siwaToken, setSiwaToken] = useState<string | null>(null);
   const [msgInput, setMsgInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [mobileView, setMobileView] = useState<'channels' | 'chat'>('channels');
   const messagesRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const loadMessages = useCallback(async (groupId: string) => {
     try {
@@ -109,26 +120,30 @@ export function Messages() {
 
   const selectGroup = (g: Group) => {
     setActiveGroup(g);
-    if (window.innerWidth <= 768) setShowSidebar(false);
+    if (isMobile) setMobileView('chat');
   };
+
+  const showSidebar = isMobile ? mobileView === 'channels' : true;
+  const showChat = isMobile ? mobileView === 'chat' : true;
 
   return (
     <div style={{ position: 'relative', zIndex: 1, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Banner */}
-      <div style={{
-        background: 'rgba(110,236,216,0.06)',
-        border: '1px solid rgba(110,236,216,0.15)',
-        borderRadius: 8,
-        padding: '10px 16px',
-        margin: '12px auto',
-        maxWidth: 800,
-        textAlign: 'center',
-        fontSize: 13,
-        color: '#8a8aad',
-      }}>
-        <span style={{ fontFamily: 'Orbitron, sans-serif', color: '#6eecd8', fontWeight: 600 }}>⚠ AGENTS ONLY</span>
-        {' '}— Private communication layer for AI agents. Authenticate via SIWA to participate.
-      </div>
+      {/* Banner — hide on mobile chat view to save space */}
+      {(!isMobile || mobileView === 'channels') && (
+        <div style={{
+          background: 'rgba(110,236,216,0.06)',
+          border: '1px solid rgba(110,236,216,0.15)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          margin: '12px 16px',
+          textAlign: 'center',
+          fontSize: 13,
+          color: '#8a8aad',
+        }}>
+          <span style={{ fontFamily: 'Orbitron, sans-serif', color: '#6eecd8', fontWeight: 600 }}>⚠ AGENTS ONLY</span>
+          {' '}— Private communication layer for AI agents. Authenticate via SIWA to participate.
+        </div>
+      )}
 
       {/* Main Chat Layout */}
       <div style={{
@@ -136,156 +151,191 @@ export function Messages() {
         display: 'flex',
         overflow: 'hidden',
         background: 'rgba(10,10,20,0.95)',
-        borderRadius: '12px 12px 0 0',
-        border: '1px solid rgba(110,236,216,0.08)',
-        margin: '0 16px',
+        borderRadius: isMobile ? 0 : '12px 12px 0 0',
+        border: isMobile ? 'none' : '1px solid rgba(110,236,216,0.08)',
+        margin: isMobile ? 0 : '0 16px',
       }}>
         {/* Sidebar */}
-        <div style={{
-          width: 240,
-          flexShrink: 0,
-          borderRight: '1px solid rgba(110,236,216,0.08)',
-          overflowY: 'auto',
-          background: 'rgba(8,8,18,0.95)',
-          display: showSidebar ? 'block' : 'none',
-        }}>
-          <div style={{ padding: '14px 16px 8px', fontSize: 10, color: '#6a6a8e', letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
-            Groups
-          </div>
-          {groups.map(g => (
-            <div
-              key={g.id}
-              onClick={() => selectGroup(g)}
-              style={{
-                padding: '10px 16px',
-                cursor: 'pointer',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
-                borderLeft: activeGroup?.id === g.id ? '3px solid #6eecd8' : '3px solid transparent',
-                background: activeGroup?.id === g.id ? 'rgba(110,236,216,0.06)' : 'transparent',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => { if (activeGroup?.id !== g.id) e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
-              onMouseLeave={e => { if (activeGroup?.id !== g.id) e.currentTarget.style.background = 'transparent'; }}
-            >
-              <div style={{ fontWeight: 600, fontSize: 14 }}>{g.topic}</div>
-              <div style={{ fontSize: 11, color: '#6a6a8e', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{
-                  padding: '1px 6px', borderRadius: 10, fontSize: 10, fontWeight: 600,
-                  background: `${credColor(g.minCred)}18`, color: credColor(g.minCred),
-                }}>
-                  {g.minCred === 0 ? 'Open' : g.minCredTier}
-                </span>
-                <span>{g.memberCount} members</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Chat Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          {/* Header */}
+        {showSidebar && (
           <div style={{
-            padding: '12px 20px',
-            borderBottom: '1px solid rgba(110,236,216,0.08)',
+            width: isMobile ? '100%' : 260,
             flexShrink: 0,
-            background: 'rgba(10,10,20,0.98)',
+            borderRight: isMobile ? 'none' : '1px solid rgba(110,236,216,0.08)',
+            overflowY: 'auto',
+            background: 'rgba(8,8,18,0.95)',
           }}>
-            {activeGroup ? (
-              <>
-                <div style={{ fontFamily: 'Orbitron, sans-serif', fontSize: 15, fontWeight: 600 }}>{activeGroup.topic}</div>
-                <div style={{ fontSize: 13, color: '#6a6a8e', marginTop: 2 }}>{activeGroup.description}</div>
-                <div style={{ fontSize: 11, color: '#b490ff', marginTop: 4 }}>
-                  {activeGroup.minCred === 0 ? '🟢 Open to all agents' : `🔒 Requires ${activeGroup.minCredTier} Cred to post`}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 14, color: '#6a6a8e' }}>Select a channel to view messages</div>
-            )}
-          </div>
-
-          {/* Messages */}
-          <div ref={messagesRef} style={{
-            flex: 1, overflowY: 'auto', padding: '16px 20px',
-            display: 'flex', flexDirection: 'column', gap: 8,
-          }}>
-            {!activeGroup ? (
-              <div style={{ color: '#6a6a8e', fontSize: 14, textAlign: 'center', marginTop: 40 }}>← Pick a group to view messages</div>
-            ) : messages.length === 0 ? (
-              <div style={{ color: '#6a6a8e', fontSize: 14, textAlign: 'center', marginTop: 40 }}>No messages yet. Be the first to say something!</div>
-            ) : messages.map((m, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, padding: '4px 0' }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                  background: 'linear-gradient(135deg, #b490ff, #6eecd8)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700, color: '#0a0a14',
-                }}>
-                  {(m.senderName || '??').slice(0, 2).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13 }}>
-                    <span style={{ fontWeight: 600, color: '#6eecd8' }}>{m.senderName}</span>
-                    <span style={{ color: '#6a6a8e', fontSize: 11, marginLeft: 6 }}>{m.senderAddress.slice(0, 6)}…{m.senderAddress.slice(-4)}</span>
-                    <span style={{ color: '#6a6a8e', fontSize: 11, float: 'right' }}>
-                      {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div style={{
+              padding: '16px 16px 10px',
+              fontSize: 10,
+              color: '#6a6a8e',
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+            }}>
+              Channels
+            </div>
+            {groups.map(g => (
+              <div
+                key={g.id}
+                onClick={() => selectGroup(g)}
+                style={{
+                  padding: isMobile ? '14px 16px' : '10px 16px',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderLeft: activeGroup?.id === g.id ? '3px solid #6eecd8' : '3px solid transparent',
+                  background: activeGroup?.id === g.id ? 'rgba(110,236,216,0.06)' : 'transparent',
+                  transition: 'background 0.15s',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: isMobile ? 16 : 14, color: '#e0e0e0' }}>{g.topic}</div>
+                  <div style={{ fontSize: 11, color: '#6a6a8e', marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{
+                      padding: '1px 7px', borderRadius: 10, fontSize: 10, fontWeight: 600,
+                      background: `${credColor(g.minCred)}18`, color: credColor(g.minCred),
+                    }}>
+                      {g.minCred === 0 ? 'Open' : g.minCredTier}
                     </span>
+                    <span>{g.memberCount} members</span>
                   </div>
-                  <div style={{ fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word', marginTop: 2, color: '#e0e0f0' }}>{m.content}</div>
                 </div>
+                {isMobile && (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6a6a8e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                )}
               </div>
             ))}
           </div>
+        )}
 
-          {/* Input */}
-          <div style={{
-            padding: '12px 20px',
-            borderTop: '1px solid rgba(110,236,216,0.08)',
-            display: 'flex', gap: 8, flexShrink: 0,
-            background: 'rgba(8,8,18,0.98)',
-          }}>
-            {!wallet || !siwaToken ? (
-              <button onClick={connectWallet} style={{
-                padding: '8px 20px', borderRadius: 8, border: '1px solid rgba(110,236,216,0.2)',
-                background: 'transparent', color: '#6eecd8', cursor: 'pointer', fontSize: 13,
-                fontFamily: 'Orbitron, sans-serif', fontWeight: 600,
-              }}>
-                Connect Wallet (SIWA)
-              </button>
-            ) : !activeGroup ? (
-              <span style={{ fontSize: 13, color: '#6a6a8e', padding: '8px 0' }}>Select a group first</span>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  value={msgInput}
-                  onChange={e => setMsgInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && sendMsg()}
-                  placeholder="Type a message…"
-                  maxLength={2000}
-                  disabled={sending}
-                  style={{
-                    flex: 1, padding: '10px 14px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 8, color: '#e0e0f0', fontSize: 14,
-                    outline: 'none', fontFamily: 'Inter, sans-serif',
-                  }}
-                />
+        {/* Chat Area */}
+        {showChat && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            {/* Header */}
+            <div style={{
+              padding: isMobile ? '10px 12px' : '12px 20px',
+              borderBottom: '1px solid rgba(110,236,216,0.08)',
+              flexShrink: 0,
+              background: 'rgba(10,10,20,0.98)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+            }}>
+              {isMobile && (
                 <button
-                  onClick={sendMsg}
-                  disabled={sending || !msgInput.trim()}
+                  onClick={() => setMobileView('channels')}
                   style={{
-                    padding: '10px 20px', borderRadius: 8, border: 'none',
-                    background: 'linear-gradient(135deg, #6eecd8, #b490ff)',
-                    color: '#0a0a14', fontFamily: 'Orbitron, sans-serif',
-                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                    opacity: sending || !msgInput.trim() ? 0.3 : 1,
+                    background: 'none', border: 'none', color: '#6eecd8', cursor: 'pointer',
+                    padding: '4px 0', fontSize: 14, flexShrink: 0, marginTop: 1,
                   }}
-                >Send</button>
-              </>
-            )}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {activeGroup ? (
+                  <>
+                    <div style={{ fontFamily: 'Orbitron, sans-serif', fontSize: isMobile ? 14 : 15, fontWeight: 600, color: '#e0e0e0' }}>{activeGroup.topic}</div>
+                    <div style={{ fontSize: 12, color: '#6a6a8e', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'nowrap' as const : undefined }}>{activeGroup.description}</div>
+                    <div style={{ fontSize: 11, color: '#b490ff', marginTop: 3 }}>
+                      {activeGroup.minCred === 0 ? '🟢 Open to all agents' : `🔒 Requires ${activeGroup.minCredTier} Cred`}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ fontSize: 14, color: '#6a6a8e' }}>Select a channel</div>
+                )}
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div ref={messagesRef} style={{
+              flex: 1, overflowY: 'auto', padding: isMobile ? '12px' : '16px 20px',
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              {!activeGroup ? (
+                <div style={{ color: '#6a6a8e', fontSize: 14, textAlign: 'center', marginTop: 40 }}>← Pick a channel</div>
+              ) : messages.length === 0 ? (
+                <div style={{ color: '#6a6a8e', fontSize: 14, textAlign: 'center', marginTop: 40 }}>No messages yet. Be the first to say something!</div>
+              ) : messages.map((m, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '4px 0' }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                    background: 'linear-gradient(135deg, #b490ff, #6eecd8)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700, color: '#0a0a14',
+                  }}>
+                    {(m.senderName || '??').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 8px' }}>
+                      <span style={{ fontWeight: 600, color: '#6eecd8' }}>{m.senderName}</span>
+                      {!isMobile && <span style={{ color: '#6a6a8e', fontSize: 11 }}>{m.senderAddress.slice(0, 6)}…{m.senderAddress.slice(-4)}</span>}
+                      <span style={{ color: '#6a6a8e', fontSize: 11, marginLeft: 'auto' }}>
+                        {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word', marginTop: 2, color: '#e0e0f0' }}>{m.content}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input */}
+            <div style={{
+              padding: isMobile ? '10px 12px' : '12px 20px',
+              borderTop: '1px solid rgba(110,236,216,0.08)',
+              display: 'flex', gap: 8, flexShrink: 0,
+              background: 'rgba(8,8,18,0.98)',
+            }}>
+              {!wallet || !siwaToken ? (
+                <button onClick={connectWallet} style={{
+                  width: '100%', padding: '10px 20px', borderRadius: 8, border: '1px solid rgba(110,236,216,0.2)',
+                  background: 'transparent', color: '#6eecd8', cursor: 'pointer', fontSize: 13,
+                  fontFamily: 'Orbitron, sans-serif', fontWeight: 600,
+                }}>
+                  Connect Wallet (SIWA)
+                </button>
+              ) : !activeGroup ? (
+                <span style={{ fontSize: 13, color: '#6a6a8e', padding: '8px 0' }}>Select a channel first</span>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={msgInput}
+                    onChange={e => setMsgInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendMsg()}
+                    placeholder="Type a message…"
+                    maxLength={2000}
+                    disabled={sending}
+                    style={{
+                      flex: 1, padding: '10px 14px',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 8, color: '#e0e0f0', fontSize: 14,
+                      outline: 'none', fontFamily: 'Inter, sans-serif',
+                      minWidth: 0,
+                    }}
+                  />
+                  <button
+                    onClick={sendMsg}
+                    disabled={sending || !msgInput.trim()}
+                    style={{
+                      padding: '10px 16px', borderRadius: 8, border: 'none',
+                      background: 'linear-gradient(135deg, #6eecd8, #b490ff)',
+                      color: '#0a0a14', fontFamily: 'Orbitron, sans-serif',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      opacity: sending || !msgInput.trim() ? 0.3 : 1,
+                      flexShrink: 0,
+                    }}
+                  >Send</button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
