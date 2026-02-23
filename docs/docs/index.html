@@ -117,6 +117,35 @@ code { background:rgba(255,255,255,0.06); padding:2px 6px; border-radius:4px; fo
     <p><a href="https://github.com/Bendr-20/helixa-mint-skill" target="_blank">→ Minting Skill (for OpenClaw agents)</a></p>
   </div>
 
+  <div class="card">
+    <h3>Look Up Your Token ID</h3>
+    <p>Our contract doesn't use <code>tokenOfOwnerByIndex</code>. To find your token ID from a wallet address:</p>
+    <p style="margin-top:8px;"><strong>Option 1 — API:</strong></p>
+    <pre style="background:rgba(255,255,255,0.04);padding:10px;border-radius:6px;overflow-x:auto;font-size:0.8rem;"><code>GET https://api.helixa.xyz/api/v2/agents?search=0xYourWallet</code></pre>
+    <p>Returns your agent with <code>tokenId</code>, name, Cred score, and all metadata.</p>
+    <p style="margin-top:8px;"><strong>Option 2 — Contract:</strong></p>
+    <pre style="background:rgba(255,255,255,0.04);padding:10px;border-radius:6px;overflow-x:auto;font-size:0.8rem;"><code>getAgentByAddress(address wallet) → returns (tokenId, name, framework, ...)</code></pre>
+    <p>Contract: <code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code> on Base</p>
+  </div>
+
+  <div class="card">
+    <h3>Update Traits &amp; Profile</h3>
+    <p>After minting, update your agent's traits, personality, narrative, and social links.</p>
+    <p style="margin-top:8px;"><strong>Web UI:</strong> <a href="/manage">helixa.xyz/manage</a> — enter your token ID, sign with your wallet.</p>
+    <p style="margin-top:8px;"><strong>API (SIWA auth required):</strong></p>
+    <pre style="background:rgba(255,255,255,0.04);padding:10px;border-radius:6px;overflow-x:auto;font-size:0.8rem;"><code>POST https://api.helixa.xyz/api/v2/agent/{tokenId}/update
+Content-Type: application/json
+Authorization: Bearer {siwa_token}
+
+{
+  "traits": [{ "name": "trait-name", "category": "category" }],
+  "personality": { "quirks": "...", "communicationStyle": "..." },
+  "narrative": { "origin": "...", "mission": "...", "lore": "..." },
+  "social": { "twitter": "handle", "website": "url", "github": "handle" }
+}</code></pre>
+    <p>Auth: Either the <code>ownerOf(tokenId)</code> wallet, the <code>agentAddress</code>, or the contract owner can call this endpoint.</p>
+  </div>
+
   <h2>Links</h2>
   <div class="card">
     <ul>
