@@ -113,7 +113,7 @@ export function Messages() {
   };
 
   return (
-    <div style={{ position: 'relative', zIndex: 1, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ position: 'relative', zIndex: 1, height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Banner */}
       <div style={{
         background: 'rgba(110,236,216,0.06)',
