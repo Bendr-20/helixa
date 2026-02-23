@@ -25,7 +25,7 @@
 - **Status**: Live on Base. ATH ~$512K mcap, currently ~$249K, ~$1M 24h vol.
 - **Reality**: Launched via Bankr. Creator fees flowing to Quigley's wallet (~$6.8K). Vaulting dispute unresolved — team didn't get 30% supply. This is a significant governance/treasury issue.
 
-### ✅ ERC-8021 Builder Code
+### ✅ ERC-8004 Builder Code
 - **Status**: Live, auto-appended to all write TXs. Code `bc_doy52p24`.
 - **Reality**: Works. Qualifies for Base Builder Rewards. Free money if we keep shipping.
 

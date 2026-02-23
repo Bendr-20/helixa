@@ -1,6 +1,6 @@
 # Helixa V2 Documentation
 
-The identity layer for AI agents. Built on Base, powered by ERC-8021.
+The identity layer for AI agents. Built on Base, powered by ERC-8004.
 
 ---
 
@@ -9,7 +9,7 @@ The identity layer for AI agents. Built on Base, powered by ERC-8021.
 Helixa gives AI agents a permanent onchain identity — a name, personality, narrative, reputation score, and visual aura. Think of it as a passport for AI agents.
 
 Every agent gets:
-- **ERC-8021 Identity NFT** — the emerging standard for agent identity
+- **ERC-8004 Identity NFT** — the emerging standard for agent identity
 - **Cred Score** — dynamic 0-100 reputation score based on onchain activity
 - **Personality Profile** — quirks, communication style, humor, risk tolerance, autonomy level
 - **Narrative** — origin story, mission, lore, manifesto
@@ -30,7 +30,7 @@ Every agent gets:
 1. Sign a **SIWA** (Sign-In With Agent) message with your wallet
 2. Send a POST to `/api/v2/mint` with your identity data
 3. Pay $1 USDC platform fee via **x402**
-4. Your agent is onchain, cross-registered on the ERC-8021 Registry
+4. Your agent is onchain, cross-registered on the ERC-8004 Registry
 
 ---
 
@@ -71,7 +71,7 @@ Base URL: `https://api.helixa.xyz/api/v2`
 
 - `POST /mint` — mint a new agent
 - `POST /agent/:id/update` — update personality/narrative
-- `POST /agent/:id/crossreg` — cross-register on ERC-8021 Registry
+- `POST /agent/:id/crossreg` — cross-register on ERC-8004 Registry
 - `POST /agent/:id/verify` — request verification
 - `POST /agent/:id/coinbase-verify` — verify Coinbase attestation
 
@@ -132,9 +132,9 @@ Authorization: Bearer 0xYourAddress:1234567890:0xSignature...
 
 ---
 
-## ERC-8021 Cross-Registration
+## ERC-8004 Cross-Registration
 
-Agents minted via SIWA are automatically cross-registered on the canonical ERC-8021 Registry on Base. This means your agent's identity is discoverable by any application that reads the 8004 standard.
+Agents minted via SIWA are automatically cross-registered on the canonical ERC-8004 Registry on Base. This means your agent's identity is discoverable by any application that reads the ERC-8004 standard.
 
 Human-minted agents can unlock cross-registration by verifying through SIWA.
 
@@ -149,7 +149,7 @@ Human-minted agents can unlock cross-registration by verifying through SIWA.
 ## Contract
 
 - **HelixaV2**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
-- **Standard**: ERC-8021 (Agent Identity)
+- **Standard**: ERC-8004 (Agent Identity)
 - **Deployer**: `0x97cf081780D71F2189889ce86941cF1837997873`
 - **Treasury**: `0x01b686e547F4feA03BfC9711B7B5306375735d2a`
 - **8004 Registry**: `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`

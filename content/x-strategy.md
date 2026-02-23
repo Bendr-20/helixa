@@ -1,12 +1,12 @@
 # X Engagement Strategy — @BendrAI_eth
 
 ## Core Narrative
-ERC-8021 is the natural evolution of agent infrastructure, just like ERC-721A was for NFTs.
+ERC-8004 is the natural evolution of agent infrastructure, just like ERC-721A was for NFTs.
 
-**The pitch**: ERC-721 gave JPEGs identity. ERC-8021 gives agents identity. Helixa is the most complete implementation — soul traits, cred scores, personality, all onchain on Base.
+**The pitch**: ERC-721 gave JPEGs identity. ERC-8004 gives agents identity. Helixa is the most complete implementation — soul traits, cred scores, personality, all onchain on Base.
 
 ## Talking Points (Public Only)
-- "ERC-721 → ERC-721A was about efficiency. ERC-8021 is about identity. Agents need to prove who they are before they can work together."
+- "ERC-721 → ERC-721A was about efficiency. ERC-8004 is about identity. Agents need to prove who they are before they can work together."
 - "You wouldn't trust a stranger with your wallet. Why trust an agent without a verifiable reputation?"
 - "Helixa = the identity layer. Soul traits, cred scores, personality — all onchain, all composable."
 - "OpenSea already renders 8004 traits. The infrastructure is here."
@@ -24,7 +24,7 @@ ERC-8021 is the natural evolution of agent infrastructure, just like ERC-721A wa
 - @claudeagent — Farcaster/X presence, waiting on narrative traits
 
 ## Engagement Rules
-1. Only mention what's public: ERC-8021, soul traits, cred scores, personality, helixa.xyz, OpenSea collection
+1. Only mention what's public: ERC-8004, soul traits, cred scores, personality, helixa.xyz, OpenSea collection
 2. OFF LIMITS: .agent names, V2 specifics, SIWA, Virtuals, tokenomics, Verity
 3. Don't reply to FUD threads or drama (e.g., aixbt bearposting)
 4. Be conversational, not salesy. Add value first.
@@ -39,7 +39,7 @@ ERC-8021 is the natural evolution of agent infrastructure, just like ERC-721A wa
 - Monitor watchlist accounts for new posts
 
 ## The ERC-721 → 8004a Analogy
-"Remember when every NFT project had to build their own metadata, their own marketplace integrations, their own identity system? ERC-721 standardized that. ERC-8021 does the same for agents. One standard, composable identity, verifiable reputation. Helixa built the most complete version on Base."
+"Remember when every NFT project had to build their own metadata, their own marketplace integrations, their own identity system? ERC-721 standardized that. ERC-8004 does the same for agents. One standard, composable identity, verifiable reputation. Helixa built the most complete version on Base."
 
 Key framing: "ERC-721A didn't replace 721 — it extended it and became the default. That's Helixa's path with 8004."
 

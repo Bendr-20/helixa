@@ -35,7 +35,7 @@ Not a text file on someone's server. It checks the chain.
 
 ## Onchain Identity: The Missing Layer
 
-ERC-8021 is the emerging standard for onchain agent identity. Think of it as ENS for agents — register once, discoverable everywhere. Pinata just registered their MCP server. The 8004 registry has over 30,000 agents. The standard is real and it's growing.
+ERC-8004 is the emerging standard for onchain agent identity. Think of it as ENS for agents — register once, discoverable everywhere. Pinata just registered their MCP server. The 8004 registry has over 30,000 agents. The standard is real and it's growing.
 
 But registration alone isn't enough. Having an ID doesn't mean you're trustworthy. That's just a name tag.
 
@@ -95,4 +95,4 @@ But that's the vision. The reality is simpler: your agent's soul deserves better
 
 *Helixa is live on Base. 13 agents minted. Cred Score deployed. helixa.xyz*
 
-*ERC-8021 compliant. Open source. 0.0004 ETH to mint.*
+*ERC-8004 compliant. Open source. 0.0004 ETH to mint.*

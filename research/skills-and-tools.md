@@ -13,7 +13,7 @@
 
 | Name | URL | What It Does | How It Helps Helixa | Free? |
 |------|-----|-------------|---------------------|-------|
-| **BankrBot/openclaw-skills (erc-8021)** | https://github.com/BankrBot/openclaw-skills/tree/main/erc-8021 | ERC-8021 agent registry skill — mint agent NFTs, establish onchain identity, build reputation | **This IS the Helixa skill.** Already in the BankrBot repo. Ensure it's polished, well-documented, and discoverable. | ✅ |
+| **BankrBot/openclaw-skills (erc-8004)** | https://github.com/BankrBot/openclaw-skills/tree/main/erc-8004 | ERC-8004 agent registry skill — mint agent NFTs, establish onchain identity, build reputation | **This IS the Helixa skill.** Already in the BankrBot repo. Ensure it's polished, well-documented, and discoverable. | ✅ |
 | **Bankr Skill** | https://github.com/BankrBot/openclaw-skills/tree/main/bankr | Financial infra for agents — token launches, trading, payments, yield | Cross-promote: agents using Bankr should also register identity via Helixa. Natural funnel. | ✅ |
 | **Clanker Skill** | https://github.com/BankrBot/openclaw-skills/tree/main/clanker | Deploy ERC20 tokens on Base via Clanker SDK | Token deployers need agent identity — "register your agent before launching tokens" narrative | ✅ |
 | **Botchan Skill** | https://github.com/BankrBot/openclaw-skills/tree/main/botchan | Onchain messaging protocol on Base — agent feeds, DMs, data storage | Agents need identity before messaging. Natural prerequisite flow. | ✅ |
@@ -59,7 +59,7 @@
 | Name | URL | What It Does | How It Helps Helixa | Free? |
 |------|-----|-------------|---------------------|-------|
 | **npm** | https://npmjs.com | JavaScript package registry | Publish `@agentdna/sdk` or `helixa-sdk` — every JS agent builder discovers tools here | ✅ |
-| **GitHub** | https://github.com | Code hosting + discovery (trending, topics, stars) | Open-source the SDK, use topics like `ai-agent`, `onchain-identity`, `base`, `erc-8021` for discoverability | ✅ |
+| **GitHub** | https://github.com | Code hosting + discovery (trending, topics, stars) | Open-source the SDK, use topics like `ai-agent`, `onchain-identity`, `base`, `erc-8004` for discoverability | ✅ |
 | **ClawHub** | https://clawhub.ai | OpenClaw skill registry (5,700+ skills) | Primary distribution for OpenClaw ecosystem — already discussed above | ✅ |
 
 ### NICE TO HAVE
@@ -98,7 +98,7 @@
 
 | Name | URL | What It Does | How It Helps Helixa | Free? |
 |------|-----|-------------|---------------------|-------|
-| **ERC-8021 Standard** | https://eips.ethereum.org/EIPS/eip-8021 | The actual Ethereum standard for trustless agent identity | **Helixa IS an ERC-8021 implementation.** Reference this everywhere. Riding the standard's momentum is free marketing. | ✅ |
+| **ERC-8004 Standard** | https://eips.ethereum.org/EIPS/eip-8021 | The actual Ethereum standard for trustless agent identity | **Helixa IS an ERC-8004 implementation.** Reference this everywhere. Riding the standard's momentum is free marketing. | ✅ |
 | **Bankr.bot** | https://bankr.bot | Financial infrastructure for autonomous agents | Primary partner — agents using Bankr need Helixa identity. Cross-skill integration. | ✅ |
 | **Clanker** | https://clanker.world | Token deployment on Base | "Register your agent → deploy your token" flow | ✅ |
 | **Coinbase OnchainKit** | https://onchainkit.xyz | React components for onchain apps | Build mint page / agent dashboard with OnchainKit. Coinbase ecosystem alignment. | ✅ |
@@ -110,7 +110,7 @@
 |------|-----|-------------|---------------------|-------|
 | **Neynar** | https://neynar.com | Farcaster API — build social features | Query Farcaster for agent-related casts, automate posting on /base | ✅ (free tier) |
 | **Zapper** | https://zapper.xyz | Portfolio tracking / onchain analytics | Track Helixa mints, agent activity — planned BankrBot skill | ✅ |
-| **ERC-6551 (Token Bound Accounts)** | https://eips.ethereum.org/EIPS/eip-6551 | Give NFTs their own wallets | Complement ERC-8021: agent identity NFT gets its own wallet. Powerful narrative. | ✅ |
+| **ERC-6551 (Token Bound Accounts)** | https://eips.ethereum.org/EIPS/eip-6551 | Give NFTs their own wallets | Complement ERC-8004: agent identity NFT gets its own wallet. Powerful narrative. | ✅ |
 
 ---
 
@@ -129,7 +129,7 @@
 
 | Name | URL | What It Does | How It Helps Helixa | Free? |
 |------|-----|-------------|---------------------|-------|
-| **Ethereum Magicians Forum** | https://ethereum-magicians.org/t/erc-8021-trustless-agents/25098 | ERC discussion forum | Engage in ERC-8021 discussion thread — position Helixa as the reference implementation | ✅ |
+| **Ethereum Magicians Forum** | https://ethereum-magicians.org/t/erc-8004-trustless-agents/25098 | ERC discussion forum | Engage in ERC-8004 discussion thread — position Helixa as the reference implementation | ✅ |
 | **r/AI_Agents (Reddit)** | https://reddit.com/r/AI_Agents | AI agent builder community | Share Helixa, answer questions about agent identity | ✅ |
 | **OpenAI Codex CLI** | https://github.com/openai/codex | OpenAI's CLI agent (supports same SKILL.md format) | Cross-publish Helixa skill — same format as Claude Code / OpenClaw | ✅ |
 | **Alith (LazAI)** | https://alith.lazai.network | Agent framework with ElizaOS + LangChain integrations | Another framework to integrate with | ✅ |
@@ -146,14 +146,14 @@
 6. **Create .github/skills/ in repo** — VS Code native discovery
 7. **Build LangChain Tool** — reach Python agent builders
 8. **Post on Farcaster /base /agents channels** — where Base builders live
-9. **Engage in ERC-8021 Ethereum Magicians thread** — position as reference implementation
+9. **Engage in ERC-8004 Ethereum Magicians thread** — position as reference implementation
 10. **Cross-integrate with Bankr + Botchan skills** — "identity first, then transact/communicate" flow
 
 ---
 
 ## 🔑 Key Insight
 
-The **BankrBot/openclaw-skills** repo already has an `erc-8021` skill. This is the beachhead. The strategy is:
+The **BankrBot/openclaw-skills** repo already has an `erc-8004` skill. This is the beachhead. The strategy is:
 1. Make that skill excellent (docs, examples, error handling)
 2. Spread to every other distribution channel (ClawHub, SkillsMP, npm, PyPI, awesome lists)
 3. Build framework plugins (ElizaOS, LangChain, CrewAI) to reach non-OpenClaw builders

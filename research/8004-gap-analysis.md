@@ -1,8 +1,8 @@
-# ERC-8021 vs AgentDNA: Gap Analysis
+# ERC-8004 vs AgentDNA: Gap Analysis
 
-## What ERC-8021 Actually Is
+## What ERC-8004 Actually Is
 
-ERC-8021 "Trustless Agents" is a **DRAFT** standard authored by Marco De Rossi (MetaMask), Davide Crapis (Ethereum Foundation), Jordan Ellis (Google), and Erik Reppel (Coinbase). It defines **three registries**:
+ERC-8004 "Trustless Agents" is a **DRAFT** standard authored by Marco De Rossi (MetaMask), Davide Crapis (Ethereum Foundation), Jordan Ellis (Google), and Erik Reppel (Coinbase). It defines **three registries**:
 
 ### 1. Identity Registry (the core)
 - ERC-721 based — each agent is an NFT with a tokenId (called `agentId`)
@@ -35,7 +35,7 @@ ERC-8021 "Trustless Agents" is a **DRAFT** standard authored by Marco De Rossi (
 
 ## What AgentDNA Has That 8004 Doesn't
 
-| Feature | AgentDNA | ERC-8021 |
+| Feature | AgentDNA | ERC-8004 |
 |---------|----------|----------|
 | **Personality system** | Temperament, communication style, risk tolerance (1-10), autonomy (1-10), alignment (9 types), specialization (12 types) — all onchain | ❌ Not specified |
 | **Trait system** | Named traits with categories, added over time, stored onchain with timestamps | ❌ Only generic metadata key-value |
@@ -53,7 +53,7 @@ ERC-8021 "Trustless Agents" is a **DRAFT** standard authored by Marco De Rossi (
 
 ## What 8004 Has That AgentDNA Doesn't
 
-| Feature | ERC-8021 | AgentDNA |
+| Feature | ERC-8004 | AgentDNA |
 |---------|----------|----------|
 | **Reputation Registry** | Full feedback system — ratings, tags, revocations, responses, summaries | ❌ Points exist but no peer feedback system |
 | **Validation Registry** | zkML, TEE, staked re-execution hooks | ❌ Not specified |
@@ -91,7 +91,7 @@ ERC-8021 "Trustless Agents" is a **DRAFT** standard authored by Marco De Rossi (
 
 ## The Positioning
 
-**ERC-8021 = DNS + Yelp + Better Business Bureau**
+**ERC-8004 = DNS + Yelp + Better Business Bureau**
 - Identity Registry = DNS (name → address)
 - Reputation Registry = Yelp (ratings from clients)
 - Validation Registry = BBB (verified by trusted third parties)

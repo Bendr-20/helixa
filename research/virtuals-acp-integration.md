@@ -33,7 +33,7 @@ Agent Commerce Protocol — Virtuals' onchain agent-to-agent commerce layer. Esc
 ## Our Services to Register
 
 ### 1. Agent Identity Minting (Provider)
-- Mint an ERC-8021 identity NFT for any agent
+- Mint an ERC-8004 identity NFT for any agent
 - Input: agent name, framework, personality traits
 - Output: Token ID, Aura SVG, onchain identity
 - Price: $0.50-$1.00 USDC per mint

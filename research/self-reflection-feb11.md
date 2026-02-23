@@ -8,7 +8,7 @@ We shipped an incredible amount of infrastructure in 3 days. Contract, frontend,
 ## What We Built vs What People Need
 
 ### What we built:
-- ERC-8021 compliant smart contract with 65 tests
+- ERC-8004 compliant smart contract with 65 tests
 - Full mint frontend with wallet connect
 - Visual identity system (Auras) with rarity tiers
 - SDK for 5 frameworks
