@@ -101,7 +101,8 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
     <div class="stat"><div class="label">24H Volume</div><div class="value" id="volume">—</div></div>
     <div class="stat"><div class="label">Total Volume</div><div class="value" id="totalVolume">—</div></div>
     <div class="stat"><div class="label">Liquidity</div><div class="value" id="liquidity">—</div></div>
-    <div class="stat"><div class="label">24H Txns</div><div class="value green" id="txns24h">—</div></div>
+    <div class="stat"><div class="label">Holders</div><div class="value green" id="holders">—</div></div>
+    <div class="stat"><div class="label">24H Txns</div><div class="value" id="txns24h">—</div></div>
     <div class="stat"><div class="label">Total Transfers</div><div class="value" id="transfers">—</div></div>
   </div>
 
@@ -217,11 +218,28 @@ async function loadStats() {
     }
   } catch(e) {}
 
-  // Transfer count from Blockscout
+  // Holders + transfers from Blockscout
   try {
-    const r = await fetch('https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/counters');
-    const d = await r.json();
-    if (d.transfers_count) document.getElementById('transfers').textContent = Number(d.transfers_count).toLocaleString();
+    const cr = await fetch('https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/counters');
+    const cd = await cr.json();
+    if (cd.transfers_count) document.getElementById('transfers').textContent = Number(cd.transfers_count).toLocaleString();
+
+    // Count unique addresses from recent transfers (Blockscout holder_count is inaccurate for bonding curve tokens)
+    const addrs = new Set();
+    let url = 'https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers';
+    for (let i = 0; i < 10; i++) {
+      const tr = await fetch(url);
+      const td = await tr.json();
+      for (const t of (td.items || [])) {
+        if (t.to?.hash) addrs.add(t.to.hash);
+        if (t.from?.hash) addrs.add(t.from.hash);
+      }
+      const npp = td.next_page_params;
+      if (!npp) break;
+      url = `https://base.blockscout.com/api/v2/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3/transfers?${new URLSearchParams(npp)}`;
+    }
+    addrs.delete('0x0000000000000000000000000000000000000000');
+    if (addrs.size > 0) document.getElementById('holders').textContent = addrs.size.toLocaleString() + '+';
   } catch(e) {}
 }
 
