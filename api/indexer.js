@@ -132,8 +132,8 @@ function queryAgents({ page = 1, limit = 100, sort = 'tokenId', order = 'asc', f
         where.push(`verified = 0`);
     }
     if (search) {
-        where.push(`name LIKE ?`);
-        params.push(`%${search}%`);
+        where.push(`(name LIKE ? OR agentAddress LIKE ? OR owner LIKE ?)`);
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     const whereClause = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';

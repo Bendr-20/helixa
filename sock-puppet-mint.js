@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
     });
 }
 
-const RPC = 'https://mainnet.base.org';
+const RPC = 'https://base.drpc.org';
 const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const ABI_PATH = path.join(__dirname, 'out/HelixaV2.sol/HelixaV2.json');
 const BUILDER_SUFFIX = '68656c697861060080218021802180218021802180218021';

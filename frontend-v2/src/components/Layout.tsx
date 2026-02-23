@@ -155,6 +155,8 @@ export function Layout({ children }: LayoutProps) {
           <a href="https://x.com/HelixaXYZ" target="_blank" rel="noopener noreferrer">Twitter</a>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <Link to="/docs">Docs</Link>
+          <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
+          <a href="https://opensea.io/collection/helixa-1" target="_blank" rel="noopener noreferrer">OpenSea</a>
         </div>
       </footer>
     </div>
