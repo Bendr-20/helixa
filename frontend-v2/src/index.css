@@ -2383,8 +2383,27 @@ input[type="checkbox"] {
   .dir-filter-clear {
     grid-column: 1 / -1;
   }
-  .dir-grid { grid-template-columns: 1fr; }
-  .agents-grid { grid-template-columns: 1fr; }
+  .dir-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .agents-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .dir-grid .agent-card,
+  .agents-grid .agent-card {
+    padding: 12px;
+  }
+  .dir-grid .agent-card h3,
+  .agents-grid .agent-card h3 {
+    font-size: 0.85rem;
+  }
+  /* Shrink aura preview on mobile cards */
+  .dir-grid .agent-card svg,
+  .agents-grid .agent-card svg {
+    max-width: 80px;
+    max-height: 80px;
+  }
+  /* Hide address row on mobile to save space */
+  .dir-grid .agent-card .border-t,
+  .agents-grid .agent-card .border-t {
+    display: none;
+  }
 }
 
 /* ============================================
