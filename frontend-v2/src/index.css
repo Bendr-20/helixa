@@ -2360,8 +2360,10 @@ input[type="checkbox"] {
 }
 
 @media (max-width: 700px) {
-  .dir-container { padding: 0 1rem; }
-  .dir-header h1 { font-size: 1.8rem; }
+  .dir-container { padding: 0 16px; }
+  .dir-header { padding: 1.5rem 0 1rem; }
+  .dir-header h1 { font-size: 1.6rem; }
+  .dir-header p { font-size: 0.85rem; }
   .dir-filters { padding: 14px; border-radius: 12px; }
   .dir-filters-grid {
     display: grid;
@@ -2387,6 +2389,15 @@ input[type="checkbox"] {
   }
   .dir-grid { grid-template-columns: 1fr; gap: 12px; }
   .agents-grid { grid-template-columns: 1fr; gap: 12px; }
+  .dir-grid,
+  .agents-grid {
+    overflow: hidden;
+    max-width: 100%;
+  }
+  .agent-card {
+    padding: 14px !important;
+    overflow: hidden;
+  }
   .agent-card-desktop { display: none !important; }
   .agent-card-mobile { display: block !important; }
 }
