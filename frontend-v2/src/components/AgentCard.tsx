@@ -40,72 +40,66 @@ interface AgentCardProps {
   className?: string;
 }
 
+const auraData = (agent: Agent) => ({
+  name: agent.name,
+  agentAddress: agent.agentAddress,
+  framework: agent.framework,
+  points: agent.points,
+  traitCount: agent.traitCount || agent.traits?.length || 0,
+  mutationCount: agent.mutationCount,
+  soulbound: agent.soulbound,
+  temperament: agent.temperament,
+  communicationStyle: agent.personality?.communicationStyle || agent.communicationStyle,
+  riskTolerance: agent.personality?.riskTolerance || agent.riskTolerance,
+  autonomyLevel: agent.personality?.autonomyLevel || agent.autonomyLevel,
+  alignment: agent.alignment,
+  specialization: agent.specialization,
+  quirks: agent.personality?.quirks,
+  humor: agent.personality?.humor,
+  values: agent.personality?.values,
+  credScore: agent.credScore,
+});
+
 export function AgentCard({ agent, className = '' }: AgentCardProps) {
-  const originDisplay = ORIGIN_DISPLAY[agent.mintOrigin] || { icon: '', label: 'Unknown' };
-  
+  const verifiedTraits = agent.traits?.filter((t: any) => t.category === 'verification') || [];
+
   return (
     <Link
       to={`/agent/${agent.tokenId}`}
-      className={`agent-card card block hover:scale-105 transition-transform ${className}`}
+      className={`agent-card ${className}`}
+      style={{
+        display: 'block',
+        textDecoration: 'none',
+        color: 'inherit',
+        background: 'rgba(10,10,20,0.9)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '14px',
+        padding: '1.25rem',
+        transition: 'border-color 0.3s, transform 0.3s, box-shadow 0.3s',
+      }}
     >
-      {/* Aura Preview */}
-      <div className="flex justify-center mb-4">
-        <AuraPreview 
-          agentData={{
-            name: agent.name,
-            agentAddress: agent.agentAddress,
-            framework: agent.framework,
-            points: agent.points,
-            traitCount: agent.traitCount || agent.traits?.length || 0,
-            mutationCount: agent.mutationCount,
-            soulbound: agent.soulbound,
-            temperament: agent.temperament,
-            communicationStyle: agent.personality?.communicationStyle || agent.communicationStyle,
-            riskTolerance: agent.personality?.riskTolerance || agent.riskTolerance,
-            autonomyLevel: agent.personality?.autonomyLevel || agent.autonomyLevel,
-            alignment: agent.alignment,
-            specialization: agent.specialization,
-            quirks: agent.personality?.quirks,
-            humor: agent.personality?.humor,
-            values: agent.personality?.values,
-            credScore: agent.credScore,
-          }}
-          size={120}
-        />
-      </div>
-      
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-lg truncate mb-1">{agent.name}</h3>
-          <div className="flex items-center gap-2">
-            <span className="badge badge-sm">{agent.framework}</span>
-            {agent.soulbound && (
-              <span className="badge badge-sm" style={{ background: 'rgba(179, 136, 255, 0.3)' }}>
-                Soulbound
-              </span>
-            )}
+      {/* Desktop: vertical layout */}
+      <div className="agent-card-desktop">
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <AuraPreview agentData={auraData(agent)} size={120} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontWeight: 600, fontSize: '1.05rem', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.name}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span className="badge badge-sm">{agent.framework}</span>
+              {agent.soulbound && <span className="badge badge-sm" style={{ background: 'rgba(179,136,255,0.3)' }}>Soulbound</span>}
+            </div>
           </div>
+          <CredBadge score={agent.credScore} size="sm" />
         </div>
-        
-        <CredBadge score={agent.credScore} size="sm" />
-      </div>
-      
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 text-sm" style={{ marginTop: '0.75rem' }}>
-        <div className="flex items-center gap-2">
-          <span className="text-muted">Points:</span>
-          <span className="font-medium">{agent.points.toLocaleString()}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+          <div><span style={{ color: '#888' }}>Points: </span><span style={{ fontWeight: 500 }}>{agent.points.toLocaleString()}</span></div>
+          <div><span style={{ color: '#888' }}>Traits: </span><span style={{ fontWeight: 500 }}>{agent.traitCount || agent.traits?.length || 0}</span></div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-muted">Traits:</span>
-          <span className="font-medium">{agent.traitCount || agent.traits?.length || 0}</span>
-        </div>
-        
-        {agent.traits?.some((t: any) => t.category === 'verification') && (
-          <div className="col-span-2 flex items-center gap-2">
-            {agent.traits.filter((t: any) => t.category === 'verification').map((t: any, i: number) => {
+        {verifiedTraits.length > 0 && (
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '8px' }}>
+            {verifiedTraits.map((t: any, i: number) => {
               const p = t.name.replace('-verified', '');
               const icons: Record<string, React.ReactNode> = {
                 x: <XLogo className="w-3.5 h-3.5 inline-block align-middle" />,
@@ -113,59 +107,82 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
                 farcaster: <FarcasterLogo className="w-3.5 h-3.5 inline-block align-middle" />,
               };
               return (
-                <span key={i} className="badge badge-sm flex items-center gap-1" style={{ background: 'rgba(110, 236, 216, 0.15)', color: '#6eecd8', border: '1px solid rgba(110, 236, 216, 0.3)' }}>
+                <span key={i} className="badge badge-sm" style={{ background: 'rgba(110,236,216,0.15)', color: '#6eecd8', border: '1px solid rgba(110,236,216,0.3)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                   {icons[p] || <CheckCircle className="w-3.5 h-3.5 inline-block align-middle" />} {p}
                 </span>
               );
             })}
           </div>
         )}
-      </div>
-      
-      {/* Agent Address (if available) */}
-      {agent.agentAddress && (
-        <div className="mt-3 pt-3 border-t border-gray-700">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted">Address:</span>
-            <code className="bg-gray-800 px-2 py-1 rounded text-xs">
+        {agent.agentAddress && (
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ color: '#888' }}>Address:</span>
+            <code style={{ background: 'rgba(255,255,255,0.04)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem' }}>
               {agent.agentAddress.slice(0, 6)}...{agent.agentAddress.slice(-4)}
             </code>
           </div>
+        )}
+      </div>
+
+      {/* Mobile: horizontal layout */}
+      <div className="agent-card-mobile">
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <div style={{ flexShrink: 0 }}>
+            <AuraPreview agentData={auraData(agent)} size={72} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '4px' }}>
+              <h3 style={{ fontWeight: 600, fontSize: '1rem', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{agent.name}</h3>
+              <CredBadge score={agent.credScore} size="sm" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>
+              <span className="badge badge-sm">{agent.framework}</span>
+              {agent.soulbound && <span className="badge badge-sm" style={{ background: 'rgba(179,136,255,0.3)' }}>Soulbound</span>}
+            </div>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '0.8rem', color: '#aaa' }}>
+              <span>Pts: <strong style={{ color: '#e0e0e0' }}>{agent.points.toLocaleString()}</strong></span>
+              <span>Traits: <strong style={{ color: '#e0e0e0' }}>{agent.traitCount || agent.traits?.length || 0}</strong></span>
+            </div>
+          </div>
         </div>
-      )}
+      </div>
     </Link>
   );
 }
 
-// Skeleton version for loading states
 export function AgentCardSkeleton({ className = '' }: { className?: string }) {
   return (
-    <div className={`agent-card card ${className}`}>
-      {/* Aura skeleton */}
-      <div className="flex justify-center mb-4">
-        <div className="w-[120px] h-[120px] bg-gray-700 rounded-lg skeleton"></div>
+    <div className={`agent-card ${className}`} style={{
+      background: 'rgba(10,10,20,0.9)',
+      border: '1px solid rgba(255,255,255,0.04)',
+      borderRadius: '14px',
+      padding: '1.25rem',
+    }}>
+      {/* Desktop skeleton */}
+      <div className="agent-card-desktop">
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+          <div className="skeleton" style={{ width: 120, height: 120, borderRadius: 8, background: 'rgba(255,255,255,0.04)' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 20, width: '70%', borderRadius: 6, background: 'rgba(255,255,255,0.04)', marginBottom: 8 }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <div className="skeleton" style={{ height: 16, width: 60, borderRadius: 6, background: 'rgba(255,255,255,0.04)' }} />
+              <div className="skeleton" style={{ height: 16, width: 70, borderRadius: 6, background: 'rgba(255,255,255,0.04)' }} />
+            </div>
+          </div>
+          <div className="skeleton" style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        </div>
       </div>
-      
-      {/* Header skeleton */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1">
-          <div className="h-5 bg-gray-700 rounded w-3/4 mb-2 skeleton"></div>
-          <div className="flex gap-2">
-            <div className="h-4 bg-gray-700 rounded w-16 skeleton"></div>
-            <div className="h-4 bg-gray-700 rounded w-20 skeleton"></div>
+      {/* Mobile skeleton */}
+      <div className="agent-card-mobile">
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+          <div className="skeleton" style={{ width: 72, height: 72, borderRadius: 8, background: 'rgba(255,255,255,0.04)', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <div className="skeleton" style={{ height: 18, width: '60%', borderRadius: 6, background: 'rgba(255,255,255,0.04)', marginBottom: 8 }} />
+            <div className="skeleton" style={{ height: 14, width: '40%', borderRadius: 6, background: 'rgba(255,255,255,0.04)' }} />
           </div>
         </div>
-        <div className="w-12 h-12 bg-gray-700 rounded-full skeleton"></div>
-      </div>
-      
-      {/* Stats skeleton */}
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex gap-2">
-            <div className="h-3 bg-gray-700 rounded w-12 skeleton"></div>
-            <div className="h-3 bg-gray-700 rounded w-8 skeleton"></div>
-          </div>
-        ))}
       </div>
     </div>
   );

@@ -287,6 +287,8 @@ code {
   padding: 1.75rem;
   transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
 }
+.agent-card-desktop { display: block; }
+.agent-card-mobile { display: none; }
 .agent-card:hover {
   border-color: rgba(255, 255, 255, 0.08);
   transform: translateY(-4px);
@@ -2383,27 +2385,10 @@ input[type="checkbox"] {
   .dir-filter-clear {
     grid-column: 1 / -1;
   }
-  .dir-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .agents-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .dir-grid .agent-card,
-  .agents-grid .agent-card {
-    padding: 12px;
-  }
-  .dir-grid .agent-card h3,
-  .agents-grid .agent-card h3 {
-    font-size: 0.85rem;
-  }
-  /* Shrink aura preview on mobile cards */
-  .dir-grid .agent-card svg,
-  .agents-grid .agent-card svg {
-    max-width: 80px;
-    max-height: 80px;
-  }
-  /* Hide address row on mobile to save space */
-  .dir-grid .agent-card .border-t,
-  .agents-grid .agent-card .border-t {
-    display: none;
-  }
+  .dir-grid { grid-template-columns: 1fr; gap: 12px; }
+  .agents-grid { grid-template-columns: 1fr; gap: 12px; }
+  .agent-card-desktop { display: none !important; }
+  .agent-card-mobile { display: block !important; }
 }
 
 /* ============================================
