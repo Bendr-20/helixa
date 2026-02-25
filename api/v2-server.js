@@ -13,14 +13,16 @@ const crypto = require('crypto');
 const indexer = require('./indexer');
 
 // ─── Services ───────────────────────────────────────────────────
-const {
+const svc = require('./services/contract');
+let {
     ethers, provider, readProvider, wallet,
     contract, rawContract, readContract, usdcContract,
     V2_ABI, V2_CONTRACT_ADDRESS, DEPLOYER_KEY, DEPLOYER_ADDRESS,
     USDC_ADDRESS, ERC8004_REGISTRY, ERC8004_REGISTRY_ABI,
     COINBASE_INDEXER, COINBASE_INDEXER_ABI, COINBASE_VERIFIED_ACCOUNT_SCHEMA,
     EAS_CONTRACT, EAS_ABI, TREASURY_ADDRESS, CHAIN_ID, RPC_URL, isContractDeployed,
-} = require('./services/contract');
+    initDeployerKey,
+} = svc;
 
 const { requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
 const { securityHeaders, cors } = require('./middleware/cors');
@@ -257,8 +259,8 @@ app.get(['/', '/api/v2'], (req, res) => {
         pricing: {
             phase: 1,
             note: 'All operations free during Phase 1 (0-1000 agents)',
-            agentMint: '$1 USDC',
-            update: '$0',
+            agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
+            update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
         },
     });
 });
@@ -2404,6 +2406,74 @@ app.get('/api/v2/token/stats', (req, res) => {
 });
 
 
+// ─── Trust Terminal API ──────────────────────────────────────
+const terminalDbPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
+let terminalDb = null;
+try {
+    const Database = require('better-sqlite3');
+    if (fs.existsSync(terminalDbPath)) {
+        terminalDb = new Database(terminalDbPath, { readonly: true });
+        terminalDb.pragma('journal_mode = WAL');
+        console.log('📡 Trust Terminal DB connected');
+    }
+} catch (e) { console.warn('⚠️ Trust Terminal DB not available:', e.message); }
+
+app.get('/api/terminal/agents', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+        const sort = ['cred_score','name','created_at','platform'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
+        const filter = req.query.filter || 'all';
+        const q = (req.query.q || '').trim();
+
+        let where = [];
+        let params = {};
+        if (filter === 'x402') { where.push('x402_supported = 1'); }
+        else if (filter !== 'all') { where.push('cred_tier = @tier'); params.tier = filter; }
+        if (q) {
+            where.push("(name LIKE @q OR address LIKE @q OR agent_id LIKE @q)");
+            params.q = `%${q}%`;
+        }
+        const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
+
+        const total = terminalDb.prepare(`SELECT COUNT(*) as c FROM agents ${whereClause}`).get(params).c;
+        const totalPages = Math.ceil(total / limit);
+        const offset = (page - 1) * limit;
+
+        const agents = terminalDb.prepare(
+            `SELECT address, agent_id, token_id, name, description, image_url, platform, 
+                    x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score
+             FROM agents ${whereClause} 
+             ORDER BY ${sort} ${dir} NULLS LAST
+             LIMIT @limit OFFSET @offset`
+        ).all({ ...params, limit, offset });
+
+        const stats = {
+            total: terminalDb.prepare('SELECT COUNT(*) as c FROM agents').get().c,
+            scored: terminalDb.prepare('SELECT COUNT(*) as c FROM agents WHERE last_scored IS NOT NULL').get().c,
+            avgScore: terminalDb.prepare('SELECT ROUND(AVG(cred_score),1) as v FROM agents').get().v,
+            x402: terminalDb.prepare('SELECT COUNT(*) as c FROM agents WHERE x402_supported = 1').get().c,
+        };
+
+        res.json({ agents, total, page, totalPages, stats });
+    } catch (e) {
+        console.error('Terminal query error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/terminal/agent/:address', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const agent = terminalDb.prepare('SELECT * FROM agents WHERE address = ? OR agent_id = ?')
+            .get(req.params.address, req.params.address);
+        if (!agent) return res.status(404).json({ error: 'Agent not found' });
+        res.json(agent);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list' });
@@ -2416,12 +2486,23 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err.message || err));
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
-    console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
-    console.log(`   Auth: SIWA (Sign-In With Agent)`);
-    console.log(`   Payments: x402 (Phase 1 — all free)`);
-    console.log(`   RPC: ${RPC_URL}`);
-    console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
-    console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
-});
+// ─── Async Startup (load deployer key from AWS Secrets Manager) ─
+(async () => {
+    await initDeployerKey();
+    // Re-read dynamic exports after key load
+    wallet = svc.wallet;
+    contract = svc.contract;
+    rawContract = svc.rawContract;
+    DEPLOYER_KEY = svc.DEPLOYER_KEY;
+    DEPLOYER_ADDRESS = svc.DEPLOYER_ADDRESS;
+
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
+        console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
+        console.log(`   Auth: SIWA (Sign-In With Agent)`);
+        console.log(`   Payments: x402 (Phase 1 — all free)`);
+        console.log(`   RPC: ${RPC_URL}`);
+        console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
+        console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
+    });
+})();
