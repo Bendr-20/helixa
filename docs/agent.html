@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Profile — Trust Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-dark: #003300;
+    --amber: #ffb000;
+    --red: #ff3333;
+    --cyan: #00ffff;
+    --purple: #b490ff;
+    --text: #ccddcc;
+    --muted: #557755;
+    --border: #1a3a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.03) 2px, rgba(0,255,65,0.03) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+  }
+  .logo { font-family: 'Orbitron', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 3px; text-shadow: 0 0 10px var(--green), 0 0 20px rgba(0,255,65,0.4); }
+  .back-link { font-size: 12px; color: var(--muted); }
+  .back-link:hover { color: var(--green); }
+
+  /* Loading */
+  .loading { text-align: center; padding: 80px 0; color: var(--muted); font-size: 14px; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor { display: inline-block; width: 8px; height: 16px; background: var(--green); animation: blink 1s step-end infinite; vertical-align: middle; }
+
+  /* Agent Header */
+  .agent-header {
+    display: flex; gap: 24px; align-items: flex-start;
+    padding: 24px; border: 1px solid var(--border); margin-bottom: 20px;
+    background: rgba(0,255,65,0.02);
+  }
+  .agent-avatar {
+    width: 120px; height: 120px; border: 2px solid var(--border);
+    background: var(--bg); display: flex; align-items: center; justify-content: center;
+    font-size: 48px; color: var(--muted); flex-shrink: 0; overflow: hidden;
+  }
+  .agent-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .agent-info { flex: 1; min-width: 0; }
+  .agent-name { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; margin-bottom: 8px; word-break: break-word; }
+  .agent-meta { color: var(--muted); font-size: 11px; line-height: 1.8; }
+  .agent-meta span { color: var(--text); }
+
+  /* Cred Score Box */
+  .cred-box {
+    text-align: center; padding: 20px; border: 2px solid var(--border);
+    margin-bottom: 20px; background: rgba(0,255,65,0.02);
+  }
+  .cred-score {
+    font-family: 'Orbitron', sans-serif; font-size: 64px; font-weight: 900;
+    line-height: 1; margin-bottom: 8px;
+  }
+  .cred-tier { font-size: 14px; font-weight: 700; letter-spacing: 3px; margin-bottom: 4px; }
+  .cred-bar { width: 100%; height: 8px; background: #111; margin-top: 12px; position: relative; }
+  .cred-bar-fill { height: 100%; transition: width 0.5s; }
+
+  /* Tier colors */
+  .tier-AAA { color: #ffd700; border-color: #ffd700; }
+  .tier-PRIME { color: var(--cyan); border-color: var(--cyan); }
+  .tier-INVESTMENT { color: var(--green); border-color: var(--green); }
+  .tier-SPECULATIVE { color: var(--amber); border-color: var(--amber); }
+  .tier-JUNK { color: var(--red); border-color: var(--red); }
+
+  /* Sections */
+  .section { border: 1px solid var(--border); margin-bottom: 16px; }
+  .section-title {
+    padding: 8px 16px; background: rgba(0,255,65,0.05);
+    border-bottom: 1px solid var(--border); font-weight: 700;
+    font-size: 12px; letter-spacing: 2px; color: var(--green-dim);
+  }
+  .section-body { padding: 16px; }
+
+  /* Key-value rows */
+  .kv-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(0,255,65,0.05); }
+  .kv-row:last-child { border-bottom: none; }
+  .kv-key { color: var(--muted); font-size: 11px; }
+  .kv-val { color: var(--text); font-size: 12px; text-align: right; word-break: break-all; max-width: 60%; }
+
+  /* Score breakdown */
+  .score-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(0,255,65,0.05); }
+  .score-row:last-child { border-bottom: none; }
+  .score-label { width: 140px; color: var(--muted); font-size: 11px; }
+  .score-bar-wrap { flex: 1; height: 6px; background: #111; }
+  .score-bar-inner { height: 100%; background: var(--green); }
+  .score-val { width: 40px; text-align: right; font-size: 12px; color: var(--text); }
+
+  /* Services */
+  .service-tag {
+    display: inline-block; padding: 4px 10px; margin: 3px;
+    border: 1px solid var(--border); font-size: 11px; color: var(--text);
+  }
+  .x402-badge {
+    display: inline-block; padding: 3px 8px; background: rgba(0,255,65,0.1);
+    border: 1px solid var(--green); color: var(--green); font-size: 10px;
+    font-weight: 700; letter-spacing: 1px;
+  }
+  .verified-badge {
+    display: inline-block; padding: 3px 8px; background: rgba(0,200,255,0.1);
+    border: 1px solid var(--cyan); color: var(--cyan); font-size: 10px;
+    font-weight: 700; letter-spacing: 1px;
+  }
+
+  /* Description */
+  .description { color: var(--text); font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+
+  /* Footer */
+  footer { text-align: center; padding: 24px 0; color: var(--muted); font-size: 10px; border-top: 1px solid var(--border); margin-top: 24px; }
+
+  /* Not found */
+  .not-found { text-align: center; padding: 80px 0; }
+  .not-found h2 { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--red); margin-bottom: 16px; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .agent-header { flex-direction: column; align-items: center; text-align: center; }
+    .agent-avatar { width: 100px; height: 100px; }
+    .kv-val { max-width: 50%; }
+    .cred-score { font-size: 48px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">TRUST TERMINAL</div>
+    <a href="trust-terminal.html" class="back-link">← BACK TO SCANNER</a>
+  </header>
+
+  <div id="content">
+    <div class="loading">LOADING AGENT DATA<span class="cursor"></span></div>
+  </div>
+
+  <footer>TRUST TERMINAL v0.1 — POWERED BY <a href="https://helixa.xyz">HELIXA</a></footer>
+</div>
+
+<script>
+const API = 'https://api.helixa.xyz/api/terminal';
+
+function getAgentId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('id') || params.get('address') || params.get('token');
+}
+
+function tierClass(tier) {
+  if (!tier) return '';
+  const t = tier.toUpperCase().replace(/\s+/g, '');
+  if (t === 'INVESTMENTGRADE' || t === 'INVESTMENT') return 'tier-INVESTMENT';
+  return 'tier-' + t;
+}
+
+function tierColor(tier) {
+  const colors = { AAA: '#ffd700', PRIME: '#00ffff', 'INVESTMENT GRADE': '#00ff41', INVESTMENT: '#00ff41', SPECULATIVE: '#ffb000', JUNK: '#ff3333' };
+  return colors[(tier||'').toUpperCase()] || '#00ff41';
+}
+
+function shortAddr(addr) {
+  if (!addr) return '—';
+  return addr.slice(0, 8) + '...' + addr.slice(-6);
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  try { return new Date(ts).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+  catch { return ts; }
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function loadAgent() {
+  const id = getAgentId();
+  if (!id) {
+    document.getElementById('content').innerHTML = `
+      <div class="not-found">
+        <h2>NO AGENT SPECIFIED</h2>
+        <p style="color:var(--muted)">Use ?id=TOKEN_ID or ?address=0x...</p>
+        <p style="margin-top:16px"><a href="trust-terminal.html">← Browse all agents</a></p>
+      </div>`;
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API}/agent/${encodeURIComponent(id)}`);
+    if (!resp.ok) throw new Error('not found');
+    const json = await resp.json();
+    // Handle both {success, data} and flat response formats
+    const agent = json.data || json;
+    if (json.error || (!agent.address && !agent.name)) throw new Error('not found');
+    renderAgent(agent);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `
+      <div class="not-found">
+        <h2>AGENT NOT FOUND</h2>
+        <p style="color:var(--muted)">No agent matching "${escapeHtml(id)}"</p>
+        <p style="margin-top:16px"><a href="trust-terminal.html">← Browse all agents</a></p>
+      </div>`;
+  }
+}
+
+function renderAgent(agent) {
+  const meta = agent.metadata || {};
+  const scoring = agent.scoring || {};
+  const tier = (agent.cred_tier || 'JUNK').toUpperCase();
+  const score = agent.cred_score || 0;
+  const tc = tierClass(tier);
+  const color = tierColor(tier);
+  
+  const services = (() => {
+    try { return JSON.parse(agent.services || '[]'); } catch { return []; }
+  })();
+
+  // Score breakdown components
+  const scoreComponents = [
+    { label: 'Metadata', value: scoring.metadata_score || 0, max: 25 },
+    { label: 'x402 Support', value: scoring.x402_score || 0, max: 15 },
+    { label: 'Platform Quality', value: scoring.platform_score || 0, max: 15 },
+    { label: 'Activity/Age', value: scoring.age_score || scoring.activity_score || 0, max: 15 },
+    { label: 'Narrative', value: scoring.narrative_score || 0, max: 15 },
+    { label: 'Reputation', value: scoring.reputation_score || 0, max: 15 },
+  ];
+
+  let html = '';
+
+  // Agent header with avatar
+  html += `
+    <div class="agent-header">
+      <div class="agent-avatar">
+        ${agent.image_url ? `<img src="${escapeHtml(agent.image_url)}" alt="" onerror="this.parentElement.innerHTML='◈'">` : '◈'}
+      </div>
+      <div class="agent-info">
+        <div class="agent-name">${escapeHtml(agent.name || 'Unnamed Agent')}</div>
+        <div class="agent-meta">
+          TOKEN ID: <span>${escapeHtml(agent.token_id || agent.agent_id || '—')}</span><br>
+          PLATFORM: <span>${escapeHtml(agent.platform || 'unknown')}</span><br>
+          REGISTRY: <span>${shortAddr(agent.registry || agent.address)}</span><br>
+          ${agent.x402_supported ? '<span class="x402-badge">x402 ENABLED</span> ' : ''}
+          ${agent.verified ? '<span class="verified-badge">VERIFIED</span>' : ''}
+        </div>
+      </div>
+    </div>`;
+
+  // Cred Score
+  html += `
+    <div class="cred-box ${tc}">
+      <div class="cred-tier">${tier === 'INVESTMENT' ? 'INVESTMENT GRADE' : tier}</div>
+      <div class="cred-score" style="color:${color}">${score}</div>
+      <div style="color:var(--muted);font-size:11px">/ 100</div>
+      <div class="cred-bar"><div class="cred-bar-fill" style="width:${score}%;background:${color}"></div></div>
+    </div>`;
+
+  // Score Breakdown
+  if (scoring && Object.keys(scoring).length > 0) {
+    html += `<div class="section">
+      <div class="section-title">▸ CRED SCORE BREAKDOWN</div>
+      <div class="section-body">`;
+    for (const comp of scoreComponents) {
+      const pct = comp.max > 0 ? (comp.value / comp.max * 100) : 0;
+      html += `
+        <div class="score-row">
+          <div class="score-label">${comp.label}</div>
+          <div class="score-bar-wrap"><div class="score-bar-inner" style="width:${pct}%;background:${color}"></div></div>
+          <div class="score-val">${comp.value}/${comp.max}</div>
+        </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Description
+  if (meta.description || agent.description) {
+    html += `<div class="section">
+      <div class="section-title">▸ DESCRIPTION</div>
+      <div class="section-body"><div class="description">${escapeHtml(meta.description || agent.description)}</div></div>
+    </div>`;
+  }
+
+  // Details
+  html += `<div class="section">
+    <div class="section-title">▸ DETAILS</div>
+    <div class="section-body">
+      <div class="kv-row"><div class="kv-key">Contract Address</div><div class="kv-val"><a href="https://basescan.org/address/${escapeHtml(agent.address || '')}" target="_blank">${escapeHtml(agent.address || '—')}</a></div></div>
+      <div class="kv-row"><div class="kv-key">Owner</div><div class="kv-val">${agent.owner_address ? `<a href="https://basescan.org/address/${escapeHtml(agent.owner_address)}" target="_blank">${shortAddr(agent.owner_address)}</a>` : '—'}</div></div>
+      <div class="kv-row"><div class="kv-key">Chain</div><div class="kv-val">Base (${agent.chain_id || 8453})</div></div>
+      <div class="kv-row"><div class="kv-key">Registered</div><div class="kv-val">${formatDate(agent.registered_at || agent.timestamp)}</div></div>
+      <div class="kv-row"><div class="kv-key">Block</div><div class="kv-val">${agent.block_number || '—'}</div></div>
+      ${agent.metadata_uri ? `<div class="kv-row"><div class="kv-key">Metadata URI</div><div class="kv-val" style="font-size:10px;word-break:break-all">${escapeHtml(agent.metadata_uri).slice(0,80)}${(agent.metadata_uri||'').length > 80 ? '...' : ''}</div></div>` : ''}
+    </div>
+  </div>`;
+
+  // Services
+  if (services.length > 0) {
+    html += `<div class="section">
+      <div class="section-title">▸ SERVICES</div>
+      <div class="section-body">`;
+    for (const svc of services) {
+      const name = typeof svc === 'string' ? svc : (svc.name || svc.type || 'service');
+      const endpoint = typeof svc === 'object' ? (svc.endpoint || svc.url || '') : '';
+      html += `<div class="service-tag">${escapeHtml(name)}${endpoint ? ` → <a href="${escapeHtml(endpoint)}" target="_blank">${escapeHtml(endpoint).slice(0,40)}</a>` : ''}</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Raw metadata (collapsed)
+  if (meta && Object.keys(meta).length > 0) {
+    html += `<div class="section">
+      <div class="section-title" style="cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">▸ RAW METADATA (click to expand)</div>
+      <div class="section-body" style="display:none"><pre style="color:var(--text);font-size:11px;overflow-x:auto;white-space:pre-wrap">${escapeHtml(JSON.stringify(meta, null, 2))}</pre></div>
+    </div>`;
+  }
+
+  document.getElementById('content').innerHTML = html;
+  document.title = `${agent.name || 'Agent'} — Trust Terminal`;
+}
+
+loadAgent();
+</script>
+</body>
+</html>
