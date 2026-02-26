@@ -483,15 +483,20 @@ fetchAgents();
 
 </script>
 <script>
-// Farcaster miniapp: dismiss splash screen
-// Sends raw Comlink APPLY message matching what sdk.actions.ready() does internally
+// Farcaster miniapp: dismiss splash screen (raw Comlink APPLY wire format)
 (function() {
   try {
-    var id = Math.random().toString(36).slice(2);
-    var msg = { id: id, type: 'APPLY', path: ['ready'], argumentList: [{ type: 'RAW', value: {} }] };
+    function rid() {
+      return [0,0,0,0].map(function() {
+        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString(16);
+      }).join('-');
+    }
+    var msg = { id: rid(), type: 'APPLY', path: ['ready'], argumentList: [{ type: 'RAW', value: {} }] };
     if (window.ReactNativeWebView) {
+      // Mobile Warpcast: uses ReactNativeWebView bridge with stringified JSON
       window.ReactNativeWebView.postMessage(JSON.stringify(msg));
     } else if (window.parent && window.parent !== window) {
+      // Web Warpcast: uses window.parent postMessage
       window.parent.postMessage(msg, '*');
     }
   } catch(e) {}
