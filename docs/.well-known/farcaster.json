@@ -1,0 +1,23 @@
+{
+  "accountAssociation": {
+    "header": "",
+    "payload": "",
+    "signature": ""
+  },
+  "frame": {
+    "version": "1",
+    "name": "Agent Terminal",
+    "iconUrl": "https://helixa.xyz/icon-200.png",
+    "homeUrl": "https://helixa.xyz/terminal",
+    "splashImageUrl": "https://helixa.xyz/icon-200.png",
+    "splashBackgroundColor": "#0a0a14",
+    "subtitle": "DexScreener for Agent Credibility",
+    "description": "Score, rank, and discover 9,500+ AI agents on Base. Cred tiers from Junk to Preferred.",
+    "primaryCategory": "developer-tools",
+    "tags": ["agents", "erc-8004", "credibility", "base"],
+    "heroImageUrl": "https://helixa.xyz/og-terminal.png",
+    "tagline": "Credit ratings for AI agents",
+    "ogTitle": "Agent Terminal — Helixa",
+    "ogDescription": "9,500+ ERC-8004 agents on Base. All scored. All ranked."
+  }
+}
