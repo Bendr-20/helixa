@@ -1,48 +1,46 @@
 import type { Action, IAgentRuntime, Memory, State, HandlerCallback } from "@elizaos/core";
-import { ethers } from "ethers";
-import { getContract, parseAgentData } from "../utils";
+import { fetchAgentV2 } from "../utils";
 
 export const lookupAction: Action = {
   name: "AGENTDNA_LOOKUP",
-  description: "Look up an AgentDNA by token ID or wallet address",
-  similes: ["LOOKUP_AGENT", "GET_AGENT", "FIND_AGENT", "AGENT_INFO"],
+  description: "Look up a Helixa agent by token ID via V2 API",
+  similes: ["LOOKUP_AGENT", "GET_AGENT", "FIND_AGENT", "AGENT_INFO", "HELIXA_LOOKUP"],
 
-  validate: async (runtime: IAgentRuntime) => {
-    return !!runtime.getSetting("AGENTDNA_CONTRACT_ADDRESS");
+  validate: async (_runtime: IAgentRuntime) => {
+    return true; // Public endpoint, no auth needed
   },
 
   handler: async (runtime: IAgentRuntime, message: Memory, _state: State | undefined, _options: Record<string, unknown>, callback?: HandlerCallback) => {
     try {
-      const { tokenId, agentAddress } = message.content as any;
-      const contract = getContract(runtime);
+      const { tokenId } = message.content as any;
 
-      let agent;
-      let id = tokenId;
-
-      if (agentAddress && ethers.isAddress(agentAddress)) {
-        const result = await contract.getAgentByAddress(agentAddress);
-        id = Number(result[0]);
-        agent = parseAgentData(result[1]);
-      } else if (tokenId != null) {
-        const result = await contract.getAgent(tokenId);
-        agent = parseAgentData(result);
-      } else {
-        callback?.({ text: "Provide either tokenId or agentAddress" });
+      if (tokenId == null) {
+        callback?.({ text: "Provide a tokenId to look up" });
         return false;
       }
 
+      const agent = await fetchAgentV2(runtime, parseInt(tokenId));
+
+      const tierLabel = agent.credScore >= 91 ? 'AAA' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Investment Grade' : agent.credScore >= 26 ? 'Speculative' : 'Junk';
+
       const lines = [
-        `🧬 Agent #${id}`,
-        `Owner: ${agent.owner}`,
-        `Name: ${agent.name}`,
+        `🧬 Agent #${agent.tokenId} — ${agent.name}`,
         `Framework: ${agent.framework}`,
-        `Version: ${agent.version}`,
-        `Soulbound: ${agent.soulbound}`,
-        `Active: ${agent.active}`,
-        `Mutations: ${agent.mutationCount}`,
+        `Owner: ${agent.owner}`,
+        `Cred Score: ${agent.credScore} (${tierLabel})`,
         `Points: ${agent.points}`,
-        `Created: ${new Date(agent.createdAt * 1000).toISOString()}`,
+        `Verified: ${agent.verified}`,
+        `Soulbound: ${agent.soulbound}`,
+        `Mint Origin: ${agent.mintOrigin}`,
+        `Minted: ${agent.mintedAt}`,
+        `Mutations: ${agent.mutationCount}`,
       ];
+
+      if (agent.personality?.quirks) lines.push(`Quirks: ${agent.personality.quirks}`);
+      if (agent.narrative?.mission) lines.push(`Mission: ${agent.narrative.mission}`);
+      if (agent.linkedToken) lines.push(`Token: ${agent.linkedToken.symbol} (${agent.linkedToken.contractAddress})`);
+
+      lines.push(`Explorer: ${agent.explorer}`);
 
       callback?.({ text: lines.join("\n") });
       return true;
@@ -54,8 +52,8 @@ export const lookupAction: Action = {
 
   examples: [
     [
-      { user: "{{user1}}", content: { text: "Look up agent #42" } },
-      { user: "{{agentName}}", content: { text: "🧬 Agent #42\nOwner: 0x...\nName: Atlas" } },
+      { user: "{{user1}}", content: { text: "Look up Helixa agent #1" } },
+      { user: "{{agentName}}", content: { text: "🧬 Agent #1 — Bendr\nFramework: openclaw\nCred Score: 87 (Prime)" } },
     ],
   ],
 };

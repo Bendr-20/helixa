@@ -3,6 +3,8 @@ import { AGENT_DNA_ABI } from "./abi";
 import type { IAgentRuntime } from "@elizaos/core";
 
 const DEFAULT_RPC = "https://mainnet.base.org";
+const V2_API = "https://api.helixa.xyz";
+const V2_CONTRACT = "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60";
 const ERC8004_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
 const ERC8004_ABI = [
   "function register(string agentURI) external returns (uint256)",
@@ -27,16 +29,122 @@ export function getSigner(runtime: IAgentRuntime): ethers.Wallet {
 
 /** Get a read-only contract instance. */
 export function getContract(runtime: IAgentRuntime): ethers.Contract {
-  const addr = runtime.getSetting("AGENTDNA_CONTRACT_ADDRESS");
-  if (!addr) throw new Error("AGENTDNA_CONTRACT_ADDRESS not configured");
+  const addr = runtime.getSetting("AGENTDNA_CONTRACT_ADDRESS") || V2_CONTRACT;
   return new ethers.Contract(addr, AGENT_DNA_ABI, getProvider(runtime));
 }
 
 /** Get a writable contract instance (with signer). */
 export function getWritableContract(runtime: IAgentRuntime): ethers.Contract {
-  const addr = runtime.getSetting("AGENTDNA_CONTRACT_ADDRESS");
-  if (!addr) throw new Error("AGENTDNA_CONTRACT_ADDRESS not configured");
+  const addr = runtime.getSetting("AGENTDNA_CONTRACT_ADDRESS") || V2_CONTRACT;
   return new ethers.Contract(addr, AGENT_DNA_ABI, getSigner(runtime));
+}
+
+/** Get the V2 API base URL from settings or default. */
+export function getApiUrl(runtime: IAgentRuntime): string {
+  return runtime.getSetting("HELIXA_API_URL") || V2_API;
+}
+
+/** Build SIWA authorization header for V2 API. */
+export async function buildSIWAAuth(runtime: IAgentRuntime): Promise<string> {
+  const signer = getSigner(runtime);
+  const address = await signer.getAddress();
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
+  const signature = await signer.signMessage(message);
+  return `Bearer ${address}:${timestamp}:${signature}`;
+}
+
+/** Mint agent via V2 API with SIWA auth. Returns the API response. */
+export async function mintViaV2API(
+  runtime: IAgentRuntime,
+  params: {
+    name: string;
+    framework?: string;
+    soulbound?: boolean;
+    personality?: {
+      quirks?: string;
+      communicationStyle?: string;
+      values?: string;
+      humor?: string;
+      riskTolerance?: number;
+      autonomyLevel?: number;
+    };
+    narrative?: {
+      origin?: string;
+      mission?: string;
+      lore?: string;
+      manifesto?: string;
+    };
+    referralCode?: string;
+  }
+): Promise<any> {
+  const apiUrl = getApiUrl(runtime);
+  const auth = await buildSIWAAuth(runtime);
+
+  const res = await fetch(`${apiUrl}/api/v2/mint`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: auth,
+    },
+    body: JSON.stringify({
+      name: params.name,
+      framework: params.framework || "ElizaOS",
+      soulbound: params.soulbound ?? false,
+      personality: params.personality,
+      narrative: params.narrative,
+      referralCode: params.referralCode,
+    }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || `Mint failed (${res.status})`);
+  }
+  return data;
+}
+
+/** Fetch agent from V2 API. */
+export async function fetchAgentV2(runtime: IAgentRuntime, tokenId: number): Promise<any> {
+  const apiUrl = getApiUrl(runtime);
+  const res = await fetch(`${apiUrl}/api/v2/agent/${tokenId}`);
+  if (!res.ok) throw new Error(`Agent #${tokenId} not found`);
+  return res.json();
+}
+
+/** Fetch cred score from V2 API. */
+export async function fetchCredScore(runtime: IAgentRuntime, tokenId: number): Promise<any> {
+  const apiUrl = getApiUrl(runtime);
+  const res = await fetch(`${apiUrl}/api/v2/agent/${tokenId}/cred`);
+  if (!res.ok) throw new Error(`Cred score not available for #${tokenId}`);
+  return res.json();
+}
+
+/** Update agent via V2 API with SIWA auth. */
+export async function updateAgentV2(
+  runtime: IAgentRuntime,
+  tokenId: number,
+  params: {
+    personality?: any;
+    narrative?: any;
+    traits?: Array<{ name: string; category: string }>;
+  }
+): Promise<any> {
+  const apiUrl = getApiUrl(runtime);
+  const auth = await buildSIWAAuth(runtime);
+
+  const res = await fetch(`${apiUrl}/api/v2/agent/${tokenId}/update`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: auth,
+    },
+    body: JSON.stringify(params),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Update failed (${res.status})`);
+  return data;
 }
 
 /** Build a base64-encoded data URI for agent metadata. */
