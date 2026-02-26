@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agent Terminal — Agent Credibility Scanner</title>
+<meta property="og:title" content="Agent Terminal by Helixa" />
+<meta property="og:description" content="Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred." />
+<meta property="og:image" content="https://helixa.xyz/helixa-logo.png" />
+<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://helixa.xyz/helixa-logo.png","button":{"title":"Open Terminal","action":{"type":"launch_frame","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -474,6 +478,13 @@ function nextPage() { if (currentPage < totalPages) { currentPage++; fetchAgents
 document.getElementById('search').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
 fetchAgents();
+
+// Farcaster miniapp: signal ready
+if (window.parent !== window) {
+  try {
+    window.parent.postMessage({ type: 'frame-ready' }, '*');
+  } catch(e) {}
+}
 </script>
 </body>
 </html>
