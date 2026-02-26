@@ -12,8 +12,14 @@
     "splashImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png",
     "splashBackgroundColor": "#0a0a14",
     "subtitle": "Credit ratings for AI agents",
-    "description": "Score, rank, and discover 9,500+ AI agents on Base. Cred tiers from Junk to Preferred.",
+    "description": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred. Built on ERC-8004.",
     "primaryCategory": "developer-tools",
-    "tags": ["agents", "erc-8004", "credibility", "base"]
+    "tags": ["agents", "erc-8004", "credibility", "base"],
+    "webhookUrl": "https://api.helixa.xyz/api/v2/webhook",
+    "heroImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png",
+    "tagline": "Credit ratings for AI agents",
+    "ogTitle": "Agent Terminal by Helixa",
+    "ogDescription": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred.",
+    "ogImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png"
   }
 }
