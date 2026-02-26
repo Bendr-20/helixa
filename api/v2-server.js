@@ -75,6 +75,54 @@ if (PRICING.credReport > 0) {
         description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
     };
 }
+// ─── USDC TX Hash Payment Verification ─────────────────────────
+// USDC_ADDRESS imported from contract.js
+const USDC_DECIMALS = 6;
+const usedPaymentTxs = new Set(); // prevent replay
+
+async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) {
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const receipt = await provider.getTransactionReceipt(txHash);
+    if (!receipt || receipt.status !== 1) throw new Error('Transaction failed or not found');
+    
+    const transferTopic = ethers.id('Transfer(address,address,uint256)');
+    for (const log of receipt.logs) {
+        if (log.address.toLowerCase() !== USDC_ADDRESS.toLowerCase()) continue;
+        if (log.topics[0] !== transferTopic) continue;
+        
+        const to = ethers.getAddress('0x' + log.topics[2].slice(26));
+        const amount = BigInt(log.data);
+        const expectedAmount = BigInt(Math.round(expectedAmountUSD * 10 ** USDC_DECIMALS));
+        
+        if (to.toLowerCase() === expectedRecipient.toLowerCase() && amount >= expectedAmount) {
+            return { from: ethers.getAddress('0x' + log.topics[1].slice(26)), to, amount: Number(amount) / 1e6 };
+        }
+    }
+    throw new Error('No matching USDC transfer found in transaction');
+}
+
+// Middleware: skip x402 if valid paymentTx is provided in body
+function txPaymentBypass(route, priceUSD, recipient) {
+    return async (req, res, next) => {
+        const { paymentTx } = req.body || {};
+        if (!paymentTx || typeof paymentTx !== 'string') return next();
+        
+        if (usedPaymentTxs.has(paymentTx.toLowerCase())) {
+            return res.status(400).json({ error: 'Payment TX already used' });
+        }
+        
+        try {
+            const result = await verifyUSDCTransfer(paymentTx, priceUSD, recipient);
+            usedPaymentTxs.add(paymentTx.toLowerCase());
+            req.paymentVerified = { method: 'tx-hash', txHash: paymentTx, ...result };
+            console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${paymentTx.slice(0, 10)}...)`);
+            return next();
+        } catch (e) {
+            return res.status(402).json({ error: `Payment verification failed: ${e.message}`, hint: 'Send $1 USDC to the payment address, then include the TX hash as paymentTx in your request body' });
+        }
+    };
+}
+
 if (Object.keys(x402Routes).length > 0) {
     app.use(x402PaymentMiddleware(x402Routes, x402Server));
     console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
@@ -563,8 +611,8 @@ app.get('/api/v2/og/:address', (req, res) => {
     });
 });
 
-// POST /api/v2/mint — Mint new agent
-app.post('/api/v2/mint', requireSIWA, async (req, res) => {
+// POST /api/v2/mint — Mint new agent (x402 payment or TX hash)
+async function mintHandler(req, res) {
     const { name, framework, soulbound, personality, narrative, referralCode } = req.body;
     
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
@@ -846,6 +894,32 @@ app.post('/api/v2/mint', requireSIWA, async (req, res) => {
     } catch (e) {
         console.error('[V2 MINT] Error:', e.message);
         res.status(500).json({ error: 'Mint failed: ' + e.message.slice(0, 200) });
+    }
+}
+
+// x402-gated mint (standard flow)
+app.post('/api/v2/mint', requireSIWA, mintHandler);
+
+// TX-hash payment mint (alternative for agents that can't use x402 SDK)
+app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
+    const { paymentTx } = req.body;
+    if (!paymentTx) return res.status(400).json({ error: 'paymentTx required (USDC transfer TX hash)' });
+    if (usedPaymentTxs.has(paymentTx.toLowerCase())) return res.status(400).json({ error: 'Payment TX already used' });
+    
+    try {
+        const result = await verifyUSDCTransfer(paymentTx, PRICING.agentMint, DEPLOYER_ADDRESS);
+        usedPaymentTxs.add(paymentTx.toLowerCase());
+        req.paymentVerified = result;
+        console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${paymentTx.slice(0,10)}...)`);
+        return mintHandler(req, res);
+    } catch (e) {
+        return res.status(402).json({
+            error: `Payment verification failed: ${e.message}`,
+            hint: `Send $${PRICING.agentMint} USDC to ${DEPLOYER_ADDRESS} on Base, then include the TX hash as paymentTx`,
+            payTo: DEPLOYER_ADDRESS,
+            amount: `${PRICING.agentMint} USDC`,
+            network: 'Base (chain 8453)',
+        });
     }
 });
 
