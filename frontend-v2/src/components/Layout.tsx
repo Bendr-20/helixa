@@ -8,6 +8,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/mint', label: 'Mint' },
   { href: '/agents', label: 'Agents' },
+  { href: '/trust-terminal.html', label: 'Trust Terminal', external: true },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/manage', label: 'Manage' },
   { href: '/token', label: '$CRED' },
@@ -69,14 +70,25 @@ export function Layout({ children }: LayoutProps) {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-6">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
-                  onMouseEnter={() => preloadMap[link.href]?.()}
-                >
-                  {link.label}
-                </Link>
+                (link as any).external ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="nav-link"
+                    style={{ color: '#6eecd8' }}
+                  >
+                    {link.label}
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
+                    onMouseEnter={() => preloadMap[link.href]?.()}
+                  >
+                    {link.label}
+                  </Link>
+                )
               ))}
             </div>
             
@@ -107,14 +119,26 @@ export function Layout({ children }: LayoutProps) {
         <div className="mobile-nav md:hidden">
           <div className="mobile-nav-content">
             {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={`mobile-nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
+              (link as any).external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="mobile-nav-link"
+                  style={{ color: '#6eecd8' }}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`mobile-nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              )
             ))}
           </div>
         </div>
