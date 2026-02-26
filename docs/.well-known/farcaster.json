@@ -8,6 +8,7 @@
     "version": "1",
     "name": "Agent Terminal",
     "iconUrl": "https://helixa.xyz/icon-200.png",
+    "imageUrl": "https://helixa.xyz/og-terminal.png",
     "homeUrl": "https://helixa.xyz/terminal",
     "splashImageUrl": "https://helixa.xyz/icon-200.png",
     "splashBackgroundColor": "#0a0a14",
