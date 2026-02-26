@@ -4,14 +4,22 @@ import { WalletButton } from './WalletButton';
 import { DnaBackground } from './DnaBackground';
 import { preloadMap } from '../App';
 
-const navLinks = [
+const primaryLinks = [
   { href: '/', label: 'Home' },
   { href: '/mint', label: 'Mint' },
   { href: '/terminal', label: 'Terminal', external: true },
   { href: '/agents', label: 'Agents' },
   { href: '/token', label: '$CRED' },
-  { href: '/manage', label: 'Manage' },
 ];
+
+const moreLinks = [
+  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/manage', label: 'Manage' },
+  { href: '/messages', label: 'Messages' },
+  { href: '/docs', label: 'Docs' },
+];
+
+const navLinks = [...primaryLinks, ...moreLinks];
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,9 +27,11 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const moreRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   useEffect(() => {
@@ -34,6 +44,20 @@ export function Layout({ children }: LayoutProps) {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Close "More" dropdown when clicking outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
+  // Close "More" on route change
+  useEffect(() => { setMoreOpen(false); }, [location.pathname]);
   
   const isActiveLink = (href: string) => {
     if (href === '/' && location.pathname === '/') return true;
@@ -41,14 +65,31 @@ export function Layout({ children }: LayoutProps) {
     return false;
   };
 
+  const renderNavLink = (link: { href: string; label: string; external?: boolean }, onClick?: () => void) => {
+    if ((link as any).external) {
+      return (
+        <a key={link.href} href={link.href} className="nav-link" onClick={onClick}>
+          {link.label}
+        </a>
+      );
+    }
+    return (
+      <Link
+        key={link.href}
+        to={link.href}
+        className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
+        onMouseEnter={() => preloadMap[link.href]?.()}
+        onClick={onClick}
+      >
+        {link.label}
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Holographic Swirl Background */}
-      {/* DNA Double Helix Background — Canvas 3D */}
       <DnaBackground />
-      {/* Nav spacer for fixed positioning */}
       <div style={{ height: 64 }} />
-      {/* Navigation */}
       <nav className={`nav ${scrolled ? 'nav-scrolled' : ''} ${navVisible ? '' : 'nav-hidden'}`}>
         <div className="container" style={{ width: '100%' }}>
           <div className="flex items-center justify-between" style={{ height: '100%' }}>
@@ -65,27 +106,59 @@ export function Layout({ children }: LayoutProps) {
             </Link>
             
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-3" style={{ overflowX: 'auto', whiteSpace: 'nowrap', maxWidth: '70vw' }}>
-              {navLinks.map((link) => (
-                (link as any).external ? (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className={`nav-link`}
-                  >
-                    {link.label}
-                  </a>
-                ) : (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
-                    onMouseEnter={() => preloadMap[link.href]?.()}
-                  >
-                    {link.label}
-                  </Link>
-                )
-              ))}
+            <div className="hidden md:flex items-center gap-3">
+              {primaryLinks.map((link) => renderNavLink(link))}
+              
+              {/* More dropdown */}
+              <div ref={moreRef} style={{ position: 'relative' }}>
+                <button
+                  className="nav-link"
+                  onClick={(e) => { e.stopPropagation(); setMoreOpen(!moreOpen); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                >
+                  More <span style={{ fontSize: '0.7em', opacity: 0.7 }}>{moreOpen ? '▲' : '▼'}</span>
+                </button>
+                {moreOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '0.5rem',
+                    background: 'rgba(10, 10, 20, 0.95)',
+                    border: '1px solid rgba(110, 236, 216, 0.2)',
+                    borderRadius: '8px',
+                    padding: '0.5rem 0',
+                    minWidth: '150px',
+                    zIndex: 100,
+                    backdropFilter: 'blur(10px)',
+                  }}>
+                    {moreLinks.map((link) => (
+                      (link as any).external ? (
+                        <a
+                          key={link.href}
+                          href={link.href}
+                          className="nav-link"
+                          style={{ display: 'block', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+                          onClick={() => setMoreOpen(false)}
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          key={link.href}
+                          to={link.href}
+                          className={`nav-link ${isActiveLink(link.href) ? 'active' : ''}`}
+                          style={{ display: 'block', padding: '0.5rem 1rem', whiteSpace: 'nowrap' }}
+                          onMouseEnter={() => preloadMap[link.href]?.()}
+                          onClick={() => setMoreOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      )
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
             {/* Desktop Wallet Button */}
@@ -110,7 +183,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </nav>
       
-      {/* Mobile Menu */}
+      {/* Mobile Menu — all links flat */}
       {mobileMenuOpen && (
         <div className="mobile-nav md:hidden">
           <div className="mobile-nav-content">
@@ -144,7 +217,7 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       
-      {/* Footer — Clean & Minimal */}
+      {/* Footer */}
       <footer>
         <div className="container" style={{ padding: '1.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
           <span style={{ color: '#555', fontSize: '0.75rem' }}>Helixa Protocol</span>
