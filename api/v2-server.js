@@ -2641,7 +2641,7 @@ app.get('/api/terminal/agents', (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-        const sort = ['cred_score','name','created_at','platform'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const sort = ['cred_score','name','created_at','platform','token_market_cap','price_change_24h','volume_24h','liquidity_usd'].includes(req.query.sort) ? req.query.sort : 'cred_score';
         const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
         const filter = req.query.filter || 'all';
         const q = (req.query.q || '').trim();
