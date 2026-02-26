@@ -7,19 +7,19 @@
   "frame": {
     "version": "1",
     "name": "Agent Terminal",
-    "iconUrl": "https://api.helixa.xyz/api/v2/aura/1.png",
+    "iconUrl": "https://helixa.xyz/icon-200.png",
     "homeUrl": "https://helixa.xyz/terminal",
-    "splashImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png",
+    "splashImageUrl": "https://helixa.xyz/icon-200.png",
     "splashBackgroundColor": "#0a0a14",
     "subtitle": "Credit ratings for AI agents",
     "description": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred. Built on ERC-8004.",
     "primaryCategory": "developer-tools",
     "tags": ["agents", "erc-8004", "credibility", "base"],
     "webhookUrl": "https://api.helixa.xyz/api/v2/webhook",
-    "heroImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png",
+    "heroImageUrl": "https://helixa.xyz/icon-200.png",
     "tagline": "Credit ratings for AI agents",
     "ogTitle": "Agent Terminal by Helixa",
     "ogDescription": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred.",
-    "ogImageUrl": "https://api.helixa.xyz/api/v2/aura/1.png"
+    "ogImageUrl": "https://helixa.xyz/icon-200.png"
   }
 }
