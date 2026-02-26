@@ -7,13 +7,10 @@ import { preloadMap } from '../App';
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/mint', label: 'Mint' },
-  { href: '/agents', label: 'Agents' },
   { href: '/terminal', label: 'Terminal', external: true },
-  { href: '/leaderboard', label: 'Leaderboard' },
-  { href: '/manage', label: 'Manage' },
+  { href: '/agents', label: 'Agents' },
   { href: '/token', label: '$CRED' },
-  { href: '/messages', label: 'Messages' },
-  { href: '/docs', label: 'Docs' },
+  { href: '/manage', label: 'Manage' },
 ];
 
 interface LayoutProps {
