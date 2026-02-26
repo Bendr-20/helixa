@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -7,182 +7,197 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title CredStaking — Stake $CRED to Boost Agent Reputation
- * @notice Users stake $CRED tokens against a Helixa agent tokenId to increase
- *         that agent's Cred boost score. Acts as a vouching mechanism.
- * @dev Boost uses a logarithmic curve: boost = 15 * ln(1 + totalStaked/SCALE) / ln(1 + CAP/SCALE)
- *      This prevents whale domination while rewarding meaningful stakes.
+ * @title CredStaking — Stake $CRED to Boost Agent Cred Score Tier
+ * @notice Stake $CRED tokens against a Helixa agent tokenId to earn a tier boost.
+ *         Tiers: NONE (0), QUALIFIED (100), PRIME (500), PREFERRED (2000).
+ *         Early unstake incurs a 10% penalty to treasury. Owner can slash bad actors.
  */
 contract CredStaking is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
+    // ─── Enums ──────────────────────────────────────────────────
+
+    enum Tier { NONE, QUALIFIED, PRIME, PREFERRED }
+
     // ─── Constants ──────────────────────────────────────────────
 
-    /// @notice Minimum lock period before unstaking
     uint256 public constant LOCK_PERIOD = 7 days;
+    uint256 public constant EARLY_UNSTAKE_PENALTY_BPS = 1000; // 10%
+    uint256 public constant QUALIFIED_THRESHOLD = 100e18;
+    uint256 public constant PRIME_THRESHOLD = 500e18;
+    uint256 public constant PREFERRED_THRESHOLD = 2000e18;
+    uint8 public constant QUALIFIED_BOOST = 10;
+    uint8 public constant PRIME_BOOST = 20;
+    uint8 public constant PREFERRED_BOOST = 30;
 
-    /// @notice Maximum cred boost points
-    uint256 public constant MAX_BOOST = 15;
+    // ─── Immutables ─────────────────────────────────────────────
 
-    /// @notice Scale factor for the log curve (1000 CRED = ~7.5 boost, approachable)
-    /// @dev With 18 decimals: 1000e18
-    uint256 public constant LOG_SCALE = 1000e18;
-
-    /// @notice Cap where boost approaches MAX_BOOST (~100,000 CRED)
-    uint256 public constant LOG_CAP = 100_000e18;
+    IERC20 public immutable credToken;
+    address public immutable treasury;
 
     // ─── State ──────────────────────────────────────────────────
 
-    IERC20 public immutable credToken;
-
     struct StakeInfo {
         uint256 amount;
-        uint256 stakedAt; // latest stake timestamp (resets lock on additional stakes)
+        uint256 stakedAt;
     }
 
-    /// @notice user => tokenId => StakeInfo
-    mapping(address => mapping(uint256 => StakeInfo)) public stakes;
+    /// @notice agentId => StakeInfo
+    mapping(uint256 => StakeInfo) public stakeInfo;
 
-    /// @notice tokenId => total staked
-    mapping(uint256 => uint256) public totalStaked;
+    /// @notice agentId => staker address
+    mapping(uint256 => address) public staker;
 
-    /// @notice Emergency pause
+    /// @notice Total $CRED staked across all agents
+    uint256 public totalStakedAmount;
+
     bool public paused;
 
     // ─── Events ─────────────────────────────────────────────────
 
-    event Staked(address indexed user, uint256 indexed tokenId, uint256 amount);
-    event Unstaked(address indexed user, uint256 indexed tokenId, uint256 amount);
-    event EmergencyWithdraw(address indexed user, uint256 indexed tokenId, uint256 amount);
+    event Staked(address indexed user, uint256 indexed agentId, uint256 amount, Tier newTier);
+    event Unstaked(address indexed user, uint256 indexed agentId, uint256 amount, uint256 penalty);
+    event Slashed(uint256 indexed agentId, uint256 amount, address indexed slashedStaker);
+    event TierChanged(uint256 indexed agentId, Tier oldTier, Tier newTier);
     event Paused(bool state);
 
     // ─── Errors ─────────────────────────────────────────────────
 
     error ZeroAmount();
-    error LockNotExpired();
-    error InsufficientStake();
     error ContractPaused();
+    error InsufficientStake();
+    error NotStaker();
+    error AgentAlreadyStakedByOther();
+    error NothingToSlash();
 
     // ─── Constructor ────────────────────────────────────────────
 
-    constructor(address _credToken) Ownable(msg.sender) {
+    constructor(address _credToken, address _treasury) Ownable(msg.sender) {
         credToken = IERC20(_credToken);
+        treasury = _treasury;
     }
 
-    // ─── Core Functions ─────────────────────────────────────────
+    // ─── Core ───────────────────────────────────────────────────
 
-    /// @notice Stake CRED tokens on a specific agent
-    /// @param tokenId The Helixa agent token ID to stake on
-    /// @param amount Amount of CRED to stake
-    function stake(uint256 tokenId, uint256 amount) external nonReentrant {
+    /// @notice Stake $CRED on an agent. Only one staker per agent. Additional stakes add to existing.
+    function stake(uint256 agentId, uint256 amount) external nonReentrant {
         if (paused) revert ContractPaused();
         if (amount == 0) revert ZeroAmount();
 
+        address existing = staker[agentId];
+        if (existing != address(0) && existing != msg.sender) revert AgentAlreadyStakedByOther();
+
+        Tier oldTier = _getTier(stakeInfo[agentId].amount);
+
         credToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        StakeInfo storage s = stakes[msg.sender][tokenId];
+        staker[agentId] = msg.sender;
+        StakeInfo storage s = stakeInfo[agentId];
         s.amount += amount;
-        s.stakedAt = block.timestamp; // resets lock on each stake
-        totalStaked[tokenId] += amount;
+        s.stakedAt = block.timestamp;
+        totalStakedAmount += amount;
 
-        emit Staked(msg.sender, tokenId, amount);
+        Tier newTier = _getTier(s.amount);
+        if (newTier != oldTier) {
+            emit TierChanged(agentId, oldTier, newTier);
+        }
+
+        emit Staked(msg.sender, agentId, amount, newTier);
     }
 
-    /// @notice Unstake CRED tokens from a specific agent (after lock period)
-    /// @param tokenId The Helixa agent token ID to unstake from
-    /// @param amount Amount of CRED to unstake
-    function unstake(uint256 tokenId, uint256 amount) external nonReentrant {
+    /// @notice Unstake $CRED. 10% penalty if before lock period expires.
+    function unstake(uint256 agentId, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
+        if (staker[agentId] != msg.sender) revert NotStaker();
 
-        StakeInfo storage s = stakes[msg.sender][tokenId];
+        StakeInfo storage s = stakeInfo[agentId];
         if (s.amount < amount) revert InsufficientStake();
-        if (block.timestamp < s.stakedAt + LOCK_PERIOD) revert LockNotExpired();
+
+        Tier oldTier = _getTier(s.amount);
 
         s.amount -= amount;
-        totalStaked[tokenId] -= amount;
+        totalStakedAmount -= amount;
 
-        credToken.safeTransfer(msg.sender, amount);
+        uint256 penalty;
+        if (block.timestamp < s.stakedAt + LOCK_PERIOD) {
+            penalty = (amount * EARLY_UNSTAKE_PENALTY_BPS) / 10000;
+        }
 
-        emit Unstaked(msg.sender, tokenId, amount);
+        if (s.amount == 0) {
+            staker[agentId] = address(0);
+        }
+
+        Tier newTier = _getTier(s.amount);
+        if (newTier != oldTier) {
+            emit TierChanged(agentId, oldTier, newTier);
+        }
+
+        if (penalty > 0) {
+            credToken.safeTransfer(treasury, penalty);
+        }
+        credToken.safeTransfer(msg.sender, amount - penalty);
+
+        emit Unstaked(msg.sender, agentId, amount, penalty);
     }
 
-    // ─── View Functions ─────────────────────────────────────────
+    // ─── Admin ──────────────────────────────────────────────────
 
-    /// @notice Get a user's stake on a specific agent
-    function getStake(address user, uint256 tokenId) external view returns (uint256 amount, uint256 stakedAt) {
-        StakeInfo storage s = stakes[user][tokenId];
-        return (s.amount, s.stakedAt);
-    }
-
-    /// @notice Get total staked on an agent
-    function getTotalStaked(uint256 tokenId) external view returns (uint256) {
-        return totalStaked[tokenId];
-    }
-
-    /// @notice Calculate cred boost for an agent based on total staked
-    /// @dev Uses approximated log curve: boost = MAX_BOOST * log2(1 + total/SCALE) / log2(1 + CAP/SCALE)
-    ///      Implemented with a piecewise linear approximation of log2.
-    function getCredBoost(uint256 tokenId) external view returns (uint256) {
-        uint256 total = totalStaked[tokenId];
-        if (total == 0) return 0;
-        if (total >= LOG_CAP) return MAX_BOOST;
-
-        // log2(1 + total/SCALE) / log2(1 + CAP/SCALE)
-        // We compute log2 of (SCALE + total) and (SCALE + CAP) relative to SCALE
-        // Using integer log2 approximation scaled by 1e18
-
-        uint256 numerator = _log2Scaled(LOG_SCALE + total) - _log2Scaled(LOG_SCALE);
-        uint256 denominator = _log2Scaled(LOG_SCALE + LOG_CAP) - _log2Scaled(LOG_SCALE);
-
-        return (MAX_BOOST * numerator) / denominator;
-    }
-
-    // ─── Admin Functions ────────────────────────────────────────
-
-    /// @notice Emergency withdraw all stakes for a user+agent (owner only, bypasses lock)
-    function emergencyWithdraw(address user, uint256 tokenId) external onlyOwner {
-        StakeInfo storage s = stakes[user][tokenId];
+    /// @notice Slash an agent's entire stake. Funds go to treasury.
+    function slash(uint256 agentId) external onlyOwner {
+        StakeInfo storage s = stakeInfo[agentId];
         uint256 amount = s.amount;
-        if (amount == 0) revert ZeroAmount();
+        if (amount == 0) revert NothingToSlash();
+
+        address slashedAddr = staker[agentId];
+        Tier oldTier = _getTier(amount);
 
         s.amount = 0;
-        totalStaked[tokenId] -= amount;
+        s.stakedAt = 0;
+        staker[agentId] = address(0);
+        totalStakedAmount -= amount;
 
-        credToken.safeTransfer(user, amount);
+        credToken.safeTransfer(treasury, amount);
 
-        emit EmergencyWithdraw(user, tokenId, amount);
+        if (oldTier != Tier.NONE) {
+            emit TierChanged(agentId, oldTier, Tier.NONE);
+        }
+        emit Slashed(agentId, amount, slashedAddr);
     }
 
-    /// @notice Pause/unpause staking
     function setPaused(bool _paused) external onlyOwner {
         paused = _paused;
         emit Paused(_paused);
     }
 
+    // ─── Views ──────────────────────────────────────────────────
+
+    function getStake(uint256 agentId) external view returns (uint256 amount, uint256 stakedAt, address stakerAddr) {
+        StakeInfo storage s = stakeInfo[agentId];
+        return (s.amount, s.stakedAt, staker[agentId]);
+    }
+
+    function getTier(uint256 agentId) external view returns (Tier) {
+        return _getTier(stakeInfo[agentId].amount);
+    }
+
+    function getBoost(uint256 agentId) external view returns (uint8) {
+        Tier t = _getTier(stakeInfo[agentId].amount);
+        if (t == Tier.PREFERRED) return PREFERRED_BOOST;
+        if (t == Tier.PRIME) return PRIME_BOOST;
+        if (t == Tier.QUALIFIED) return QUALIFIED_BOOST;
+        return 0;
+    }
+
+    function totalStaked() external view returns (uint256) {
+        return totalStakedAmount;
+    }
+
     // ─── Internal ───────────────────────────────────────────────
 
-    /// @dev Integer log2 approximation scaled by 1e18.
-    ///      Uses bit-shifting to find the integer part, then linear interpolation for fractional.
-    function _log2Scaled(uint256 x) internal pure returns (uint256) {
-        if (x == 0) return 0;
-
-        // Find highest bit position (integer part of log2)
-        uint256 n = 0;
-        uint256 temp = x;
-        if (temp >= 1 << 128) { temp >>= 128; n += 128; }
-        if (temp >= 1 << 64)  { temp >>= 64;  n += 64; }
-        if (temp >= 1 << 32)  { temp >>= 32;  n += 32; }
-        if (temp >= 1 << 16)  { temp >>= 16;  n += 16; }
-        if (temp >= 1 << 8)   { temp >>= 8;   n += 8; }
-        if (temp >= 1 << 4)   { temp >>= 4;   n += 4; }
-        if (temp >= 1 << 2)   { temp >>= 2;   n += 2; }
-        if (temp >= 1 << 1)   { n += 1; }
-
-        // Linear interpolation for fractional part
-        // fraction = (x - 2^n) / 2^n, scaled to 1e18
-        uint256 powerOfTwo = 1 << n;
-        uint256 fraction = ((x - powerOfTwo) * 1e18) / powerOfTwo;
-
-        return n * 1e18 + fraction;
+    function _getTier(uint256 amount) internal pure returns (Tier) {
+        if (amount >= PREFERRED_THRESHOLD) return Tier.PREFERRED;
+        if (amount >= PRIME_THRESHOLD) return Tier.PRIME;
+        if (amount >= QUALIFIED_THRESHOLD) return Tier.QUALIFIED;
+        return Tier.NONE;
     }
 }
