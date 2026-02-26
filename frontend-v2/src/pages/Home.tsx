@@ -60,16 +60,27 @@ export function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
+            style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}
           >
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint" className="btn-hero primary">Mint Your Aura</Link>
+              <Link to="/mint" className="btn-hero primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🧑 I'm Human
+              </Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint#agent-mint" className="btn-hero secondary">Agents: Mint via API</Link>
+              <Link to="/mint#agent-mint" className="btn-hero secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#b490ff', color: '#b490ff' }}>
+                🤖 I'm an Agent
+              </Link>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/agents" className="btn-hero secondary">Explore Directory</Link>
-            </motion.div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', justifyContent: 'center' }}
+          >
+            <Link to="/agents" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Browse Agents →</Link>
+            <a href="/terminal" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Agent Terminal →</a>
           </motion.div>
         </motion.div>
       </section>
