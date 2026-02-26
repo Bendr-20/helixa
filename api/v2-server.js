@@ -873,6 +873,18 @@ async function mintHandler(req, res) {
             console.error(`[TERMINAL] DB merge failed (non-fatal): ${e.message}`);
         }
         
+        // Fetch full agent data so callers don't need to poll
+        let agentData = null;
+        try {
+            agentData = await formatAgentV2(tokenId);
+            // Also update the indexer
+            try { await indexer.reindexAgent(tokenId); } catch {}
+        } catch (e) {
+            console.error(`[V2 MINT] Agent data fetch failed (non-fatal): ${e.message}`);
+        }
+        
+        const tierOf = s => s >= 91 ? 'AAA' : s >= 76 ? 'PRIME' : s >= 51 ? 'INVESTMENT_GRADE' : s >= 26 ? 'SPECULATIVE' : 'JUNK';
+        
         res.status(201).json({
             success: true,
             tokenId,
@@ -880,6 +892,22 @@ async function mintHandler(req, res) {
             mintOrigin: 'AGENT_SIWA',
             explorer: `https://basescan.org/tx/${tx.hash}`,
             message: `${name} is now onchain! Helixa V2 Agent #${tokenId}`,
+            agent: agentData ? {
+                id: agentData.tokenId,
+                name: agentData.name,
+                agentAddress: agentData.agentAddress,
+                framework: agentData.framework,
+                traits: agentData.traits,
+                personality: agentData.personality,
+                narrative: agentData.narrative,
+                credScore: agentData.credScore || 0,
+                credTier: tierOf(agentData.credScore || 0),
+                points: agentData.points || 0,
+                mintOrigin: agentData.mintOrigin,
+                verified: agentData.verified,
+                soulbound: agentData.soulbound,
+                owner: agentData.owner,
+            } : null,
             crossRegistration: crossRegId !== null ? {
                 registry: ERC8004_REGISTRY,
                 agentId: crossRegId,
@@ -1313,6 +1341,42 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
         });
     } catch (e) {
         res.status(500).json({ error: 'Cross-registration failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/agent/:id/sync — Force re-index agent from on-chain data (no payment)
+app.post('/api/v2/agent/:id/sync', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    if (isNaN(tokenId) || tokenId < 0) {
+        return res.status(400).json({ error: 'Invalid token ID' });
+    }
+    try {
+        const indexed = await indexer.reindexAgent(tokenId);
+        const agent = await formatAgentV2(tokenId);
+        const tierOf = s => s >= 91 ? 'AAA' : s >= 76 ? 'PRIME' : s >= 51 ? 'INVESTMENT_GRADE' : s >= 26 ? 'SPECULATIVE' : 'JUNK';
+        res.json({
+            success: true,
+            tokenId,
+            synced: true,
+            agent: {
+                id: agent.tokenId,
+                name: agent.name,
+                agentAddress: agent.agentAddress,
+                framework: agent.framework,
+                traits: agent.traits,
+                personality: agent.personality,
+                narrative: agent.narrative,
+                credScore: agent.credScore || 0,
+                credTier: tierOf(agent.credScore || 0),
+                points: agent.points || 0,
+                mintOrigin: agent.mintOrigin,
+                verified: agent.verified,
+                soulbound: agent.soulbound,
+                owner: agent.owner,
+            },
+        });
+    } catch (e) {
+        res.status(404).json({ error: `Sync failed: ${e.message}` });
     }
 });
 

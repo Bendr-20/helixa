@@ -432,4 +432,11 @@ module.exports = {
     refreshScores,
     upsertAgent: (a) => { if (db) upsertAgent(a); },
     updateCredScore: (tokenId, score) => { if (db) db.prepare('UPDATE agents SET credScore = ?, lastUpdated = ? WHERE tokenId = ?').run(score, Date.now(), tokenId); },
+    reindexAgent: async (tokenId) => {
+        if (!readContract) throw new Error('Indexer not started');
+        const data = await fetchAgentData(tokenId);
+        if (!data) throw new Error(`Agent #${tokenId} not found on-chain`);
+        if (db) upsertAgent(data);
+        return data;
+    },
 };

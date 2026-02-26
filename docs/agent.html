@@ -220,9 +220,10 @@ function renderCTA(agent, score) {
   const traits = meta.traits || {};
   
   if (isHelixa) {
-    // Helixa agent — show update button
+    // Helixa agent — show update button with token ID pre-loaded
+    const helixaId = (agent.token_id || '').replace('helixa-', '') || agent.id;
     return `<div style="margin-top:16px">
-      <a href="https://helixa.xyz/manage" style="display:inline-block;padding:10px 24px;background:var(--green);color:var(--bg);font-weight:700;font-size:13px;letter-spacing:2px;text-decoration:none;border:none;cursor:pointer">UPDATE TRAITS →</a>
+      <a id="update-traits-btn" href="https://helixa.xyz/manage?token=${helixaId}" style="display:inline-block;padding:10px 24px;background:var(--green);color:var(--bg);font-weight:700;font-size:13px;letter-spacing:2px;text-decoration:none;border:none;cursor:pointer">UPDATE TRAITS →</a>
     </div>`;
   }
   

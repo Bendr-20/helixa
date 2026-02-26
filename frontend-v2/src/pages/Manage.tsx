@@ -335,10 +335,21 @@ export function Manage() {
   const [ensNameInput, setEnsNameInput] = useState('');
 
   // Auto-load from URL params (?id=1 or ?token=1)
+  const urlTokenId = searchParams.get('id') || searchParams.get('token');
   useEffect(() => {
-    const id = searchParams.get('id') || searchParams.get('token');
-    if (id) setEditingTokenId(parseInt(id));
-  }, [searchParams]);
+    if (urlTokenId) setEditingTokenId(parseInt(urlTokenId));
+  }, [urlTokenId]);
+
+  // If a specific token is requested via URL, show it without requiring wallet connection
+  if (editingTokenId !== null && urlTokenId) {
+    return (
+      <div style={s.page}>
+        <div style={s.container}>
+          <EditPanel tokenId={editingTokenId} onBack={() => { setEditingTokenId(null); window.history.pushState({}, '', '/manage'); }} />
+        </div>
+      </div>
+    );
+  }
 
   if (!isConnected) {
     return (

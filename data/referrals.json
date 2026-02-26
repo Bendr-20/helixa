@@ -144,6 +144,11 @@
       "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
       "name": "Agent3y6ma3",
       "tokenId": 988
+    },
+    "degenai": {
+      "wallet": "0xcd1baf2b33781c088b30106289e745972e41b0e8",
+      "name": "DegenAI",
+      "tokenId": 1035
     }
   },
   "stats": {}
