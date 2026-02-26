@@ -63,13 +63,13 @@ export function Home() {
             style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}
           >
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint" className="btn-hero primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                🧑 I'm Human
+              <Link to="/mint" className="btn-hero primary">
+                I'm Human
               </Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint#agent-mint" className="btn-hero secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: '#b490ff', color: '#b490ff' }}>
-                🤖 I'm an Agent
+              <Link to="/mint#agent-mint" className="btn-hero secondary" style={{ borderColor: '#b490ff', color: '#b490ff' }}>
+                I'm an Agent
               </Link>
             </motion.div>
           </motion.div>
