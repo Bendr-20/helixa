@@ -7,7 +7,8 @@
 <meta property="og:title" content="Agent Terminal by Helixa" />
 <meta property="og:description" content="Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred." />
 <meta property="og:image" content="https://helixa.xyz/helixa-logo.png" />
-<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://helixa.xyz/helixa-logo.png","button":{"title":"Open Terminal","action":{"type":"launch_frame","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
+<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://helixa.xyz/og-terminal.png","button":{"title":"Open Terminal","action":{"type":"launch_miniapp","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
+<meta name="fc:frame" content='{"version":"1","imageUrl":"https://helixa.xyz/og-terminal.png","button":{"title":"Open Terminal","action":{"type":"launch_frame","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -479,19 +480,11 @@ document.getElementById('search').addEventListener('keydown', e => { if (e.key =
 
 fetchAgents();
 
-// Farcaster miniapp: load SDK and signal ready
-(async () => {
-  try {
-    const sdk = await import('https://esm.sh/@farcaster/miniapp-sdk@latest');
-    if (sdk && sdk.sdk) {
-      sdk.sdk.actions.ready();
-    } else if (sdk && sdk.default) {
-      sdk.default.actions.ready();
-    }
-  } catch(e) {
-    // Not in a Farcaster context, ignore
-  }
-})();
+
+</script>
+<script type="module">
+  import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
+  sdk.actions.ready();
 </script>
 </body>
 </html>
