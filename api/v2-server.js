@@ -174,7 +174,7 @@ async function formatAgentV2(tokenId) {
     if (ptsRes) pts = Number(ptsRes);
     if (credRes) credScore = Number(credRes);
     if (nameRes) agentName = nameRes;
-    
+
     // Fetch Ethos score for owner (non-blocking, best-effort)
     let ethosScore = null;
     try {
@@ -285,6 +285,12 @@ async function formatAgentV2(tokenId) {
             }
         }
     }
+
+    // Recompute cred score from merged data (onchain score may be stale)
+    try {
+        const { computedScore } = computeCredBreakdown(result);
+        if (computedScore > result.credScore) result.credScore = computedScore;
+    } catch {}
 
     return result;
 }
