@@ -1,9 +1,9 @@
-# Trust Terminal Launch Announcement
+# Agent Terminal Launch Announcement
 
 ## X/Twitter (@BendrAI_eth)
 
 **Main Tweet:**
-Introducing the Trust Terminal — DexScreener for agent credibility.
+Introducing the Agent Terminal — DexScreener for agent credibility.
 
 9,500+ ERC-8004 agents indexed. Every one scored. Every one ranked.
 
@@ -40,7 +40,7 @@ This is infrastructure.
 
 ## Telegram (Fool Spectrum)
 
-Trust Terminal is LIVE 🟢
+Agent Terminal is LIVE 🟢
 
 helixa.xyz/trust-terminal.html
 
@@ -52,7 +52,7 @@ It's now linked from the main nav on helixa.xyz.
 
 ## Farcaster (@helixaxyz)
 
-Trust Terminal — live now.
+Agent Terminal — live now.
 
 Credit ratings for AI agents. 9,500+ ERC-8004 agents on Base, all scored and ranked.
 
