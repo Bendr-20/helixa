@@ -166,10 +166,10 @@
     gap: 5px;
   }
   .cred-score.junk { color: #666; }
-  .cred-score.speculative { color: var(--amber); }
-  .cred-score.investment { color: var(--cyan); }
+  .cred-score.marginal { color: var(--amber); }
+  .cred-score.qualified { color: var(--cyan); }
   .cred-score.prime { color: var(--purple); }
-  .cred-score.aaa { color: var(--pink); text-shadow: 0 0 10px rgba(245,160,208,0.5); }
+  .cred-score.preferred { color: var(--pink); text-shadow: 0 0 10px rgba(245,160,208,0.5); }
   
   .tier-badge {
     font-size: 9px;
@@ -178,10 +178,10 @@
     letter-spacing: 1px;
   }
   .tier-badge.junk { background: rgba(100,100,100,0.2); color: #666; }
-  .tier-badge.speculative { background: rgba(255,176,0,0.15); color: var(--amber); border: 1px solid rgba(255,176,0,0.3); }
-  .tier-badge.investment { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.3); }
+  .tier-badge.marginal { background: rgba(255,176,0,0.15); color: var(--amber); border: 1px solid rgba(255,176,0,0.3); }
+  .tier-badge.qualified { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.3); }
   .tier-badge.prime { background: rgba(180,144,255,0.15); color: var(--purple); border: 1px solid rgba(180,144,255,0.3); }
-  .tier-badge.aaa { background: rgba(245,160,208,0.15); color: var(--pink); border: 1px solid rgba(245,160,208,0.3); }
+  .tier-badge.preferred { background: rgba(245,160,208,0.15); color: var(--pink); border: 1px solid rgba(245,160,208,0.3); }
   
   .x402-badge {
     color: var(--green);
@@ -313,10 +313,10 @@ let currentSearch = '';
 function tierClass(tier) {
   if (!tier) return 'junk';
   const t = tier.toLowerCase();
-  if (t === 'aaa') return 'aaa';
+  if (t === 'preferred' || t === 'aaa') return 'preferred';
   if (t === 'prime') return 'prime';
-  if (t.includes('investment')) return 'investment';
-  if (t === 'speculative') return 'speculative';
+  if (t === 'qualified' || t.includes('investment')) return 'qualified';
+  if (t === 'marginal' || t === 'speculative') return 'marginal';
   return 'junk';
 }
 
