@@ -2656,7 +2656,7 @@ app.get('/api/terminal/agents', (req, res) => {
         const offset = (page - 1) * limit;
 
         const agents = terminalDb.prepare(
-            `SELECT address, agent_id, token_id, name, description, image_url, platform, 
+            `SELECT id, address, agent_id, token_id, name, description, image_url, platform, 
                     x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
                     token_address, token_symbol, token_name, token_market_cap,
                     price_change_24h, volume_24h, liquidity_usd
