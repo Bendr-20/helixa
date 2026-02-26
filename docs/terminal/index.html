@@ -482,15 +482,20 @@ fetchAgents();
 
 
 </script>
-<script type="module">
-  // Farcaster miniapp: dismiss splash screen
-  // ?bundle inlines all deps (comlink, ox, etc) for fast load in Warpcast webview
+<script>
+// Farcaster miniapp: dismiss splash screen
+// Sends raw Comlink APPLY message matching what sdk.actions.ready() does internally
+(function() {
   try {
-    const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk@0.2.3?bundle');
-    await sdk.actions.ready();
-  } catch(e) {
-    // Not in Farcaster context — ignore
-  }
+    var id = Math.random().toString(36).slice(2);
+    var msg = { id: id, type: 'APPLY', path: ['ready'], argumentList: [{ type: 'RAW', value: {} }] };
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+    } else if (window.parent && window.parent !== window) {
+      window.parent.postMessage(msg, '*');
+    }
+  } catch(e) {}
+})();
 </script>
 </body>
 </html>
