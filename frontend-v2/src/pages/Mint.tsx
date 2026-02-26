@@ -333,7 +333,7 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#6eecd8',
               }}>
-                Free (Phase 1) — just gas
+                ~$1 in ETH + gas
               </div>
             </button>
 

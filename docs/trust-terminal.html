@@ -272,7 +272,7 @@
           <th onclick="sortBy('name')" data-col="name">NAME</th>
           <th data-col="tier">TIER</th>
           <th onclick="sortBy('platform')" data-col="platform">PLATFORM</th>
-          <th data-col="x402">x402</th>
+          <th data-col="x402">TOKEN</th>
           <th data-col="address">ADDRESS</th>
           <th onclick="sortBy('created_at')" data-col="created_at">REGISTERED</th>
         </tr>
@@ -378,7 +378,7 @@ function renderAgents(agents) {
       <td><a href="agent.html?id=${a.token_id || a.agent_id || ''}" style="color:var(--green);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${a.name || '<span style="color:var(--muted)">unnamed</span>'}</a></td>
       <td><span class="tier-badge ${tc}">${(a.cred_tier || 'JUNK').replace('_',' ')}</span></td>
       <td>${a.platform || '—'}</td>
-      <td>${a.x402_supported ? '<span class="x402-badge">x402</span>' : ''}</td>
+      <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
       <td><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
       <td style="color:var(--muted)">${formatDate(a.created_at)}</td>
     </tr>`;

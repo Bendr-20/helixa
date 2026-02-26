@@ -17,8 +17,8 @@ if (fs.existsSync(envPath)) {
 
 const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
 const READ_RPC_URL = process.env.READ_RPC_URL || 'https://mainnet.base.org';
-const DEPLOYER_KEY = process.env.DEPLOYER_KEY;
-const DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x97cf081780D71F2189889ce86941cF1837997873';
+let DEPLOYER_KEY = process.env.DEPLOYER_KEY;
+let DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x97cf081780D71F2189889ce86941cF1837997873';
 const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const ERC8004_REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
@@ -103,6 +103,55 @@ const contract = rawContract ? new Proxy(rawContract, {
 
 const isContractDeployed = () => V2_CONTRACT_ADDRESS !== '0x0000000000000000000000000000000000000000';
 
+// ─── AWS Secrets Manager Init ───────────────────────────────────
+// Call initDeployerKey() before server.listen() to load key from AWS
+async function initDeployerKey() {
+    if (DEPLOYER_KEY) {
+        console.log(`✅ Deployer key loaded from env: ${DEPLOYER_ADDRESS}`);
+        return;
+    }
+    try {
+        const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+        const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-2' });
+        const resp = await client.send(new GetSecretValueCommand({ SecretId: 'helixa/deployer-key' }));
+        const secret = JSON.parse(resp.SecretString);
+        DEPLOYER_KEY = secret.DEPLOYER_PRIVATE_KEY;
+        
+        // Rebuild wallet + contracts with the key
+        const w = new ethers.Wallet(DEPLOYER_KEY, provider);
+        DEPLOYER_ADDRESS = w.address;
+        module.exports.wallet = w;
+        module.exports.DEPLOYER_KEY = DEPLOYER_KEY;
+        module.exports.DEPLOYER_ADDRESS = DEPLOYER_ADDRESS;
+        
+        const raw = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, w);
+        module.exports.rawContract = raw;
+        
+        // Rebuild proxied contract with builder code attribution
+        module.exports.contract = ERC8021_SUFFIX ? new Proxy(raw, {
+            get(target, prop) {
+                const val = target[prop];
+                if (typeof val === 'function' && !['connect', 'attach', 'interface', 'runner', 'target', 'filters', 'queryFilter', 'on', 'once', 'removeListener', 'getAddress', 'getDeployedCode', 'waitForDeployment'].includes(prop)) {
+                    return async function (...args) {
+                        const fragment = target.interface.getFunction(prop);
+                        if (fragment && !fragment.constant && ERC8021_SUFFIX) {
+                            const tx = await target[prop].populateTransaction(...args);
+                            tx.data = tx.data + ERC8021_SUFFIX.slice(2);
+                            return w.sendTransaction(tx);
+                        }
+                        return val.apply(target, args);
+                    };
+                }
+                return val;
+            }
+        }) : raw;
+
+        console.log(`✅ Deployer key loaded from AWS Secrets Manager: ${DEPLOYER_ADDRESS}`);
+    } catch (e) {
+        console.warn(`⚠️  AWS Secrets Manager failed (${e.message}) — running in READ-ONLY mode`);
+    }
+}
+
 module.exports = {
     ethers, provider, readProvider, wallet,
     contract, rawContract, readContract, usdcContract,
@@ -110,5 +159,5 @@ module.exports = {
     USDC_ADDRESS, ERC8004_REGISTRY, ERC8004_REGISTRY_ABI,
     COINBASE_INDEXER, COINBASE_INDEXER_ABI, COINBASE_VERIFIED_ACCOUNT_SCHEMA,
     EAS_CONTRACT, EAS_ABI, TREASURY_ADDRESS, CHAIN_ID, RPC_URL,
-    isContractDeployed,
+    isContractDeployed, initDeployerKey,
 };

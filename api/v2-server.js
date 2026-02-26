@@ -2444,7 +2444,8 @@ app.get('/api/terminal/agents', (req, res) => {
 
         const agents = terminalDb.prepare(
             `SELECT address, agent_id, token_id, name, description, image_url, platform, 
-                    x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score
+                    x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
+                    token_address, token_symbol, token_name, token_market_cap
              FROM agents ${whereClause} 
              ORDER BY ${sort} ${dir} NULLS LAST
              LIMIT @limit OFFSET @offset`
@@ -2472,6 +2473,23 @@ app.get('/api/terminal/agent/:address', (req, res) => {
             .get(id, id, id);
         if (!agent) return res.status(404).json({ error: 'Agent not found' });
         res.json(agent);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/terminal/agent/:id/token — Link a token to an agent
+app.post('/api/terminal/agent/:id/token', express.json(), (req, res) => {
+    try {
+        const { token_address, token_symbol, token_name, token_market_cap } = req.body;
+        if (!token_address || !token_symbol) return res.status(400).json({ error: 'token_address and token_symbol required' });
+        const id = req.params.id;
+        const Database = require('better-sqlite3');
+        const wdb = new Database(path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db'));
+        const r = wdb.prepare(
+            'UPDATE agents SET token_address = ?, token_symbol = ?, token_name = ?, token_market_cap = ? WHERE token_id = ? OR agent_id = ? OR address = ?'
+        ).run(token_address, token_symbol.toUpperCase(), token_name || null, token_market_cap || null, id, id, id);
+        wdb.close();
+        if (r.changes === 0) return res.status(404).json({ error: 'Agent not found' });
+        res.json({ success: true, updated: r.changes });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
