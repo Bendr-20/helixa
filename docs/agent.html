@@ -449,12 +449,52 @@ function renderAgent(agent) {
     }
   }
 
-  // Description (for non-Helixa — Helixa description already rendered above)
-  if (!v2 && (meta.description || agent.description)) {
-    html += `<div class="section">
-      <div class="section-title">▸ DESCRIPTION</div>
-      <div class="section-body"><div class="description">${escapeHtml(meta.description || agent.description)}</div></div>
-    </div>`;
+  // === NON-HELIXA BASIC PROFILE ===
+  if (!v2) {
+    // Description
+    if (meta.description || agent.description) {
+      html += `<div class="section">
+        <div class="section-title">▸ ABOUT</div>
+        <div class="section-body"><div class="description">${escapeHtml(meta.description || agent.description)}</div></div>
+      </div>`;
+    }
+
+    // Identity / Traits from metadata
+    const mTraits = meta.traits || {};
+    const mFramework = meta.framework || mTraits.framework;
+    const mPersonality = meta.personality || mTraits.personality;
+    const identityItems = [];
+    if (mFramework) identityItems.push(`Framework: ${mFramework}`);
+    if (agent.platform && agent.platform !== 'unknown') identityItems.push(`Platform: ${agent.platform}`);
+    if (mPersonality) identityItems.push(`Style: ${mPersonality}`);
+    Object.entries(mTraits).forEach(([k, v]) => {
+      if (!['framework', 'personality'].includes(k) && v) identityItems.push(`${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`);
+    });
+    if (identityItems.length > 0) {
+      html += `<div class="section" style="border-color:var(--cyan)">
+        <div class="section-title" style="color:var(--cyan);background:rgba(0,255,255,0.03)">▸ IDENTITY</div>
+        <div class="section-body">
+          ${identityItems.map(e => `<div class="kv-row"><div class="kv-key">${escapeHtml(e.split(':')[0])}</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(e.split(':').slice(1).join(':').trim())}</div></div>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    // Socials from metadata
+    const socials = meta.socials || {};
+    const socialLinks = [];
+    if (socials.twitter) socialLinks.push({ label: 'X / Twitter', url: socials.twitter, icon: '𝕏' });
+    if (socials.website) socialLinks.push({ label: 'Website', url: socials.website, icon: '🌐' });
+    if (socials.github) socialLinks.push({ label: 'GitHub', url: socials.github, icon: '⌨' });
+    if (socials.farcaster) socialLinks.push({ label: 'Farcaster', url: socials.farcaster, icon: '🟪' });
+    if (socials.telegram) socialLinks.push({ label: 'Telegram', url: socials.telegram, icon: '✈' });
+    if (socialLinks.length > 0) {
+      html += `<div class="section" style="border-color:var(--purple)">
+        <div class="section-title" style="color:var(--purple);background:rgba(180,144,255,0.03)">▸ SOCIALS</div>
+        <div class="section-body">
+          ${socialLinks.map(s => `<div class="kv-row"><div class="kv-key">${s.icon} ${s.label}</div><div class="kv-val"><a href="${escapeHtml(s.url)}" target="_blank" style="color:var(--cyan)">${escapeHtml(s.url.replace('https://',''))}</a></div></div>`).join('')}
+        </div>
+      </div>`;
+    }
   }
 
   // Token for non-Helixa agents (Helixa token is shown in V2 section above)
