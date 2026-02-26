@@ -105,7 +105,7 @@ export function Report() {
     );
   }
 
-  const tierColors: Record<string, string> = { AAA: '#ffd700', Prime: '#b490ff', 'Investment Grade': '#6eecd8', Speculative: '#80d0ff', Junk: '#888' };
+  const tierColors: Record<string, string> = { Preferred: '#ffd700', Prime: '#b490ff', 'Qualified': '#6eecd8', Marginal: '#80d0ff', Junk: '#888' };
 
   return (
     <div className="py-8">

@@ -4,10 +4,10 @@ import { Link } from 'react-router-dom';
 const API_BASE = 'https://api.helixa.xyz';
 
 function getTier(score: number) {
-  if (score >= 91) return 'AAA';
+  if (score >= 91) return 'PREFERRED';
   if (score >= 76) return 'PRIME';
-  if (score >= 51) return 'INVESTMENT GRADE';
-  if (score >= 26) return 'SPECULATIVE';
+  if (score >= 51) return 'QUALIFIED';
+  if (score >= 26) return 'MARGINAL';
   return 'JUNK';
 }
 
@@ -241,8 +241,8 @@ export function CredReport() {
       ...breakdownLines,
       '╠' + '═'.repeat(W - 2) + '╣',
       row('CREDIT RATING SCALE'),
-      row('JUNK < SPECULATIVE < INV GRADE'),
-      row('< PRIME < AAA'),
+      row('JUNK < MARGINAL < QUALIFIED'),
+      row('< PRIME < PREFERRED'),
       '╚' + '═'.repeat(W - 2) + '╝',
     ];
 
@@ -250,7 +250,7 @@ export function CredReport() {
     addLine('');
 
     const rec = data.credScore >= 51 ? 'TRUSTWORTHY AGENT' : data.credScore >= 26 ? 'PROCEED WITH CAUTION' : 'HIGH RISK — NOT RECOMMENDED';
-    const status = data.credScore >= 51 ? 'INVESTMENT GRADE OR ABOVE' : data.credScore >= 26 ? 'SPECULATIVE' : 'JUNK';
+    const status = data.credScore >= 51 ? 'QUALIFIED OR ABOVE' : data.credScore >= 26 ? 'MARGINAL' : 'JUNK';
     await typeLine(`   STATUS: ${status}`, 30, 'crt-highlight');
     await typeLine(`   RECOMMENDATION: ${rec}`, 30, 'crt-highlight');
     addLine('');
