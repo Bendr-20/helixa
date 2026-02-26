@@ -362,8 +362,25 @@ async function fetchAgents() {
       document.getElementById('total-x402').textContent = (data.stats.x402 || 0).toLocaleString();
     }
   } catch (err) {
-    body.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">API endpoint not yet deployed. Terminal UI ready — needs /api/terminal/agents endpoint.</span></td></tr>`;
-    // Load demo data for preview
+    console.error('API fetch failed:', err);
+    // Try static fallback
+    try {
+      const fb = await fetch('/terminal/fallback.json');
+      if (fb.ok) {
+        const data = await fb.json();
+        renderAgents(data.agents || []);
+        totalPages = data.totalPages || 1;
+        document.getElementById('page-info').textContent = `PAGE 1 / ${totalPages} (CACHED)`;
+        if (data.stats) {
+          document.getElementById('total-agents').textContent = (data.stats.total || 0).toLocaleString();
+          document.getElementById('total-scored').textContent = (data.stats.scored || 0).toLocaleString();
+          document.getElementById('avg-score').textContent = data.stats.avgScore || '—';
+          document.getElementById('total-x402').textContent = (data.stats.x402 || 0).toLocaleString();
+        }
+        return;
+      }
+    } catch(e) { console.error('Fallback also failed:', e); }
+    body.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">Try opening in Chrome/Safari. Some browsers block cross-origin API requests.</span></td></tr>`;
     loadDemoStats();
   }
 }
