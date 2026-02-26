@@ -2554,9 +2554,16 @@ app.post('/api/terminal/agent/:id/token', express.json(), (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── API Documentation Page ─────────────────────────────────────
+const { getDocsHTML } = require('./docs-page');
+app.get('/docs', (req, res) => {
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(getDocsHTML());
+});
+
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list' });
+    res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list or GET /docs for documentation' });
 });
 
 // ─── Start ──────────────────────────────────────────────────────
