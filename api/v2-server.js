@@ -185,6 +185,22 @@ async function formatAgentV2(tokenId) {
         }
     } catch {}
 
+    // Fetch Talent Protocol builder score for owner (non-blocking, best-effort)
+    let talentScore = null;
+    try {
+        const talentKey = process.env.TALENT_API_KEY || require(require('os').homedir() + '/.config/talent-protocol/config.json').apiKey;
+        if (talentKey) {
+            const talentResp = await fetch(`https://api.talentprotocol.com/score?id=${owner}`, {
+                headers: { 'X-API-KEY': talentKey, 'Accept': 'application/json' },
+                signal: AbortSignal.timeout(3000)
+            });
+            if (talentResp.ok) {
+                const talentData = await talentResp.json();
+                if (talentData.score?.points) talentScore = talentData.score.points;
+            }
+        }
+    } catch {}
+
     // Extract linked token from traits
     const linkedTokenTraits = {};
     const LINKED_TOKEN_KEYS = ['linked-token', 'linked-token-chain', 'linked-token-symbol', 'linked-token-name'];
@@ -223,6 +239,7 @@ async function formatAgentV2(tokenId) {
         points: pts,
         credScore,
         ethosScore,
+        talentScore,
         owner,
         agentName: agentName || null,
         linkedToken: linkedToken.contractAddress ? linkedToken : null,
@@ -2509,6 +2526,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             // External scores
             externalScores: {
                 ethos: ethosScore,
+                talentProtocol: agent.talentScore || null,
             },
 
             // Actionable recommendations
