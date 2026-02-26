@@ -183,8 +183,17 @@ export function Token() {
             background: 'rgba(15,15,30,0.95)', border: '1px solid rgba(110,236,216,0.12)',
             borderRadius: 12, padding: '24px 20px', textAlign: 'center',
           }}>
-            <h3 style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '1.1rem', margin: '0 0 8px', color: '#e0e0f0' }}>Uniswap</h3>
+            <h3 style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '1.1rem', margin: '0 0 8px', color: '#e0e0f0' }}>Swap $CRED</h3>
             <p style={{ color: '#6a6a8e', fontSize: 14, margin: '0 0 16px' }}>Swap ETH → $CRED directly on Base via Uniswap.</p>
+            <iframe
+              src={`https://app.uniswap.org/swap?exactField=output&outputCurrency=${CA}&chain=base&theme=dark`}
+              style={{
+                width: '100%', height: 360, border: 'none', borderRadius: 12,
+                margin: '0 0 12px',
+              }}
+              title="Uniswap Swap Widget"
+              allow="clipboard-write"
+            />
             <a
               href={`https://app.uniswap.org/swap?outputCurrency=${CA}&chain=base`}
               target="_blank" rel="noopener noreferrer"
@@ -195,7 +204,7 @@ export function Token() {
                 background: 'linear-gradient(135deg, #6eecd8, #b490ff)',
                 color: '#0a0a14',
               }}
-            >Swap on Uniswap</a>
+            >Open Full Uniswap ↗</a>
           </div>
           <div style={{
             background: 'rgba(15,15,30,0.95)', border: '1px solid rgba(110,236,216,0.12)',
