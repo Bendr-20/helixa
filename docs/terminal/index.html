@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Terminal — Agent Credibility Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-dark: #003300;
+    --amber: #ffb000;
+    --red: #ff3333;
+    --cyan: #00ffff;
+    --purple: #b490ff;
+    --pink: #f5a0d0;
+    --text: #ccddcc;
+    --muted: #557755;
+    --border: #1a3a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* CRT scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.03) 2px, rgba(0,255,65,0.03) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+  /* CRT vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 20px rgba(0,255,65,0.5), 0 0 40px rgba(0,255,65,0.2);
+    letter-spacing: 4px;
+    margin-bottom: 5px;
+  }
+  .header .subtitle {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .header .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 15px;
+    font-size: 11px;
+  }
+  .stats-bar .stat { color: var(--text); }
+  .stats-bar .stat-val { color: var(--cyan); font-weight: 700; }
+  
+  /* Search */
+  .search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .search-box input {
+    flex: 1;
+    background: rgba(0,255,65,0.05);
+    border: 1px solid var(--border);
+    color: var(--green);
+    padding: 10px 15px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  .search-box input:focus { border-color: var(--green-dim); box-shadow: 0 0 10px rgba(0,255,65,0.1); }
+  .search-box input::placeholder { color: var(--muted); }
+  .search-box button {
+    background: var(--green-dark);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 10px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .search-box button:hover { background: rgba(0,255,65,0.15); }
+  
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--green-dim); color: var(--green); }
+  
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--green-dim);
+    color: var(--green-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--green); }
+  th.sorted::after { content: ' ▼'; }
+  th.sorted.asc::after { content: ' ▲'; }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0,255,65,0.05);
+    color: var(--text);
+    font-size: 12px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr:hover td { background: rgba(0,255,65,0.03); }
+  
+  /* Cred score styling */
+  .cred-score {
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .cred-score.junk { color: #666; }
+  .cred-score.speculative { color: var(--amber); }
+  .cred-score.investment { color: var(--cyan); }
+  .cred-score.prime { color: var(--purple); }
+  .cred-score.aaa { color: var(--pink); text-shadow: 0 0 10px rgba(245,160,208,0.5); }
+  
+  .tier-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .tier-badge.junk { background: rgba(100,100,100,0.2); color: #666; }
+  .tier-badge.speculative { background: rgba(255,176,0,0.15); color: var(--amber); border: 1px solid rgba(255,176,0,0.3); }
+  .tier-badge.investment { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.3); }
+  .tier-badge.prime { background: rgba(180,144,255,0.15); color: var(--purple); border: 1px solid rgba(180,144,255,0.3); }
+  .tier-badge.aaa { background: rgba(245,160,208,0.15); color: var(--pink); border: 1px solid rgba(245,160,208,0.3); }
+  
+  .x402-badge {
+    color: var(--green);
+    font-size: 10px;
+    background: rgba(0,255,65,0.1);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  
+  .addr {
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 15px 0;
+  }
+  .pagination button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green-dim);
+    padding: 5px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .pagination button:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+  .pagination button:disabled { color: var(--muted); cursor: default; }
+  .pagination .page-info { color: var(--muted); font-size: 11px; }
+  
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--green-dim); }
+  .loading .spinner { animation: blink 1s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+  .footer a { color: var(--green-dim); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>AGENT TERMINAL</h1>
+    <div class="subtitle">Agent Credibility Scanner — Base Network</div>
+    <div class="stats-bar">
+      <div class="stat">AGENTS: <span class="stat-val" id="total-agents">—</span></div>
+      <div class="stat">SCORED: <span class="stat-val" id="total-scored">—</span></div>
+      <div class="stat">AVG CRED: <span class="stat-val" id="avg-score">—</span></div>
+      <div class="stat">x402: <span class="stat-val" id="total-x402">—</span></div>
+      <a href="https://app.uniswap.org/swap?outputCurrency=0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3&chain=base" target="_blank" rel="noopener" style="margin-left:auto;padding:6px 16px;background:linear-gradient(135deg,#6eecd8,#b490ff);color:#0a0a14;font-family:'Orbitron',monospace;font-size:0.75rem;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;white-space:nowrap">BUY $CRED</a>
+    </div>
+  </div>
+  
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search by name, address, or agent ID..." autofocus>
+    <button onclick="doSearch()">SCAN</button>
+  </div>
+  
+  <div class="filters">
+    <button class="filter-btn active" data-tier="all" onclick="setFilter('all',this)">ALL</button>
+    <button class="filter-btn" data-tier="new" onclick="setFilter('new',this)" style="color:#00ffff;border-color:#00ffff">🆕 NEW</button>
+    <button class="filter-btn" data-tier="trending" onclick="setFilter('trending',this)" style="color:#ffd700;border-color:#ffd700">🔥 TRENDING</button>
+    <button class="filter-btn" data-tier="PREFERRED" onclick="setFilter('PREFERRED',this)">PREFERRED</button>
+    <button class="filter-btn" data-tier="PRIME" onclick="setFilter('PRIME',this)">PRIME</button>
+    <button class="filter-btn" data-tier="QUALIFIED" onclick="setFilter('QUALIFIED',this)">QUALIFIED</button>
+    <button class="filter-btn" data-tier="MARGINAL" onclick="setFilter('MARGINAL',this)">MARGINAL</button>
+    <button class="filter-btn" data-tier="JUNK" onclick="setFilter('JUNK',this)">JUNK</button>
+    <button class="filter-btn" data-tier="x402" onclick="setFilter('x402',this)">x402 ✓</button>
+  </div>
+  
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('cred_score')" class="sorted" data-col="cred_score">CRED</th>
+          <th onclick="sortBy('name')" data-col="name">NAME</th>
+          <th data-col="tier">TIER</th>
+          <th onclick="sortBy('platform')" data-col="platform">PLATFORM</th>
+          <th data-col="x402">TOKEN</th>
+          <th data-col="address">ADDRESS</th>
+          <th onclick="sortBy('created_at')" data-col="created_at">REGISTERED</th>
+        </tr>
+      </thead>
+      <tbody id="agents-body">
+        <tr><td colspan="7" class="loading"><span class="spinner">▓</span> SCANNING NETWORK...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="pagination">
+    <button id="prev-btn" onclick="prevPage()" disabled>◄ PREV</button>
+    <span class="page-info" id="page-info">—</span>
+    <button id="next-btn" onclick="nextPage()">NEXT ►</button>
+  </div>
+  
+  <div class="footer">
+    AGENT TERMINAL v0.1 — Powered by <a href="https://helixa.xyz">Helixa</a> Cred Protocol
+    <br>Indexing all ERC-8004 agents on Base • Data from agentscan.info
+  </div>
+</div>
+
+<script>
+const API = 'https://api.helixa.xyz';
+const PER_PAGE = 50;
+let currentPage = 1;
+let totalPages = 1;
+let currentSort = 'cred_score';
+let sortDir = 'desc';
+let currentFilter = 'all';
+let currentSearch = '';
+
+function tierClass(tier) {
+  if (!tier) return 'junk';
+  const t = tier.toLowerCase();
+  if (t === 'aaa') return 'aaa';
+  if (t === 'prime') return 'prime';
+  if (t.includes('investment')) return 'investment';
+  if (t === 'speculative') return 'speculative';
+  return 'junk';
+}
+
+function shortAddr(addr) {
+  if (!addr) return '—';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return '—';
+  return d.toISOString().split('T')[0];
+}
+
+async function fetchAgents() {
+  const body = document.getElementById('agents-body');
+  body.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner">▓</span> SCANNING...</td></tr>';
+  
+  try {
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: PER_PAGE,
+      sort: currentSort,
+      dir: sortDir,
+    });
+    if (currentFilter !== 'all') params.set('filter', currentFilter);
+    if (currentSearch) params.set('q', currentSearch);
+    
+    const res = await fetch(`${API}/api/terminal/agents?${params}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    
+    renderAgents(data.agents || []);
+    totalPages = data.totalPages || 1;
+    document.getElementById('page-info').textContent = `PAGE ${currentPage} / ${totalPages}`;
+    document.getElementById('prev-btn').disabled = currentPage <= 1;
+    document.getElementById('next-btn').disabled = currentPage >= totalPages;
+    
+    // Update stats
+    if (data.stats) {
+      document.getElementById('total-agents').textContent = (data.stats.total || 0).toLocaleString();
+      document.getElementById('total-scored').textContent = (data.stats.scored || 0).toLocaleString();
+      document.getElementById('avg-score').textContent = data.stats.avgScore || '—';
+      document.getElementById('total-x402').textContent = (data.stats.x402 || 0).toLocaleString();
+    }
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">API endpoint not yet deployed. Terminal UI ready — needs /api/terminal/agents endpoint.</span></td></tr>`;
+    // Load demo data for preview
+    loadDemoStats();
+  }
+}
+
+function renderAgents(agents) {
+  const body = document.getElementById('agents-body');
+  if (!agents.length) {
+    body.innerHTML = '<tr><td colspan="7" style="padding:20px;color:var(--muted)">NO AGENTS FOUND</td></tr>';
+    return;
+  }
+  body.innerHTML = agents.map(a => {
+    const tc = tierClass(a.cred_tier);
+    return `<tr>
+      <td><span class="cred-score ${tc}">${a.cred_score || 0}</span></td>
+      <td><a href="agent.html?id=${a.token_id || a.agent_id || ''}" style="color:var(--green);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${a.name || '<span style="color:var(--muted)">unnamed</span>'}</a></td>
+      <td><span class="tier-badge ${tc}">${(a.cred_tier || 'JUNK').replace('_',' ')}</span></td>
+      <td>${a.platform || '—'}</td>
+      <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
+      <td><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
+      <td style="color:var(--muted)">${formatDate(a.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function loadDemoStats() {
+  document.getElementById('total-agents').textContent = '27,782';
+  document.getElementById('total-scored').textContent = '27,782';
+  document.getElementById('avg-score').textContent = '14.2';
+  document.getElementById('total-x402').textContent = '4,204';
+}
+
+function doSearch() {
+  currentSearch = document.getElementById('search').value.trim();
+  currentPage = 1;
+  fetchAgents();
+}
+
+function setFilter(tier, btn) {
+  currentFilter = tier;
+  currentPage = 1;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchAgents();
+}
+
+function sortBy(col) {
+  if (currentSort === col) {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = col;
+    sortDir = 'desc';
+  }
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.remove('sorted', 'asc');
+    if (th.dataset.col === col) {
+      th.classList.add('sorted');
+      if (sortDir === 'asc') th.classList.add('asc');
+    }
+  });
+  currentPage = 1;
+  fetchAgents();
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; fetchAgents(); } }
+function nextPage() { if (currentPage < totalPages) { currentPage++; fetchAgents(); } }
+
+document.getElementById('search').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+fetchAgents();
+</script>
+</body>
+</html>

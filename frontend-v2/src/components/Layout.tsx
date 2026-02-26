@@ -8,7 +8,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/mint', label: 'Mint' },
   { href: '/agents', label: 'Agents' },
-  { href: '/agent-terminal.html', label: 'Agent Terminal', external: true },
+  { href: '/terminal', label: 'Agent Terminal', external: true },
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/manage', label: 'Manage' },
   { href: '/token', label: '$CRED' },
