@@ -2480,7 +2480,18 @@ app.get('/api/terminal/agents', (req, res) => {
 
         let where = [];
         let params = {};
+        let orderBy = `${sort} ${dir} NULLS LAST`;
+        
         if (filter === 'x402') { where.push('x402_supported = 1'); }
+        else if (filter === 'new') {
+            // Newest agents first — registered in last 7 days or sorted by date
+            orderBy = 'created_at DESC NULLS LAST';
+        }
+        else if (filter === 'trending') {
+            // Agents with tokens, sorted by market cap
+            where.push('token_symbol IS NOT NULL');
+            orderBy = 'token_market_cap DESC NULLS LAST';
+        }
         else if (filter !== 'all') { where.push('cred_tier = @tier'); params.tier = filter; }
         if (q) {
             where.push("(name LIKE @q OR address LIKE @q OR agent_id LIKE @q)");
@@ -2497,7 +2508,7 @@ app.get('/api/terminal/agents', (req, res) => {
                     x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
                     token_address, token_symbol, token_name, token_market_cap
              FROM agents ${whereClause} 
-             ORDER BY ${sort} ${dir} NULLS LAST
+             ORDER BY ${orderBy}
              LIMIT @limit OFFSET @offset`
         ).all({ ...params, limit, offset });
 

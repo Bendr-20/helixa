@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trust Terminal — Agent Credibility Scanner</title>
+<title>Agent Terminal — Agent Credibility Scanner</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -239,7 +239,7 @@
 <body>
 <div class="container">
   <div class="header">
-    <h1>TRUST TERMINAL</h1>
+    <h1>AGENT TERMINAL</h1>
     <div class="subtitle">Agent Credibility Scanner — Base Network</div>
     <div class="stats-bar">
       <div class="stat">AGENTS: <span class="stat-val" id="total-agents">—</span></div>
@@ -256,6 +256,8 @@
   
   <div class="filters">
     <button class="filter-btn active" data-tier="all" onclick="setFilter('all',this)">ALL</button>
+    <button class="filter-btn" data-tier="new" onclick="setFilter('new',this)" style="color:#00ffff;border-color:#00ffff">🆕 NEW</button>
+    <button class="filter-btn" data-tier="trending" onclick="setFilter('trending',this)" style="color:#ffd700;border-color:#ffd700">🔥 TRENDING</button>
     <button class="filter-btn" data-tier="PREFERRED" onclick="setFilter('PREFERRED',this)">PREFERRED</button>
     <button class="filter-btn" data-tier="PRIME" onclick="setFilter('PRIME',this)">PRIME</button>
     <button class="filter-btn" data-tier="QUALIFIED" onclick="setFilter('QUALIFIED',this)">QUALIFIED</button>
@@ -290,7 +292,7 @@
   </div>
   
   <div class="footer">
-    TRUST TERMINAL v0.1 — Powered by <a href="https://helixa.xyz">Helixa</a> Cred Protocol
+    AGENT TERMINAL v0.1 — Powered by <a href="https://helixa.xyz">Helixa</a> Cred Protocol
     <br>Indexing all ERC-8004 agents on Base • Data from agentscan.info
   </div>
 </div>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agent Profile — Trust Terminal</title>
+<title>Agent Profile — Agent Terminal</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -165,7 +165,7 @@
 <body>
 <div class="container">
   <header>
-    <div class="logo">TRUST TERMINAL</div>
+    <div class="logo">AGENT TERMINAL</div>
     <a href="trust-terminal.html" class="back-link">← BACK TO SCANNER</a>
   </header>
 
@@ -173,7 +173,7 @@
     <div class="loading">LOADING AGENT DATA<span class="cursor"></span></div>
   </div>
 
-  <footer>TRUST TERMINAL v0.1 — POWERED BY <a href="https://helixa.xyz">HELIXA</a></footer>
+  <footer>AGENT TERMINAL v0.1 — POWERED BY <a href="https://helixa.xyz">HELIXA</a></footer>
 </div>
 
 <script>
@@ -506,7 +506,7 @@ function renderAgent(agent) {
   }
 
   document.getElementById('content').innerHTML = html;
-  document.title = `${agent.name || 'Agent'} — Trust Terminal`;
+  document.title = `${agent.name || 'Agent'} — Agent Terminal`;
 }
 
 loadAgent();
