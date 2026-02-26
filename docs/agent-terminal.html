@@ -479,12 +479,19 @@ document.getElementById('search').addEventListener('keydown', e => { if (e.key =
 
 fetchAgents();
 
-// Farcaster miniapp: signal ready
-if (window.parent !== window) {
+// Farcaster miniapp: load SDK and signal ready
+(async () => {
   try {
-    window.parent.postMessage({ type: 'frame-ready' }, '*');
-  } catch(e) {}
-}
+    const sdk = await import('https://esm.sh/@farcaster/miniapp-sdk@latest');
+    if (sdk && sdk.sdk) {
+      sdk.sdk.actions.ready();
+    } else if (sdk && sdk.default) {
+      sdk.default.actions.ready();
+    }
+  } catch(e) {
+    // Not in a Farcaster context, ignore
+  }
+})();
 </script>
 </body>
 </html>
