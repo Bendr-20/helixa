@@ -75,9 +75,11 @@
   .header .stats-bar {
     display: flex;
     justify-content: center;
-    gap: 30px;
+    flex-wrap: wrap;
+    gap: 16px 30px;
     margin-top: 15px;
     font-size: 11px;
+    padding: 0 10px;
   }
   .stats-bar .stat { color: var(--text); }
   .stats-bar .stat-val { color: var(--cyan); font-weight: 700; }
