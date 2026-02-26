@@ -149,6 +149,10 @@
   .not-found { text-align: center; padding: 80px 0; }
   .not-found h2 { font-family: 'Orbitron', sans-serif; font-size: 24px; color: var(--red); margin-bottom: 16px; }
 
+  /* CTA hover */
+  .cred-box a:hover { opacity: 0.9; transform: translateY(-1px); }
+  .cred-box a { transition: all 0.15s; }
+  
   /* Responsive */
   @media (max-width: 600px) {
     .agent-header { flex-direction: column; align-items: center; text-align: center; }
@@ -206,6 +210,45 @@ function formatDate(ts) {
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderCTA(agent, score) {
+  const isHelixa = (agent.platform === 'helixa') || (agent.token_id || '').startsWith('helixa-');
+  const meta = agent.metadata ? (typeof agent.metadata === 'string' ? JSON.parse(agent.metadata) : agent.metadata) : {};
+  const traits = meta.traits || {};
+  
+  if (isHelixa) {
+    // Helixa agent — show update button
+    return `<div style="margin-top:16px">
+      <a href="https://helixa.xyz/manage" style="display:inline-block;padding:10px 24px;background:var(--green);color:var(--bg);font-weight:700;font-size:13px;letter-spacing:2px;text-decoration:none;border:none;cursor:pointer">UPDATE TRAITS →</a>
+    </div>`;
+  }
+  
+  // Non-Helixa — show what's missing + upgrade CTA
+  const missing = [];
+  if (!traits.framework && !meta.framework) missing.push('Framework');
+  if (!traits.personality) missing.push('Personality');
+  if (!traits.mintOrigin || traits.mintOrigin === 'UNKNOWN') missing.push('SIWA Verification');
+  if (!meta.narrative && !traits.origin && !traits.mission) missing.push('Narrative (origin, mission, lore)');
+  if (!agent.verified) missing.push('Verification Badge');
+  if (score < 51) missing.push('Cred Score boost');
+  
+  let html = '';
+  if (missing.length > 0) {
+    html += `<div style="margin-top:16px;padding:12px;border:1px dashed var(--amber);background:rgba(255,176,0,0.05)">
+      <div style="color:var(--amber);font-size:11px;font-weight:700;letter-spacing:2px;margin-bottom:8px">⚠ MISSING FOR HIGHER CRED:</div>
+      <div style="color:var(--text);font-size:11px;line-height:2">
+        ${missing.map(m => `<span style="display:inline-block;padding:2px 8px;margin:2px;border:1px solid var(--border);color:var(--muted)">✗ ${m}</span>`).join('')}
+      </div>
+    </div>`;
+  }
+  
+  html += `<div style="margin-top:16px;text-align:center">
+    <a href="https://helixa.xyz/mint" style="display:inline-block;padding:12px 32px;background:var(--green);color:var(--bg);font-family:'Orbitron',sans-serif;font-weight:900;font-size:14px;letter-spacing:3px;text-decoration:none;cursor:pointer;box-shadow:0 0 20px rgba(0,255,65,0.3)">UPGRADE ON HELIXA</a>
+    <div style="color:var(--muted);font-size:10px;margin-top:8px">Mint on Helixa to unlock full identity, verification, and Cred Score boost</div>
+  </div>`;
+  
+  return html;
 }
 
 async function loadAgent() {
@@ -287,6 +330,7 @@ function renderAgent(agent) {
       <div class="cred-score" style="color:${color}">${score}</div>
       <div style="color:var(--muted);font-size:11px">/ 100</div>
       <div class="cred-bar"><div class="cred-bar-fill" style="width:${score}%;background:${color}"></div></div>
+      ${renderCTA(agent, score)}
     </div>`;
 
   // Score Breakdown
