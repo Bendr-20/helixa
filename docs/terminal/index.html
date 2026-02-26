@@ -483,8 +483,14 @@ fetchAgents();
 
 </script>
 <script type="module">
-  import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
-  sdk.actions.ready();
+  // Farcaster miniapp: dismiss splash screen
+  // ?bundle inlines all deps (comlink, ox, etc) for fast load in Warpcast webview
+  try {
+    const { sdk } = await import('https://esm.sh/@farcaster/miniapp-sdk@0.2.3?bundle');
+    await sdk.actions.ready();
+  } catch(e) {
+    // Not in Farcaster context — ignore
+  }
 </script>
 </body>
 </html>
