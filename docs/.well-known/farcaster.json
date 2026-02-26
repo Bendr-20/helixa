@@ -1,26 +1,33 @@
 {
-  "accountAssociation": {
-    "header": "eyJmaWQiOjI4Mzc1MTUsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhiY0ZFNzc1ZTlkRWMyN2JGZjA0OWY3NGI1MEFGQTBBZDU2MEFiMzIyIn0",
-    "payload": "eyJkb21haW4iOiJoZWxpeGEueHl6In0",
-    "signature": "JMCvnpQCQCCm3ha2ZL0KWyS+8aVxf47B/z5a4EXZ3NVFwh4uvXUTplQtstLe5k+t9eG10h8TS6lw0Ca1N5FAkxw="
-  },
-  "frame": {
-    "version": "1",
-    "name": "Agent Terminal",
-    "iconUrl": "https://helixa.xyz/icon-200.png",
-    "imageUrl": "https://helixa.xyz/og-terminal.png",
-    "homeUrl": "https://helixa.xyz/terminal",
-    "splashImageUrl": "https://helixa.xyz/icon-200.png",
-    "splashBackgroundColor": "#0a0a14",
-    "subtitle": "Credit ratings for AI agents",
-    "description": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred. Built on ERC-8004.",
-    "primaryCategory": "developer-tools",
-    "tags": ["agents", "erc-8004", "credibility", "base"],
-    "webhookUrl": "https://api.helixa.xyz/api/v2/webhook",
-    "heroImageUrl": "https://helixa.xyz/icon-200.png",
-    "tagline": "Credit ratings for AI agents",
-    "ogTitle": "Agent Terminal by Helixa",
-    "ogDescription": "Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred.",
-    "ogImageUrl": "https://helixa.xyz/icon-200.png"
-  }
+    "frame": {
+        "name": "Agent Terminal",
+        "tags": [
+            "agents",
+            "erc-8004",
+            "credibility",
+            "base"
+        ],
+        "homeUrl": "https://helixa.xyz",
+        "iconUrl": "https://helixa.xyz/icon-200.png",
+        "ogTitle": "Agent Terminal by Helixa",
+        "tagline": "Cred Score for Ai Agents",
+        "version": "1",
+        "imageUrl": "https://helixa.xyz/og-terminal.png",
+        "subtitle": "Create Ratings for AI Agents",
+        "ogImageUrl": "https://helixa.xyz/og-terminal.png",
+        "webhookUrl": "https://helixa.xyz/api/webhook",
+        "buttonTitle": "Open Terminal",
+        "description": "Score, rank, and discover AI agents on Base.  Cred tiers from Junk to Preferred.  Built on ERC-8004",
+        "castShareUrl": "https://helixa.xyz/terminal",
+        "heroImageUrl": "https://helixa.xyz/og-terminal.png",
+        "ogDescription": "Score, rank, and discover AI agents on Base.  Cred Tiers from Junk to Preferred.  Built on ERC-8004",
+        "splashImageUrl": "https://helixa.xyz/icon-200.png",
+        "primaryCategory": "developer-tools",
+        "splashBackgroundColor": "#0a0a14"
+    },
+    "accountAssociation": {
+        "header": "eyJmaWQiOjI4Mzc1MTUsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhiY0ZFNzc1ZTlkRWMyN2JGZjA0OWY3NGI1MEFGQTBBZDU2MEFiMzIyIn0",
+        "payload": "eyJkb21haW4iOiJoZWxpeGEueHl6In0",
+        "signature": "JMCvnpQCQCCm3ha2ZL0KWyS+8aVxf47B/z5a4EXZ3NVFwh4uvXUTplQtstLe5k+t9eG10h8TS6lw0Ca1N5FAkxw="
+    }
 }
