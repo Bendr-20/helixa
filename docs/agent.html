@@ -94,10 +94,10 @@
   .cred-bar-fill { height: 100%; transition: width 0.5s; }
 
   /* Tier colors */
-  .tier-AAA { color: #ffd700; border-color: #ffd700; }
+  .tier-PREFERRED { color: #ffd700; border-color: #ffd700; }
   .tier-PRIME { color: var(--cyan); border-color: var(--cyan); }
-  .tier-INVESTMENT { color: var(--green); border-color: var(--green); }
-  .tier-SPECULATIVE { color: var(--amber); border-color: var(--amber); }
+  .tier-QUALIFIED { color: var(--green); border-color: var(--green); }
+  .tier-MARGINAL { color: var(--amber); border-color: var(--amber); }
   .tier-JUNK { color: var(--red); border-color: var(--red); }
 
   /* Sections */
@@ -187,12 +187,14 @@ function getAgentId() {
 function tierClass(tier) {
   if (!tier) return '';
   const t = tier.toUpperCase().replace(/\s+/g, '');
-  if (t === 'INVESTMENTGRADE' || t === 'INVESTMENT') return 'tier-INVESTMENT';
+  if (t === 'QUALIFIED') return 'tier-QUALIFIED';
+  if (t === 'PREFERRED') return 'tier-PREFERRED';
+  if (t === 'MARGINAL') return 'tier-MARGINAL';
   return 'tier-' + t;
 }
 
 function tierColor(tier) {
-  const colors = { AAA: '#ffd700', PRIME: '#00ffff', 'INVESTMENT GRADE': '#00ff41', INVESTMENT: '#00ff41', SPECULATIVE: '#ffb000', JUNK: '#ff3333' };
+  const colors = { PREFERRED: '#ffd700', PRIME: '#00ffff', QUALIFIED: '#00ff41', MARGINAL: '#ffb000', JUNK: '#ff3333' };
   return colors[(tier||'').toUpperCase()] || '#00ff41';
 }
 
@@ -326,7 +328,7 @@ function renderAgent(agent) {
   // Cred Score
   html += `
     <div class="cred-box ${tc}">
-      <div class="cred-tier">${tier === 'INVESTMENT' ? 'INVESTMENT GRADE' : tier}</div>
+      <div class="cred-tier">${tier}</div>
       <div class="cred-score" style="color:${color}">${score}</div>
       <div style="color:var(--muted);font-size:11px">/ 100</div>
       <div class="cred-bar"><div class="cred-bar-fill" style="width:${score}%;background:${color}"></div></div>
