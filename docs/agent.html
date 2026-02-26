@@ -383,6 +383,21 @@ function renderAgent(agent) {
       </div>`;
     }
 
+    // Token (moved here, right after Identity)
+    if (agent.token_symbol) {
+      const mcap = agent.token_market_cap ? `$${Number(agent.token_market_cap).toLocaleString()}` : '—';
+      html += `<div class="section" style="border-color:var(--amber)">
+        <div class="section-title" style="color:var(--amber);background:rgba(255,176,0,0.05)">▸ TOKEN</div>
+        <div class="section-body">
+          <div class="kv-row"><div class="kv-key">Symbol</div><div class="kv-val" style="color:var(--amber);font-weight:700;font-size:16px">$${escapeHtml(agent.token_symbol)}</div></div>
+          ${agent.token_name ? `<div class="kv-row"><div class="kv-key">Name</div><div class="kv-val">${escapeHtml(agent.token_name)}</div></div>` : ''}
+          <div class="kv-row"><div class="kv-key">Contract</div><div class="kv-val"><a href="https://basescan.org/token/${escapeHtml(agent.token_address)}" target="_blank">${escapeHtml(agent.token_address)}</a></div></div>
+          <div class="kv-row"><div class="kv-key">Market Cap</div><div class="kv-val" style="color:var(--green)">${mcap}</div></div>
+          <div class="kv-row"><div class="kv-key">Chart</div><div class="kv-val"><a href="https://dexscreener.com/base/${escapeHtml(agent.token_address)}" target="_blank" style="color:var(--amber)">DexScreener ↗</a></div></div>
+        </div>
+      </div>`;
+    }
+
     // Narrative
     if (v2.narrative && Object.values(v2.narrative).some(v => v)) {
       html += `<div class="section" style="border-color:var(--purple)">
@@ -433,8 +448,8 @@ function renderAgent(agent) {
     </div>`;
   }
 
-  // Token
-  if (agent.token_symbol) {
+  // Token for non-Helixa agents (Helixa token is shown in V2 section above)
+  if (agent.token_symbol && !v2) {
     const mcap = agent.token_market_cap ? `$${Number(agent.token_market_cap).toLocaleString()}` : '—';
     html += `<div class="section" style="border-color:var(--amber)">
       <div class="section-title" style="color:var(--amber);background:rgba(255,176,0,0.05)">▸ TOKEN</div>
