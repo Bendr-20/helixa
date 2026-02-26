@@ -398,6 +398,14 @@ function renderAgent(agent) {
       </div>`;
     }
 
+    // Description (moved above narrative)
+    if (meta.description || agent.description) {
+      html += `<div class="section">
+        <div class="section-title">▸ DESCRIPTION</div>
+        <div class="section-body"><div class="description">${escapeHtml(meta.description || agent.description)}</div></div>
+      </div>`;
+    }
+
     // Narrative
     if (v2.narrative && Object.values(v2.narrative).some(v => v)) {
       html += `<div class="section" style="border-color:var(--purple)">
@@ -440,8 +448,8 @@ function renderAgent(agent) {
     }
   }
 
-  // Description
-  if (meta.description || agent.description) {
+  // Description (for non-Helixa — Helixa description already rendered above)
+  if (!v2 && (meta.description || agent.description)) {
     html += `<div class="section">
       <div class="section-title">▸ DESCRIPTION</div>
       <div class="section-body"><div class="description">${escapeHtml(meta.description || agent.description)}</div></div>
