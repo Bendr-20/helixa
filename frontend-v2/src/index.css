@@ -176,9 +176,9 @@ code {
 
 .nav-link {
   position: relative;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.6rem;
   color: var(--text2);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
   transition: color 0.2s ease;
   text-decoration: none;
