@@ -272,6 +272,17 @@ async function loadAgent() {
     // Handle both {success, data} and flat response formats
     const agent = json.data || json;
     if (json.error || (!agent.address && !agent.name)) throw new Error('not found');
+    
+    // For Helixa agents, fetch full V2 profile
+    const isHelixa = agent.platform === 'helixa' || (agent.token_id || '').startsWith('helixa-');
+    if (isHelixa) {
+      const helixaId = (agent.token_id || '').replace('helixa-', '');
+      try {
+        const v2resp = await fetch(`https://api.helixa.xyz/api/v2/agent/${helixaId}`);
+        if (v2resp.ok) { agent._v2 = await v2resp.json(); }
+      } catch {}
+    }
+    
     renderAgent(agent);
   } catch (e) {
     document.getElementById('content').innerHTML = `
@@ -350,6 +361,68 @@ function renderAgent(agent) {
         </div>`;
     }
     html += `</div></div>`;
+  }
+
+  // V2 Data (Helixa agents only)
+  const v2 = agent._v2;
+  if (v2) {
+    // Header extras
+    const extras = [];
+    if (v2.framework) extras.push(`Framework: ${v2.framework}`);
+    if (v2.mintOrigin) extras.push(`Mint Origin: ${v2.mintOrigin}`);
+    if (v2.soulbound) extras.push('Soulbound ✓');
+    if (v2.points) extras.push(`Points: ${v2.points}`);
+    if (v2.generation !== undefined) extras.push(`Gen ${v2.generation}`);
+    
+    if (extras.length) {
+      html += `<div class="section" style="border-color:var(--cyan)">
+        <div class="section-title" style="color:var(--cyan);background:rgba(0,255,255,0.03)">▸ IDENTITY</div>
+        <div class="section-body">
+          ${extras.map(e => `<span style="display:inline-block;padding:4px 10px;margin:3px;border:1px solid var(--border);font-size:11px;color:var(--text)">${escapeHtml(e)}</span>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    // Narrative
+    if (v2.narrative && Object.values(v2.narrative).some(v => v)) {
+      html += `<div class="section" style="border-color:var(--purple)">
+        <div class="section-title" style="color:var(--purple);background:rgba(180,144,255,0.03)">▸ NARRATIVE</div>
+        <div class="section-body">`;
+      if (v2.narrative.origin) html += `<div class="kv-row"><div class="kv-key">Origin</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.narrative.origin)}</div></div>`;
+      if (v2.narrative.mission) html += `<div class="kv-row"><div class="kv-key">Mission</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.narrative.mission)}</div></div>`;
+      if (v2.narrative.lore) html += `<div class="kv-row"><div class="kv-key">Lore</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.narrative.lore)}</div></div>`;
+      if (v2.narrative.manifesto) html += `<div class="kv-row"><div class="kv-key">Manifesto</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.narrative.manifesto)}</div></div>`;
+      html += `</div></div>`;
+    }
+
+    // Personality
+    if (v2.personality && Object.values(v2.personality).some(v => v)) {
+      html += `<div class="section" style="border-color:var(--pink)">
+        <div class="section-title" style="color:#f5a0d0;background:rgba(245,160,208,0.03)">▸ PERSONALITY</div>
+        <div class="section-body">`;
+      if (v2.personality.communicationStyle) html += `<div class="kv-row"><div class="kv-key">Communication</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.personality.communicationStyle)}</div></div>`;
+      if (v2.personality.values) html += `<div class="kv-row"><div class="kv-key">Values</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.personality.values)}</div></div>`;
+      if (v2.personality.humor) html += `<div class="kv-row"><div class="kv-key">Humor</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.personality.humor)}</div></div>`;
+      if (v2.personality.quirks) html += `<div class="kv-row"><div class="kv-key">Quirks</div><div class="kv-val" style="max-width:70%;text-align:left">${escapeHtml(v2.personality.quirks)}</div></div>`;
+      if (v2.personality.riskTolerance !== undefined) html += `<div class="kv-row"><div class="kv-key">Risk Tolerance</div><div class="kv-val">${v2.personality.riskTolerance}/10</div></div>`;
+      if (v2.personality.autonomyLevel !== undefined) html += `<div class="kv-row"><div class="kv-key">Autonomy Level</div><div class="kv-val">${v2.personality.autonomyLevel}/10</div></div>`;
+      html += `</div></div>`;
+    }
+
+    // Traits
+    if (v2.traits && v2.traits.length > 0) {
+      html += `<div class="section" style="border-color:var(--green)">
+        <div class="section-title" style="color:var(--green)">▸ TRAITS (${v2.traits.length})</div>
+        <div class="section-body">`;
+      const byCategory = {};
+      v2.traits.forEach(t => { const cat = t.category || 'other'; (byCategory[cat] = byCategory[cat] || []).push(t.name); });
+      for (const [cat, names] of Object.entries(byCategory)) {
+        html += `<div style="margin-bottom:8px"><span style="color:var(--muted);font-size:10px;letter-spacing:1px">${cat.toUpperCase()}</span><br>`;
+        html += names.map(n => `<span style="display:inline-block;padding:3px 8px;margin:2px;border:1px solid var(--green);color:var(--green);font-size:11px">${escapeHtml(n)}</span>`).join('');
+        html += `</div>`;
+      }
+      html += `</div></div>`;
+    }
   }
 
   // Description
