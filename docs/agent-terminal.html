@@ -365,7 +365,10 @@ async function fetchAgents() {
     if (currentFilter !== 'all') params.set('filter', currentFilter);
     if (currentSearch) params.set('q', currentSearch);
     
-    const res = await fetch(`${API}/api/terminal/agents?${params}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${API}/api/terminal/agents?${params}`, { signal: controller.signal });
+    clearTimeout(timeout);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     
