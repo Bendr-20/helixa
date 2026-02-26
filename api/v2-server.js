@@ -2568,9 +2568,17 @@ app.get('/api/terminal/agents', (req, res) => {
             orderBy = 'created_at DESC NULLS LAST';
         }
         else if (filter === 'trending') {
-            // Agents with tokens, sorted by market cap
+            // Agents with tokens, sorted by 24h volume (most active)
             where.push('token_symbol IS NOT NULL');
-            orderBy = 'token_market_cap DESC NULLS LAST';
+            orderBy = 'volume_24h DESC NULLS LAST';
+        }
+        else if (filter === 'gainers') {
+            where.push('token_symbol IS NOT NULL AND price_change_24h > 0');
+            orderBy = 'price_change_24h DESC NULLS LAST';
+        }
+        else if (filter === 'losers') {
+            where.push('token_symbol IS NOT NULL AND price_change_24h < 0');
+            orderBy = 'price_change_24h ASC NULLS LAST';
         }
         else if (filter !== 'all') { where.push('cred_tier = @tier'); params.tier = filter; }
         if (q) {
@@ -2586,7 +2594,8 @@ app.get('/api/terminal/agents', (req, res) => {
         const agents = terminalDb.prepare(
             `SELECT address, agent_id, token_id, name, description, image_url, platform, 
                     x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
-                    token_address, token_symbol, token_name, token_market_cap
+                    token_address, token_symbol, token_name, token_market_cap,
+                    price_change_24h, volume_24h, liquidity_usd
              FROM agents ${whereClause} 
              ORDER BY ${orderBy}
              LIMIT @limit OFFSET @offset`

@@ -302,12 +302,14 @@
           <th data-col="tier">TIER</th>
           <th onclick="sortBy('platform')" data-col="platform">PLATFORM</th>
           <th data-col="x402">TOKEN</th>
-          <th data-col="address">ADDRESS</th>
-          <th onclick="sortBy('created_at')" data-col="created_at">REGISTERED</th>
+          <th onclick="sortBy('token_market_cap')" data-col="token_market_cap">MCAP</th>
+          <th onclick="sortBy('price_change_24h')" data-col="price_change_24h">24H</th>
+          <th data-col="address" class="hide-mobile">ADDRESS</th>
+          <th onclick="sortBy('created_at')" data-col="created_at" class="hide-mobile">REGISTERED</th>
         </tr>
       </thead>
       <tbody id="agents-body">
-        <tr><td colspan="7" class="loading"><span class="spinner">▓</span> SCANNING NETWORK...</td></tr>
+        <tr><td colspan="9" class="loading"><span class="spinner">▓</span> SCANNING NETWORK...</td></tr>
       </tbody>
     </table>
   </div>
@@ -344,6 +346,14 @@ function tierClass(tier) {
   return 'junk';
 }
 
+function formatMcap(val) {
+  if (!val || val <= 0) return '—';
+  if (val >= 1e9) return '$' + (val/1e9).toFixed(1) + 'B';
+  if (val >= 1e6) return '$' + (val/1e6).toFixed(1) + 'M';
+  if (val >= 1e3) return '$' + (val/1e3).toFixed(0) + 'K';
+  return '$' + val.toFixed(0);
+}
+
 function shortAddr(addr) {
   if (!addr) return '—';
   return addr.slice(0, 6) + '...' + addr.slice(-4);
@@ -358,7 +368,7 @@ function formatDate(ts) {
 
 async function fetchAgents() {
   const body = document.getElementById('agents-body');
-  body.innerHTML = '<tr><td colspan="7" class="loading"><span class="spinner">▓</span> SCANNING...</td></tr>';
+  body.innerHTML = '<tr><td colspan="9" class="loading"><span class="spinner">▓</span> SCANNING...</td></tr>';
   
   try {
     const params = new URLSearchParams({
@@ -409,7 +419,7 @@ async function fetchAgents() {
         return;
       }
     } catch(e) { console.error('Fallback also failed:', e); }
-    body.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">Try opening in Chrome/Safari. Some browsers block cross-origin API requests.</span></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">Try opening in Chrome/Safari. Some browsers block cross-origin API requests.</span></td></tr>`;
     loadDemoStats();
   }
 }
@@ -417,7 +427,7 @@ async function fetchAgents() {
 function renderAgents(agents) {
   const body = document.getElementById('agents-body');
   if (!agents.length) {
-    body.innerHTML = '<tr><td colspan="7" style="padding:20px;color:var(--muted)">NO AGENTS FOUND</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" style="padding:20px;color:var(--muted)">NO AGENTS FOUND</td></tr>';
     return;
   }
   body.innerHTML = agents.map(a => {
@@ -428,8 +438,10 @@ function renderAgents(agents) {
       <td><span class="tier-badge ${tc}">${(a.cred_tier || 'JUNK').replace('_',' ')}</span></td>
       <td>${a.platform || '—'}</td>
       <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
-      <td><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
-      <td style="color:var(--muted)">${formatDate(a.created_at)}</td>
+      <td>${a.token_market_cap ? formatMcap(a.token_market_cap) : '—'}</td>
+      <td style="color:${(a.price_change_24h||0) >= 0 ? '#6eecd8' : '#ff6b6b'};font-weight:700">${a.price_change_24h != null && a.token_symbol ? ((a.price_change_24h >= 0 ? '+' : '') + a.price_change_24h.toFixed(1) + '%') : '—'}</td>
+      <td class="hide-mobile"><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
+      <td class="hide-mobile" style="color:var(--muted)">${formatDate(a.created_at)}</td>
     </tr>`;
   }).join('');
 }
