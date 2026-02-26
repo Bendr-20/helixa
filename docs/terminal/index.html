@@ -236,6 +236,23 @@
     margin-top: 20px;
   }
   .footer a { color: var(--green-dim); text-decoration: none; }
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .container { padding: 10px; }
+    .header h1 { font-size: 22px; }
+    .header .subtitle { font-size: 10px; }
+    td, th { padding: 6px 8px; font-size: 11px; }
+    /* Hide ADDRESS and REGISTERED columns on mobile */
+    td:nth-child(6), th:nth-child(6),
+    td:nth-child(7), th:nth-child(7) { display: none; }
+    .filter-btn { padding: 4px 8px; font-size: 10px; }
+    .filters { gap: 6px; }
+  }
+  @media (max-width: 480px) {
+    /* Also hide PLATFORM on very small screens */
+    td:nth-child(4), th:nth-child(4) { display: none; }
+    td, th { padding: 5px 6px; font-size: 10px; }
+  }
 </style>
 </head>
 <body>
