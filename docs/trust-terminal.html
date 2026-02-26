@@ -322,7 +322,8 @@ function shortAddr(addr) {
 
 function formatDate(ts) {
   if (!ts) return '—';
-  const d = new Date(ts * 1000);
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return '—';
   return d.toISOString().split('T')[0];
 }
 
