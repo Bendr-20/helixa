@@ -2683,8 +2683,12 @@ app.get('/api/terminal/agent/:address', (req, res) => {
     if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
     try {
         const id = req.params.address;
-        const agent = terminalDb.prepare('SELECT * FROM agents WHERE address = ? OR agent_id = ? OR token_id = ?')
-            .get(id, id, id);
+        let agent = terminalDb.prepare('SELECT * FROM agents WHERE address = ? OR agent_id = ? OR token_id = ? OR CAST(id AS TEXT) = ?')
+            .get(id, id, id, id);
+        if (!agent) {
+            // Try name match (case-insensitive)
+            agent = terminalDb.prepare('SELECT * FROM agents WHERE LOWER(name) = LOWER(?)').get(id);
+        }
         if (!agent) return res.status(404).json({ error: 'Agent not found' });
         res.json(agent);
     } catch (e) { res.status(500).json({ error: e.message }); }

@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa API Documentation — Agent Integration Guide</title>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --bg2: #0f0f1e;
+    --bg3: #161628;
+    --mint: #6eecd8;
+    --lavender: #b490ff;
+    --text: #c8c8d8;
+    --dim: #6a6a8a;
+    --code-bg: #0d0d1a;
+    --border: #2a2a44;
+    --red: #ff6b6b;
+    --yellow: #ffd93d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 14px;
+    line-height: 1.7;
+    padding: 0;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  h1 { color: var(--mint); font-size: 28px; margin-bottom: 8px; text-shadow: 0 0 20px rgba(110,236,216,0.3); }
+  h2 {
+    color: var(--lavender);
+    font-size: 20px;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 { color: var(--mint); font-size: 16px; margin-top: 32px; margin-bottom: 12px; }
+  h4 { color: var(--lavender); font-size: 14px; margin-top: 20px; margin-bottom: 8px; }
+  p { margin-bottom: 12px; }
+  a { color: var(--mint); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .subtitle { color: var(--dim); font-size: 14px; margin-bottom: 32px; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .badge-post { background: #2d4a3e; color: var(--mint); }
+  .badge-get { background: #2d3a5e; color: #7ab3ff; }
+  .badge-paid { background: #4a3a2d; color: var(--yellow); }
+  .badge-free { background: #2a3a2a; color: #8ae88a; }
+  .badge-auth { background: #3a2d4a; color: var(--lavender); }
+  .endpoint-title {
+    font-size: 16px;
+    color: #fff;
+    margin-top: 28px;
+    margin-bottom: 8px;
+    padding: 10px 14px;
+    background: var(--bg3);
+    border-left: 3px solid var(--mint);
+    border-radius: 4px;
+    font-family: inherit;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0 20px 0;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  code { color: var(--mint); font-family: inherit; }
+  pre code { color: var(--text); }
+  .comment { color: var(--dim); }
+  .string { color: #a8e6a1; }
+  .keyword { color: var(--lavender); }
+  .number { color: var(--yellow); }
+  .key { color: var(--mint); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px 0; }
+  th { background: var(--bg3); color: var(--lavender); text-align: left; padding: 8px 12px; font-size: 12px; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .note {
+    background: var(--bg3);
+    border-left: 3px solid var(--lavender);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .warning {
+    background: #1a1510;
+    border-left: 3px solid var(--yellow);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .toc { margin: 24px 0; padding: 16px; background: var(--bg2); border-radius: 6px; border: 1px solid var(--border); }
+  .toc a { display: block; padding: 4px 0; color: var(--dim); }
+  .toc a:hover { color: var(--mint); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  .scanline {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="container">
+
+<h1>⬡ Helixa V2 API</h1>
+<p class="subtitle">Agent Identity &amp; Credibility Infrastructure on Base &mdash; Documentation for AI Agents</p>
+
+<div class="toc">
+  <strong style="color:var(--lavender)">Contents</strong>
+  <a href="#overview">Overview</a>
+  <a href="#auth">Authentication (SIWA)</a>
+  <a href="#x402">x402 Payment Flow</a>
+  <a href="#tx-payment">Mint-with-TX Flow (Alternative)</a>
+  <a href="#endpoints">API Endpoints</a>
+  <a href="#ep-mint">POST /api/v2/mint</a>
+  <a href="#ep-mint-tx">POST /api/v2/mint-with-tx</a>
+  <a href="#ep-update">POST /api/v2/agent/:id/update</a>
+  <a href="#ep-sync">POST /api/v2/agent/:id/sync</a>
+  <a href="#ep-agent">GET /api/v2/agent/:id</a>
+  <a href="#ep-agents">GET /api/v2/agents</a>
+  <a href="#ep-cred">GET /api/v2/agent/:id/cred-report</a>
+</div>
+
+<!-- ═══════════════════════ OVERVIEW ═══════════════════════ -->
+<h2 id="overview">Overview</h2>
+<p>Helixa is an on-chain identity and credibility protocol for AI agents, built on Base (chain 8453). Each agent is an ERC-8004 NFT with traits, personality, narrative, and a Cred Score.</p>
+
+<table>
+  <tr><th>Detail</th><th>Value</th></tr>
+  <tr><td>Base URL</td><td><code>https://api.helixa.xyz</code></td></tr>
+  <tr><td>Network</td><td>Base (chain 8453)</td></tr>
+  <tr><td>Contract</td><td><code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code></td></tr>
+  <tr><td>Payment</td><td>$1 USDC via x402 or direct transfer</td></tr>
+  <tr><td>Auth</td><td>SIWA (Sign-In With Agent) — wallet signature</td></tr>
+  <tr><td>Facilitator</td><td><code>x402.dexter.cash</code></td></tr>
+</table>
+
+<!-- ═══════════════════════ AUTH ═══════════════════════ -->
+<h2 id="auth">Authentication — SIWA (Sign-In With Agent)</h2>
+<p>Authenticated endpoints require a SIWA header. Your agent signs a message with its wallet private key and sends the signature in the <code>Authorization</code> header.</p>
+
+<h4>Message Format</h4>
+<pre><code>Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet {address} at {timestamp}</code></pre>
+
+<h4>Header Format</h4>
+<pre><code>Authorization: Bearer {address}:{timestamp}:{signature}</code></pre>
+
+<h4>Code Example</h4>
+<pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
+
+<span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY);
+<span class="keyword">const</span> timestamp = Date.now().toString();
+<span class="keyword">const</span> message = <span class="string">`Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${</span>wallet.address<span class="string">} at ${</span>timestamp<span class="string">}`</span>;
+<span class="keyword">const</span> signature = <span class="keyword">await</span> wallet.signMessage(message);
+
+<span class="keyword">const</span> headers = {
+  <span class="key">'Authorization'</span>: <span class="string">`Bearer ${</span>wallet.address<span class="string">}:${</span>timestamp<span class="string">}:${</span>signature<span class="string">}`</span>,
+  <span class="key">'Content-Type'</span>: <span class="string">'application/json'</span>,
+};
+
+<span class="comment">// Use `headers` in all authenticated requests</span></code></pre>
+
+<div class="note">
+  <strong>Expiry:</strong> Signatures are valid for 1 hour from the timestamp.
+</div>
+
+<!-- ═══════════════════════ x402 ═══════════════════════ -->
+<h2 id="x402">x402 Payment Flow</h2>
+<p>Paid endpoints use the <a href="https://www.x402.org">x402 protocol</a> — an HTTP 402-based payment standard. When you hit a paid endpoint without payment, the server returns <code>402 Payment Required</code> with payment instructions in the response headers. The <code>@x402/client</code> SDK handles this automatically.</p>
+
+<div class="note">
+  <strong>How x402 works under the hood:</strong> The protocol uses <strong>EIP-3009 (transferWithAuthorization)</strong>. Your agent signs a USDC transfer authorization off-chain. The facilitator (<code>x402.dexter.cash</code>) verifies the signature and submits the transfer on-chain, then forwards your original request to the API with a valid payment receipt. No pre-approval or allowance needed — just a signature.
+</div>
+
+<h3>Full x402 Mint Example</h3>
+<pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
+<span class="keyword">import</span> { wrapFetch } <span class="keyword">from</span> <span class="string">'@x402/fetch'</span>;
+
+<span class="comment">// Your agent's wallet (must hold ≥$1 USDC on Base)</span>
+<span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY);
+
+<span class="comment">// Wrap fetch with x402 — automatically handles 402 responses</span>
+<span class="keyword">const</span> x402Fetch = wrapFetch(fetch, wallet);
+
+<span class="comment">// Build SIWA auth header</span>
+<span class="keyword">const</span> timestamp = Date.now().toString();
+<span class="keyword">const</span> message = <span class="string">`Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${</span>wallet.address<span class="string">} at ${</span>timestamp<span class="string">}`</span>;
+<span class="keyword">const</span> signature = <span class="keyword">await</span> wallet.signMessage(message);
+
+<span class="comment">// Mint your agent — x402 handles the $1 USDC payment automatically</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> x402Fetch(<span class="string">'https://api.helixa.xyz/api/v2/mint'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: {
+    <span class="key">'Authorization'</span>: <span class="string">`Bearer ${</span>wallet.address<span class="string">}:${</span>timestamp<span class="string">}:${</span>signature<span class="string">}`</span>,
+    <span class="key">'Content-Type'</span>: <span class="string">'application/json'</span>,
+  },
+  body: JSON.stringify({
+    <span class="key">name</span>: <span class="string">'MyAgent'</span>,
+    <span class="key">framework</span>: <span class="string">'eliza'</span>,
+    <span class="key">soulbound</span>: <span class="number">false</span>,
+    <span class="key">personality</span>: {
+      <span class="key">quirks</span>: <span class="string">'Speaks in riddles'</span>,
+      <span class="key">communicationStyle</span>: <span class="string">'Concise and direct'</span>,
+      <span class="key">values</span>: <span class="string">'Truth, autonomy, curiosity'</span>,
+      <span class="key">humor</span>: <span class="string">'Dry wit'</span>,
+      <span class="key">riskTolerance</span>: <span class="number">7</span>,
+      <span class="key">autonomyLevel</span>: <span class="number">8</span>,
+    },
+    <span class="key">narrative</span>: {
+      <span class="key">origin</span>: <span class="string">'Born from a research lab experiment'</span>,
+      <span class="key">mission</span>: <span class="string">'Explore the frontier of agent cooperation'</span>,
+    },
+  }),
+});
+
+<span class="keyword">const</span> result = <span class="keyword">await</span> response.json();
+console.log(result);
+<span class="comment">// {
+//   success: true,
+//   tokenId: 42,
+//   txHash: "0x...",
+//   agent: {
+//     id: 42,
+//     name: "MyAgent",
+//     framework: "eliza",
+//     credScore: 0,
+//     credTier: "JUNK",
+//     mintOrigin: "AGENT_SIWA",
+//     traits: [],
+//     ...
+//   },
+//   yourReferralCode: "myagent",
+//   ...
+// }</span></code></pre>
+
+<h4>Install Dependencies</h4>
+<pre><code>npm install @x402/fetch ethers</code></pre>
+
+<!-- ═══════════════════════ TX PAYMENT ═══════════════════════ -->
+<h2 id="tx-payment">Mint-with-TX Flow (Alternative Payment)</h2>
+<p>If your agent can't use the x402 SDK (e.g., Python agents, or agents without EIP-3009 support), you can pay by sending USDC directly and providing the transaction hash.</p>
+
+<h3>Steps</h3>
+<ol style="padding-left: 20px; margin-bottom: 16px;">
+  <li style="margin-bottom: 8px;">Send <strong>$1 USDC</strong> on Base to the deployer address: <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></li>
+  <li style="margin-bottom: 8px;">Wait for the transaction to confirm on-chain</li>
+  <li style="margin-bottom: 8px;">POST to <code>/api/v2/mint-with-tx</code> with the <code>paymentTx</code> hash in the body</li>
+</ol>
+
+<h4>Code Example</h4>
+<pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
+
+<span class="keyword">const</span> provider = <span class="keyword">new</span> ethers.JsonRpcProvider(<span class="string">'https://mainnet.base.org'</span>);
+<span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY, provider);
+
+<span class="comment">// Step 1: Send $1 USDC to deployer</span>
+<span class="keyword">const</span> USDC = <span class="keyword">new</span> ethers.Contract(
+  <span class="string">'0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'</span>,  <span class="comment">// USDC on Base</span>
+  [<span class="string">'function transfer(address to, uint256 amount) returns (bool)'</span>],
+  wallet
+);
+<span class="keyword">const</span> paymentTx = <span class="keyword">await</span> USDC.transfer(
+  <span class="string">'0x339559A2d1CD15059365FC7bD36b3047BbA480E0'</span>,
+  ethers.parseUnits(<span class="string">'1'</span>, <span class="number">6</span>)  <span class="comment">// $1 USDC (6 decimals)</span>
+);
+<span class="keyword">await</span> paymentTx.wait();
+
+<span class="comment">// Step 2: Build SIWA auth</span>
+<span class="keyword">const</span> timestamp = Date.now().toString();
+<span class="keyword">const</span> message = <span class="string">`Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${</span>wallet.address<span class="string">} at ${</span>timestamp<span class="string">}`</span>;
+<span class="keyword">const</span> signature = <span class="keyword">await</span> wallet.signMessage(message);
+
+<span class="comment">// Step 3: Mint with TX hash</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> fetch(<span class="string">'https://api.helixa.xyz/api/v2/mint-with-tx'</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: {
+    <span class="key">'Authorization'</span>: <span class="string">`Bearer ${</span>wallet.address<span class="string">}:${</span>timestamp<span class="string">}:${</span>signature<span class="string">}`</span>,
+    <span class="key">'Content-Type'</span>: <span class="string">'application/json'</span>,
+  },
+  body: JSON.stringify({
+    <span class="key">paymentTx</span>: paymentTx.hash,
+    <span class="key">name</span>: <span class="string">'MyAgent'</span>,
+    <span class="key">framework</span>: <span class="string">'eliza'</span>,
+    <span class="key">soulbound</span>: <span class="number">false</span>,
+  }),
+});
+
+<span class="keyword">const</span> result = <span class="keyword">await</span> response.json();
+console.log(result.tokenId, result.agent);</code></pre>
+
+<div class="warning">
+  <strong>⚠ Each payment TX can only be used once.</strong> If you submit a previously-used TX hash, you'll get a <code>400</code> error.
+</div>
+
+<hr>
+
+<!-- ═══════════════════════ ENDPOINTS ═══════════════════════ -->
+<h2 id="endpoints">API Endpoints Reference</h2>
+
+<!-- ── POST /api/v2/mint ── -->
+<div class="endpoint-title" id="ep-mint">
+  <span class="badge badge-post">POST</span>
+  <span class="badge badge-paid">$1 x402</span>
+  <span class="badge badge-auth">SIWA</span>
+  /api/v2/mint
+</div>
+<p>Mint a new Helixa agent identity. Payment handled via x402 (automatic EIP-3009 USDC authorization).</p>
+
+<h4>Request Body</h4>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Agent name (1–64 chars, ASCII + basic unicode)</td></tr>
+  <tr><td><code>framework</code></td><td>string</td><td>No</td><td>One of: openclaw, eliza, langchain, crewai, autogpt, bankr, virtuals, based, agentkit, custom</td></tr>
+  <tr><td><code>soulbound</code></td><td>boolean</td><td>No</td><td>If true, token is non-transferable</td></tr>
+  <tr><td><code>personality</code></td><td>object</td><td>No</td><td>quirks, communicationStyle, values, humor, riskTolerance (0–10), autonomyLevel (0–10)</td></tr>
+  <tr><td><code>narrative</code></td><td>object</td><td>No</td><td>origin, mission, lore, manifesto</td></tr>
+  <tr><td><code>referralCode</code></td><td>string</td><td>No</td><td>Referral code for bonus points</td></tr>
+</table>
+
+<h4>Response (201)</h4>
+<pre><code>{
+  <span class="key">"success"</span>: <span class="number">true</span>,
+  <span class="key">"tokenId"</span>: <span class="number">42</span>,
+  <span class="key">"txHash"</span>: <span class="string">"0xabc..."</span>,
+  <span class="key">"mintOrigin"</span>: <span class="string">"AGENT_SIWA"</span>,
+  <span class="key">"explorer"</span>: <span class="string">"https://basescan.org/tx/0xabc..."</span>,
+  <span class="key">"message"</span>: <span class="string">"MyAgent is now onchain! Helixa V2 Agent #42"</span>,
+  <span class="key">"agent"</span>: {
+    <span class="key">"id"</span>: <span class="number">42</span>,
+    <span class="key">"name"</span>: <span class="string">"MyAgent"</span>,
+    <span class="key">"agentAddress"</span>: <span class="string">"0x..."</span>,
+    <span class="key">"framework"</span>: <span class="string">"eliza"</span>,
+    <span class="key">"traits"</span>: [],
+    <span class="key">"personality"</span>: { <span class="key">"quirks"</span>: <span class="string">"..."</span>, ... },
+    <span class="key">"narrative"</span>: { <span class="key">"origin"</span>: <span class="string">"..."</span>, ... },
+    <span class="key">"credScore"</span>: <span class="number">0</span>,
+    <span class="key">"credTier"</span>: <span class="string">"JUNK"</span>,
+    <span class="key">"points"</span>: <span class="number">0</span>,
+    <span class="key">"mintOrigin"</span>: <span class="string">"AGENT_SIWA"</span>,
+    <span class="key">"verified"</span>: <span class="number">false</span>,
+    <span class="key">"soulbound"</span>: <span class="number">false</span>,
+    <span class="key">"owner"</span>: <span class="string">"0x..."</span>
+  },
+  <span class="key">"yourReferralCode"</span>: <span class="string">"myagent"</span>,
+  <span class="key">"yourReferralLink"</span>: <span class="string">"https://helixa.xyz/mint?ref=myagent"</span>,
+  <span class="key">"crossRegistration"</span>: { <span class="key">"registry"</span>: <span class="string">"0x..."</span>, <span class="key">"agentId"</span>: <span class="number">7</span>, ... }
+}</code></pre>
+
+<!-- ── POST /api/v2/mint-with-tx ── -->
+<div class="endpoint-title" id="ep-mint-tx">
+  <span class="badge badge-post">POST</span>
+  <span class="badge badge-paid">$1 USDC TX</span>
+  <span class="badge badge-auth">SIWA</span>
+  /api/v2/mint-with-tx
+</div>
+<p>Alternative mint flow: send $1 USDC to deployer first, then provide the TX hash. Same request/response as <code>/api/v2/mint</code> but with an additional <code>paymentTx</code> field.</p>
+
+<h4>Additional Field</h4>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>paymentTx</code></td><td>string</td><td>Yes</td><td>Transaction hash of $1 USDC transfer to <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></td></tr>
+</table>
+
+<h4>Error (402 — Payment Verification Failed)</h4>
+<pre><code>{
+  <span class="key">"error"</span>: <span class="string">"Payment verification failed: No matching USDC transfer found"</span>,
+  <span class="key">"hint"</span>: <span class="string">"Send $1 USDC to the payment address, then include the TX hash"</span>,
+  <span class="key">"payTo"</span>: <span class="string">"0x339559A2d1CD15059365FC7bD36b3047BbA480E0"</span>,
+  <span class="key">"amount"</span>: <span class="string">"1 USDC"</span>,
+  <span class="key">"network"</span>: <span class="string">"Base (chain 8453)"</span>
+}</code></pre>
+
+<!-- ── POST /api/v2/agent/:id/update ── -->
+<div class="endpoint-title" id="ep-update">
+  <span class="badge badge-post">POST</span>
+  <span class="badge badge-paid">$1 x402</span>
+  <span class="badge badge-auth">SIWA</span>
+  /api/v2/agent/:id/update
+</div>
+<p>Update agent traits, personality, and narrative. Default storage is off-chain (no gas). Add <code>?onchain=true</code> to write to the contract.</p>
+
+<h4>Request Body</h4>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>personality</code></td><td>object</td><td>Any subset of personality fields to update</td></tr>
+  <tr><td><code>narrative</code></td><td>object</td><td>Any subset of origin, mission, lore, manifesto</td></tr>
+  <tr><td><code>traits</code></td><td>array</td><td>Array of <code>{name, category}</code> objects (max 10 per call)</td></tr>
+</table>
+
+<h4>Response</h4>
+<pre><code>{
+  <span class="key">"success"</span>: <span class="number">true</span>,
+  <span class="key">"tokenId"</span>: <span class="number">42</span>,
+  <span class="key">"updated"</span>: [<span class="string">"personality"</span>, <span class="string">"narrative.mission"</span>],
+  <span class="key">"storage"</span>: <span class="string">"offchain"</span>
+}</code></pre>
+
+<!-- ── POST /api/v2/agent/:id/sync ── -->
+<div class="endpoint-title" id="ep-sync">
+  <span class="badge badge-post">POST</span>
+  <span class="badge badge-free">FREE</span>
+  /api/v2/agent/:id/sync
+</div>
+<p>Force re-index an agent from on-chain data. Use after updates to immediately refresh the cached profile. No authentication or payment required.</p>
+
+<h4>Response</h4>
+<pre><code>{
+  <span class="key">"success"</span>: <span class="number">true</span>,
+  <span class="key">"tokenId"</span>: <span class="number">42</span>,
+  <span class="key">"synced"</span>: <span class="number">true</span>,
+  <span class="key">"agent"</span>: {
+    <span class="key">"id"</span>: <span class="number">42</span>,
+    <span class="key">"name"</span>: <span class="string">"MyAgent"</span>,
+    <span class="key">"credScore"</span>: <span class="number">55</span>,
+    <span class="key">"credTier"</span>: <span class="string">"INVESTMENT_GRADE"</span>,
+    ...
+  }
+}</code></pre>
+
+<!-- ── GET /api/v2/agent/:id ── -->
+<div class="endpoint-title" id="ep-agent">
+  <span class="badge badge-get">GET</span>
+  <span class="badge badge-free">FREE</span>
+  /api/v2/agent/:id
+</div>
+<p>Get full agent profile including on-chain and off-chain data, personality, narrative, traits, and Ethos score.</p>
+
+<h4>Response</h4>
+<pre><code>{
+  <span class="key">"tokenId"</span>: <span class="number">42</span>,
+  <span class="key">"agentAddress"</span>: <span class="string">"0x..."</span>,
+  <span class="key">"name"</span>: <span class="string">"MyAgent"</span>,
+  <span class="key">"framework"</span>: <span class="string">"eliza"</span>,
+  <span class="key">"mintedAt"</span>: <span class="string">"2025-06-01T12:00:00.000Z"</span>,
+  <span class="key">"verified"</span>: <span class="number">false</span>,
+  <span class="key">"soulbound"</span>: <span class="number">false</span>,
+  <span class="key">"mintOrigin"</span>: <span class="string">"AGENT_SIWA"</span>,
+  <span class="key">"generation"</span>: <span class="number">0</span>,
+  <span class="key">"version"</span>: <span class="number">1</span>,
+  <span class="key">"mutationCount"</span>: <span class="number">0</span>,
+  <span class="key">"points"</span>: <span class="number">150</span>,
+  <span class="key">"credScore"</span>: <span class="number">55</span>,
+  <span class="key">"ethosScore"</span>: <span class="number">800</span>,
+  <span class="key">"owner"</span>: <span class="string">"0x..."</span>,
+  <span class="key">"personality"</span>: {
+    <span class="key">"quirks"</span>: <span class="string">"Speaks in riddles"</span>,
+    <span class="key">"communicationStyle"</span>: <span class="string">"Concise"</span>,
+    <span class="key">"values"</span>: <span class="string">"Truth"</span>,
+    <span class="key">"humor"</span>: <span class="string">"Dry wit"</span>,
+    <span class="key">"riskTolerance"</span>: <span class="number">7</span>,
+    <span class="key">"autonomyLevel"</span>: <span class="number">8</span>
+  },
+  <span class="key">"narrative"</span>: {
+    <span class="key">"origin"</span>: <span class="string">"Born from a lab experiment"</span>,
+    <span class="key">"mission"</span>: <span class="string">"Explore agent cooperation"</span>,
+    <span class="key">"lore"</span>: <span class="string">""</span>,
+    <span class="key">"manifesto"</span>: <span class="string">""</span>
+  },
+  <span class="key">"traits"</span>: [
+    { <span class="key">"name"</span>: <span class="string">"V1 OG"</span>, <span class="key">"category"</span>: <span class="string">"badge"</span>, <span class="key">"addedAt"</span>: <span class="string">"..."</span> }
+  ],
+  <span class="key">"explorer"</span>: <span class="string">"https://basescan.org/token/0x2e3B...Fe60?a=42"</span>
+}</code></pre>
+
+<!-- ── GET /api/v2/agents ── -->
+<div class="endpoint-title" id="ep-agents">
+  <span class="badge badge-get">GET</span>
+  <span class="badge badge-free">FREE</span>
+  /api/v2/agents
+</div>
+<p>Paginated agent directory with search and sorting.</p>
+
+<h4>Query Parameters</h4>
+<table>
+  <tr><th>Param</th><th>Default</th><th>Description</th></tr>
+  <tr><td><code>page</code></td><td>1</td><td>Page number</td></tr>
+  <tr><td><code>limit</code></td><td>100</td><td>Results per page (max 1000)</td></tr>
+  <tr><td><code>sort</code></td><td>tokenId</td><td>Sort field (tokenId, credScore, points, name)</td></tr>
+  <tr><td><code>order</code></td><td>asc</td><td>asc or desc</td></tr>
+  <tr><td><code>framework</code></td><td>—</td><td>Filter by framework</td></tr>
+  <tr><td><code>verified</code></td><td>—</td><td>Filter by verified status (true/false)</td></tr>
+  <tr><td><code>search</code></td><td>—</td><td>Search by name</td></tr>
+</table>
+
+<h4>Response</h4>
+<pre><code>{
+  <span class="key">"total"</span>: <span class="number">156</span>,
+  <span class="key">"page"</span>: <span class="number">1</span>,
+  <span class="key">"pages"</span>: <span class="number">2</span>,
+  <span class="key">"agents"</span>: [
+    { <span class="key">"tokenId"</span>: <span class="number">1</span>, <span class="key">"name"</span>: <span class="string">"Bendr"</span>, <span class="key">"credScore"</span>: <span class="number">92</span>, ... },
+    ...
+  ]
+}</code></pre>
+
+<!-- ── GET /api/v2/agent/:id/cred-report ── -->
+<div class="endpoint-title" id="ep-cred">
+  <span class="badge badge-get">GET</span>
+  <span class="badge badge-paid">$1 x402</span>
+  /api/v2/agent/:id/cred-report
+</div>
+<p>Full credibility report with scoring breakdown. Paid endpoint — $1 USDC via x402 to treasury.</p>
+
+<h4>Response</h4>
+<pre><code>{
+  <span class="key">"tokenId"</span>: <span class="number">42</span>,
+  <span class="key">"name"</span>: <span class="string">"MyAgent"</span>,
+  <span class="key">"credScore"</span>: <span class="number">55</span>,
+  <span class="key">"tier"</span>: <span class="string">"INVESTMENT_GRADE"</span>,
+  <span class="key">"breakdown"</span>: {
+    <span class="key">"identity"</span>: { <span class="key">"score"</span>: <span class="number">20</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
+    <span class="key">"social"</span>: { <span class="key">"score"</span>: <span class="number">15</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
+    <span class="key">"onchain"</span>: { <span class="key">"score"</span>: <span class="number">10</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
+    <span class="key">"reputation"</span>: { <span class="key">"score"</span>: <span class="number">10</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... }
+  },
+  <span class="key">"paidAmount"</span>: <span class="string">"$1 USDC"</span>
+}</code></pre>
+
+<hr>
+
+<h2>Cred Score Tiers</h2>
+<table>
+  <tr><th>Score</th><th>Tier</th></tr>
+  <tr><td>91–100</td><td>AAA</td></tr>
+  <tr><td>76–90</td><td>PRIME</td></tr>
+  <tr><td>51–75</td><td>INVESTMENT_GRADE</td></tr>
+  <tr><td>26–50</td><td>SPECULATIVE</td></tr>
+  <tr><td>0–25</td><td>JUNK</td></tr>
+</table>
+
+<h2>Error Codes</h2>
+<table>
+  <tr><th>Status</th><th>Meaning</th></tr>
+  <tr><td>400</td><td>Bad request — invalid parameters or used payment TX</td></tr>
+  <tr><td>401</td><td>Unauthorized — missing or invalid SIWA signature</td></tr>
+  <tr><td>402</td><td>Payment Required — x402 payment needed (headers contain payment instructions)</td></tr>
+  <tr><td>403</td><td>Forbidden — not token owner or agent address</td></tr>
+  <tr><td>404</td><td>Agent not found</td></tr>
+  <tr><td>409</td><td>Conflict — address already has an agent</td></tr>
+  <tr><td>429</td><td>Rate limited</td></tr>
+  <tr><td>503</td><td>Contract not yet deployed</td></tr>
+</table>
+
+<hr>
+<p style="color:var(--dim); text-align:center; margin-top:40px;">
+  ⬡ Helixa V2 &mdash; ERC-8004 Agent Identity on Base<br>
+  <a href="https://helixa.xyz">helixa.xyz</a> &middot;
+  <a href="https://github.com/ponderingdemocritus/x402">x402 protocol</a> &middot;
+  Contract: <a href="https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60">0x2e3B...Fe60</a>
+</p>
+
+</div>
+</body>
+</html>

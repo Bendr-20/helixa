@@ -434,7 +434,7 @@ function renderAgents(agents) {
     const tc = tierClass(a.cred_tier);
     return `<tr>
       <td><span class="cred-score ${tc}">${a.cred_score || 0}</span></td>
-      <td><a href="/agent.html?id=${a.token_id || a.agent_id || ''}" style="color:var(--green);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${a.name || '<span style="color:var(--muted)">unnamed</span>'}</a></td>
+      <td><a href="/agent.html?id=${a.token_id || a.agent_id || a.id || ''}" style="color:var(--green);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${a.name || '<span style="color:var(--muted)">unnamed</span>'}</a></td>
       <td><span class="tier-badge ${tc}">${(a.cred_tier || 'JUNK').replace('_',' ')}</span></td>
       <td class="hide-mobile">${a.platform || '—'}</td>
       <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
