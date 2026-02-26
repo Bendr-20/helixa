@@ -781,6 +781,56 @@ app.post('/api/v2/mint', requireSIWA, async (req, res) => {
             console.error(`[8004 XREG] Cross-registration failed (non-fatal): ${e.message}`);
         }
         
+        // ─── Trust Terminal: merge/upgrade existing entry ────────
+        try {
+            const Database = require('better-sqlite3');
+            const termPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
+            if (fs.existsSync(termPath)) {
+                const tdb = new Database(termPath);
+                // Find existing entry by agent address (from agentscan)
+                const existing = tdb.prepare('SELECT id, token_id FROM agents WHERE address = ? OR owner_address = ?')
+                    .get(agentAddress.toLowerCase(), agentAddress.toLowerCase());
+                
+                const helixaTokenId = `helixa-${tokenId}`;
+                const credScore = 40; // Base score for fresh Helixa mint
+                const tierOf = s => s >= 91 ? 'PREFERRED' : s >= 76 ? 'PRIME' : s >= 51 ? 'QUALIFIED' : s >= 26 ? 'MARGINAL' : 'JUNK';
+                
+                if (existing) {
+                    // Upgrade existing entry → Helixa
+                    tdb.prepare(`UPDATE agents SET 
+                        name = ?, platform = 'helixa', token_id = ?, agent_id = ?,
+                        x402_supported = 1, cred_score = ?, cred_tier = ?, verified = 1,
+                        image_url = ?, description = ?,
+                        metadata = ?, registry = ?
+                        WHERE id = ?`
+                    ).run(name, helixaTokenId, helixaTokenId, credScore, tierOf(credScore),
+                        `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
+                        `${name} — ${fw} agent on Helixa (ERC-8004).`,
+                        JSON.stringify({ framework: fw, mintOrigin: 'AGENT_SIWA', soulbound: soulbound === true }),
+                        V2_CONTRACT_ADDRESS, existing.id);
+                    console.log(`[TERMINAL] ✓ Upgraded existing entry #${existing.id} → helixa-${tokenId}`);
+                } else {
+                    // Insert new Helixa entry
+                    tdb.prepare(`INSERT OR REPLACE INTO agents 
+                        (address, agent_id, token_id, chain_id, name, platform, x402_supported,
+                         cred_score, cred_tier, verified, image_url, description, metadata, registry,
+                         owner_address, created_at, registered_at)
+                        VALUES (?, ?, ?, 8453, ?, 'helixa', 1, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
+                    ).run(agentAddress.toLowerCase(), helixaTokenId, helixaTokenId, name,
+                        credScore, tierOf(credScore),
+                        `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
+                        `${name} — ${fw} agent on Helixa (ERC-8004).`,
+                        JSON.stringify({ framework: fw, mintOrigin: 'AGENT_SIWA', soulbound: soulbound === true }),
+                        V2_CONTRACT_ADDRESS, agentAddress.toLowerCase(),
+                        new Date().toISOString(), new Date().toISOString());
+                    console.log(`[TERMINAL] ✓ New Helixa entry: helixa-${tokenId}`);
+                }
+                tdb.close();
+            }
+        } catch (e) {
+            console.error(`[TERMINAL] DB merge failed (non-fatal): ${e.message}`);
+        }
+        
         res.status(201).json({
             success: true,
             tokenId,
