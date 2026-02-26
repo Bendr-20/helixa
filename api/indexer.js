@@ -394,7 +394,9 @@ async function startIndexer(provider, contract, cachePath) {
 
     // Poll every 30 seconds
     pollTimer = setInterval(runSync, POLL_INTERVAL_MS);
-    console.log(`[INDEXER] Polling every ${POLL_INTERVAL_MS / 1000}s`);
+    // Refresh cred scores every 10 minutes
+    setInterval(() => refreshScores().catch(e => console.error('[INDEXER] Score refresh error:', e.message)), 600_000);
+    console.log(`[INDEXER] Polling every ${POLL_INTERVAL_MS / 1000}s, scores every 600s`);
 }
 
 async function refreshScores() {
@@ -429,4 +431,5 @@ module.exports = {
     getAgentCount,
     refreshScores,
     upsertAgent: (a) => { if (db) upsertAgent(a); },
+    updateCredScore: (tokenId, score) => { if (db) db.prepare('UPDATE agents SET credScore = ?, lastUpdated = ? WHERE tokenId = ?').run(score, Date.now(), tokenId); },
 };

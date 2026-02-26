@@ -565,12 +565,6 @@ app.get('/api/v2/og/:address', (req, res) => {
 
 // POST /api/v2/mint — Mint new agent
 app.post('/api/v2/mint', requireSIWA, async (req, res) => {
-    // Mint-specific rate limit (stricter)
-    const mintKey = req.agent?.address || req.clientIp;
-    if (!checkRateLimit(mintKey, RATE_LIMIT_MINT, mintRateLimits)) {
-        return res.status(429).json({ error: 'Mint rate limit exceeded. Max 3 per 5 minutes.' });
-    }
-
     const { name, framework, soulbound, personality, narrative, referralCode } = req.body;
     
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
@@ -984,6 +978,12 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
                     console.error(`[8004 SYNC] Failed for #${tokenId}: ${e.message}`);
                 }
             }
+            // Refresh cred score in SQLite after onchain update
+            try {
+                const newCred = Number(await readContract.getCredScore(tokenId));
+                indexer.updateCredScore(tokenId, newCred);
+            } catch (e) { console.error(`[CRED REFRESH] #${tokenId}:`, e.message); }
+
             res.json({ success: true, tokenId, updated, registrySync, storage: 'onchain' });
         } else {
             // ─── OFF-CHAIN PATH (default, no gas) ─────────────────
@@ -1046,6 +1046,12 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
                 console.log(`[V2 UPDATE OFF-CHAIN] Agent #${tokenId}: ${updated.join(', ')}`);
             }
             
+            // Refresh cred score in SQLite after offchain update
+            try {
+                const newCred = Number(await readContract.getCredScore(tokenId));
+                indexer.updateCredScore(tokenId, newCred);
+            } catch (e) { console.error(`[CRED REFRESH] #${tokenId}:`, e.message); }
+
             res.json({ success: true, tokenId, updated, storage: 'offchain' });
         }
     } catch (e) {
