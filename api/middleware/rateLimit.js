@@ -4,7 +4,7 @@
 
 const rateLimitWindows = {};
 const mintRateLimits = {};
-const RATE_LIMIT = { window: 60_000, maxRequests: 30 };
+const RATE_LIMIT = { window: 60_000, maxRequests: 60 };
 const RATE_LIMIT_MINT = { window: 300_000, maxRequests: 3 };
 
 function checkRateLimit(key, limits, store) {

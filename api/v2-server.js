@@ -2650,19 +2650,19 @@ app.get('/api/terminal/agents', (req, res) => {
         let params = {};
         let orderBy = `${sort} ${dir} NULLS LAST`;
         
+        // userSort = true when client explicitly chose a sort column
+        const userSort = req.query.sort && req.query.sort !== 'cred_score';
         if (filter === 'x402') { where.push('x402_supported = 1'); }
         else if (filter === 'new') {
-            // Newest agents first — registered in last 7 days or sorted by date
-            orderBy = 'created_at DESC NULLS LAST';
+            if (!userSort) orderBy = 'created_at DESC NULLS LAST';
         }
         else if (filter === 'trending') {
-            // Agents with tokens, sorted by 24h volume (most active)
             where.push('token_symbol IS NOT NULL');
-            orderBy = 'volume_24h DESC NULLS LAST';
+            if (!userSort) orderBy = 'volume_24h DESC NULLS LAST';
         }
         else if (filter === 'gainers') {
             where.push('token_symbol IS NOT NULL AND price_change_24h > 0');
-            orderBy = 'price_change_24h DESC NULLS LAST';
+            if (!userSort) orderBy = 'price_change_24h DESC NULLS LAST';
         }
         else if (filter === 'losers') {
             where.push('token_symbol IS NOT NULL AND price_change_24h < 0');

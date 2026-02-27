@@ -283,14 +283,16 @@ function LookupPanel({ onSelect }: { onSelect: (id: number) => void }) {
 
     try {
       const id = parseInt(val);
-      if (!isNaN(id)) {
-        const resp = await fetch(`${API}/metadata/${id}`);
-        if (resp.ok) { onSelect(id); return; }
+      if (!isNaN(id) && id >= 0) {
+        try {
+          const resp = await fetch(`${API}/metadata/${id}`);
+          if (resp.ok) { onSelect(id); return; }
+        } catch(_) { /* fall through to search */ }
       }
       // Search by name
       const resp = await fetch(`${API}/agents?search=${encodeURIComponent(val)}&limit=5`);
       const data = await resp.json();
-      const agents = data.agents || data;
+      const agents = Array.isArray(data.agents) ? data.agents : Array.isArray(data) ? data : [];
       const match = agents.find((a: any) => a.name?.toLowerCase() === val.toLowerCase()) || agents[0];
       if (match) { onSelect(match.tokenId); }
       else { setError(`Agent not found: "${val}"`); }
