@@ -340,6 +340,56 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: 'v2', port: PORT, contractDeployed: isContractDeployed() });
 });
 
+// ─── Simple Analytics ───────────────────────────────────────
+const analyticsDb = (() => {
+    try {
+        const Database = require('better-sqlite3');
+        const adb = new Database(path.join(__dirname, '..', 'data', 'analytics.db'));
+        adb.pragma('journal_mode = WAL');
+        adb.exec(`CREATE TABLE IF NOT EXISTS pageviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            path TEXT NOT NULL,
+            referrer TEXT,
+            ua TEXT,
+            country TEXT,
+            ts DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+        adb.exec(`CREATE INDEX IF NOT EXISTS idx_pv_ts ON pageviews(ts)`);
+        adb.exec(`CREATE INDEX IF NOT EXISTS idx_pv_path ON pageviews(path)`);
+        console.log('📊 Analytics DB ready');
+        return adb;
+    } catch(e) { console.error('Analytics DB init failed:', e.message); return null; }
+})();
+
+// Pixel tracker - embed as <img> or call from JS
+app.get('/api/v2/t.gif', (req, res) => {
+    if (analyticsDb) {
+        try {
+            analyticsDb.prepare('INSERT INTO pageviews (path, referrer, ua) VALUES (?, ?, ?)').run(
+                (req.query.p || '/').slice(0, 500),
+                (req.query.r || req.headers.referer || '').slice(0, 500),
+                (req.headers['user-agent'] || '').slice(0, 300)
+            );
+        } catch(e) {}
+    }
+    res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store' });
+    res.send(Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64'));
+});
+
+// Analytics dashboard endpoint
+app.get('/api/v2/analytics', (req, res) => {
+    if (!analyticsDb) return res.status(503).json({ error: 'Analytics not available' });
+    try {
+        const days = Math.min(90, parseInt(req.query.days) || 7);
+        const since = new Date(Date.now() - days * 86400000).toISOString();
+        const total = analyticsDb.prepare('SELECT COUNT(*) as c FROM pageviews WHERE ts >= ?').get(since).c;
+        const byPage = analyticsDb.prepare(`SELECT path, COUNT(*) as views FROM pageviews WHERE ts >= ? GROUP BY path ORDER BY views DESC LIMIT 20`).all(since);
+        const byDay = analyticsDb.prepare(`SELECT DATE(ts) as day, COUNT(*) as views FROM pageviews WHERE ts >= ? GROUP BY DATE(ts) ORDER BY day`).all(since);
+        const byReferrer = analyticsDb.prepare(`SELECT referrer, COUNT(*) as views FROM pageviews WHERE ts >= ? AND referrer != '' GROUP BY referrer ORDER BY views DESC LIMIT 10`).all(since);
+        res.json({ days, total, byPage, byDay, byReferrer });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/v2/stats
 app.get('/api/v2/stats', async (req, res) => {
     try {
