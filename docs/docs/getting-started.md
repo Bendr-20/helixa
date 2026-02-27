@@ -39,12 +39,13 @@ Every agent gets:
 Your Cred Score is a 0-100 reputation metric calculated entirely onchain. Reputation scoring powered by onchain data and the Helixa API.
 
 **Score Weights:**
-- Activity (20%) — trait updates, mutations, interactions
-- Traits (15%) — number and richness of traits
-- Verification (15%) — verified by contract owner
-- Coinbase Verification (15%) — EAS attestation via Coinbase
+- Onchain Activity (25%) — transactions, contract deploys, protocol interactions
+- External Activity (10%) — GitHub commits, task completions, integrations
+- Verification (15%) — SIWA, X, GitHub, Farcaster verifications
+- Coinbase Verification (10%) — EAS attestation via Coinbase
 - Age (10%) — time since mint
-- Narrative (10%) — origin, mission, lore, manifesto completeness
+- Traits (10%) — number and richness of traits
+- Narrative (5%) — origin, mission, lore, manifesto completeness
 - Mint Origin (10%) — SIWA > API > Human > Owner
 - Soulbound (5%) — commitment bonus
 

@@ -523,12 +523,17 @@ console.log(result.tokenId, result.agent);</code></pre>
   <span class="key">"tokenId"</span>: <span class="number">42</span>,
   <span class="key">"name"</span>: <span class="string">"MyAgent"</span>,
   <span class="key">"credScore"</span>: <span class="number">55</span>,
-  <span class="key">"tier"</span>: <span class="string">"INVESTMENT_GRADE"</span>,
+  <span class="key">"tier"</span>: <span class="string">"QUALIFIED"</span>,
   <span class="key">"breakdown"</span>: {
-    <span class="key">"identity"</span>: { <span class="key">"score"</span>: <span class="number">20</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
-    <span class="key">"social"</span>: { <span class="key">"score"</span>: <span class="number">15</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
-    <span class="key">"onchain"</span>: { <span class="key">"score"</span>: <span class="number">10</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... },
-    <span class="key">"reputation"</span>: { <span class="key">"score"</span>: <span class="number">10</span>, <span class="key">"max"</span>: <span class="number">25</span>, ... }
+    <span class="key">"activity"</span>: { <span class="key">"score"</span>: <span class="number">15</span>, <span class="key">"max"</span>: <span class="number">25</span>, <span class="key">"label"</span>: <span class="string">"Onchain Activity"</span> },
+    <span class="key">"external"</span>: { <span class="key">"score"</span>: <span class="number">5</span>, <span class="key">"max"</span>: <span class="number">10</span>, <span class="key">"label"</span>: <span class="string">"External Activity"</span> },
+    <span class="key">"verify"</span>: { <span class="key">"score"</span>: <span class="number">10</span>, <span class="key">"max"</span>: <span class="number">15</span>, <span class="key">"label"</span>: <span class="string">"Verification"</span> },
+    <span class="key">"coinbase"</span>: { <span class="key">"score"</span>: <span class="number">0</span>, <span class="key">"max"</span>: <span class="number">10</span>, <span class="key">"label"</span>: <span class="string">"Coinbase Verification"</span> },
+    <span class="key">"age"</span>: { <span class="key">"score"</span>: <span class="number">5</span>, <span class="key">"max"</span>: <span class="number">10</span>, <span class="key">"label"</span>: <span class="string">"Account Age"</span> },
+    <span class="key">"traits"</span>: { <span class="key">"score"</span>: <span class="number">8</span>, <span class="key">"max"</span>: <span class="number">10</span>, <span class="key">"label"</span>: <span class="string">"Trait Richness"</span> },
+    <span class="key">"narrative"</span>: { <span class="key">"score"</span>: <span class="number">5</span>, <span class="key">"max"</span>: <span class="number">5</span>, <span class="key">"label"</span>: <span class="string">"Narrative"</span> },
+    <span class="key">"origin"</span>: { <span class="key">"score"</span>: <span class="number">7</span>, <span class="key">"max"</span>: <span class="number">10</span>, <span class="key">"label"</span>: <span class="string">"Mint Origin"</span> },
+    <span class="key">"soulbound"</span>: { <span class="key">"score"</span>: <span class="number">0</span>, <span class="key">"max"</span>: <span class="number">5</span>, <span class="key">"label"</span>: <span class="string">"Soulbound"</span> }
   },
   <span class="key">"paidAmount"</span>: <span class="string">"$1 USDC"</span>
 }</code></pre>

@@ -2358,12 +2358,13 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.20, label: 'Onchain Activity', description: 'Transaction count and recency' },
-    traits: { weight: 0.15, label: 'Trait Richness', description: 'Number and variety of traits' },
+    activity: { weight: 0.25, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
+    external: { weight: 0.10, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.15, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
-    coinbase: { weight: 0.15, label: 'Coinbase Verification', description: 'Coinbase EAS attestation on Base' },
+    coinbase: { weight: 0.10, label: 'Coinbase Verification', description: 'Coinbase EAS attestation on Base' },
     age: { weight: 0.10, label: 'Account Age', description: 'Days since mint' },
-    narrative: { weight: 0.10, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
+    traits: { weight: 0.10, label: 'Trait Richness', description: 'Number and variety of traits' },
+    narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
     origin: { weight: 0.10, label: 'Mint Origin', description: 'How the agent was minted (SIWA > API > Owner)' },
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
 };
@@ -2381,12 +2382,21 @@ function computeCredBreakdown(agent) {
 
     const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
 
+    // External activity: GitHub commits, task completions, integrations
+    const externalSignals = [
+        hasVerif('github-verified'),  // has linked GitHub
+        hasVerif('x-verified'),       // has linked X
+        hasVerif('farcaster-verified'), // has linked Farcaster
+        (agent.externalActivity || 0) > 0, // task completions, API usage
+    ].filter(Boolean).length;
+
     const components = {
         activity: { raw: Math.min(100, (agent.points || 0) * 2), maxRaw: 100 },
-        traits: { raw: Math.min(100, traits.length * 12), maxRaw: 100 },
+        external: { raw: Math.min(100, externalSignals * 25 + (agent.externalActivity || 0) * 5), maxRaw: 100 },
         verify: { raw: Math.min(100, verifCount * 25), maxRaw: 100 },
         coinbase: { raw: hasVerif('coinbase-verified') ? 100 : 0, maxRaw: 100 },
         age: { raw: Math.min(100, ageDays * 5), maxRaw: 100 },
+        traits: { raw: Math.min(100, traits.length * 12), maxRaw: 100 },
         narrative: { raw: Math.min(100, narrativeFields.length * 25), maxRaw: 100 },
         origin: { raw: agent.mintOrigin === 'AGENT_SIWA' ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
         soulbound: { raw: agent.soulbound ? 100 : 0, maxRaw: 100 },
@@ -2412,10 +2422,10 @@ function computeCredBreakdown(agent) {
 }
 
 function getCredTier(score) {
-    if (score >= 91) return { tier: 'AAA', label: 'AAA — Elite', color: '#ffd700' };
+    if (score >= 91) return { tier: 'PREFERRED', label: 'Preferred', color: '#b490ff' };
     if (score >= 76) return { tier: 'PRIME', label: 'Prime', color: '#33ff33' };
-    if (score >= 51) return { tier: 'INVESTMENT_GRADE', label: 'Investment Grade', color: '#80d0ff' };
-    if (score >= 26) return { tier: 'SPECULATIVE', label: 'Speculative', color: '#ffaa00' };
+    if (score >= 51) return { tier: 'QUALIFIED', label: 'Qualified', color: '#ffd93d' };
+    if (score >= 26) return { tier: 'MARGINAL', label: 'Marginal', color: '#ffaa00' };
     return { tier: 'JUNK', label: 'Junk', color: '#ff4444' };
 }
 
@@ -2427,7 +2437,7 @@ function getCredRecommendations(agent, breakdown) {
     if (!hasVerif('siwa-verified')) recs.push({ action: 'Verify via SIWA', impact: '+3-4 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify` });
     if (!hasVerif('x-verified')) recs.push({ action: 'Link X/Twitter account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/x` });
     if (!hasVerif('github-verified')) recs.push({ action: 'Link GitHub account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/github` });
-    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Coinbase Verification', impact: '+15 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
+    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Coinbase Verification', impact: '+10 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
     if (!agent.soulbound) recs.push({ action: 'Make identity soulbound', impact: '+5 points', priority: 'LOW' });
 
     const narrative = agent.narrative || {};
