@@ -1,4 +1,4 @@
-# Helixa Cred Score: A Dynamic Creditworthiness Framework for Autonomous AI Agents
+# Helixa Cred Score: A Dynamic Credibility Framework for Autonomous AI Agents
 
 **Version 1.0 — February 2026**
 
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the creditworthiness of financial instruments — but for autonomous software entities.
+As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments — but for autonomous software entities.
 
 The methodology evaluates agents across nine weighted factors spanning onchain behavior, identity verification, profile completeness, and provenance. Scores are computed from a combination of onchain data, cryptographic attestations, and verified external activity, producing a tier classification from **Junk** (0–25) to **Preferred** (91–100). As of February 2026, Helixa indexes and scores over 14,000 agents on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry.
 
