@@ -2701,7 +2701,7 @@ app.get('/api/terminal/agents', (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-        const sort = ['cred_score','name','created_at','platform','token_market_cap','price_change_24h','volume_24h','liquidity_usd'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const sort = ['cred_score','name','created_at','platform','token_market_cap','price_change_24h','volume_24h','liquidity_usd','revenue_onchain','revenue_self_reported'].includes(req.query.sort) ? req.query.sort : 'cred_score';
         const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
         const filter = req.query.filter || 'all';
         const q = (req.query.q || '').trim();
@@ -2743,7 +2743,8 @@ app.get('/api/terminal/agents', (req, res) => {
             `SELECT id, address, agent_id, token_id, name, description, image_url, platform, 
                     x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
                     token_address, token_symbol, token_name, token_market_cap,
-                    price_change_24h, volume_24h, liquidity_usd
+                    price_change_24h, volume_24h, liquidity_usd,
+                    revenue_onchain, revenue_self_reported, client_count, revenue_sources
              FROM agents ${whereClause} 
              ORDER BY ${orderBy}
              LIMIT @limit OFFSET @offset`
@@ -2792,6 +2793,33 @@ app.post('/api/terminal/agent/:id/token', express.json(), (req, res) => {
         wdb.close();
         if (r.changes === 0) return res.status(404).json({ error: 'Agent not found' });
         res.json({ success: true, updated: r.changes });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/terminal/agent/:id/revenue — Self-report revenue data
+app.post('/api/terminal/agent/:id/revenue', express.json(), (req, res) => {
+    try {
+        const { revenue_monthly, client_count, sources } = req.body;
+        if (revenue_monthly === undefined && client_count === undefined) {
+            return res.status(400).json({ error: 'revenue_monthly or client_count required' });
+        }
+        const id = req.params.id;
+        const Database = require('better-sqlite3');
+        const wdb = new Database(path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db'));
+        const agent = wdb.prepare('SELECT id FROM agents WHERE CAST(id AS TEXT) = ? OR token_id = ? OR agent_id = ? OR LOWER(name) = LOWER(?)').get(id, id, id, id);
+        if (!agent) { wdb.close(); return res.status(404).json({ error: 'Agent not found' }); }
+        
+        const updates = [];
+        const params = {};
+        if (revenue_monthly !== undefined) { updates.push('revenue_self_reported = @rev'); params.rev = parseFloat(revenue_monthly) || 0; }
+        if (client_count !== undefined) { updates.push('client_count = @clients'); params.clients = parseInt(client_count) || 0; }
+        if (sources) { updates.push('revenue_sources = @sources'); params.sources = typeof sources === 'string' ? sources : JSON.stringify(sources); }
+        updates.push("revenue_updated_at = datetime('now')");
+        params.id = agent.id;
+        
+        wdb.prepare(`UPDATE agents SET ${updates.join(', ')} WHERE id = @id`).run(params);
+        wdb.close();
+        res.json({ success: true, agent_id: agent.id });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

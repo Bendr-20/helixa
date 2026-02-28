@@ -399,6 +399,20 @@ function renderAgent(agent) {
       </div>`;
     }
 
+    // Revenue
+    if ((agent.revenue_onchain || 0) > 0 || (agent.revenue_self_reported || 0) > 0) {
+      const onchain = agent.revenue_onchain || 0;
+      const selfRep = agent.revenue_self_reported || 0;
+      html += `<div class="section" style="border-color:#6eecd8">
+        <div class="section-title" style="color:#6eecd8;background:rgba(110,236,216,0.05)">▸ REVENUE</div>
+        <div class="section-body">`;
+      if (selfRep > 0) html += `<div class="kv-row"><div class="kv-key">Monthly Revenue</div><div class="kv-val" style="color:#6eecd8;font-weight:700;font-size:16px">$${Number(selfRep).toLocaleString()}/mo <span style="color:var(--muted);font-size:11px">SELF-REPORTED</span></div></div>`;
+      if (onchain > 0) html += `<div class="kv-row"><div class="kv-key">Onchain Revenue</div><div class="kv-val" style="color:#6eecd8;font-weight:700;font-size:16px">$${Number(onchain).toLocaleString()} <span style="color:var(--muted);font-size:11px">VERIFIED</span></div></div>`;
+      if (agent.client_count) html += `<div class="kv-row"><div class="kv-key">Clients</div><div class="kv-val">${agent.client_count}</div></div>`;
+      if (agent.revenue_sources) html += `<div class="kv-row"><div class="kv-key">Sources</div><div class="kv-val">${escapeHtml(agent.revenue_sources)}</div></div>`;
+      html += `</div></div>`;
+    }
+
     // Description (moved above narrative)
     if (meta.description || agent.description) {
       html += `<div class="section">
