@@ -314,7 +314,8 @@
           <th data-col="x402">TOKEN</th>
           <th onclick="sortBy('token_market_cap')" data-col="token_market_cap">MCAP</th>
           <th onclick="sortBy('price_change_24h')" data-col="price_change_24h">24H</th>
-          <th onclick="sortBy('revenue_self_reported')" data-col="revenue_self_reported" class="hide-mobile">REV</th>
+          <!-- REV column hidden until more data populated — shown on agent detail pages only -->
+          <!-- <th onclick="sortBy('revenue_self_reported')" data-col="revenue_self_reported" class="hide-mobile">REV</th> -->
           <th data-col="address" class="hide-mobile">ADDRESS</th>
           <th onclick="sortBy('created_at')" data-col="created_at" class="hide-mobile">REGISTERED</th>
         </tr>
@@ -463,7 +464,8 @@ function renderAgents(agents) {
       <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
       <td>${a.token_market_cap ? formatMcap(a.token_market_cap) : '—'}</td>
       <td style="color:${(a.price_change_24h||0) >= 0 ? '#6eecd8' : '#ff6b6b'};font-weight:700">${a.price_change_24h != null && a.token_symbol ? ((a.price_change_24h >= 0 ? '+' : '') + a.price_change_24h.toFixed(1) + '%') : '—'}</td>
-      <td class="hide-mobile">${formatRev(a)}</td>
+      <!-- REV cell hidden -->
+      <!-- <td class="hide-mobile">${formatRev(a)}</td> -->
       <td class="hide-mobile"><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
       <td class="hide-mobile" style="color:var(--muted)">${formatDate(a.created_at)}</td>
     </tr>`;
