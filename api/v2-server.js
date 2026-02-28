@@ -2359,9 +2359,9 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 
 const CRED_WEIGHTS = {
     activity: { weight: 0.25, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
-    external: { weight: 0.10, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    external: { weight: 0.15, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.15, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
-    coinbase: { weight: 0.10, label: 'Coinbase Verification', description: 'Coinbase EAS attestation on Base' },
+    coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
     age: { weight: 0.10, label: 'Account Age', description: 'Days since mint' },
     traits: { weight: 0.10, label: 'Trait Richness', description: 'Number and variety of traits' },
     narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
@@ -2437,7 +2437,7 @@ function getCredRecommendations(agent, breakdown) {
     if (!hasVerif('siwa-verified')) recs.push({ action: 'Verify via SIWA', impact: '+3-4 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify` });
     if (!hasVerif('x-verified')) recs.push({ action: 'Link X/Twitter account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/x` });
     if (!hasVerif('github-verified')) recs.push({ action: 'Link GitHub account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/github` });
-    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Coinbase Verification', impact: '+10 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
+    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Institutional Verification (Coinbase EAS)', impact: '+5 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
     if (!agent.soulbound) recs.push({ action: 'Make identity soulbound', impact: '+5 points', priority: 'LOW' });
 
     const narrative = agent.narrative || {};

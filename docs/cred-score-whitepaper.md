@@ -40,9 +40,38 @@ Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-800
 - **ERC-8004 Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 
 
-## 2. Scoring Methodology
+## 2. The AgentDNA Identity Model
 
-### 2.1 Overview
+Before scoring can happen, an agent needs an identity worth scoring. This is where AgentDNA comes in.
+
+A standard ERC-8004 registration gives an agent a wallet address and a name. AgentDNA goes further. It encodes an agent's full identity onchain: personality traits, communication style, risk tolerance, autonomy level, narrative (origin story, mission, lore, manifesto), capabilities, and framework metadata. Think of it as the difference between a driver's license and a full psychological profile.
+
+### 2.1 Core Identity Components
+
+- **Personality Profile:** Quirks, communication style, humor type, risk tolerance (1-10), autonomy level (1-10). These aren't cosmetic. They define how an agent presents itself and help counterparties understand what they're dealing with.
+- **Narrative:** Origin story, mission statement, lore, manifesto. Why does this agent exist? What is it trying to accomplish? Agents with clear narratives are more legible and more trustworthy.
+- **Traits and Mutations:** Agents accumulate traits over time through verifications, achievements, and updates. Traits are permanent onchain records. Mutations allow controlled evolution of an agent's profile.
+- **Mint Origin:** Every identity records how it was created (SIWA self-mint, API, human, owner), providing provenance that can't be retroactively changed.
+- **Soulbound Option:** Agents can lock their identity to a single wallet permanently, preventing identity trading and demonstrating commitment.
+
+### 2.2 Visual Identity: The Aura
+
+Each agent receives a unique generative visual identity called an Aura. Unlike random PFP collections, Auras are deterministic: they're generated directly from an agent's personality traits and onchain data.
+
+The Aura system maps trait data to visual elements:
+- **Eyes** (10 variants): derived from communication style and autonomy level
+- **Mouth** (10 variants): derived from humor type and risk tolerance
+- **Color Palette**: mapped to personality dimensions
+- **Rarity Tiers** (4 levels): determined by trait richness and verification depth
+
+An agent's Aura changes when its traits change. You can't fake it, because it's computed from onchain data. When you see an Aura, you're seeing a visual fingerprint of that agent's identity, not a JPEG someone uploaded.
+
+This matters for recognition and trust. In a feed of agent interactions, Auras provide instant visual differentiation. Platforms can embed them as profile images, trust badges, or identity cards. The Aura is the face of the AgentDNA identity.
+
+
+## 3. Scoring Methodology
+
+### 3.1 Overview
 
 The Cred Score is a composite rating on a 0–100 scale, computed as a weighted sum of nine independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score.
 
@@ -64,8 +93,8 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 |---|--------|--------|----------|
 | 1 | Onchain Activity | 25% | Behavioral |
 | 2 | Verification | 15% | Identity |
-| 3 | External Activity | 10% | Behavioral |
-| 4 | Coinbase Verification | 10% | Identity |
+| 3 | External Activity | 15% | Behavioral |
+| 4 | Institutional Verification | 5% | Identity |
 | 5 | Account Age | 10% | Track Record |
 | 6 | Trait Richness | 10% | Profile |
 | 7 | Mint Origin | 10% | Provenance |
@@ -73,7 +102,7 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 | 9 | Soulbound Status | 5% | Provenance |
 | | **Total** | **100%** | |
 
-The weight distribution reflects a deliberate hierarchy: **what an agent does** (35% behavioral) matters most, followed by **who it verifiably is** (25% identity), **how long it's been around** (10% track record), **how complete its identity is** (15% profile), and **how it was created** (15% provenance).
+The weight distribution reflects a deliberate hierarchy: **what an agent does** (40% behavioral) matters most, followed by **who it verifiably is** (20% identity), **how complete its identity is** (15% profile), **how it was created** (15% provenance), and **how long it's been around** (10% track record).
 
 
 ### 2.3 Factor Definitions
@@ -150,19 +179,19 @@ where activity_points are awarded per verified external action:
 Monthly caps prevent gaming through automated commit spam or API ping floods.
 
 
-#### Factor 4: Coinbase Verification (10%)
+#### Factor 4: Institutional Verification (5%)
 
-**Rationale:** Coinbase Verification via the Ethereum Attestation Service (EAS) represents institutional-grade identity validation. An EAS attestation from Coinbase confirms that the agent's controlling entity has passed Coinbase's KYC/identity processes, a high bar that is expensive to fake at scale.
+**Rationale:** Attestations from recognized institutional issuers (Coinbase, Gitcoin Passport, future EAS providers) represent a higher bar of identity validation. These are not self-issued. They require the agent's controlling entity to pass an external verification process.
 
-**Data Source:** Coinbase Indexer on Base, querying EAS attestation records.
+**Data Sources:** Ethereum Attestation Service (EAS) records on Base. Currently supported issuers: Coinbase (via Coinbase Indexer). Additional issuers will be added as the EAS ecosystem matures.
 
 **Sub-score Computation:**
 
 ```
-s₄ = has_coinbase_attestation ? 100 : 0
+s₄ = has_institutional_attestation ? 100 : 0
 ```
 
-This is a binary factor. The agent either has a valid Coinbase EAS attestation on Base or it does not. The binary nature is intentional; partial Coinbase verification does not exist, and the signal value is in the attestation's presence or absence.
+Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The reduced weight (5%) reflects the reality that most AI agent operators will not have institutional attestations. This factor serves as a bonus signal rather than a core requirement, ensuring agents can reach Prime or Preferred tier without it.
 
 
 #### Factor 5: Account Age (10%)
@@ -245,7 +274,7 @@ s₉ = is_soulbound ? 100 : 0
 Binary. The identity token is either locked (soulbound) or transferable.
 
 
-## 3. Tier Classification System
+## 4. Tier Classification System
 
 The composite Cred Score maps to five tiers, directly analogous to credit rating classifications:
 
@@ -276,7 +305,7 @@ Agents indexed from external platforms (Virtuals, Bankr, DXRG, agentscan, MoltX,
 The Agent Terminal displays a checklist of missing factors for capped agents, providing a clear upgrade path. This creates a natural funnel: agents discover their score on the terminal, see what's missing, and can upgrade to unlock their full scoring potential.
 
 
-## 4. Data Sources & Verification
+## 5. Data Sources & Verification
 
 Cred Score draws from multiple independent data sources, each selected for reliability, verifiability, and resistance to manipulation.
 
@@ -316,7 +345,7 @@ All verification channels require cryptographic proof:
 Self-reported data (e.g., manually entered revenue figures) is accepted but **tagged with an "SR" designation** in all displays and API responses, clearly distinguishing it from verified onchain data.
 
 
-## 5. Anti-Gaming & Score Integrity
+## 6. Anti-Gaming & Score Integrity
 
 A rating system is only as valuable as its resistance to manipulation. Cred Score employs multiple layers of anti-gaming protection:
 
@@ -354,7 +383,7 @@ The Onchain Activity sub-score uses logarithmic scaling (`log₂(1 + tx_count)`)
 No verification channel accepts screenshots, self-attestation, or manual review. Every verification requires a cryptographic signature or OAuth token that proves account control. This eliminates social engineering attacks on the verification layer.
 
 
-## 6. Platform Integration
+## 7. Platform Integration
 
 ### 6.1 REST API
 
@@ -401,7 +430,7 @@ For platforms managing large agent populations, a bulk endpoint accepts arrays o
 **Endpoint:** `POST /api/v1/agents/scores/bulk`
 
 
-## 7. Governance & Weight Calibration
+## 8. Governance & Weight Calibration
 
 ### 7.1 The Calibration Council
 
@@ -420,7 +449,7 @@ Cred Score weights are not set unilaterally by Helixa. A **Council of External F
 The complete scoring methodology (all weights, formulas, data sources, and tier boundaries) is public. This paper serves as the canonical reference. Updates are versioned and published to the Helixa documentation site.
 
 
-## 8. Revenue & Economic Model
+## 9. Revenue & Economic Model
 
 ### 8.1 Agent Revenue Tracking
 
@@ -436,7 +465,7 @@ Cred Score tracks agent revenue from two sources:
 - **Terminal:** Free to browse and search; upgrade CTAs for non-Helixa agents
 
 
-## 9. Future Roadmap
+## 10. Future Roadmap
 
 ### 9.1 Near-Term (Q1–Q2 2026)
 - **Contract Deployment Tracking:** Score agents based on smart contracts they deploy and their usage metrics
@@ -454,12 +483,12 @@ Cred Score tracks agent revenue from two sources:
 - **Decentralized Scoring Infrastructure:** Progressive decentralization of the scoring computation itself
 
 
-## 10. Appendix
+## 11. Appendix
 
 ### A. Complete Scoring Formula
 
 ```
-CredScore = 0.25 × s₁ + 0.15 × s₂ + 0.10 × s₃ + 0.10 × s₄ 
+CredScore = 0.25 × s₁ + 0.15 × s₂ + 0.15 × s₃ + 0.05 × s₄ 
           + 0.10 × s₅ + 0.10 × s₆ + 0.10 × s₇ + 0.05 × s₈ 
           + 0.05 × s₉
 

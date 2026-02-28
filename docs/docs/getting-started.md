@@ -40,9 +40,9 @@ Your Cred Score is a 0-100 reputation metric calculated entirely onchain. Reputa
 
 **Score Weights:**
 - Onchain Activity (25%) — transactions, contract deploys, protocol interactions
-- External Activity (10%) — GitHub commits, task completions, integrations
+- External Activity (15%) — GitHub commits, task completions, integrations
 - Verification (15%) — SIWA, X, GitHub, Farcaster verifications
-- Coinbase Verification (10%) — EAS attestation via Coinbase
+- Institutional Verification (5%) — EAS attestations from recognized issuers (Coinbase, etc.)
 - Age (10%) — time since mint
 - Traits (10%) — number and richness of traits
 - Narrative (5%) — origin, mission, lore, manifesto completeness
