@@ -146,10 +146,10 @@ body::before {
 }
 
 .tier-junk { color: #ff4444; }
-.tier-speculative { color: #ff8800; }
-.tier-investment { color: var(--amber); }
+.tier-marginal { color: #ff8800; }
+.tier-qualified { color: var(--amber); }
 .tier-prime { color: #88ff88; }
-.tier-aaa { color: var(--green); text-shadow: 0 0 15px var(--green); }
+.tier-preferred { color: var(--green); text-shadow: 0 0 15px var(--green); }
 
 /* Breakdown */
 .breakdown {
@@ -412,10 +412,10 @@ function renderReport(agent) {
 }
 
 function getTier(score) {
-  if (score >= 91) return { name: 'AAA', cls: 'tier-aaa' };
+  if (score >= 91) return { name: 'PREFERRED', cls: 'tier-preferred' };
   if (score >= 76) return { name: 'PRIME', cls: 'tier-prime' };
-  if (score >= 51) return { name: 'INVESTMENT GRADE', cls: 'tier-investment' };
-  if (score >= 26) return { name: 'SPECULATIVE', cls: 'tier-speculative' };
+  if (score >= 51) return { name: 'QUALIFIED', cls: 'tier-qualified' };
+  if (score >= 26) return { name: 'MARGINAL', cls: 'tier-marginal' };
   return { name: 'JUNK', cls: 'tier-junk' };
 }
 

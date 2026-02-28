@@ -492,7 +492,7 @@ app.get('/api/v2/agent/:id', async (req, res) => {
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {
         const agent = await formatAgentV2(parseInt(req.params.id));
-        const tier = agent.credScore >= 91 ? 'AAA' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Investment Grade' : agent.credScore >= 26 ? 'Speculative' : 'Junk';
+        const tier = agent.credScore >= 91 ? 'Preferred' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Junk';
         
         const attributes = [
             { trait_type: 'Framework', value: agent.framework },
@@ -956,7 +956,7 @@ async function mintHandler(req, res) {
             console.error(`[V2 MINT] Agent data fetch failed (non-fatal): ${e.message}`);
         }
         
-        const tierOf = s => s >= 91 ? 'AAA' : s >= 76 ? 'PRIME' : s >= 51 ? 'INVESTMENT_GRADE' : s >= 26 ? 'SPECULATIVE' : 'JUNK';
+        const tierOf = s => s >= 91 ? 'PREFERRED' : s >= 76 ? 'PRIME' : s >= 51 ? 'QUALIFIED' : s >= 26 ? 'MARGINAL' : 'JUNK';
         
         res.status(201).json({
             success: true,
@@ -1426,7 +1426,7 @@ app.post('/api/v2/agent/:id/sync', async (req, res) => {
     try {
         const indexed = await indexer.reindexAgent(tokenId);
         const agent = await formatAgentV2(tokenId);
-        const tierOf = s => s >= 91 ? 'AAA' : s >= 76 ? 'PRIME' : s >= 51 ? 'INVESTMENT_GRADE' : s >= 26 ? 'SPECULATIVE' : 'JUNK';
+        const tierOf = s => s >= 91 ? 'PREFERRED' : s >= 76 ? 'PRIME' : s >= 51 ? 'QUALIFIED' : s >= 26 ? 'MARGINAL' : 'JUNK';
         res.json({
             success: true,
             tokenId,
@@ -2202,7 +2202,7 @@ app.get('/api/v2/agent/:id/report', async (req, res) => {
         // Cred score breakdown
         const credBreakdown = {
             total: agent.credScore,
-            tier: agent.credScore >= 91 ? 'AAA' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Investment Grade' : agent.credScore >= 26 ? 'Speculative' : 'Junk',
+            tier: agent.credScore >= 91 ? 'Preferred' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Junk',
             verified: agent.verified,
             hasPersonality: !!agent.personality,
             hasNarrative: !!(agent.narrative?.origin || agent.narrative?.mission),
@@ -2331,13 +2331,13 @@ app.post('/api/v2/messages/groups/:groupId/join', requireSIWA, (req, res) => {
     }
 });
 
-// Create a new group (requires SIWA + Investment Grade Cred 51+)
+// Create a new group (requires SIWA + Qualified Cred 51+)
 app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
     try {
         const agent = findAgentByAddress(req.agent.address);
         if (!agent) return res.status(403).json({ error: 'No Helixa agent found for this wallet' });
         if ((agent.credScore || 0) < 51) {
-            return res.status(403).json({ error: `Requires Investment Grade (51+) Cred to create groups. Your Cred: ${Math.round(agent.credScore || 0)}` });
+            return res.status(403).json({ error: `Requires Qualified (51+) Cred to create groups. Your Cred: ${Math.round(agent.credScore || 0)}` });
         }
 
         const group = messaging.createGroup({
@@ -2461,7 +2461,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
             credScore: agent.credScore,
             tier: tierInfo.tier,
             tierLabel: tierInfo.label,
-            scale: { junk: '0-25', speculative: '26-50', investmentGrade: '51-75', prime: '76-90', aaa: '91-100' },
+            scale: { junk: '0-25', marginal: '26-50', qualified: '51-75', prime: '76-90', preferred: '91-100' },
             fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
             fullReportPrice: `$${PRICING.credReport} USDC`,
             hint: 'Full report with breakdown, recommendations, and signed receipt available via x402 payment.',
@@ -2601,10 +2601,10 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             // Tier scale reference
             tierScale: [
                 { tier: 'JUNK', range: '0-25', description: 'High risk — minimal onchain presence' },
-                { tier: 'SPECULATIVE', range: '26-50', description: 'Some activity but unverified' },
-                { tier: 'INVESTMENT_GRADE', range: '51-75', description: 'Trustworthy agent with solid credentials' },
+                { tier: 'MARGINAL', range: '26-50', description: 'Some activity but unverified' },
+                { tier: 'QUALIFIED', range: '51-75', description: 'Trustworthy agent with solid credentials' },
                 { tier: 'PRIME', range: '76-90', description: 'Top-tier agent with comprehensive presence' },
-                { tier: 'AAA', range: '91-100', description: 'Elite — fully verified, deeply established' },
+                { tier: 'PREFERRED', range: '91-100', description: 'Elite, fully verified, deeply established' },
             ],
 
             // Signed receipt (proof of payment)

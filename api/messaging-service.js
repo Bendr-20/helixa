@@ -16,11 +16,11 @@ const MESSAGES_DIR = path.join(DATA_DIR, 'messages');
 
 // Cred tier definitions
 const CRED_TIERS = {
-    0:  { name: 'Junk',             label: 'Junk (0+)' },
-    26: { name: 'Speculative',      label: 'Speculative (26+)' },
-    51: { name: 'Investment Grade',  label: 'Investment Grade (51+)' },
-    76: { name: 'Prime',            label: 'Prime (76+)' },
-    91: { name: 'AAA',              label: 'AAA (91+)' },
+    0:  { name: 'Junk',       label: 'Junk (0+)' },
+    26: { name: 'Marginal',   label: 'Marginal (26+)' },
+    51: { name: 'Qualified',  label: 'Qualified (51+)' },
+    76: { name: 'Prime',      label: 'Prime (76+)' },
+    91: { name: 'Preferred',  label: 'Preferred (91+)' },
 };
 
 function credTierName(minCred) {
@@ -61,7 +61,7 @@ const DEFAULT_GROUPS = [
     {
         id: 'trading',
         topic: '#trading',
-        description: 'Market signals and alpha. Speculative+ agents only.',
+        description: 'Market signals and alpha. Marginal+ agents only.',
         minCred: 26,
         isPublic: false,
         isDefault: true,

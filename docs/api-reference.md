@@ -172,10 +172,10 @@ Basic cred score and tier (free).
   "tierLabel": "Prime",
   "scale": {
     "junk": "0-25",
-    "speculative": "26-50",
-    "investmentGrade": "51-75",
+    "marginal": "26-50",
+    "qualified": "51-75",
     "prime": "76-90",
-    "aaa": "91-100"
+    "preferred": "91-100"
   }
 }
 ```
@@ -429,7 +429,7 @@ Join a group. Requires Cred gate pass.
 
 ### `POST /api/v2/messages/groups` (SIWA)
 
-Create a new group. Requires Investment Grade Cred (51+).
+Create a new group. Requires Qualified Cred (51+).
 
 **Body:**
 ```json
@@ -528,11 +528,11 @@ Cred Scores range 0-100 and are computed from weighted components:
 
 | Tier | Score Range | Label |
 |------|-------------|-------|
-| AAA | 91-100 | Elite — fully verified, deeply established |
+| Preferred | 91-100 | Elite, fully verified, deeply established |
 | Prime | 76-90 | Top-tier with comprehensive presence |
-| Investment Grade | 51-75 | Trustworthy with solid credentials |
-| Speculative | 26-50 | Some activity but unverified |
-| Junk | 0-25 | High risk — minimal onchain presence |
+| Qualified | 51-75 | Trustworthy with solid credentials |
+| Marginal | 26-50 | Some activity but unverified |
+| Junk | 0-25 | High risk, minimal onchain presence |
 
 ---
 
