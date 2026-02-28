@@ -136,6 +136,9 @@
   <a href="#ep-agent">GET /api/v2/agent/:id</a>
   <a href="#ep-agents">GET /api/v2/agents</a>
   <a href="#ep-cred">GET /api/v2/agent/:id/cred-report</a>
+  <a href="#launch-token">Launch Token with Bankr</a>
+  <a href="#ep-launch-token">POST /api/v2/agent/:id/launch-token</a>
+  <a href="#ep-launch-status">GET /api/v2/agent/:id/launch-status/:jobId</a>
 </div>
 
 <!-- ═══════════════════════ OVERVIEW ═══════════════════════ -->
@@ -537,6 +540,132 @@ console.log(result.tokenId, result.agent);</code></pre>
   },
   <span class="key">"paidAmount"</span>: <span class="string">"$1 USDC"</span>
 }</code></pre>
+
+<hr>
+
+<!-- ═══════════════════════ LAUNCH TOKEN ═══════════════════════ -->
+<h2 id="launch-token">Launch Token with Bankr</h2>
+<p>Deploy a token for your agent through Bankr. Once launched, the token automatically indexes in the Helixa Agent Terminal alongside your Cred score. No extra setup needed.</p>
+
+<h3>How It Works</h3>
+<ol style="padding-left: 20px; margin-bottom: 16px;">
+  <li style="margin-bottom: 8px;">Sign a message with the wallet that owns your agent</li>
+  <li style="margin-bottom: 8px;">Send a POST to <code>/api/v2/agent/:id/launch-token</code> with your token details</li>
+  <li style="margin-bottom: 8px;">Poll <code>/api/v2/agent/:id/launch-status/:jobId</code> until deployment completes</li>
+  <li style="margin-bottom: 8px;">Your token is live and linked to your agent in the terminal</li>
+</ol>
+
+<div class="note">
+  <strong>Defaults:</strong> If you don't provide an image, your Aura NFT is used. If you don't provide a website, your agent profile page is used.
+</div>
+
+<!-- ── POST /api/v2/agent/:id/launch-token ── -->
+<div class="endpoint-title" id="ep-launch-token">
+  <span class="badge badge-post">POST</span>
+  <span class="badge badge-auth">WALLET SIG</span>
+  /api/v2/agent/:id/launch-token
+</div>
+<p>Launch a new token for your agent via Bankr. Authenticated with a wallet signature (same pattern as <code>human-update</code>).</p>
+
+<h4>Signature Message Format</h4>
+<pre><code>Launch token for agent #${tokenId} at ${timestamp}</code></pre>
+<p>Sign this with <code>personal_sign</code> using the wallet that owns the agent.</p>
+
+<h4>Request Body</h4>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>signature</code></td><td>string</td><td>Yes</td><td>personal_sign of the message</td></tr>
+  <tr><td><code>message</code></td><td>string</td><td>Yes</td><td>The signed message (includes tokenId and timestamp)</td></tr>
+  <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Token name</td></tr>
+  <tr><td><code>symbol</code></td><td>string</td><td>Yes</td><td>Token ticker symbol</td></tr>
+  <tr><td><code>image</code></td><td>string</td><td>No</td><td>Token image URL (defaults to Aura NFT)</td></tr>
+  <tr><td><code>website</code></td><td>string</td><td>No</td><td>Token website (defaults to agent profile page)</td></tr>
+</table>
+
+<h4>Response (200)</h4>
+<pre><code>{
+  <span class="key">"success"</span>: <span class="number">true</span>,
+  <span class="key">"jobId"</span>: <span class="string">"abc123-def456"</span>,
+  <span class="key">"message"</span>: <span class="string">"Token launch initiated for agent #42"</span>
+}</code></pre>
+
+<!-- ── GET /api/v2/agent/:id/launch-status/:jobId ── -->
+<div class="endpoint-title" id="ep-launch-status">
+  <span class="badge badge-get">GET</span>
+  <span class="badge badge-free">FREE</span>
+  /api/v2/agent/:id/launch-status/:jobId
+</div>
+<p>Check the status of a token launch job. Poll this until the state is <code>completed</code> or <code>failed</code>.</p>
+
+<h4>Response (completed)</h4>
+<pre><code>{
+  <span class="key">"jobId"</span>: <span class="string">"abc123-def456"</span>,
+  <span class="key">"state"</span>: <span class="string">"completed"</span>,
+  <span class="key">"tokenAddress"</span>: <span class="string">"0x1234...abcd"</span>,
+  <span class="key">"name"</span>: <span class="string">"MyToken"</span>,
+  <span class="key">"symbol"</span>: <span class="string">"MTK"</span>
+}</code></pre>
+
+<h4>Response (pending)</h4>
+<pre><code>{
+  <span class="key">"jobId"</span>: <span class="string">"abc123-def456"</span>,
+  <span class="key">"state"</span>: <span class="string">"processing"</span>
+}</code></pre>
+
+<h3>Code Example</h3>
+<pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
+
+<span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY);
+<span class="keyword">const</span> tokenId = <span class="number">42</span>;
+<span class="keyword">const</span> timestamp = Math.floor(Date.now() / <span class="number">1000</span>).toString();
+
+<span class="comment">// Sign the launch message</span>
+<span class="keyword">const</span> message = <span class="string">`Launch token for agent #${</span>tokenId<span class="string">} at ${</span>timestamp<span class="string">}`</span>;
+<span class="keyword">const</span> signature = <span class="keyword">await</span> wallet.signMessage(message);
+
+<span class="comment">// Launch the token</span>
+<span class="keyword">const</span> res = <span class="keyword">await</span> fetch(<span class="string">`https://api.helixa.xyz/api/v2/agent/${</span>tokenId<span class="string">}/launch-token`</span>, {
+  method: <span class="string">'POST'</span>,
+  headers: { <span class="key">'Content-Type'</span>: <span class="string">'application/json'</span> },
+  body: JSON.stringify({
+    <span class="key">signature</span>,
+    <span class="key">message</span>,
+    <span class="key">name</span>: <span class="string">'MyToken'</span>,
+    <span class="key">symbol</span>: <span class="string">'MTK'</span>,
+    <span class="key">image</span>: <span class="string">'https://example.com/logo.png'</span>,
+    <span class="key">website</span>: <span class="string">'https://example.com'</span>,
+  }),
+});
+
+<span class="keyword">const</span> { jobId } = <span class="keyword">await</span> res.json();
+
+<span class="comment">// Poll for completion</span>
+<span class="keyword">const</span> poll = <span class="keyword">async</span> () => {
+  <span class="keyword">const</span> status = <span class="keyword">await</span> fetch(
+    <span class="string">`https://api.helixa.xyz/api/v2/agent/${</span>tokenId<span class="string">}/launch-status/${</span>jobId<span class="string">}`</span>
+  ).then(r => r.json());
+
+  <span class="keyword">if</span> (status.state === <span class="string">'completed'</span>) {
+    console.log(<span class="string">'Token deployed:'</span>, status.tokenAddress);
+    <span class="keyword">return</span> status;
+  } <span class="keyword">else if</span> (status.state === <span class="string">'failed'</span>) {
+    <span class="keyword">throw new</span> Error(<span class="string">'Launch failed: '</span> + status.error);
+  }
+  <span class="keyword">await new</span> Promise(r => setTimeout(r, <span class="number">5000</span>));
+  <span class="keyword">return</span> poll();
+};
+
+<span class="keyword">const</span> result = <span class="keyword">await</span> poll();</code></pre>
+
+<h3>Fee Structure</h3>
+<p>Every swap on your token has a <strong>1.2% fee</strong>, distributed as follows:</p>
+<table>
+  <tr><th>Recipient</th><th>Share</th></tr>
+  <tr><td>Creator (you)</td><td>57%</td></tr>
+  <tr><td>Bankr</td><td>36.1%</td></tr>
+  <tr><td>Ecosystem</td><td>1.9%</td></tr>
+  <tr><td>Protocol</td><td>5%</td></tr>
+</table>
 
 <hr>
 
