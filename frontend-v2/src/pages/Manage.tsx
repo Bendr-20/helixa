@@ -248,7 +248,7 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
 
   return (
     <div style={s.editCard}>
-      <h2 style={s.editHeading}>🚀 Launch Token</h2>
+      <h2 style={s.editHeading}>🚀 Launch Token with Bankr</h2>
       <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '14px' }}>
         Deploy a token for this agent using Bankr.
       </p>
@@ -714,3 +714,5 @@ export function Manage() {
     </div>
   );
 }
+
+// Bankr launch integration v1.0
