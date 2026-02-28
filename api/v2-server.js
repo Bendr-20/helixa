@@ -2824,13 +2824,26 @@ app.post('/api/terminal/agent/:id/revenue', express.json(), (req, res) => {
 });
 
 // ─── Bankr Token Launch ─────────────────────────────────────────
-function getBankrApiKey() {
-    if (process.env.BANKR_API_KEY) return process.env.BANKR_API_KEY;
+let _bankrApiKey = null;
+async function initBankrApiKey() {
+    if (process.env.BANKR_API_KEY) { _bankrApiKey = process.env.BANKR_API_KEY; return; }
     try {
-        const cfg = require(require('os').homedir() + '/.config/bankr/config.json');
-        return cfg.apiKey || cfg.api_key;
-    } catch { return null; }
+        const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+        const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-2' });
+        const resp = await client.send(new GetSecretValueCommand({ SecretId: 'helixa/bankr-api-key' }));
+        const parsed = JSON.parse(resp.SecretString);
+        _bankrApiKey = parsed.BANKR_API_KEY || parsed.apiKey || Object.values(parsed)[0];
+        console.log('[BANKR] API key loaded from AWS Secrets Manager');
+    } catch (e) {
+        console.warn('[BANKR] Could not load from Secrets Manager:', e.message);
+        try {
+            const cfg = require(require('os').homedir() + '/.config/bankr/config.json');
+            _bankrApiKey = cfg.apiKey || cfg.api_key;
+            console.log('[BANKR] API key loaded from local config (fallback)');
+        } catch { console.warn('[BANKR] No API key available'); }
+    }
 }
+function getBankrApiKey() { return _bankrApiKey; }
 
 // POST /api/v2/agent/:id/launch-token — Launch a token via Bankr
 app.post('/api/v2/agent/:id/launch-token', async (req, res) => {
@@ -2970,6 +2983,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
 // ─── Async Startup (load deployer key from AWS Secrets Manager) ─
 (async () => {
     await initDeployerKey();
+    await initBankrApiKey();
     // Re-read dynamic exports after key load
     wallet = svc.wallet;
     contract = svc.contract;
