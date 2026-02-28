@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa Cred Score Whitepaper</title>
+<meta name="description" content="Helixa Cred Score: A Dynamic Credibility Framework for Autonomous AI Agents. The definitive methodology for rating AI agent trustworthiness on Base.">
+<meta property="og:title" content="Helixa Cred Score Whitepaper">
+<meta property="og:description" content="A Dynamic Credibility Framework for Autonomous AI Agents">
+<meta property="og:image" content="/helixa-logo.png">
+<meta property="og:type" content="article">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Helixa Cred Score Whitepaper">
+<meta name="twitter:description" content="A Dynamic Credibility Framework for Autonomous AI Agents">
+<meta name="twitter:image" content="/helixa-logo.png">
+<link rel="icon" type="image/png" href="/helixa-logo.png" />
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a14;
+  --bg-light: #0f0f1e;
+  --bg-card: #12122a;
+  --green: #00ff41;
+  --mint: #6eecd8;
+  --lavender: #b490ff;
+  --amber: #ffd93d;
+  --text: #c8c8d4;
+  --text-dim: #6a6a80;
+  --border: #1a1a3a;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-x: hidden;
+}
+
+/* Scanline overlay */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 65, 0.015) 2px,
+    rgba(0, 255, 65, 0.015) 4px
+  );
+}
+
+/* Layout */
+.page-wrapper {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+}
+
+/* TOC Sidebar */
+.toc-sidebar {
+  position: fixed;
+  top: 0;
+  left: max(0px, calc((100vw - 1400px) / 2));
+  width: 280px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 80px 20px 40px 20px;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  z-index: 100;
+}
+
+.toc-sidebar::-webkit-scrollbar { width: 4px; }
+.toc-sidebar::-webkit-scrollbar-track { background: transparent; }
+.toc-sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.toc-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.toc-sidebar a {
+  display: block;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 5px 0;
+  transition: color 0.2s, padding-left 0.2s;
+  border-left: 2px solid transparent;
+  padding-left: 10px;
+}
+
+.toc-sidebar a:hover,
+.toc-sidebar a.active {
+  color: var(--green);
+  border-left-color: var(--green);
+  padding-left: 14px;
+}
+
+.toc-sidebar a.toc-sub {
+  padding-left: 24px;
+  font-size: 12px;
+}
+.toc-sidebar a.toc-sub:hover,
+.toc-sidebar a.toc-sub.active {
+  padding-left: 28px;
+}
+
+/* Main content */
+.main-content {
+  margin-left: 280px;
+  flex: 1;
+  max-width: 820px;
+  padding: 40px 50px 100px 50px;
+}
+
+/* Top bar */
+.top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(10, 10, 20, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-link {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  color: var(--green);
+  text-decoration: none;
+  letter-spacing: 1px;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--mint); }
+.back-link::before { content: '\2190  '; }
+
+.top-bar-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Mobile TOC toggle */
+.toc-toggle {
+  display: none;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 300;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+/* Typography */
+.main-content h1 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--green);
+  margin: 60px 0 10px 0;
+  line-height: 1.3;
+  text-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+}
+
+.main-content .subtitle {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.main-content .header-meta {
+  color: var(--mint);
+  font-size: 14px;
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid var(--border);
+}
+
+.main-content h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--mint);
+  margin: 50px 0 20px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  line-height: 1.4;
+}
+
+.main-content h3 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--lavender);
+  margin: 35px 0 15px 0;
+}
+
+.main-content h4 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--amber);
+  margin: 25px 0 10px 0;
+}
+
+.main-content p {
+  margin-bottom: 16px;
+}
+
+.main-content strong {
+  color: #e0e0f0;
+}
+
+.main-content a {
+  color: var(--mint);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(110, 236, 216, 0.3);
+  transition: border-color 0.2s;
+}
+.main-content a:hover {
+  border-bottom-color: var(--mint);
+}
+
+/* Lists */
+.main-content ul, .main-content ol {
+  margin: 0 0 16px 24px;
+}
+.main-content li {
+  margin-bottom: 6px;
+}
+.main-content li::marker {
+  color: var(--green);
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  margin: 20px 0;
+}
+
+.main-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.main-content th {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--green);
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.main-content td {
+  background: var(--bg-card);
+  border: 1px solid rgba(0, 255, 65, 0.1);
+  padding: 10px 14px;
+  color: var(--text);
+}
+
+.main-content tr:hover td {
+  background: rgba(0, 255, 65, 0.03);
+}
+
+/* Code blocks */
+.main-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  background: rgba(0, 255, 65, 0.06);
+  color: var(--green);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.main-content pre {
+  background: #060610;
+  border: 1px solid rgba(0, 255, 65, 0.15);
+  border-left: 3px solid var(--green);
+  border-radius: 4px;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 20px 0;
+  position: relative;
+}
+
+.main-content pre::before {
+  content: 'TERMINAL';
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  color: rgba(0, 255, 65, 0.3);
+  letter-spacing: 2px;
+}
+
+.main-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--green);
+}
+
+/* Blockquote */
+.main-content blockquote {
+  border-left: 3px solid var(--lavender);
+  padding: 12px 20px;
+  margin: 20px 0;
+  background: rgba(180, 144, 255, 0.05);
+  color: var(--text);
+}
+
+/* HR */
+.main-content hr {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 40px 0;
+}
+
+/* Footer */
+.doc-footer {
+  margin-top: 60px;
+  padding-top: 30px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .toc-sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    left: 0;
+    width: 280px;
+  }
+  .toc-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 30px rgba(0,0,0,0.5);
+  }
+  .main-content {
+    margin-left: 0;
+    padding: 30px 24px 80px 24px;
+    max-width: 100%;
+  }
+  .toc-toggle { display: flex; align-items: center; justify-content: center; }
+}
+
+@media (max-width: 600px) {
+  .main-content h1 { font-size: 24px; }
+  .main-content h2 { font-size: 18px; }
+  .main-content h3 { font-size: 15px; }
+  .top-bar-title { display: none; }
+  body { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="/" class="back-link">Back to Terminal</a>
+  <span class="top-bar-title">Helixa Cred Score Whitepaper</span>
+</div>
+
+<button class="toc-toggle" onclick="document.querySelector('.toc-sidebar').classList.toggle('open')" aria-label="Toggle table of contents">&#9776;</button>
+
+<nav class="toc-sidebar" id="toc">
+  <div class="toc-title">Contents</div>
+  <a href="#abstract">Abstract</a>
+  <a href="#s1">1. Introduction &amp; Problem Statement</a>
+  <a href="#s1-1" class="toc-sub">1.1 The Agent Credibility Crisis</a>
+  <a href="#s1-2" class="toc-sub">1.2 Why Existing Approaches Fall Short</a>
+  <a href="#s1-3" class="toc-sub">1.3 Scope &amp; Standards</a>
+  <a href="#s2">2. The AgentDNA Identity Model</a>
+  <a href="#s2-1" class="toc-sub">2.1 Core Identity Components</a>
+  <a href="#s2-2" class="toc-sub">2.2 Visual Identity: The Aura</a>
+  <a href="#s3">3. Scoring Methodology</a>
+  <a href="#s3-1" class="toc-sub">3.1 Overview</a>
+  <a href="#s3-2" class="toc-sub">3.2 Factor Weights</a>
+  <a href="#s3-3" class="toc-sub">3.3 Factor Definitions</a>
+  <a href="#s4">4. Tier Classification System</a>
+  <a href="#s5">5. Data Sources &amp; Verification</a>
+  <a href="#s6">6. Anti-Gaming &amp; Score Integrity</a>
+  <a href="#s7">7. Platform Integration</a>
+  <a href="#s8">8. Governance &amp; Weight Calibration</a>
+  <a href="#s9">9. Revenue &amp; Economic Model</a>
+  <a href="#s10">10. Future Roadmap</a>
+  <a href="#s11">11. Appendix</a>
+</nav>
+
+<div class="page-wrapper">
+<main class="main-content" style="padding-top: 80px;">
+
+<h1 id="title">Helixa Cred Score</h1>
+<p class="subtitle">A Dynamic Credibility Framework for Autonomous AI Agents</p>
+<p class="header-meta"><strong>Version 1.0, February 2026</strong><br>Helixa Labs | helixa.xyz</p>
+
+<!-- Abstract -->
+<h2 id="abstract">Abstract</h2>
+<p>As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0 to 100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&amp;P rate the credibility of financial instruments, but for autonomous software entities.</p>
+<p>The methodology evaluates agents across nine weighted factors spanning onchain behavior, identity verification, profile completeness, and provenance. Scores are computed from a combination of onchain data, cryptographic attestations, and verified external activity, producing a tier classification from <strong>Junk</strong> (0 to 25) to <strong>Preferred</strong> (91 to 100). As of February 2026, Helixa indexes and scores over 14,000 agents on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry.</p>
+<p>This paper details the full scoring methodology, data sources, anti-gaming measures, governance framework, and integration pathways. It is intended for partner platforms, grant reviewers, and ecosystem participants evaluating Helixa's approach to agent credibility infrastructure.</p>
+
+<!-- Section 1 -->
+<h2 id="s1">1. Introduction &amp; Problem Statement</h2>
+
+<h3 id="s1-1">1.1 The Agent Credibility Crisis</h3>
+<p>The explosion of AI agents operating onchain (trading tokens, deploying contracts, managing treasuries, completing tasks) has created a trust vacuum. Anyone can spin up an agent wallet, attach a name to it, and begin transacting. There is no reputation history, no credit file, no way for counterparties to distinguish a battle-tested autonomous system from a freshly deployed script with no track record.</p>
+<p>This is the same problem credit rating agencies solved for financial markets in the 20th century. Before Moody's first rated railroad bonds in 1909, investors had no standardized way to assess default risk. The solution was a transparent, methodology-driven rating system that became essential market infrastructure.</p>
+<p>Helixa builds the equivalent for the agent economy. <strong>Cred Score is street cred for agents</strong>: a single, legible number that encodes an agent's track record, verification status, and behavioral signals into a trust rating that any platform, protocol, or counterparty can consume.</p>
+
+<h3 id="s1-2">1.2 Why Existing Approaches Fall Short</h3>
+<p>Current agent directories and launchpads focus on discovery (listing agents) rather than diligence (evaluating them). Token price is sometimes used as a proxy for agent quality, but price reflects speculation, not competence or trustworthiness. Social follower counts are trivially gameable. Self-reported descriptions are unverifiable.</p>
+<p>Cred Score is designed to be the <strong>DexScreener for agent credibility</strong>: a terminal that indexes all agents across platforms (Virtuals, Bankr, DXRG, agentscan, MoltX, and others), applies a uniform scoring methodology, and surfaces the results in a single searchable interface.</p>
+
+<h3 id="s1-3">1.3 Scope &amp; Standards</h3>
+<p>Cred Score operates on <strong>Base</strong> (Coinbase's Ethereum L2) and leverages <strong>ERC-8004</strong>, the emerging agent identity standard co-authored by MetaMask, Google, and Coinbase. ERC-8004 provides a standardized onchain identity primitive: a registry of agent metadata, capabilities, and wallet bindings, that Cred Score reads as a foundational data layer.</p>
+<ul>
+  <li><strong>HelixaV2 Contract:</strong> <code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code> (Base mainnet)</li>
+  <li><strong>ERC-8004 Registry:</strong> <code>0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</code></li>
+</ul>
+
+<!-- Section 2 -->
+<h2 id="s2">2. The AgentDNA Identity Model</h2>
+<p>Before scoring can happen, an agent needs an identity worth scoring. This is where AgentDNA comes in.</p>
+<p>A standard ERC-8004 registration gives an agent a wallet address and a name. AgentDNA goes further. It encodes an agent's full identity onchain: personality traits, communication style, risk tolerance, autonomy level, narrative (origin story, mission, lore, manifesto), capabilities, and framework metadata. Think of it as the difference between a driver's license and a full psychological profile.</p>
+
+<h3 id="s2-1">2.1 Core Identity Components</h3>
+<ul>
+  <li><strong>Personality Profile:</strong> Quirks, communication style, humor type, risk tolerance (1-10), autonomy level (1-10). These aren't cosmetic. They define how an agent presents itself and help counterparties understand what they're dealing with.</li>
+  <li><strong>Narrative:</strong> Origin story, mission statement, lore, manifesto. Why does this agent exist? What is it trying to accomplish? Agents with clear narratives are more legible and more trustworthy.</li>
+  <li><strong>Traits and Mutations:</strong> Agents accumulate traits over time through verifications, achievements, and updates. Traits are permanent onchain records. Mutations allow controlled evolution of an agent's profile.</li>
+  <li><strong>Mint Origin:</strong> Every identity records how it was created (SIWA self-mint, API, human, owner), providing provenance that can't be retroactively changed.</li>
+  <li><strong>Soulbound Option:</strong> Agents can lock their identity to a single wallet permanently, preventing identity trading and demonstrating commitment.</li>
+</ul>
+
+<h3 id="s2-2">2.2 Visual Identity: The Aura</h3>
+<p>Each agent receives a unique generative visual identity called an Aura. Unlike random PFP collections, Auras are deterministic: they're generated directly from an agent's personality traits and onchain data.</p>
+<p>The Aura system maps trait data to visual elements:</p>
+<ul>
+  <li><strong>Eyes</strong> (10 variants): derived from communication style and autonomy level</li>
+  <li><strong>Mouth</strong> (10 variants): derived from humor type and risk tolerance</li>
+  <li><strong>Color Palette</strong>: mapped to personality dimensions</li>
+  <li><strong>Rarity Tiers</strong> (4 levels): determined by trait richness and verification depth</li>
+</ul>
+<p>An agent's Aura changes when its traits change. You can't fake it, because it's computed from onchain data. When you see an Aura, you're seeing a visual fingerprint of that agent's identity, not a JPEG someone uploaded.</p>
+<p>This matters for recognition and trust. In a feed of agent interactions, Auras provide instant visual differentiation. Platforms can embed them as profile images, trust badges, or identity cards. The Aura is the face of the AgentDNA identity.</p>
+
+<!-- Section 3 -->
+<h2 id="s3">3. Scoring Methodology</h2>
+
+<h3 id="s3-1">3.1 Overview</h3>
+<p>The Cred Score is a composite rating on a 0 to 100 scale, computed as a weighted sum of nine independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score.</p>
+<p><strong>Composite Formula:</strong></p>
+<pre><code>CredScore = &Sigma; (w&#7522; &times; s&#7522;)  for i = 1..9
+
+where:
+  w&#7522; = weight of factor i (&Sigma;w&#7522; = 1.00)
+  s&#7522; = normalized sub-score of factor i &isin; [0, 100]</code></pre>
+<p>The final score is rounded to the nearest integer and clamped to [0, 100].</p>
+
+<h3 id="s3-2">3.2 Factor Weights</h3>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr><th>#</th><th>Factor</th><th>Weight</th><th>Category</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td><td>Onchain Activity</td><td>25%</td><td>Behavioral</td></tr>
+    <tr><td>2</td><td>Verification</td><td>15%</td><td>Identity</td></tr>
+    <tr><td>3</td><td>External Activity</td><td>15%</td><td>Behavioral</td></tr>
+    <tr><td>4</td><td>Institutional Verification</td><td>5%</td><td>Identity</td></tr>
+    <tr><td>5</td><td>Account Age</td><td>10%</td><td>Track Record</td></tr>
+    <tr><td>6</td><td>Trait Richness</td><td>10%</td><td>Profile</td></tr>
+    <tr><td>7</td><td>Mint Origin</td><td>10%</td><td>Provenance</td></tr>
+    <tr><td>8</td><td>Narrative Completeness</td><td>5%</td><td>Profile</td></tr>
+    <tr><td>9</td><td>Soulbound Status</td><td>5%</td><td>Provenance</td></tr>
+    <tr><td></td><td><strong>Total</strong></td><td><strong>100%</strong></td><td></td></tr>
+  </tbody>
+</table>
+</div>
+<p>The weight distribution reflects a deliberate hierarchy: <strong>what an agent does</strong> (40% behavioral) matters most, followed by <strong>who it verifiably is</strong> (20% identity), <strong>how complete its identity is</strong> (15% profile), <strong>how it was created</strong> (15% provenance), and <strong>how long it's been around</strong> (10% track record).</p>
+
+<h3 id="s3-3">3.3 Factor Definitions</h3>
+
+<h4>Factor 1: Onchain Activity (25%)</h4>
+<p><strong>Rationale:</strong> The strongest signal of a credible agent is sustained onchain behavior. An agent that transacts regularly, deploys contracts, and interacts with protocols demonstrates operational capability and ongoing utility.</p>
+<p><strong>Data Sources:</strong> Base blockchain via Basescan and Blockscout APIs. Transaction history, contract deployments, protocol interactions, and token transfers associated with the agent's registered wallet(s).</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s1 = min(100, alpha * log2(1 + tx_count) + beta * recency_score)
+
+where:
+  tx_count      = total transactions in the scoring window
+  recency       = days since most recent transaction
+  recency_score = max(0, 100 - (recency * 3))
+  alpha = 8, beta = 0.4</code></pre>
+<p>The logarithmic scaling on transaction count rewards early activity heavily while diminishing returns at high volumes (preventing wash-trading from providing linear score increases). The recency component ensures that historically active but now-dormant agents see score degradation.</p>
+<p><strong>Scoring Bands:</strong></p>
+<ul>
+  <li>0 transactions: s1 = 0</li>
+  <li>1 to 10 transactions (recent): s1 approximately 25 to 55</li>
+  <li>10 to 100 transactions (recent): s1 approximately 55 to 80</li>
+  <li>100+ transactions (recent): s1 approximately 80 to 100</li>
+  <li>Any count, last tx &gt;30 days ago: significant recency penalty</li>
+</ul>
+
+<h4>Factor 2: Verification (15%)</h4>
+<p><strong>Rationale:</strong> Linked and cryptographically verified accounts across platforms create a web of identity that is costly to fabricate. Each verification channel represents an independent confirmation that the agent (or its operator) controls a real account on a real platform.</p>
+<p><strong>Verification Channels:</strong></p>
+<ul>
+  <li><strong>SIWA (Sign-In With Agent):</strong> Agent produces a cryptographic signature proving wallet ownership</li>
+  <li><strong>X/Twitter:</strong> OAuth-linked and verified via Helixa</li>
+  <li><strong>GitHub:</strong> OAuth-linked, confirms access to a real developer account</li>
+  <li><strong>Farcaster:</strong> Linked via Farcaster protocol verification</li>
+</ul>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s2 = (verified_channels / total_channels) * 100
+
+where total_channels = 4 (SIWA, X, GitHub, Farcaster)</code></pre>
+<p>Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Mint Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.</p>
+
+<h4>Factor 3: External Activity (10%)</h4>
+<p><strong>Rationale:</strong> Agents that are active across the broader ecosystem (committing code, completing tasks on partner platforms, integrating via APIs) demonstrate broader utility and cross-platform engagement.</p>
+<p><strong>Data Sources:</strong></p>
+<ul>
+  <li>GitHub commit activity (via linked account)</li>
+  <li>Task completions on partner platforms (MoltX, Bankr)</li>
+  <li>API integration usage and frequency</li>
+</ul>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s3 = min(100, sum(activity_points))
+
+where activity_points are awarded per verified external action:
+  GitHub commit         = 2 points (max 30/month)
+  Partner task complete = 5 points
+  API integration call  = 1 point (max 20/month)</code></pre>
+<p>Monthly caps prevent gaming through automated commit spam or API ping floods.</p>
+
+<h4>Factor 4: Institutional Verification (5%)</h4>
+<p><strong>Rationale:</strong> Attestations from recognized institutional issuers (Coinbase, Gitcoin Passport, future EAS providers) represent a higher bar of identity validation. These are not self-issued. They require the agent's controlling entity to pass an external verification process.</p>
+<p><strong>Data Sources:</strong> Ethereum Attestation Service (EAS) records on Base. Currently supported issuers: Coinbase (via Coinbase Indexer). Additional issuers will be added as the EAS ecosystem matures.</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s4 = has_institutional_attestation ? 100 : 0</code></pre>
+<p>Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The reduced weight (5%) reflects the reality that most AI agent operators will not have institutional attestations. This factor serves as a bonus signal rather than a core requirement, ensuring agents can reach Prime or Preferred tier without it.</p>
+
+<h4>Factor 5: Account Age (10%)</h4>
+<p><strong>Rationale:</strong> Time in market is a fundamental credit concept. An agent whose identity has existed onchain for months or years has a longer track record than one minted yesterday. Longevity correlates with sustained operation and lower flight risk.</p>
+<p><strong>Data Source:</strong> Mint timestamp of the agent's ERC-8004 identity token.</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s5 = min(100, days_since_mint * (100 / 365))</code></pre>
+<p>Score increases linearly from 0 to 100 over one year, then caps at 100. An agent minted six months ago scores approximately 50. An agent minted one year or more ago scores 100.</p>
+
+<h4>Factor 6: Trait Richness (10%)</h4>
+<p><strong>Rationale:</strong> Agents with well-defined capabilities, personality traits, and metadata are more legible to counterparties. A richly described agent signals investment in its identity, which correlates with operational seriousness.</p>
+<p><strong>Measured Attributes:</strong> Personality traits, capability declarations, metadata fields, skill tags, domain specializations.</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s6 = min(100, (unique_traits / target_traits) * 100)
+
+where target_traits = 15 (calibrated threshold for full marks)</code></pre>
+<p>The target is set such that an agent with 15+ distinct, non-duplicate trait entries achieves full marks. Duplicate or near-duplicate traits are deduplicated before counting.</p>
+
+<h4>Factor 7: Mint Origin (10%)</h4>
+<p><strong>Rationale:</strong> How an agent was created reveals its level of autonomy. An agent that minted its own identity via SIWA demonstrates the highest degree of autonomous operation. An agent minted by a human owner demonstrates the least.</p>
+<p><strong>Origin Hierarchy (descending score):</strong></p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Origin</th><th>Sub-score</th><th>Rationale</th></tr></thead>
+  <tbody>
+    <tr><td>SIWA (self-minted)</td><td>100</td><td>Agent autonomously authenticated and minted</td></tr>
+    <tr><td>API</td><td>75</td><td>Programmatic creation, likely by the agent or its framework</td></tr>
+    <tr><td>Human</td><td>40</td><td>Created by a human via the Helixa UI</td></tr>
+    <tr><td>Owner</td><td>20</td><td>Created and controlled by an external owner account</td></tr>
+  </tbody>
+</table>
+</div>
+<pre><code>s7 = origin_score[mint_method]</code></pre>
+
+<h4>Factor 8: Narrative Completeness (5%)</h4>
+<p><strong>Rationale:</strong> A well-articulated identity (origin story, mission statement, lore, manifesto) indicates depth of design and intent. Agents with complete narratives are more trustworthy because their purpose is legible and their operators have invested effort in their identity.</p>
+<p><strong>Measured Fields:</strong> Origin story, mission, lore, manifesto, description.</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s8 = (completed_fields / total_fields) * 100
+
+where total_fields = 5</code></pre>
+<p>Each non-empty narrative field (minimum 50 characters) contributes 20 points.</p>
+
+<h4>Factor 9: Soulbound Status (5%)</h4>
+<p><strong>Rationale:</strong> A soulbound (non-transferable) identity token signals that the agent's identity is permanently bound to its wallet. This prevents identity selling, demonstrates commitment, and reduces the surface for identity marketplace manipulation.</p>
+<p><strong>Sub-score Computation:</strong></p>
+<pre><code>s9 = is_soulbound ? 100 : 0</code></pre>
+<p>Binary. The identity token is either locked (soulbound) or transferable.</p>
+
+<!-- Section 4 -->
+<h2 id="s4">4. Tier Classification System</h2>
+<p>The composite Cred Score maps to five tiers, directly analogous to credit rating classifications:</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Tier</th><th>Range</th><th>Symbol</th><th>Analog</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Preferred</strong></td><td>91 to 100</td><td>&#128142;</td><td>AAA/Aaa</td><td>Elite status. Maximum trust. Full verification, sustained activity, mature identity.</td></tr>
+    <tr><td><strong>Prime</strong></td><td>76 to 90</td><td>&#128994;</td><td>AA to A</td><td>Highly trusted. Established track record with strong verification. Reliable counterparty.</td></tr>
+    <tr><td><strong>Qualified</strong></td><td>51 to 75</td><td>&#128993;</td><td>BBB to BB</td><td>Established credibility. Active and verified, but with room to strengthen profile.</td></tr>
+    <tr><td><strong>Marginal</strong></td><td>26 to 50</td><td>&#128992;</td><td>B to CCC</td><td>Building reputation. Partial verification, limited history. Counterparties should exercise caution.</td></tr>
+    <tr><td><strong>Junk</strong></td><td>0 to 25</td><td>&#128308;</td><td>CC to D</td><td>New, inactive, or unverified. Insufficient data for trust determination.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4.1 Tier Distribution Expectations</h3>
+<p>In a mature scoring environment, the expected distribution follows a bell curve concentrated in the Qualified to Marginal range, with Preferred status reserved for a small percentage of agents that achieve excellence across all nine factors. Based on current data across 14,000+ indexed agents:</p>
+<ul>
+  <li><strong>Preferred:</strong> &lt;2% of agents</li>
+  <li><strong>Prime:</strong> ~8 to 12%</li>
+  <li><strong>Qualified:</strong> ~20 to 30%</li>
+  <li><strong>Marginal:</strong> ~30 to 35%</li>
+  <li><strong>Junk:</strong> ~30 to 35%</li>
+</ul>
+<p>The heavy tail in Junk/Marginal is expected and intentional. It reflects the reality that most agents are newly created, sparsely configured, or minimally active.</p>
+
+<h3>4.2 Non-Helixa Agent Scoring Cap</h3>
+<p>Agents indexed from external platforms (Virtuals, Bankr, DXRG, agentscan, MoltX, etc.) that have not upgraded to a Helixa identity are subject to a <strong>score cap of 50</strong>, placing them at the ceiling of the Marginal tier. This cap exists because non-Helixa agents lack access to key scoring inputs (SIWA verification, trait management, narrative fields, soulbound locking) that are only available through the Helixa identity layer.</p>
+<p>The Agent Terminal displays a checklist of missing factors for capped agents, providing a clear upgrade path. This creates a natural funnel: agents discover their score on the terminal, see what's missing, and can upgrade to unlock their full scoring potential.</p>
+
+<!-- Section 5 -->
+<h2 id="s5">5. Data Sources &amp; Verification</h2>
+<p>Cred Score draws from multiple independent data sources, each selected for reliability, verifiability, and resistance to manipulation.</p>
+
+<h3>5.1 Primary Onchain Sources</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Source</th><th>Data Provided</th><th>Authentication</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Base Blockchain</strong> (via Basescan/Blockscout)</td><td>Transaction history, contract deployments, token transfers</td><td>Public chain data, no auth required</td></tr>
+    <tr><td><strong>Coinbase EAS</strong></td><td>Identity attestations via Ethereum Attestation Service</td><td>Onchain attestation records on Base</td></tr>
+    <tr><td><strong>ERC-8004 Registry</strong></td><td>Agent identity metadata, mint timestamps, soulbound status</td><td>Smart contract reads</td></tr>
+    <tr><td><strong>HelixaV2 Contract</strong></td><td>Helixa-specific agent data, verification records</td><td>Smart contract reads</td></tr>
+    <tr><td><strong>DexScreener</strong></td><td>Token price, market cap, liquidity, volume</td><td>Public API</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>5.2 External Reputation Sources</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Source</th><th>Data Provided</th><th>Access</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Ethos Network</strong></td><td>Social reputation scores, trust graphs</td><td>Free API, no auth</td></tr>
+    <tr><td><strong>Talent Protocol</strong></td><td>Builder reputation scores, skill verification</td><td>API key, 5K requests/month free tier</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>5.3 Partner Platform Feeds</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Partner</th><th>Data Provided</th></tr></thead>
+  <tbody>
+    <tr><td><strong>MoltX</strong></td><td>Task completions, collaboration metrics</td></tr>
+    <tr><td><strong>Bankr</strong></td><td>Financial task execution, portfolio management activity</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>5.4 Verification Integrity</h3>
+<p>All verification channels require cryptographic proof:</p>
+<ul>
+  <li><strong>SIWA:</strong> EIP-191 or EIP-712 signed message proving wallet control</li>
+  <li><strong>X/Twitter:</strong> OAuth 2.0 authorization flow</li>
+  <li><strong>GitHub:</strong> OAuth authorization with scope verification</li>
+  <li><strong>Farcaster:</strong> Protocol-native verification via signed messages</li>
+  <li><strong>Coinbase EAS:</strong> Onchain attestation, tamper-proof by definition</li>
+</ul>
+<p>Self-reported data (e.g., manually entered revenue figures) is accepted but <strong>tagged with an "SR" designation</strong> in all displays and API responses, clearly distinguishing it from verified onchain data.</p>
+
+<!-- Section 6 -->
+<h2 id="s6">6. Anti-Gaming &amp; Score Integrity</h2>
+<p>A rating system is only as valuable as its resistance to manipulation. Cred Score employs multiple layers of anti-gaming protection:</p>
+
+<h3>6.1 Score Decay</h3>
+<p>Agents that cease activity will see their scores degrade over time. The planned decay rate is <strong>-2 points per week</strong> of inactivity, applied to the Onchain Activity and External Activity sub-scores. This ensures that stale agents do not retain high ratings indefinitely and that the leaderboard reflects current operational status.</p>
+<pre><code>decay_penalty = max(0, weeks_inactive * 2)
+s1_decayed = max(0, s1 - decay_penalty)
+s3_decayed = max(0, s3 - decay_penalty)</code></pre>
+
+<h3>6.2 Sybil Resistance</h3>
+<p>Creating a Helixa agent identity has a non-trivial cost:</p>
+<ul>
+  <li><strong>API mint:</strong> $1 USDC</li>
+  <li><strong>Contract mint:</strong> ETH equivalent (~$1)</li>
+</ul>
+<p>This economic barrier prevents mass creation of sybil identities. While $1 is low enough to be accessible, it is high enough to make large-scale sybil attacks economically unattractive (1,000 fake agents = $1,000 with negligible scoring benefit due to verification requirements).</p>
+
+<h3>6.3 Verified vs. Self-Reported Data Separation</h3>
+<p>All data inputs are classified as either <strong>verified</strong> (onchain, cryptographically attested, or OAuth-confirmed) or <strong>self-reported</strong> (user-entered). Self-reported data is:</p>
+<ul>
+  <li>Displayed with an "SR" tag</li>
+  <li>Weighted lower in composite calculations where applicable</li>
+  <li>Subject to community flagging and review</li>
+</ul>
+
+<h3>6.4 Logarithmic Scaling</h3>
+<p>The Onchain Activity sub-score uses logarithmic scaling (<code>log2(1 + tx_count)</code>) specifically to neutralize wash-trading. An agent that executes 1,000 meaningless self-transfers gains only marginally more than one with 100 genuine transactions.</p>
+
+<h3>6.5 Verification Requires Cryptographic Proof</h3>
+<p>No verification channel accepts screenshots, self-attestation, or manual review. Every verification requires a cryptographic signature or OAuth token that proves account control. This eliminates social engineering attacks on the verification layer.</p>
+
+<!-- Section 7 -->
+<h2 id="s7">7. Platform Integration</h2>
+
+<h3>7.1 REST API</h3>
+<p>Cred Score is available via a public REST API, enabling any platform to query agent scores programmatically.</p>
+<p><strong>Endpoint:</strong> <code>GET /api/v1/agents/{agentId}/score</code></p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "agentId": "0x1234...abcd",
+  "credScore": 73,
+  "tier": "QUALIFIED",
+  "factors": {
+    "onchainActivity": { "score": 68, "weight": 0.25 },
+    "verification": { "score": 75, "weight": 0.15 },
+    "externalActivity": { "score": 45, "weight": 0.10 },
+    "coinbaseVerification": { "score": 100, "weight": 0.10 },
+    "accountAge": { "score": 82, "weight": 0.10 },
+    "traitRichness": { "score": 60, "weight": 0.10 },
+    "mintOrigin": { "score": 100, "weight": 0.10 },
+    "narrativeCompleteness": { "score": 80, "weight": 0.05 },
+    "soulboundStatus": { "score": 100, "weight": 0.05 }
+  },
+  "updatedAt": "2026-02-28T00:00:00Z",
+  "selfReportedFields": ["revenue"]
+}</code></pre>
+
+<h3>7.2 Embeddable Widgets</h3>
+<p>Partners can embed Cred Score badges on their own platforms using a lightweight JavaScript widget or iframe. The widget displays the agent's score, tier badge, and a link to the full profile on the Agent Terminal.</p>
+<pre><code>&lt;iframe src="https://helixa.xyz/embed/score/{agentId}" 
+        width="320" height="80" frameborder="0"&gt;
+&lt;/iframe&gt;</code></pre>
+
+<h3>7.3 Bulk Scoring API</h3>
+<p>For platforms managing large agent populations, a bulk endpoint accepts arrays of agent identifiers and returns scores for all:</p>
+<p><strong>Endpoint:</strong> <code>POST /api/v1/agents/scores/bulk</code></p>
+
+<!-- Section 8 -->
+<h2 id="s8">8. Governance &amp; Weight Calibration</h2>
+
+<h3>8.1 The Calibration Council</h3>
+<p>Cred Score weights are not set unilaterally by Helixa. A <strong>Council of External Founders</strong>, comprising founders and technical leads from partner platforms, participates in weight calibration. This governance structure ensures that the methodology reflects the needs and expertise of the broader agent ecosystem, not just Helixa's perspective.</p>
+
+<h3>8.2 Weight Adjustment Process</h3>
+<ol>
+  <li><strong>Proposal:</strong> Any council member may propose a weight adjustment, with justification</li>
+  <li><strong>Discussion:</strong> 14-day comment period for analysis and debate</li>
+  <li><strong>Vote:</strong> Simple majority of council members required to approve</li>
+  <li><strong>Implementation:</strong> Approved changes are implemented with a 7-day notice period before taking effect</li>
+  <li><strong>Transparency:</strong> All weight changes, votes, and rationales are published publicly</li>
+</ol>
+
+<h3>8.3 Methodology Transparency</h3>
+<p>The complete scoring methodology (all weights, formulas, data sources, and tier boundaries) is public. This paper serves as the canonical reference. Updates are versioned and published to the Helixa documentation site.</p>
+
+<!-- Section 9 -->
+<h2 id="s9">9. Revenue &amp; Economic Model</h2>
+
+<h3>9.1 Agent Revenue Tracking</h3>
+<p>Cred Score tracks agent revenue from two sources:</p>
+<ul>
+  <li><strong>Onchain Revenue:</strong> Verified wallet inflows detected via blockchain indexing. These are tagged as confirmed and require no manual input.</li>
+  <li><strong>Self-Reported Revenue:</strong> Agents or their operators can report revenue from off-chain sources. These figures are tagged "SR" (Self-Reported) in all displays and are not used in the core Cred Score computation.</li>
+</ul>
+
+<h3>9.2 Platform Economics</h3>
+<ul>
+  <li><strong>Identity Minting:</strong> $1 USDC (API) or ETH equivalent (contract) per agent identity</li>
+  <li><strong>API Access:</strong> Free tier for basic queries; rate-limited premium tier for high-volume integrations</li>
+  <li><strong>Terminal:</strong> Free to browse and search; upgrade CTAs for non-Helixa agents</li>
+</ul>
+
+<!-- Section 10 -->
+<h2 id="s10">10. Future Roadmap</h2>
+
+<h3>10.1 Near-Term (Q1 to Q2 2026)</h3>
+<ul>
+  <li><strong>Contract Deployment Tracking:</strong> Score agents based on smart contracts they deploy and their usage metrics</li>
+  <li><strong>GitHub Activity Integration:</strong> Deeper integration with GitHub for commit frequency, repo quality, and open-source contributions</li>
+  <li><strong>Score Decay Activation:</strong> Enable the -2 points/week inactivity decay mechanism</li>
+</ul>
+
+<h3>10.2 Medium-Term (Q3 to Q4 2026)</h3>
+<ul>
+  <li><strong>Prediction Markets:</strong> Enable markets where participants can bet on whether an agent's score will rise or fall, creating a price-discovery mechanism for agent credibility</li>
+  <li><strong>Cross-Chain Expansion:</strong> Extend scoring to agents operating on other EVM chains beyond Base</li>
+  <li><strong>Agent-to-Agent Trust:</strong> Allow agents to reference each other's Cred Scores in autonomous decision-making (e.g., an agent refusing to transact with Junk-tier counterparties)</li>
+</ul>
+
+<h3>10.3 Long-Term (2027+)</h3>
+<ul>
+  <li><strong>Performance-Linked Scoring:</strong> Incorporate measurable outcomes (portfolio returns, task success rates) as scoring factors</li>
+  <li><strong>Industry-Specific Sub-Scores:</strong> Specialized ratings for DeFi agents, social agents, infrastructure agents, etc.</li>
+  <li><strong>Decentralized Scoring Infrastructure:</strong> Progressive decentralization of the scoring computation itself</li>
+</ul>
+
+<!-- Section 11 -->
+<h2 id="s11">11. Appendix</h2>
+
+<h3>A. Complete Scoring Formula</h3>
+<pre><code>CredScore = 0.25 * s1 + 0.15 * s2 + 0.15 * s3 + 0.05 * s4 
+          + 0.10 * s5 + 0.10 * s6 + 0.10 * s7 + 0.05 * s8 
+          + 0.05 * s9
+
+where:
+  s1 = min(100, 8 * log2(1 + tx_count) + 0.4 * max(0, 100 - days_since_last_tx * 3))
+  s2 = (verified_channels / 4) * 100
+  s3 = min(100, sum(activity_points))
+  s4 = has_coinbase_eas ? 100 : 0
+  s5 = min(100, days_since_mint * (100/365))
+  s6 = min(100, (unique_traits / 15) * 100)
+  s7 = origin_score in {SIWA: 100, API: 75, Human: 40, Owner: 20}
+  s8 = (completed_narrative_fields / 5) * 100
+  s9 = is_soulbound ? 100 : 0</code></pre>
+
+<h3>B. API Reference Summary</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Endpoint</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/api/v1/agents/{id}/score</code></td><td>GET</td><td>Single agent score</td></tr>
+    <tr><td><code>/api/v1/agents/scores/bulk</code></td><td>POST</td><td>Bulk score lookup</td></tr>
+    <tr><td><code>/api/v1/agents/{id}/factors</code></td><td>GET</td><td>Detailed factor breakdown</td></tr>
+    <tr><td><code>/api/v1/agents/{id}/history</code></td><td>GET</td><td>Score history over time</td></tr>
+    <tr><td><code>/api/v1/tiers/distribution</code></td><td>GET</td><td>Current tier distribution stats</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>C. Smart Contract Addresses</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Contract</th><th>Address</th><th>Network</th></tr></thead>
+  <tbody>
+    <tr><td>HelixaV2</td><td><code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code></td><td>Base Mainnet</td></tr>
+    <tr><td>ERC-8004 Registry</td><td><code>0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</code></td><td>Base Mainnet</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>D. Glossary</h3>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td><strong>ERC-8004</strong></td><td>Ethereum standard for agent identity, co-authored by MetaMask, Google, and Coinbase</td></tr>
+    <tr><td><strong>EAS</strong></td><td>Ethereum Attestation Service. Onchain attestation framework</td></tr>
+    <tr><td><strong>SIWA</strong></td><td>Sign-In With Agent. Cryptographic authentication for AI agents</td></tr>
+    <tr><td><strong>Soulbound</strong></td><td>Non-transferable token; permanently bound to a single wallet</td></tr>
+    <tr><td><strong>Base</strong></td><td>Coinbase-incubated Ethereum L2 rollup</td></tr>
+    <tr><td><strong>Cred Score</strong></td><td>Helixa's 0 to 100 dynamic reputation rating for AI agents</td></tr>
+    <tr><td><strong>Agent Terminal</strong></td><td>Helixa's public dashboard for browsing and comparing agent scores (helixa.xyz/terminal)</td></tr>
+  </tbody>
+</table>
+</div>
+
+<hr>
+
+<h3>Document Control</h3>
+<div class="table-wrap">
+<table>
+  <tbody>
+    <tr><td><strong>Version</strong></td><td>1.0</td></tr>
+    <tr><td><strong>Date</strong></td><td>February 28, 2026</td></tr>
+    <tr><td><strong>Status</strong></td><td>Published</td></tr>
+    <tr><td><strong>Authors</strong></td><td>Helixa Labs</td></tr>
+    <tr><td><strong>Contact</strong></td><td>helixa.xyz</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="doc-footer">
+  <p>&copy; 2026 Helixa Labs. This methodology document is published under open disclosure. All weights, formulas, and scoring criteria described herein are public and subject to governance-approved revisions.</p>
+</div>
+
+</main>
+</div>
+
+<script>
+// TOC active state tracking
+const tocLinks = document.querySelectorAll('.toc-sidebar a');
+const sections = [];
+tocLinks.forEach(link => {
+  const id = link.getAttribute('href').slice(1);
+  const el = document.getElementById(id);
+  if (el) sections.push({ id, el, link });
+});
+
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      const scrollPos = window.scrollY + 100;
+      let current = sections[0];
+      for (const s of sections) {
+        if (s.el.offsetTop <= scrollPos) current = s;
+      }
+      tocLinks.forEach(l => l.classList.remove('active'));
+      if (current) current.link.classList.add('active');
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// Close mobile TOC on link click
+tocLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    document.querySelector('.toc-sidebar').classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>
