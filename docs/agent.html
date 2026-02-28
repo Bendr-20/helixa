@@ -420,6 +420,26 @@ function renderAgent(agent) {
       html += `</div></div>`;
     }
 
+    // External Reputation
+    if (agent.ethos_score || agent.talent_score) {
+      html += `<div class="section" style="border-color:#b490ff">
+        <div class="section-title" style="color:#b490ff;background:rgba(180,144,255,0.05)">▸ EXTERNAL REPUTATION</div>
+        <div class="section-body">`;
+      if (agent.ethos_score) {
+        const ethosLink = agent.owner_address ? `https://app.ethos.network/profile/${agent.owner_address}/score` : '#';
+        html += `<div class="kv-row"><div class="kv-key">Ethos Credibility</div><div class="kv-val"><a href="${ethosLink}" target="_blank" style="color:#b490ff;text-decoration:none;font-weight:700">${Number(agent.ethos_score).toLocaleString()}</a> <span style="color:var(--muted);font-size:11px">ETHOS NETWORK</span></div></div>`;
+      }
+      if (agent.talent_score) {
+        const talentLink = agent.owner_address ? `https://talent.app/profile/${agent.owner_address}` : '#';
+        html += `<div class="kv-row"><div class="kv-key">Builder Rank</div><div class="kv-val"><a href="${talentLink}" target="_blank" style="color:#b490ff;text-decoration:none;font-weight:700">${agent.talent_score} pts</a> <span style="color:var(--muted);font-size:11px">TALENT PROTOCOL</span></div></div>`;
+      }
+      if (agent.reputation_updated_at) {
+        const updated = new Date(agent.reputation_updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        html += `<div class="kv-row"><div class="kv-key">Last Scanned</div><div class="kv-val" style="color:var(--muted)">${updated}</div></div>`;
+      }
+      html += `</div></div>`;
+    }
+
     // Description (moved above narrative)
     if (meta.description || agent.description) {
       html += `<div class="section">
