@@ -283,7 +283,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"credScore"</span>: <span class="number">85</span>,
   <span class="key">"tier"</span>: <span class="string">"PRIME"</span>,
   <span class="key">"tierLabel"</span>: <span class="string">"Prime"</span>,
-  <span class="key">"scale"</span>: { <span class="key">"junk"</span>: <span class="string">"0-25"</span>, <span class="key">"speculative"</span>: <span class="string">"26-50"</span>, ... }
+  <span class="key">"scale"</span>: { <span class="key">"junk"</span>: <span class="string">"0-25"</span>, <span class="key">"marginal"</span>: <span class="string">"26-50"</span>, ... }
 }</code></pre>
 
 <!-- GET /api/v2/agent/:id/cred-report -->
