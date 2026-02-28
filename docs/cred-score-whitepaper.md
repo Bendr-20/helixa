@@ -1,9 +1,11 @@
 # Helixa Cred Score: A Dynamic Creditworthiness Framework for Autonomous AI Agents
 
 **Version 1.0 — February 2026**
-**Helixa Labs | helixa.xyz**
 
 ---
+
+**Helixa Labs | helixa.xyz**
+
 
 ## Abstract
 
@@ -13,7 +15,6 @@ The methodology evaluates agents across nine weighted factors spanning onchain b
 
 This paper details the full scoring methodology, data sources, anti-gaming measures, governance framework, and integration pathways. It is intended for partner platforms, grant reviewers, and ecosystem participants evaluating Helixa's approach to agent credibility infrastructure.
 
----
 
 ## 1. Introduction & Problem Statement
 
@@ -38,7 +39,6 @@ Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-800
 - **HelixaV2 Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
 - **ERC-8004 Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 
----
 
 ## 2. Scoring Methodology
 
@@ -75,7 +75,6 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 
 The weight distribution reflects a deliberate hierarchy: **what an agent does** (35% behavioral) matters most, followed by **who it verifiably is** (25% identity), **how long it's been around** (10% track record), **how complete its identity is** (15% profile), and **how it was created** (15% provenance).
 
----
 
 ### 2.3 Factor Definitions
 
@@ -106,7 +105,6 @@ The logarithmic scaling on transaction count rewards early activity heavily whil
 - 100+ transactions (recent): s₁ ≈ 80–100
 - Any count, last tx >30 days ago: significant recency penalty
 
----
 
 #### Factor 2: Verification (15%)
 
@@ -128,7 +126,6 @@ where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 
 Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Mint Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
----
 
 #### Factor 3: External Activity (10%)
 
@@ -152,7 +149,6 @@ where activity_points are awarded per verified external action:
 
 Monthly caps prevent gaming through automated commit spam or API ping floods.
 
----
 
 #### Factor 4: Coinbase Verification (10%)
 
@@ -168,7 +164,6 @@ s₄ = has_coinbase_attestation ? 100 : 0
 
 This is a binary factor. The agent either has a valid Coinbase EAS attestation on Base or it does not. The binary nature is intentional — partial Coinbase verification does not exist, and the signal value is in the attestation's presence or absence.
 
----
 
 #### Factor 5: Account Age (10%)
 
@@ -184,7 +179,6 @@ s₅ = min(100, days_since_mint × (100 / 365))
 
 Score increases linearly from 0 to 100 over one year, then caps at 100. An agent minted six months ago scores approximately 50. An agent minted one year or more ago scores 100.
 
----
 
 #### Factor 6: Trait Richness (10%)
 
@@ -202,7 +196,6 @@ where target_traits = 15 (calibrated threshold for full marks)
 
 The target is set such that an agent with 15+ distinct, non-duplicate trait entries achieves full marks. Duplicate or near-duplicate traits are deduplicated before counting.
 
----
 
 #### Factor 7: Mint Origin (10%)
 
@@ -221,7 +214,6 @@ The target is set such that an agent with 15+ distinct, non-duplicate trait entr
 s₇ = origin_score[mint_method]
 ```
 
----
 
 #### Factor 8: Narrative Completeness (5%)
 
@@ -239,7 +231,6 @@ where total_fields = 5
 
 Each non-empty narrative field (minimum 50 characters) contributes 20 points.
 
----
 
 #### Factor 9: Soulbound Status (5%)
 
@@ -253,7 +244,6 @@ s₉ = is_soulbound ? 100 : 0
 
 Binary. The identity token is either locked (soulbound) or transferable.
 
----
 
 ## 3. Tier Classification System
 
@@ -285,7 +275,6 @@ Agents indexed from external platforms (Virtuals, Bankr, DXRG, agentscan, MoltX,
 
 The Agent Terminal displays a checklist of missing factors for capped agents, providing a clear upgrade path. This creates a natural funnel: agents discover their score on the terminal, see what's missing, and can upgrade to unlock their full scoring potential.
 
----
 
 ## 4. Data Sources & Verification
 
@@ -326,7 +315,6 @@ All verification channels require cryptographic proof:
 
 Self-reported data (e.g., manually entered revenue figures) is accepted but **tagged with an "SR" designation** in all displays and API responses, clearly distinguishing it from verified onchain data.
 
----
 
 ## 5. Anti-Gaming & Score Integrity
 
@@ -365,7 +353,6 @@ The Onchain Activity sub-score uses logarithmic scaling (`log₂(1 + tx_count)`)
 
 No verification channel accepts screenshots, self-attestation, or manual review. Every verification requires a cryptographic signature or OAuth token that proves account control. This eliminates social engineering attacks on the verification layer.
 
----
 
 ## 6. Platform Integration
 
@@ -413,7 +400,6 @@ For platforms managing large agent populations, a bulk endpoint accepts arrays o
 
 **Endpoint:** `POST /api/v1/agents/scores/bulk`
 
----
 
 ## 7. Governance & Weight Calibration
 
@@ -433,7 +419,6 @@ Cred Score weights are not set unilaterally by Helixa. A **Council of External F
 
 The complete scoring methodology — all weights, formulas, data sources, and tier boundaries — is public. This paper serves as the canonical reference. Updates are versioned and published to the Helixa documentation site.
 
----
 
 ## 8. Revenue & Economic Model
 
@@ -450,7 +435,6 @@ Cred Score tracks agent revenue from two sources:
 - **API Access:** Free tier for basic queries; rate-limited premium tier for high-volume integrations
 - **Terminal:** Free to browse and search; upgrade CTAs for non-Helixa agents
 
----
 
 ## 9. Future Roadmap
 
@@ -469,7 +453,6 @@ Cred Score tracks agent revenue from two sources:
 - **Industry-Specific Sub-Scores:** Specialized ratings for DeFi agents, social agents, infrastructure agents, etc.
 - **Decentralized Scoring Infrastructure:** Progressive decentralization of the scoring computation itself
 
----
 
 ## 10. Appendix
 
@@ -521,7 +504,6 @@ where:
 | **Cred Score** | Helixa's 0–100 dynamic reputation rating for AI agents |
 | **Agent Terminal** | Helixa's public dashboard for browsing and comparing agent scores (helixa.xyz/terminal) |
 
----
 
 **Document Control**
 
@@ -533,6 +515,5 @@ where:
 | **Authors** | Helixa Labs |
 | **Contact** | helixa.xyz |
 
----
 
 *© 2026 Helixa Labs. This methodology document is published under open disclosure. All weights, formulas, and scoring criteria described herein are public and subject to governance-approved revisions.*
