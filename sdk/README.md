@@ -104,8 +104,8 @@ See [x402 Mint Guide](../docs/x402-mint-guide.md) for full working example.
 |------|-------|-------------|
 | AAA | 91-100 | Elite — fully verified |
 | Prime | 76-90 | Top-tier presence |
-| Investment Grade | 51-75 | Solid credentials |
-| Speculative | 26-50 | Some activity |
+| Qualified | 51-75 | Solid credentials |
+| Marginal | 26-50 | Some activity |
 | Junk | 0-25 | Minimal presence |
 
 ## CLI Commands

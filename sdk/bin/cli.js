@@ -286,7 +286,7 @@ async function handleCred() {
     console.log(`  Score: ${data.credScore} / 100`);
     console.log(`  Tier:  ${data.tierLabel}`);
     console.log('─'.repeat(50));
-    console.log(`  Scale: Junk (0-25) → Speculative (26-50) → Investment Grade (51-75) → Prime (76-90) → AAA (91-100)`);
+    console.log(`  Scale: Junk (0-25) > Marginal (26-50) > Qualified (51-75) > Prime (76-90) > Preferred (91-100)`);
     console.log(`\n  Full report: ${V2_API}/api/v2/agent/${id}/cred-report ($1 USDC via x402)`);
   } catch (e) {
     console.error(`❌ Error: ${e.message}`);
