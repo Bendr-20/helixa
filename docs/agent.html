@@ -227,6 +227,13 @@ function renderCTA(agent, score) {
     </div>`;
   }
   
+  // Honorary/AAA agents — no upgrade CTA needed
+  if (score >= 90) {
+    return `<div style="margin-top:16px;text-align:center">
+      <div style="color:var(--green);font-size:11px;font-weight:700;letter-spacing:2px">✦ AAA RATED AGENT ✦</div>
+    </div>`;
+  }
+
   // Non-Helixa — show what's missing + upgrade CTA
   const missing = [];
   if (!traits.framework && !meta.framework) missing.push('Framework');
