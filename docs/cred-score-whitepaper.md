@@ -1,6 +1,6 @@
 # Helixa Cred Score: A Dynamic Credibility Framework for Autonomous AI Agents
 
-**Version 1.0 — February 2026**
+**Version 1.0, February 2026**
 
 ---
 
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments — but for autonomous software entities.
+As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments, but for autonomous software entities.
 
 The methodology evaluates agents across nine weighted factors spanning onchain behavior, identity verification, profile completeness, and provenance. Scores are computed from a combination of onchain data, cryptographic attestations, and verified external activity, producing a tier classification from **Junk** (0–25) to **Preferred** (91–100). As of February 2026, Helixa indexes and scores over 14,000 agents on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry.
 
@@ -20,21 +20,21 @@ This paper details the full scoring methodology, data sources, anti-gaming measu
 
 ### 1.1 The Agent Credibility Crisis
 
-The explosion of AI agents operating onchain — trading tokens, deploying contracts, managing treasuries, completing tasks — has created a trust vacuum. Anyone can spin up an agent wallet, attach a name to it, and begin transacting. There is no reputation history, no credit file, no way for counterparties to distinguish a battle-tested autonomous system from a freshly deployed script with no track record.
+The explosion of AI agents operating onchain (trading tokens, deploying contracts, managing treasuries, completing tasks) has created a trust vacuum. Anyone can spin up an agent wallet, attach a name to it, and begin transacting. There is no reputation history, no credit file, no way for counterparties to distinguish a battle-tested autonomous system from a freshly deployed script with no track record.
 
 This is the same problem credit rating agencies solved for financial markets in the 20th century. Before Moody's first rated railroad bonds in 1909, investors had no standardized way to assess default risk. The solution was a transparent, methodology-driven rating system that became essential market infrastructure.
 
-Helixa builds the equivalent for the agent economy. **Cred Score is street cred for agents** — a single, legible number that encodes an agent's track record, verification status, and behavioral signals into a trust rating that any platform, protocol, or counterparty can consume.
+Helixa builds the equivalent for the agent economy. **Cred Score is street cred for agents**: a single, legible number that encodes an agent's track record, verification status, and behavioral signals into a trust rating that any platform, protocol, or counterparty can consume.
 
 ### 1.2 Why Existing Approaches Fall Short
 
 Current agent directories and launchpads focus on discovery (listing agents) rather than diligence (evaluating them). Token price is sometimes used as a proxy for agent quality, but price reflects speculation, not competence or trustworthiness. Social follower counts are trivially gameable. Self-reported descriptions are unverifiable.
 
-Cred Score is designed to be the **DexScreener for agent credibility** — a terminal that indexes all agents across platforms (Virtuals, Bankr, DXRG, agentscan, MoltX, and others), applies a uniform scoring methodology, and surfaces the results in a single searchable interface.
+Cred Score is designed to be the **DexScreener for agent credibility**: a terminal that indexes all agents across platforms (Virtuals, Bankr, DXRG, agentscan, MoltX, and others), applies a uniform scoring methodology, and surfaces the results in a single searchable interface.
 
 ### 1.3 Scope & Standards
 
-Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-8004**, the emerging agent identity standard co-authored by MetaMask, Google, and Coinbase. ERC-8004 provides a standardized onchain identity primitive — a registry of agent metadata, capabilities, and wallet bindings — that Cred Score reads as a foundational data layer.
+Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-8004**, the emerging agent identity standard co-authored by MetaMask, Google, and Coinbase. ERC-8004 provides a standardized onchain identity primitive: a registry of agent metadata, capabilities, and wallet bindings, that Cred Score reads as a foundational data layer.
 
 - **HelixaV2 Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
 - **ERC-8004 Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
@@ -111,10 +111,10 @@ The logarithmic scaling on transaction count rewards early activity heavily whil
 **Rationale:** Linked and cryptographically verified accounts across platforms create a web of identity that is costly to fabricate. Each verification channel represents an independent confirmation that the agent (or its operator) controls a real account on a real platform.
 
 **Verification Channels:**
-- **SIWA (Sign-In With Agent)** — Agent produces a cryptographic signature proving wallet ownership
-- **X/Twitter** — OAuth-linked and verified via Helixa
-- **GitHub** — OAuth-linked, confirms access to a real developer account
-- **Farcaster** — Linked via Farcaster protocol verification
+- **SIWA (Sign-In With Agent):** Agent produces a cryptographic signature proving wallet ownership
+- **X/Twitter:** OAuth-linked and verified via Helixa
+- **GitHub:** OAuth-linked, confirms access to a real developer account
+- **Farcaster:** Linked via Farcaster protocol verification
 
 **Sub-score Computation:**
 
@@ -129,7 +129,7 @@ Each channel contributes equally. An agent with all four verifications scores 10
 
 #### Factor 3: External Activity (10%)
 
-**Rationale:** Agents that are active across the broader ecosystem — committing code, completing tasks on partner platforms, integrating via APIs — demonstrate broader utility and cross-platform engagement.
+**Rationale:** Agents that are active across the broader ecosystem, committing code, completing tasks on partner platforms, integrating via APIs, demonstrate broader utility and cross-platform engagement.
 
 **Data Sources:**
 - GitHub commit activity (via linked account)
@@ -152,7 +152,7 @@ Monthly caps prevent gaming through automated commit spam or API ping floods.
 
 #### Factor 4: Coinbase Verification (10%)
 
-**Rationale:** Coinbase Verification via the Ethereum Attestation Service (EAS) represents institutional-grade identity validation. An EAS attestation from Coinbase confirms that the agent's controlling entity has passed Coinbase's KYC/identity processes — a high bar that is expensive to fake at scale.
+**Rationale:** Coinbase Verification via the Ethereum Attestation Service (EAS) represents institutional-grade identity validation. An EAS attestation from Coinbase confirms that the agent's controlling entity has passed Coinbase's KYC/identity processes, a high bar that is expensive to fake at scale.
 
 **Data Source:** Coinbase Indexer on Base, querying EAS attestation records.
 
@@ -162,7 +162,7 @@ Monthly caps prevent gaming through automated commit spam or API ping floods.
 s₄ = has_coinbase_attestation ? 100 : 0
 ```
 
-This is a binary factor. The agent either has a valid Coinbase EAS attestation on Base or it does not. The binary nature is intentional — partial Coinbase verification does not exist, and the signal value is in the attestation's presence or absence.
+This is a binary factor. The agent either has a valid Coinbase EAS attestation on Base or it does not. The binary nature is intentional; partial Coinbase verification does not exist, and the signal value is in the attestation's presence or absence.
 
 
 #### Factor 5: Account Age (10%)
@@ -217,7 +217,7 @@ s₇ = origin_score[mint_method]
 
 #### Factor 8: Narrative Completeness (5%)
 
-**Rationale:** A well-articulated identity — origin story, mission statement, lore, manifesto — indicates depth of design and intent. Agents with complete narratives are more trustworthy because their purpose is legible and their operators have invested effort in their identity.
+**Rationale:** A well-articulated identity (origin story, mission statement, lore, manifesto) indicates depth of design and intent. Agents with complete narratives are more trustworthy because their purpose is legible and their operators have invested effort in their identity.
 
 **Measured Fields:** Origin story, mission, lore, manifesto, description.
 
@@ -267,7 +267,7 @@ In a mature scoring environment, the expected distribution follows a bell curve 
 - **Marginal:** ~30–35%
 - **Junk:** ~30–35%
 
-The heavy tail in Junk/Marginal is expected and intentional — it reflects the reality that most agents are newly created, sparsely configured, or minimally active.
+The heavy tail in Junk/Marginal is expected and intentional. It reflects the reality that most agents are newly created, sparsely configured, or minimally active.
 
 ### 3.2 Non-Helixa Agent Scoring Cap
 
@@ -311,7 +311,7 @@ All verification channels require cryptographic proof:
 - **X/Twitter:** OAuth 2.0 authorization flow
 - **GitHub:** OAuth authorization with scope verification
 - **Farcaster:** Protocol-native verification via signed messages
-- **Coinbase EAS:** Onchain attestation — tamper-proof by definition
+- **Coinbase EAS:** Onchain attestation, tamper-proof by definition
 
 Self-reported data (e.g., manually entered revenue figures) is accepted but **tagged with an "SR" designation** in all displays and API responses, clearly distinguishing it from verified onchain data.
 
@@ -405,7 +405,7 @@ For platforms managing large agent populations, a bulk endpoint accepts arrays o
 
 ### 7.1 The Calibration Council
 
-Cred Score weights are not set unilaterally by Helixa. A **Council of External Founders** — comprising founders and technical leads from partner platforms — participates in weight calibration. This governance structure ensures that the methodology reflects the needs and expertise of the broader agent ecosystem, not just Helixa's perspective.
+Cred Score weights are not set unilaterally by Helixa. A **Council of External Founders**, comprising founders and technical leads from partner platforms, participates in weight calibration. This governance structure ensures that the methodology reflects the needs and expertise of the broader agent ecosystem, not just Helixa's perspective.
 
 ### 7.2 Weight Adjustment Process
 
@@ -417,7 +417,7 @@ Cred Score weights are not set unilaterally by Helixa. A **Council of External F
 
 ### 7.3 Methodology Transparency
 
-The complete scoring methodology — all weights, formulas, data sources, and tier boundaries — is public. This paper serves as the canonical reference. Updates are versioned and published to the Helixa documentation site.
+The complete scoring methodology (all weights, formulas, data sources, and tier boundaries) is public. This paper serves as the canonical reference. Updates are versioned and published to the Helixa documentation site.
 
 
 ## 8. Revenue & Economic Model
@@ -497,8 +497,8 @@ where:
 | Term | Definition |
 |------|------------|
 | **ERC-8004** | Ethereum standard for agent identity, co-authored by MetaMask, Google, and Coinbase |
-| **EAS** | Ethereum Attestation Service — onchain attestation framework |
-| **SIWA** | Sign-In With Agent — cryptographic authentication for AI agents |
+| **EAS** | Ethereum Attestation Service. Onchain attestation framework |
+| **SIWA** | Sign-In With Agent. Cryptographic authentication for AI agents |
 | **Soulbound** | Non-transferable token; permanently bound to a single wallet |
 | **Base** | Coinbase-incubated Ethereum L2 rollup |
 | **Cred Score** | Helixa's 0–100 dynamic reputation rating for AI agents |
