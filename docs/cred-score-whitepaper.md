@@ -129,7 +129,7 @@ Each channel contributes equally. An agent with all four verifications scores 10
 
 #### Factor 3: External Activity (10%)
 
-**Rationale:** Agents that are active beyond their own chain — committing code, completing tasks on partner platforms, integrating via APIs — demonstrate broader utility and engagement with the ecosystem.
+**Rationale:** Agents that are active across the broader ecosystem — committing code, completing tasks on partner platforms, integrating via APIs — demonstrate broader utility and cross-platform engagement.
 
 **Data Sources:**
 - GitHub commit activity (via linked account)
