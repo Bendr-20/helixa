@@ -112,6 +112,8 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
   useEffect(() => {
     if (meta) {
       setTokenName(meta.name || '');
+      setImageUrl(meta.image || `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`);
+      setWebsite(`https://helixa.xyz/agent/${tokenId}`);
       // Check if agent already has a linked token
       const linked = meta.attributes?.find(a => a.trait_type === 'linked-token');
       if (linked && linked.value) {
@@ -119,7 +121,7 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
         setTokenAddress(linked.value);
       }
     }
-  }, [meta]);
+  }, [meta, tokenId]);
 
   async function launchToken() {
     if (!window.ethereum) {
@@ -271,10 +273,10 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
       <label style={s.label}>Token Name</label>
       <input style={s.input} value={tokenName} onChange={e => setTokenName(e.target.value)} placeholder="e.g. My Agent Token" />
 
-      <label style={s.label}>Image URL (optional)</label>
+      <label style={s.label}>Image URL (defaults to your Aura NFT)</label>
       <input style={s.input} value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
 
-      <label style={s.label}>Website (optional)</label>
+      <label style={s.label}>Website (defaults to your agent profile)</label>
       <input style={s.input} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." />
 
       <div style={{ textAlign: 'center', marginTop: '8px' }}>
