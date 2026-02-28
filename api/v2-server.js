@@ -2823,6 +2823,131 @@ app.post('/api/terminal/agent/:id/revenue', express.json(), (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Bankr Token Launch ─────────────────────────────────────────
+function getBankrApiKey() {
+    if (process.env.BANKR_API_KEY) return process.env.BANKR_API_KEY;
+    try {
+        const cfg = require(require('os').homedir() + '/.config/bankr/config.json');
+        return cfg.apiKey || cfg.api_key;
+    } catch { return null; }
+}
+
+// POST /api/v2/agent/:id/launch-token — Launch a token via Bankr
+app.post('/api/v2/agent/:id/launch-token', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { signature, message, name, symbol, image, website, feeRecipient } = req.body;
+
+    if (!signature || !message) {
+        return res.status(400).json({ error: 'Missing signature or message' });
+    }
+
+    const bankrKey = getBankrApiKey();
+    if (!bankrKey) {
+        return res.status(503).json({ error: 'Bankr API key not configured' });
+    }
+
+    try {
+        // Verify signature recovers to the token owner
+        const recoveredAddress = ethers.verifyMessage(message, signature);
+        const owner = await readContract.ownerOf(tokenId);
+
+        if (recoveredAddress.toLowerCase() !== owner.toLowerCase()) {
+            return res.status(403).json({ error: 'Signature does not match token owner' });
+        }
+
+        // Verify message is recent (within 5 minutes)
+        const match = message.match(/Launch token for agent #(\d+) at (\d+)/);
+        if (!match || parseInt(match[1]) !== tokenId) {
+            return res.status(400).json({ error: 'Invalid message format' });
+        }
+        const msgTime = parseInt(match[2]);
+        if (Math.abs(Date.now() - msgTime) > 5 * 60 * 1000) {
+            return res.status(400).json({ error: 'Message expired (5 min window)' });
+        }
+
+        // Get agent metadata for defaults
+        const agent = await formatAgentV2(tokenId);
+        const tokenName = name || agent.name || `Agent ${tokenId}`;
+        const tokenSymbol = symbol || tokenName.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
+
+        // Build prompt for Bankr
+        let prompt = `deploy a token called "${tokenName}" with symbol ${tokenSymbol}`;
+        if (image) prompt += ` with image ${image}`;
+        if (website) prompt += ` with website ${website}`;
+
+        console.log(`[BANKR] Launching token for agent #${tokenId}: ${prompt}`);
+
+        const bankrResp = await fetch('https://api.bankr.bot/agent/prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': bankrKey,
+            },
+            body: JSON.stringify({ prompt }),
+        });
+
+        if (!bankrResp.ok) {
+            const errText = await bankrResp.text().catch(() => 'Unknown error');
+            console.error(`[BANKR] API error: ${bankrResp.status} ${errText}`);
+            return res.status(502).json({ error: `Bankr API error: ${bankrResp.status}`, detail: errText });
+        }
+
+        const bankrData = await bankrResp.json();
+        const jobId = bankrData.jobId || bankrData.id || bankrData.job_id;
+
+        console.log(`[BANKR] Job created: ${jobId} for agent #${tokenId}`);
+        res.json({ success: true, jobId, tokenId, tokenName, tokenSymbol });
+    } catch (e) {
+        console.error(`[BANKR] Launch error for #${tokenId}: ${e.message}`);
+        res.status(500).json({ error: 'Token launch failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// GET /api/v2/agent/:id/launch-status/:jobId — Poll Bankr job status
+app.get('/api/v2/agent/:id/launch-status/:jobId', async (req, res) => {
+    const tokenId = parseInt(req.params.id);
+    const { jobId } = req.params;
+
+    const bankrKey = getBankrApiKey();
+    if (!bankrKey) {
+        return res.status(503).json({ error: 'Bankr API key not configured' });
+    }
+
+    try {
+        const bankrResp = await fetch(`https://api.bankr.bot/agent/job/${jobId}`, {
+            headers: { 'X-API-Key': bankrKey },
+        });
+
+        if (!bankrResp.ok) {
+            return res.status(502).json({ error: `Bankr API error: ${bankrResp.status}` });
+        }
+
+        const data = await bankrResp.json();
+
+        // If token deployed successfully, update agent record with token address
+        const tokenAddress = data.tokenAddress || data.token_address || data.contractAddress || data.contract_address;
+        if (tokenAddress && (data.status === 'completed' || data.status === 'success')) {
+            try {
+                // Store as linked token trait (same pattern as link-token endpoint)
+                const traitUpdates = [
+                    contract.addTrait(tokenId, 'linked-token', tokenAddress),
+                    contract.addTrait(tokenId, 'linked-token-chain', 'base'),
+                    contract.addTrait(tokenId, 'linked-token-symbol', data.symbol || ''),
+                    contract.addTrait(tokenId, 'linked-token-name', data.name || data.tokenName || ''),
+                ];
+                await Promise.all(traitUpdates.map(p => p.then(tx => tx.wait()).catch(() => {})));
+                console.log(`[BANKR] Linked token ${tokenAddress} to agent #${tokenId}`);
+            } catch (e) {
+                console.error(`[BANKR] Failed to link token to agent: ${e.message}`);
+            }
+        }
+
+        res.json({ jobId, tokenId, ...data });
+    } catch (e) {
+        res.status(500).json({ error: 'Status check failed: ' + e.message.slice(0, 200) });
+    }
+});
+
 // ─── API Documentation Page ─────────────────────────────────────
 const { getDocsHTML } = require('./docs-page');
 app.get('/docs', (req, res) => {

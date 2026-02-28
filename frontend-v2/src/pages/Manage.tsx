@@ -98,6 +98,198 @@ function getAttr(meta: AgentMeta, key: string): string {
   return (meta.attributes?.find(a => a.trait_type.toLowerCase() === key.toLowerCase())?.value) || '';
 }
 
+// ─── Launch Token Panel ──────────────────────────────────────────
+function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta | null }) {
+  const [tokenName, setTokenName] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [website, setWebsite] = useState('');
+  const [launchStatus, setLaunchStatus] = useState<string | null>(null);
+  const [launchType, setLaunchType] = useState<'success' | 'error' | 'info'>('info');
+  const [launching, setLaunching] = useState(false);
+  const [tokenAddress, setTokenAddress] = useState<string | null>(null);
+  const [hasLinkedToken, setHasLinkedToken] = useState(false);
+
+  useEffect(() => {
+    if (meta) {
+      setTokenName(meta.name || '');
+      // Check if agent already has a linked token
+      const linked = meta.attributes?.find(a => a.trait_type === 'linked-token');
+      if (linked && linked.value) {
+        setHasLinkedToken(true);
+        setTokenAddress(linked.value);
+      }
+    }
+  }, [meta]);
+
+  async function launchToken() {
+    if (!window.ethereum) {
+      setLaunchStatus('No wallet found. Install MetaMask or similar.');
+      setLaunchType('error');
+      return;
+    }
+
+    setLaunching(true);
+    setLaunchStatus('Requesting wallet connection...');
+    setLaunchType('info');
+
+    try {
+      const accounts: string[] = await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+      const account = accounts[0];
+      const timestamp = Date.now();
+      const message = `Launch token for agent #${tokenId} at ${timestamp}`;
+
+      setLaunchStatus('Sign the message in your wallet...');
+      const signature: string = await (window as any).ethereum.request({ method: 'personal_sign', params: [message, account] });
+
+      setLaunchStatus('Submitting to Bankr...');
+      const resp = await fetch(`${API}/agent/${tokenId}/launch-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signature,
+          message,
+          name: tokenName || undefined,
+          image: imageUrl || undefined,
+          website: website || undefined,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        setLaunchStatus(`Launch failed: ${err.error || resp.statusText}`);
+        setLaunchType('error');
+        setLaunching(false);
+        return;
+      }
+
+      const data = await resp.json();
+      const jobId = data.jobId;
+
+      if (!jobId) {
+        setLaunchStatus('Launch submitted but no job ID returned.');
+        setLaunchType('error');
+        setLaunching(false);
+        return;
+      }
+
+      setLaunchStatus('Token deploying...');
+
+      // Poll for status
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResp = await fetch(`${API}/agent/${tokenId}/launch-status/${jobId}`);
+          const statusData = await statusResp.json();
+
+          const addr = statusData.tokenAddress || statusData.token_address || statusData.contractAddress || statusData.contract_address;
+          const jobStatus = statusData.status;
+
+          if (jobStatus === 'completed' || jobStatus === 'success') {
+            clearInterval(pollInterval);
+            if (addr) {
+              setTokenAddress(addr);
+              setLaunchStatus(`Token launched! Address: ${addr}`);
+            } else {
+              setLaunchStatus('Token launched successfully!');
+            }
+            setLaunchType('success');
+            setLaunching(false);
+          } else if (jobStatus === 'failed' || jobStatus === 'error') {
+            clearInterval(pollInterval);
+            setLaunchStatus(`Token launch failed: ${statusData.error || statusData.message || 'Unknown error'}`);
+            setLaunchType('error');
+            setLaunching(false);
+          }
+          // Otherwise keep polling
+        } catch {
+          // Network error, keep polling
+        }
+      }, 3000);
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (launching) {
+          setLaunchStatus('Launch timed out. Check back later or try again.');
+          setLaunchType('error');
+          setLaunching(false);
+        }
+      }, 5 * 60 * 1000);
+
+    } catch (e: any) {
+      if (e.code === 4001) {
+        setLaunchStatus('Signature rejected.');
+      } else {
+        setLaunchStatus(`Error: ${e.message}`);
+      }
+      setLaunchType('error');
+      setLaunching(false);
+    }
+  }
+
+  // Don't show if agent already has a linked token
+  if (hasLinkedToken && tokenAddress) {
+    return (
+      <div style={s.editCard}>
+        <h2 style={s.editHeading}>🚀 Token Linked</h2>
+        <p style={{ color: '#6eecd8', fontSize: '0.9rem', marginBottom: '8px' }}>This agent has a linked token:</p>
+        <a
+          href={`https://basescan.org/token/${tokenAddress}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#b490ff', fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all' }}
+        >
+          {tokenAddress}
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div style={s.editCard}>
+      <h2 style={s.editHeading}>🚀 Launch Token</h2>
+      <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '14px' }}>
+        Deploy a token for this agent using Bankr.
+      </p>
+
+      {launchStatus && (
+        <div style={s.statusMsg(launchType)}>{launchStatus}</div>
+      )}
+
+      {tokenAddress && launchType === 'success' && (
+        <div style={{ marginBottom: '14px' }}>
+          <a
+            href={`https://basescan.org/token/${tokenAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#b490ff', fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all' }}
+          >
+            View on BaseScan: {tokenAddress}
+          </a>
+        </div>
+      )}
+
+      <label style={s.label}>Token Name</label>
+      <input style={s.input} value={tokenName} onChange={e => setTokenName(e.target.value)} placeholder="e.g. My Agent Token" />
+
+      <label style={s.label}>Image URL (optional)</label>
+      <input style={s.input} value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." />
+
+      <label style={s.label}>Website (optional)</label>
+      <input style={s.input} value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..." />
+
+      <div style={{ textAlign: 'center', marginTop: '8px' }}>
+        <button
+          style={{ ...s.saveBtn, ...(launching ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }}
+          onClick={launchToken}
+          disabled={launching}
+        >
+          {launching ? 'Launching...' : 'Launch with Bankr'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Edit Panel ──────────────────────────────────────────────────
 function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void }) {
   const [meta, setMeta] = useState<AgentMeta | null>(null);
@@ -259,6 +451,9 @@ function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void })
         <label style={s.label}>GitHub</label>
         <input style={s.input} value={form.github} onChange={set('github')} placeholder="username or repo URL" />
       </div>
+
+      {/* Launch Token with Bankr */}
+      <LaunchTokenPanel tokenId={tokenId} meta={meta} />
 
       <div style={{ textAlign: 'center', padding: '8px 0 32px' }}>
         <button style={{ ...s.saveBtn, ...(saving ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }} onClick={save} disabled={saving}>

@@ -149,6 +149,16 @@
       "wallet": "0xcd1baf2b33781c088b30106289e745972e41b0e8",
       "name": "DegenAI",
       "tokenId": 1035
+    },
+    "willow": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1038
+    },
+    "willow-2": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1039
     }
   },
   "stats": {}
