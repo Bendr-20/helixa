@@ -232,7 +232,7 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
   if (hasLinkedToken && tokenAddress) {
     return (
       <div style={s.editCard}>
-        <h2 style={s.editHeading}>🚀 Token Linked</h2>
+        <h2 style={s.editHeading}><img src="/bankr-logo.png" alt="Bankr" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 8, borderRadius: 4 }} />Token Linked</h2>
         <p style={{ color: '#6eecd8', fontSize: '0.9rem', marginBottom: '8px' }}>This agent has a linked token:</p>
         <a
           href={`https://basescan.org/token/${tokenAddress}`}
@@ -248,7 +248,7 @@ function LaunchTokenPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta 
 
   return (
     <div style={s.editCard}>
-      <h2 style={s.editHeading}>🚀 Launch Token with Bankr</h2>
+      <h2 style={s.editHeading}><img src="/bankr-logo.png" alt="Bankr" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 8, borderRadius: 4 }} />Launch Token with Bankr</h2>
       <p style={{ color: '#888', fontSize: '0.85rem', marginBottom: '14px' }}>
         Deploy a token for this agent using Bankr.
       </p>
