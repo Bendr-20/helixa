@@ -302,36 +302,34 @@ export function Stake() {
               </a>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={{ minWidth: 420 }}>
-              <thead>
-                <tr className="text-xs text-muted uppercase tracking-wider">
-                  <th className="text-left pb-2 font-medium">Tier</th>
-                  <th className="text-left pb-2 font-medium">Cred Range</th>
-                  <th className="text-right pb-2 font-medium">Max Stake</th>
-                  <th className="text-right pb-2 font-medium">Boost</th>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-muted uppercase tracking-wider">
+                <th className="text-left pb-2 font-medium">Tier</th>
+                <th className="text-left pb-2 font-medium">Range</th>
+                <th className="text-right pb-2 font-medium">Max Stake</th>
+                <th className="text-right pb-2 font-medium">Boost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TIER_NAMES.map((name, i) => (
+                <tr key={name} className="border-t border-white/5">
+                  <td className="py-2 pr-2">
+                    <span className="font-semibold text-xs" style={{ color: TIER_COLORS[i] }}>{name}</span>
+                  </td>
+                  <td className="py-2 text-muted font-mono text-xs">
+                    {i === 0 ? '0–25' : i === 1 ? '26–50' : i === 2 ? '51–75' : i === 3 ? '76–90' : '91–100'}
+                  </td>
+                  <td className="py-2 text-right font-mono text-xs">
+                    {i === 0 ? <span className="text-red-400/70">—</span> : TIER_MAX_STAKE_USD[i]}
+                  </td>
+                  <td className="py-2 text-right font-mono text-xs" style={{ color: TIER_COLORS[i] }}>
+                    {i === 0 ? '—' : `${[0, 0.75, 1, 1.5, 2][i]}×`}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {TIER_NAMES.map((name, i) => (
-                  <tr key={name} className="border-t border-white/5">
-                    <td className="py-2.5">
-                      <span className="font-semibold" style={{ color: TIER_COLORS[i] }}>{name}</span>
-                    </td>
-                    <td className="py-2.5 text-muted font-mono text-xs">
-                      {i === 0 ? '0–25' : i === 1 ? '26–50' : i === 2 ? '51–75' : i === 3 ? '76–90' : '91–100'}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-xs">
-                      {i === 0 ? <span className="text-red-400/70">—</span> : TIER_MAX_STAKE_USD[i]}
-                    </td>
-                    <td className="py-2.5 text-right font-mono text-xs" style={{ color: TIER_COLORS[i] }}>
-                      {i === 0 ? '—' : `${[0, 0.75, 1, 1.5, 2][i]}×`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Wallet bar */}
