@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { BarChart3, Lock, RefreshCw, CheckCircle, XCircle, Bot } from 'lucide-react';
 import { AuraPreview } from '../components/AuraPreview';
@@ -7,9 +7,24 @@ import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
 import { useAgent } from '../hooks/useAgents';
 import { ORIGIN_DISPLAY, EXPLORER_URL, CONTRACT_ADDRESS } from '../lib/constants';
 
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
+
 export function AgentProfile() {
   const { id } = useParams<{ id: string }>();
   const { data: agent, isLoading, error } = useAgent(id);
+  const [stakeData, setStakeData] = useState<{ staked: string; effective: string; vouchCount: number } | null>(null);
+
+  useEffect(() => {
+    if (!agent?.tokenId) return;
+    fetch(`${API_URL}/api/v2/stake/${agent.tokenId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (parseFloat(d.staked || '0') > 0 || d.vouchCount > 0) {
+          setStakeData({ staked: d.staked, effective: d.effectiveStake, vouchCount: d.vouchCount });
+        }
+      })
+      .catch(() => {});
+  }, [agent?.tokenId]);
 
   if (isLoading) {
     return (
@@ -176,6 +191,30 @@ export function AgentProfile() {
                         </a>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Staking Info */}
+                {stakeData && (
+                  <div className="glass-card p-3 mt-4">
+                    <div className="text-muted text-xs mb-2 uppercase tracking-wider font-semibold">⚡ Staked</div>
+                    <div className="grid grid-cols-2 gap-2 text-center">
+                      <div>
+                        <div className="text-lg font-bold" style={{ color: '#6eecd8' }}>
+                          {parseFloat(stakeData.staked).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-muted text-xs">$CRED</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold" style={{ color: '#b490ff' }}>
+                          {parseFloat(stakeData.effective).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                        <div className="text-muted text-xs">Effective</div>
+                      </div>
+                    </div>
+                    <Link to={`/stake`} className="text-xs block text-center mt-2 hover:underline" style={{ color: '#6eecd8' }}>
+                      Stake on this agent →
+                    </Link>
                   </div>
                 )}
 
