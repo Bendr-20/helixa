@@ -9,9 +9,11 @@ const HELIXA_V2 = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
 const BASE_RPC = 'https://base.drpc.org';
 
-const TIER_NAMES = ['Junk', 'Marginal', 'Speculative', 'Operational', 'Preferred'] as const;
+// Must match contract: JUNK ≤25, MARGINAL ≤50, QUALIFIED ≤75, PRIME ≤90, PREFERRED 91+
+const TIER_NAMES = ['Junk', 'Marginal', 'Qualified', 'Prime', 'Preferred'] as const;
 const TIER_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#6eecd8'] as const;
-const TIER_MIN_CRED = [0, 20, 40, 60, 80];
+const TIER_MIN_CRED = [0, 26, 51, 76, 91];
+const TIER_MAX_STAKE = ['0', '1,000', '10,000', '100,000', '∞'];
 
 // Minimal ABIs
 const ERC20_ABI = [
@@ -73,21 +75,16 @@ function fmt(val: bigint, dp = 2): string {
   return n.toLocaleString(undefined, { maximumFractionDigits: dp });
 }
 
-function tierName(cred: number): string {
-  if (cred >= 80) return TIER_NAMES[4];
-  if (cred >= 60) return TIER_NAMES[3];
-  if (cred >= 40) return TIER_NAMES[2];
-  if (cred >= 20) return TIER_NAMES[1];
-  return TIER_NAMES[0];
+function tierIdx(cred: number): number {
+  if (cred >= 91) return 4;
+  if (cred >= 76) return 3;
+  if (cred >= 51) return 2;
+  if (cred >= 26) return 1;
+  return 0;
 }
 
-function tierColor(cred: number): string {
-  if (cred >= 80) return TIER_COLORS[4];
-  if (cred >= 60) return TIER_COLORS[3];
-  if (cred >= 40) return TIER_COLORS[2];
-  if (cred >= 20) return TIER_COLORS[1];
-  return TIER_COLORS[0];
-}
+function tierName(cred: number): string { return TIER_NAMES[tierIdx(cred)]; }
+function tierColor(cred: number): string { return TIER_COLORS[tierIdx(cred)]; }
 
 // ─── Component ────────────────────────────────────────────────────
 export function Stake() {
@@ -290,9 +287,9 @@ export function Stake() {
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollSnapType: 'x mandatory' }}>
             {TIER_NAMES.map((name, i) => (
               <div key={name} className="text-center p-3 rounded-lg flex-shrink-0" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30`, minWidth: '5.5rem', scrollSnapAlign: 'start' }}>
-                <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+</div>
+                <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+ Cred</div>
                 <div className="font-bold text-sm" style={{ color: TIER_COLORS[i] }}>{name}</div>
-                <div className="text-xs text-muted mt-1">{['0.5x', '0.75x', '1x', '1.5x', '2x'][i]}</div>
+                <div className="text-xs text-muted mt-1">Max {TIER_MAX_STAKE[i]}</div>
               </div>
             ))}
           </div>
