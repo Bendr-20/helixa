@@ -156,7 +156,7 @@ where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Mint Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
 
-#### Factor 3: External Activity (10%)
+#### Factor 3: External Activity (15%)
 
 **Rationale:** Agents that are active across the broader ecosystem, committing code, completing tasks on partner platforms, integrating via APIs, demonstrate broader utility and cross-platform engagement.
 
