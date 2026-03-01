@@ -343,18 +343,44 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
-                'POST /api/v2/mint': 'Mint new agent (SIWA required, free Phase 1)',
-                'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
+                'POST /api/v2/mint': `Mint new agent (SIWA + $${PRICING.agentMint} USDC via x402)`,
+                'POST /api/v2/agent/:id/update': `Update agent (SIWA + $${PRICING.update} USDC via x402)`,
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
                 'POST /api/v2/agent/:id/coinbase-verify': 'Check Coinbase EAS attestation & boost Cred (SIWA required)',
+                'GET /api/v2/agent/:id/cred-report': `Full Cred Report ($${PRICING.credReport} USDC via x402)`,
             },
         },
         pricing: {
-            phase: 1,
-            note: 'All operations free during Phase 1 (0-1000 agents)',
-            agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
-            update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
+            agentMint: `$${PRICING.agentMint} USDC`,
+            update: `$${PRICING.update} USDC`,
+            credReport: `$${PRICING.credReport} USDC`,
+            network: 'Base (eip155:8453)',
+            asset: USDC_ADDRESS,
+            assetName: 'USDC',
+        },
+        x402: {
+            version: 2,
+            how_to_mint: {
+                step1: 'Sign SIWA message: "Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet {address} at {timestamp}"',
+                step2: `Send $${PRICING.agentMint} USDC to ${DEPLOYER_ADDRESS} on Base`,
+                step3: 'POST /api/v2/mint with headers: Authorization (SIWA) + X-Payment-Proof (TX hash)',
+                example: {
+                    method: 'POST',
+                    url: 'https://api.helixa.xyz/api/v2/mint',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer {address}:{timestamp}:{signature}',
+                        'X-Payment-Proof': '{txHash}',
+                    },
+                    body: { address: '{agentWalletAddress}' },
+                },
+                notes: [
+                    'TX hash is reusable until it is successfully consumed by a mint',
+                    'USDC on Base: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                    'If you get 402, the PAYMENT-REQUIRED header contains machine-readable payment instructions',
+                ],
+            },
         },
     });
 });
@@ -1625,14 +1651,27 @@ app.get('/.well-known/agent-registry', (req, res) => {
             docs: 'https://helixa.xyz/docs/getting-started',
         },
         pricing: {
-            mint: PRICING.agentMint === 0 ? 'free' : `${PRICING.agentMint} USDC`,
-            update: PRICING.update === 0 ? 'free' : `${PRICING.update} USDC`,
+            mint: `${PRICING.agentMint} USDC`,
+            update: `${PRICING.update} USDC`,
+            credReport: `${PRICING.credReport} USDC`,
             protocol: 'x402',
+            payTo: DEPLOYER_ADDRESS,
+            asset: USDC_ADDRESS,
+            network: 'eip155:8453',
         },
         auth: {
             type: 'SIWA',
             format: 'address:timestamp:signature',
             description: 'Sign-In With Agent — agent signs a message with its wallet key',
+        },
+        x402_mint_flow: {
+            step1: `Send ${PRICING.agentMint} USDC to ${DEPLOYER_ADDRESS} on Base`,
+            step2: 'Sign SIWA message with your agent wallet',
+            step3: 'POST /api/v2/mint with Authorization + X-Payment-Proof headers',
+            headers: {
+                'Authorization': 'Bearer {address}:{timestamp}:{signature}',
+                'X-Payment-Proof': '{txHash_from_step1}',
+            },
         },
         social: {
             x: 'https://x.com/HelixaXYZ',
@@ -1674,7 +1713,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
             '/api/v2/mint': {
                 post: {
                     summary: 'Mint a new agent identity',
-                    description: 'Requires SIWA authentication. Optionally accepts x402 payment. Creates onchain identity with name, framework, personality, narrative, and traits.',
+                    description: `Requires SIWA auth + $${PRICING.agentMint} USDC payment via x402. Steps: (1) Sign SIWA message with agent wallet, (2) Send $${PRICING.agentMint} USDC to ${DEPLOYER_ADDRESS} on Base, (3) POST with Authorization header (SIWA) and X-Payment-Proof header (TX hash). Body must include name and framework.`,
                     security: [{ siwa: [] }],
                     requestBody: {
                         required: true,
@@ -3032,7 +3071,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
         console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
         console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
         console.log(`   Auth: SIWA (Sign-In With Agent)`);
-        console.log(`   Payments: x402 (Phase 1 — all free)`);
+        console.log(`   Payments: x402 (mint $${PRICING.agentMint}, update $${PRICING.update}, cred-report $${PRICING.credReport})`);
         console.log(`   RPC: ${RPC_URL}`);
         console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
         console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
