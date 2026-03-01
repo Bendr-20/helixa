@@ -16,6 +16,7 @@ const pageImports = {
   token: () => import('./pages/Token').then(m => ({ default: m.Token })),
   messages: () => import('./pages/Messages').then(m => ({ default: m.Messages })),
   credReport: () => import('./pages/CredReport').then(m => ({ default: m.CredReport })),
+  stake: () => import('./pages/Stake').then(m => ({ default: m.Stake })),
 };
 
 const Home = lazy(pageImports.home);
@@ -29,6 +30,7 @@ const Report = lazy(pageImports.report);
 const Token = lazy(pageImports.token);
 const MessagesPage = lazy(pageImports.messages);
 const CredReport = lazy(pageImports.credReport);
+const StakePage = lazy(pageImports.stake);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -51,6 +53,7 @@ export const preloadMap: Record<string, () => void> = {
   '/token': pageImports.token,
   '/messages': pageImports.messages,
   '/cred-report': pageImports.credReport,
+  '/stake': pageImports.stake,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -110,6 +113,7 @@ function AnimatedRoutes() {
           <Route path="/token" element={<Token />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/cred-report" element={<CredReport />} />
+          <Route path="/stake" element={<StakePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

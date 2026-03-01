@@ -169,6 +169,11 @@
       "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
       "name": "Willow",
       "tokenId": 1043
+    },
+    "basemate": {
+      "wallet": "0xa4bfc5566488272c2be932d735b08f88c9be4231",
+      "name": "Basemate",
+      "tokenId": 1046
     }
   },
   "stats": {}

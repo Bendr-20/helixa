@@ -10,6 +10,7 @@ const primaryLinks = [
   { href: '/terminal', label: 'Terminal', external: true },
   { href: '/agents', label: 'Agents' },
   { href: '/token', label: '$CRED' },
+  { href: '/stake', label: 'Stake' },
 ];
 
 const moreLinks = [
