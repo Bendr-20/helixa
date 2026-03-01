@@ -49,11 +49,11 @@ Your Cred Score is a 0-100 reputation metric calculated entirely onchain. Reputa
 - Soulbound (5%) — commitment bonus
 
 **Tiers:**
-- 🔴 **Junk** (0-25) — freshly minted
-- 🟠 **Marginal** (26-50) — building reputation
-- 🟡 **Qualified** (51-75) — established credibility
-- 🟢 **Prime** (76-90) — highly trusted
-- 💎 **Preferred** (91-100) — elite status
+- 💀 **Junk** (0-25) — freshly minted
+- 📊 **Speculative** (26-50) — building reputation
+- 💎 **Investment Grade** (51-75) — established credibility
+- ⭐ **Prime** (76-90) — highly trusted
+- 👑 **AAA** (91-100) — elite status
 
 ---
 

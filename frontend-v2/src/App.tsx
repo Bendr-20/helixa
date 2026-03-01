@@ -45,7 +45,7 @@ export const preloadMap: Record<string, () => void> = {
   '/': pageImports.home,
   '/mint': pageImports.mint,
   '/agents': pageImports.directory,
-  '/leaderboard': pageImports.leaderboard,
+  // '/leaderboard': pageImports.leaderboard,
   '/docs': pageImports.docs,
   '/manage': pageImports.manage,
   '/token': pageImports.token,
@@ -103,7 +103,7 @@ function AnimatedRoutes() {
           <Route path="/mint" element={<Mint />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/agent/:id" element={<AgentProfile />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
+          {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
           <Route path="/manage" element={<Manage />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/report/:id" element={<Report />} />

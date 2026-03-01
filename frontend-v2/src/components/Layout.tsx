@@ -13,7 +13,7 @@ const primaryLinks = [
 ];
 
 const moreLinks = [
-  { href: '/leaderboard', label: 'Leaderboard' },
+  // { href: '/leaderboard', label: 'Leaderboard' }, // removed per Quigley
   { href: '/manage', label: 'Manage' },
   { href: '/messages', label: 'Messages' },
   { href: '/docs', label: 'Docs' },
