@@ -5,17 +5,14 @@ import { ethers } from 'ethers';
 // ─── Constants ────────────────────────────────────────────────────
 const STAKING_ADDRESS = '0xd40ECD47201D8ea25181dc05a638e34469399613';
 const CRED_TOKEN = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
-const HELIXA_V2 = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
 const BASE_RPC = 'https://base.drpc.org';
 
-// Must match contract: JUNK ≤25, MARGINAL ≤50, QUALIFIED ≤75, PRIME ≤90, PREFERRED 91+
 const TIER_NAMES = ['Junk', 'Marginal', 'Qualified', 'Prime', 'Preferred'] as const;
 const TIER_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#6eecd8'] as const;
 const TIER_MIN_CRED = [0, 26, 51, 76, 91];
 const TIER_MAX_STAKE = ['0', '1,000', '10,000', '100,000', '∞'];
 
-// Minimal ABIs
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
   'function allowance(address,address) view returns (uint256)',
@@ -35,36 +32,11 @@ const STAKING_ABI = [
   'function getVouchCount(uint256) view returns (uint256)',
   'function LOCK_PERIOD() view returns (uint256)',
   'function EARLY_UNSTAKE_PENALTY_BPS() view returns (uint256)',
-  'function stakeThresholds(uint256) view returns (uint256)',
-];
-
-const HELIXA_ABI = [
-  'function getCredScore(uint256) view returns (uint8)',
 ];
 
 const readProvider = new ethers.JsonRpcProvider(BASE_RPC);
 const stakingRead = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
 const tokenRead = new ethers.Contract(CRED_TOKEN, ERC20_ABI, readProvider);
-const helixaRead = new ethers.Contract(HELIXA_V2, HELIXA_ABI, readProvider);
-
-// ─── Types ────────────────────────────────────────────────────────
-interface AgentStakeInfo {
-  tokenId: number;
-  name: string;
-  credScore: number;
-  staked: bigint;
-  stakedAt: number;
-  effectiveStake: bigint;
-  pendingRewards: bigint;
-  vouchCount: number;
-}
-
-interface GlobalStats {
-  totalStaked: bigint;
-  totalEffective: bigint;
-  lockPeriod: number;
-  penaltyBps: number;
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function fmt(val: bigint, dp = 2): string {
@@ -82,9 +54,11 @@ function tierIdx(cred: number): number {
   if (cred >= 26) return 1;
   return 0;
 }
+function tierName(cred: number) { return TIER_NAMES[tierIdx(cred)]; }
+function tierColor(cred: number) { return TIER_COLORS[tierIdx(cred)]; }
 
-function tierName(cred: number): string { return TIER_NAMES[tierIdx(cred)]; }
-function tierColor(cred: number): string { return TIER_COLORS[tierIdx(cred)]; }
+interface Agent { tokenId: number; name: string; credScore: number; framework: string; }
+interface StakeInfo { staked: bigint; stakedAt: number; effectiveStake: bigint; pendingRewards: bigint; vouchCount: number; }
 
 // ─── Component ────────────────────────────────────────────────────
 export function Stake() {
@@ -93,12 +67,20 @@ export function Stake() {
   const wallet = wallets?.[0];
   const address = wallet?.address;
 
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
-  const [agents, setAgents] = useState<AgentStakeInfo[]>([]);
+  const [search, setSearch] = useState('');
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [stakeInfo, setStakeInfo] = useState<StakeInfo | null>(null);
+  const [stakeLoading, setStakeLoading] = useState(false);
+
   const [credBalance, setCredBalance] = useState<bigint>(0n);
   const [allowance, setAllowance] = useState<bigint>(0n);
-  const [selectedAgent, setSelectedAgent] = useState<number | null>(null);
+  const [globalTotalStaked, setGlobalTotalStaked] = useState<bigint>(0n);
+  const [globalTotalEffective, setGlobalTotalEffective] = useState<bigint>(0n);
+  const [lockDays, setLockDays] = useState(7);
+  const [penaltyPct, setPenaltyPct] = useState(10);
+
   const [stakeAmount, setStakeAmount] = useState('');
   const [unstakeAmount, setUnstakeAmount] = useState('');
   const [vouchAgentId, setVouchAgentId] = useState('');
@@ -107,117 +89,106 @@ export function Stake() {
   const [txHash, setTxHash] = useState('');
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'stake' | 'unstake' | 'vouch' | 'rewards'>('stake');
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // ─── Load agents (sorted by cred, no junk) ─────────────────────
+  const loadAgents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/v2/agents?sort=credScore&order=desc&limit=200`);
+      const data = await res.json();
+      const list = (data.agents || [])
+        .filter((a: any) => (a.credScore || 0) >= 26) // exclude junk
+        .map((a: any) => ({
+          tokenId: a.tokenId,
+          name: a.name,
+          credScore: a.credScore || 0,
+          framework: a.framework || '',
+        }));
+      setAgents(list);
+    } catch {}
+    setLoading(false);
+  }, []);
 
   // ─── Load global stats ──────────────────────────────────────────
   const loadGlobal = useCallback(async () => {
     try {
-      const [totalStaked, totalEffective, lockPeriod, penaltyBps] = await Promise.all([
+      const [ts, te, lp, pp] = await Promise.all([
         stakingRead.totalStaked(),
         stakingRead.totalEffectiveStake(),
         stakingRead.LOCK_PERIOD(),
         stakingRead.EARLY_UNSTAKE_PENALTY_BPS(),
       ]);
-      setGlobalStats({
-        totalStaked, totalEffective,
-        lockPeriod: Number(lockPeriod),
-        penaltyBps: Number(penaltyBps),
-      });
-    } catch (e) {
-      console.error('Failed to load global stats:', e);
-    }
+      setGlobalTotalStaked(ts);
+      setGlobalTotalEffective(te);
+      setLockDays(Math.round(Number(lp) / 86400));
+      setPenaltyPct(Number(pp) / 100);
+    } catch {}
   }, []);
 
-  // ─── Load user's agents ─────────────────────────────────────────
-  const loadUserAgents = useCallback(async () => {
-    if (!address) { setLoading(false); return; }
-    setLoading(true);
+  // ─── Load balance ───────────────────────────────────────────────
+  const loadBalance = useCallback(async () => {
+    if (!address) return;
     try {
-      // Try owner filter first, fall back to all agents (limited)
-      let agentList: any[] = [];
-      try {
-        const res = await fetch(`${API_URL}/api/v2/agents?owner=${address}&limit=50`);
-        const data = await res.json();
-        agentList = data.agents || [];
-      } catch {}
-      // If no owner match, show top agents by cred so user can pick
-      if (agentList.length === 0) {
-        const res = await fetch(`${API_URL}/api/v2/agents?sort=credScore&order=desc&limit=20`);
-        const data = await res.json();
-        agentList = data.agents || [];
-      }
-
       const [bal, allow] = await Promise.all([
         tokenRead.balanceOf(address),
         tokenRead.allowance(address, STAKING_ADDRESS),
       ]);
       setCredBalance(bal);
       setAllowance(allow);
+    } catch {}
+  }, [address]);
 
-      const infos: AgentStakeInfo[] = await Promise.all(
-        agentList.map(async (a: any) => {
-          const tokenId = a.tokenId || a.id;
-          try {
-            const [stakeData, eff, pending, vc, cred] = await Promise.all([
-              stakingRead.stakes(tokenId),
-              stakingRead.effectiveStake(tokenId),
-              stakingRead.pendingRewards(tokenId),
-              stakingRead.getVouchCount(tokenId),
-              helixaRead.getCredScore(tokenId).catch(() => 0),
-            ]);
-            return {
-              tokenId: Number(tokenId),
-              name: a.name || `Agent #${tokenId}`,
-              credScore: Number(cred),
-              staked: stakeData.amount || 0n,
-              stakedAt: Number(stakeData.stakedAt || 0),
-              effectiveStake: eff,
-              pendingRewards: pending,
-              vouchCount: Number(vc),
-            };
-          } catch {
-            return {
-              tokenId: Number(tokenId), name: a.name || `Agent #${tokenId}`,
-              credScore: a.credScore || 0, staked: 0n, stakedAt: 0,
-              effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0,
-            };
-          }
-        })
-      );
-
-      setAgents(infos);
-      if (infos.length > 0 && selectedAgent === null) setSelectedAgent(infos[0].tokenId);
+  // ─── Load stake info for selected agent ─────────────────────────
+  const loadStakeInfo = useCallback(async (tokenId: number) => {
+    setStakeLoading(true);
+    setStakeInfo(null);
+    try {
+      const [sd, eff, pending, vc] = await Promise.all([
+        stakingRead.stakes(tokenId),
+        stakingRead.effectiveStake(tokenId),
+        stakingRead.pendingRewards(tokenId),
+        stakingRead.getVouchCount(tokenId),
+      ]);
+      setStakeInfo({
+        staked: sd.amount || sd[1] || 0n,
+        stakedAt: Number(sd.stakedAt || sd[2] || 0),
+        effectiveStake: eff,
+        pendingRewards: pending,
+        vouchCount: Number(vc),
+      });
     } catch (e) {
-      console.error('Failed to load agents:', e);
+      console.error('Failed to load stake info:', e);
+      setStakeInfo({ staked: 0n, stakedAt: 0, effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0 });
     }
-    setLoading(false);
-  }, [address, selectedAgent]);
+    setStakeLoading(false);
+  }, []);
 
-  useEffect(() => { loadGlobal(); }, [loadGlobal]);
-  useEffect(() => { if (ready) loadUserAgents(); }, [ready, address, loadUserAgents]);
+  useEffect(() => { loadAgents(); loadGlobal(); }, [loadAgents, loadGlobal]);
+  useEffect(() => { if (ready && address) loadBalance(); }, [ready, address, loadBalance]);
+  useEffect(() => { if (selectedAgent) loadStakeInfo(selectedAgent.tokenId); }, [selectedAgent, loadStakeInfo]);
 
-  const selected = agents.find(a => a.tokenId === selectedAgent);
+  // ─── Filtered agents ────────────────────────────────────────────
+  const filtered = search
+    ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || String(a.tokenId).includes(search))
+    : agents;
 
-  // ─── Get signer from Privy wallet ──────────────────────────────
+  // ─── Signer ─────────────────────────────────────────────────────
   async function getSigner() {
     if (!wallet) throw new Error('No wallet');
     const eip1193 = await wallet.getEthereumProvider();
-    const provider = new ethers.BrowserProvider(eip1193);
-    return provider.getSigner();
+    return new ethers.BrowserProvider(eip1193).getSigner();
   }
 
-  // ─── Transaction helpers ────────────────────────────────────────
   async function sendTx(fn: string, args: any[]) {
-    setError('');
-    setTxHash('');
-    setTxPending(fn);
+    setError(''); setTxHash(''); setTxPending(fn);
     try {
       const signer = await getSigner();
       const contract = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, signer);
       const tx = await contract[fn](...args);
       setTxHash(tx.hash);
       await tx.wait();
-      await Promise.all([loadGlobal(), loadUserAgents()]);
+      if (selectedAgent) loadStakeInfo(selectedAgent.tokenId);
+      loadBalance(); loadGlobal();
       setStakeAmount(''); setUnstakeAmount(''); setVouchAmount(''); setVouchAgentId('');
     } catch (e: any) {
       setError(e.reason || e.shortMessage || e.message || 'Transaction failed');
@@ -226,8 +197,7 @@ export function Stake() {
   }
 
   async function handleApprove() {
-    setError('');
-    setTxPending('approve');
+    setError(''); setTxPending('approve');
     try {
       const signer = await getSigner();
       const token = new ethers.Contract(CRED_TOKEN, ERC20_ABI, signer);
@@ -237,8 +207,7 @@ export function Stake() {
       setAllowance(ethers.MaxUint256);
     } catch (e: any) {
       setError(e.reason || e.shortMessage || e.message || 'Approval failed');
-      setTxPending('');
-      throw e;
+      setTxPending(''); throw e;
     }
     setTxPending('');
   }
@@ -247,54 +216,51 @@ export function Stake() {
     if (!selectedAgent || !stakeAmount) return;
     const amt = ethers.parseEther(stakeAmount);
     if (allowance < amt) await handleApprove();
-    await sendTx('stake', [selectedAgent, amt]);
+    await sendTx('stake', [selectedAgent.tokenId, amt]);
   }
 
   async function handleUnstake() {
     if (!selectedAgent || !unstakeAmount) return;
-    await sendTx('unstake', [selectedAgent, ethers.parseEther(unstakeAmount)]);
+    await sendTx('unstake', [selectedAgent.tokenId, ethers.parseEther(unstakeAmount)]);
   }
 
   async function handleClaim() {
     if (!selectedAgent) return;
-    await sendTx('claimRewards', [selectedAgent]);
+    await sendTx('claimRewards', [selectedAgent.tokenId]);
   }
 
   async function handleVouch() {
     if (!selectedAgent || !vouchAgentId || !vouchAmount) return;
     const amt = ethers.parseEther(vouchAmount);
     if (allowance < amt) await handleApprove();
-    await sendTx('vouch', [parseInt(vouchAgentId), selectedAgent, amt]);
+    await sendTx('vouch', [parseInt(vouchAgentId), selectedAgent.tokenId, amt]);
   }
 
   // ─── Render ─────────────────────────────────────────────────────
-  const lockDays = globalStats ? Math.round(globalStats.lockPeriod / 86400) : 7;
-  const penaltyPct = globalStats ? (globalStats.penaltyBps / 100) : 10;
-
   return (
     <div className="py-12">
-      <div className="container max-w-4xl">
+      <div className="container max-w-5xl">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10">
           <h1 className="text-4xl font-heading font-bold mb-3">
             <span className="text-gradient">Stake $CRED</span>
           </h1>
           <p className="text-muted text-lg max-w-2xl mx-auto">
-            Stake on agents you believe in. Higher cred = bigger boost. Earn rewards from protocol revenue.
+            Back agents you believe in. Higher cred = bigger boost on your stake.
           </p>
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total Staked" value={globalStats ? `${fmt(globalStats.totalStaked)} $CRED` : '—'} />
-          <StatCard label="Effective Stake" value={globalStats ? `${fmt(globalStats.totalEffective)} $CRED` : '—'} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} />
+          <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} />
           <StatCard label="Lock Period" value={`${lockDays} days`} />
           <StatCard label="Early Exit Fee" value={`${penaltyPct}%`} />
         </div>
 
         {/* Tier Explainer */}
-        <div className="card p-6 mb-8">
-          <h3 className="text-lg font-heading font-semibold mb-4">Cred Tiers & Boost Multipliers</h3>
+        <div className="card p-5 mb-6">
+          <h3 className="text-sm font-heading font-semibold mb-3 uppercase tracking-wider">Cred Tiers & Max Stake</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollSnapType: 'x mandatory' }}>
             {TIER_NAMES.map((name, i) => (
               <div key={name} className="text-center p-3 rounded-lg flex-shrink-0" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30`, minWidth: '5.5rem', scrollSnapAlign: 'start' }}>
@@ -306,97 +272,111 @@ export function Stake() {
           </div>
         </div>
 
-        {!authenticated ? (
-          <div className="card p-12 text-center">
-            <div className="text-5xl mb-4">🔒</div>
-            <h2 className="text-xl font-heading font-semibold mb-3">Connect to Stake</h2>
-            <p className="text-muted mb-6">Connect your wallet to stake $CRED on your agents.</p>
-            <button onClick={login} className="btn btn-primary text-lg px-8 py-3">Connect Wallet</button>
+        {/* Wallet bar */}
+        {authenticated && address && (
+          <div className="card p-4 mb-6 flex items-center justify-between">
+            <div className="text-sm text-muted">
+              <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
+            </div>
+            <div className="text-sm font-mono font-semibold">{fmt(credBalance)} $CRED</div>
           </div>
-        ) : loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="spinner" style={{ width: 40, height: 40 }} />
-          </div>
-        ) : agents.length === 0 ? (
-          <div className="card p-12 text-center">
-            <div className="text-5xl mb-4">🤖</div>
-            <h2 className="text-xl font-heading font-semibold mb-3">No Agents Found</h2>
-            <p className="text-muted mb-6">You need a Helixa agent to stake. Mint one first!</p>
-            <a href="/mint" className="btn btn-primary">Mint Agent</a>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Left: Agent Selector */}
-            <div className="md:col-span-1">
-              <div className="card p-4">
-                <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wider">Agents</h3>
-                <input
-                  type="text" placeholder="Search by name or ID..."
-                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  className="input w-full mb-3 text-sm"
-                />
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {agents.filter(a => !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase()) || String(a.tokenId).includes(searchQuery)).map(a => (
+        )}
+
+        <div className="grid md:grid-cols-5 gap-6">
+          {/* Left: Agent List */}
+          <div className="md:col-span-2">
+            <div className="card p-4">
+              <input
+                type="text" placeholder="Search agents..."
+                value={search} onChange={e => setSearch(e.target.value)}
+                className="input w-full mb-3 text-sm"
+              />
+              {loading ? (
+                <div className="flex justify-center py-8"><div className="spinner" style={{ width: 24, height: 24 }} /></div>
+              ) : (
+                <div className="space-y-1 max-h-[28rem] overflow-y-auto pr-1">
+                  {filtered.map(a => (
                     <button
                       key={a.tokenId}
-                      onClick={() => setSelectedAgent(a.tokenId)}
-                      className={`w-full text-left p-3 rounded-lg transition-all ${
-                        selectedAgent === a.tokenId
+                      onClick={() => { setSelectedAgent(a); setError(''); setTxHash(''); }}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+                        selectedAgent?.tokenId === a.tokenId
                           ? 'bg-mint/10 border border-mint/30'
                           : 'hover:bg-white/5 border border-transparent'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-semibold text-sm">{a.name}</div>
-                          <div className="text-xs text-muted">#{a.tokenId}</div>
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm truncate">{a.name}</div>
+                          <div className="text-xs text-muted">#{a.tokenId} · {a.framework}</div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs font-mono" style={{ color: tierColor(a.credScore) }}>{a.credScore} Cred</div>
-                          {a.staked > 0n && <div className="text-xs text-muted">{fmt(a.staked)} staked</div>}
+                        <div className="flex-shrink-0 ml-2">
+                          <span className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded" style={{
+                            color: tierColor(a.credScore),
+                            background: `${tierColor(a.credScore)}15`,
+                          }}>
+                            {a.credScore}
+                          </span>
                         </div>
                       </div>
                     </button>
                   ))}
+                  {filtered.length === 0 && (
+                    <div className="text-center text-muted py-6 text-sm">No agents found</div>
+                  )}
                 </div>
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted">$CRED Balance</span>
-                    <span className="font-mono">{fmt(credBalance)}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
+          </div>
 
-            {/* Right: Actions */}
-            <div className="md:col-span-2">
-              {selected && (
-                <>
-                  {/* Agent Info Card */}
-                  <div className="card p-5 mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h2 className="text-xl font-heading font-bold">{selected.name}</h2>
-                        <span className="text-sm px-2 py-0.5 rounded-full font-semibold" style={{
-                          color: tierColor(selected.credScore),
-                          background: `${tierColor(selected.credScore)}20`,
-                        }}>
-                          {tierName(selected.credScore)} · {selected.credScore} Cred
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-heading font-bold">{fmt(selected.effectiveStake)}</div>
-                        <div className="text-xs text-muted">Effective Stake</div>
-                      </div>
+          {/* Right: Stake Panel */}
+          <div className="md:col-span-3">
+            {!selectedAgent ? (
+              <div className="card p-12 text-center">
+                <div className="text-4xl mb-3">👈</div>
+                <p className="text-muted">Select an agent to stake on</p>
+              </div>
+            ) : (
+              <>
+                {/* Agent Header */}
+                <div className="card p-5 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h2 className="text-xl font-heading font-bold">{selectedAgent.name}</h2>
+                      <span className="text-sm px-2 py-0.5 rounded-full font-semibold" style={{
+                        color: tierColor(selectedAgent.credScore),
+                        background: `${tierColor(selectedAgent.credScore)}20`,
+                      }}>
+                        {tierName(selectedAgent.credScore)} · {selectedAgent.credScore} Cred
+                      </span>
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <MiniStat label="Staked" value={`${fmt(selected.staked)} $CRED`} />
-                      <MiniStat label="Pending Rewards" value={`${fmt(selected.pendingRewards)} $CRED`} />
-                      <MiniStat label="Vouches" value={String(selected.vouchCount)} />
+                    <div className="text-right">
+                      {stakeLoading ? (
+                        <div className="spinner" style={{ width: 20, height: 20 }} />
+                      ) : stakeInfo ? (
+                        <>
+                          <div className="text-2xl font-heading font-bold">{fmt(stakeInfo.effectiveStake)}</div>
+                          <div className="text-xs text-muted">Effective Stake</div>
+                        </>
+                      ) : null}
                     </div>
                   </div>
+                  {stakeInfo && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <MiniStat label="Staked" value={`${fmt(stakeInfo.staked)} $CRED`} />
+                      <MiniStat label="Rewards" value={`${fmt(stakeInfo.pendingRewards)} $CRED`} />
+                      <MiniStat label="Vouches" value={String(stakeInfo.vouchCount)} />
+                    </div>
+                  )}
+                </div>
 
-                  {/* Action Tabs */}
+                {/* Actions */}
+                {!authenticated ? (
+                  <div className="card p-8 text-center">
+                    <p className="text-muted mb-4">Connect wallet to stake</p>
+                    <button onClick={login} className="btn btn-primary">Connect Wallet</button>
+                  </div>
+                ) : (
                   <div className="card">
                     <div className="flex border-b border-white/10">
                       {(['stake', 'unstake', 'vouch', 'rewards'] as const).map(t => (
@@ -415,7 +395,7 @@ export function Stake() {
                     <div className="p-5">
                       {tab === 'stake' && (
                         <div>
-                          <label className="block text-sm text-muted mb-2">Amount to stake</label>
+                          <label className="block text-sm text-muted mb-2">Amount to stake on {selectedAgent.name}</label>
                           <div className="flex gap-2 mb-3">
                             <input type="number" placeholder="0.00" value={stakeAmount}
                               onChange={e => setStakeAmount(e.target.value)} className="input flex-1" />
@@ -423,13 +403,12 @@ export function Stake() {
                               className="btn btn-secondary text-xs px-3">MAX</button>
                           </div>
                           <p className="text-xs text-muted mb-4">
-                            {lockDays}-day lock period. {penaltyPct}% penalty for early unstake.
-                            {selected.credScore >= 60 && ' Your high cred gives you a boost multiplier! 🚀'}
+                            {lockDays}-day lock. {penaltyPct}% early exit fee. Max stake: {TIER_MAX_STAKE[tierIdx(selectedAgent.credScore)]} $CRED.
                           </p>
                           <button onClick={handleStake}
                             disabled={!!txPending || !stakeAmount || parseFloat(stakeAmount) <= 0}
                             className="btn btn-primary w-full">
-                            {txPending === 'approve' ? 'Approving...' : txPending === 'stake' ? 'Staking...' : 'Stake $CRED'}
+                            {txPending === 'approve' ? 'Approving...' : txPending === 'stake' ? 'Staking...' : `Stake on ${selectedAgent.name}`}
                           </button>
                         </div>
                       )}
@@ -440,14 +419,16 @@ export function Stake() {
                           <div className="flex gap-2 mb-3">
                             <input type="number" placeholder="0.00" value={unstakeAmount}
                               onChange={e => setUnstakeAmount(e.target.value)} className="input flex-1" />
-                            <button onClick={() => setUnstakeAmount(ethers.formatEther(selected.staked))}
-                              className="btn btn-secondary text-xs px-3">MAX</button>
+                            {stakeInfo && stakeInfo.staked > 0n && (
+                              <button onClick={() => setUnstakeAmount(ethers.formatEther(stakeInfo.staked))}
+                                className="btn btn-secondary text-xs px-3">MAX</button>
+                            )}
                           </div>
-                          {selected.stakedAt > 0 && (
-                            <EarlyUnstakeWarning stakedAt={selected.stakedAt} lockDays={lockDays} penaltyPct={penaltyPct} />
+                          {stakeInfo && stakeInfo.stakedAt > 0 && (
+                            <EarlyUnstakeWarning stakedAt={stakeInfo.stakedAt} lockDays={lockDays} penaltyPct={penaltyPct} />
                           )}
                           <button onClick={handleUnstake}
-                            disabled={!!txPending || !unstakeAmount || parseFloat(unstakeAmount) <= 0 || selected.staked === 0n}
+                            disabled={!!txPending || !unstakeAmount || !stakeInfo || stakeInfo.staked === 0n}
                             className="btn btn-primary w-full">
                             {txPending === 'unstake' ? 'Unstaking...' : 'Unstake'}
                           </button>
@@ -457,10 +438,10 @@ export function Stake() {
                       {tab === 'vouch' && (
                         <div>
                           <p className="text-sm text-muted mb-4">
-                            Vouch for another agent by staking $CRED on them. Your cred score at time of vouch is recorded.
+                            Vouch for {selectedAgent.name} using one of your agents. Your cred at time of vouch is recorded.
                           </p>
-                          <label className="block text-sm text-muted mb-2">Agent ID to vouch for</label>
-                          <input type="number" placeholder="e.g. 42" value={vouchAgentId}
+                          <label className="block text-sm text-muted mb-2">Your Agent ID (voucher)</label>
+                          <input type="number" placeholder="Your agent token ID" value={vouchAgentId}
                             onChange={e => setVouchAgentId(e.target.value)} className="input w-full mb-3" />
                           <label className="block text-sm text-muted mb-2">Amount</label>
                           <input type="number" placeholder="0.00" value={vouchAmount}
@@ -468,7 +449,7 @@ export function Stake() {
                           <button onClick={handleVouch}
                             disabled={!!txPending || !vouchAgentId || !vouchAmount}
                             className="btn btn-primary w-full">
-                            {txPending === 'vouch' ? 'Vouching...' : 'Vouch'}
+                            {txPending === 'vouch' ? 'Vouching...' : `Vouch for ${selectedAgent.name}`}
                           </button>
                         </div>
                       )}
@@ -476,11 +457,11 @@ export function Stake() {
                       {tab === 'rewards' && (
                         <div className="text-center py-4">
                           <div className="text-3xl font-heading font-bold mb-2">
-                            {fmt(selected.pendingRewards)} <span className="text-lg text-muted">$CRED</span>
+                            {stakeInfo ? fmt(stakeInfo.pendingRewards) : '0'} <span className="text-lg text-muted">$CRED</span>
                           </div>
                           <p className="text-sm text-muted mb-4">Pending rewards from protocol revenue</p>
                           <button onClick={handleClaim}
-                            disabled={!!txPending || selected.pendingRewards === 0n}
+                            disabled={!!txPending || !stakeInfo || stakeInfo.pendingRewards === 0n}
                             className="btn btn-primary">
                             {txPending === 'claimRewards' ? 'Claiming...' : 'Claim Rewards'}
                           </button>
@@ -492,24 +473,23 @@ export function Stake() {
                       )}
                       {txHash && !error && (
                         <div className="mt-4 p-3 rounded-lg bg-mint/10 border border-mint/30 text-sm">
-                          ✅ TX: <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noopener" className="text-mint underline">
-                            {txHash.slice(0, 10)}...{txHash.slice(-8)}
+                          ✅ <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noopener" className="text-mint underline">
+                            View on Basescan
                           </a>
                         </div>
                       )}
                     </div>
                   </div>
-                </>
-              )}
-            </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="card p-4 text-center">
@@ -535,7 +515,7 @@ function EarlyUnstakeWarning({ stakedAt, lockDays, penaltyPct }: { stakedAt: num
   const daysLeft = Math.ceil((unlockAt - now) / 86400);
   return (
     <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm mb-4">
-      ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in lock period. Early unstake incurs {penaltyPct}% penalty.
+      ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in lock. Early unstake costs {penaltyPct}%.
     </div>
   );
 }
