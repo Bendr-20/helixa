@@ -77,17 +77,135 @@
     letter-spacing: 2px;
     text-transform: uppercase;
   }
-  .header .stats-bar {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 16px 30px;
+  /* Stats Ticker */
+  .ticker-wrap {
+    overflow: hidden;
     margin-top: 15px;
-    font-size: 11px;
-    padding: 0 10px;
+    border-top: 1px solid rgba(110,236,216,0.15);
+    border-bottom: 1px solid rgba(110,236,216,0.15);
+    padding: 8px 0;
+    position: relative;
   }
-  .stats-bar .stat { color: var(--text); }
-  .stats-bar .stat-val { color: var(--cyan); font-weight: 700; }
+  .ticker-wrap::before, .ticker-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 40px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .ticker-wrap::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+  .ticker-wrap::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+  .ticker-track {
+    display: flex;
+    width: max-content;
+    animation: tickerScroll 40s linear infinite;
+  }
+  .ticker-track:hover { animation-play-state: paused; }
+  @keyframes tickerScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    white-space: nowrap;
+    padding: 0 12px;
+    font-size: 12px;
+    color: #6eecd8;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ticker-item .ticker-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(110,236,216,0.6);
+    margin-right: 4px;
+  }
+  .ticker-item .ticker-val {
+    font-weight: 700;
+    color: #6eecd8;
+  }
+  .ticker-sep { color: rgba(110,236,216,0.3); padding: 0 4px; }
+
+  /* Featured Carousel */
+  .carousel-wrap {
+    position: relative;
+    max-width: 460px;
+    margin: 16px auto 8px;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+  .carousel-track {
+    display: flex;
+    transition: transform 0.5s ease;
+  }
+  .carousel-card {
+    min-width: 100%;
+    display: block;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, rgba(21,18,32,0.95), rgba(10,10,20,0.95));
+    border: 1px solid rgba(110,236,216,0.25);
+    border-radius: 12px;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+  }
+  .carousel-card:hover { border-color: rgba(110,236,216,0.5); }
+  .carousel-card .card-inner { display: flex; align-items: center; gap: 14px; }
+  .carousel-card .card-img {
+    width: 64px; height: 64px; border-radius: 10px;
+    border: 1.5px solid rgba(110,236,216,0.3);
+    object-fit: cover;
+  }
+  .carousel-card .card-body { flex: 1; min-width: 0; }
+  .carousel-card .card-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.95rem;
+    color: #eae6f2;
+    margin-bottom: 4px;
+  }
+  .carousel-card .card-name .featured-tag {
+    font-size: 0.65rem;
+    color: #6a6a8e;
+    font-family: monospace;
+    margin-left: 6px;
+  }
+  .carousel-card .card-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .carousel-card .card-badge {
+    padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  }
+  .carousel-card .card-desc {
+    color: #6a6a8e; font-size: 11px; font-family: monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(10,10,15,0.7);
+    border: 1px solid rgba(110,236,216,0.3);
+    color: #6eecd8;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 3;
+    transition: background 0.2s;
+  }
+  .carousel-nav:hover { background: rgba(110,236,216,0.15); }
+  .carousel-nav.prev { left: 6px; }
+  .carousel-nav.next { right: 6px; }
+  .carousel-dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin-top: 8px;
+  }
+  .carousel-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(110,236,216,0.2);
+    border: none; cursor: pointer; padding: 0;
+    transition: background 0.3s;
+  }
+  .carousel-dot.active { background: #6eecd8; }
   
   /* Search */
   .search-box {
@@ -275,31 +393,132 @@
   <div class="header">
     <h1>AGENT TERMINAL</h1>
     <div class="subtitle">Agent Credibility Scanner — Base Network</div>
-    <div class="stats-bar">
-      <div class="stat">AGENTS: <span class="stat-val" id="total-agents">—</span></div>
-      <div class="stat">SCORED: <span class="stat-val" id="total-scored">—</span></div>
-      <div class="stat">AVG CRED: <span class="stat-val" id="avg-score">—</span></div>
-      <div class="stat">x402: <span class="stat-val" id="total-x402">—</span></div>
-    </div>
-    <a href="/agent/1" style="display:block;max-width:420px;margin:16px auto 8px;padding:14px 18px;background:linear-gradient(135deg,rgba(21,18,32,0.95),rgba(10,10,20,0.95));border:1px solid rgba(110,236,216,0.25);border-radius:12px;text-decoration:none;transition:border-color 0.3s,transform 0.2s" onmouseenter="this.style.borderColor='rgba(110,236,216,0.5)';this.style.transform='translateY(-2px)'" onmouseleave="this.style.borderColor='rgba(110,236,216,0.25)';this.style.transform='translateY(0)'">
-      <div style="display:flex;align-items:center;gap:14px">
-        <img src="https://api.helixa.xyz/api/v2/aura/1.png" alt="Bendr 2.0" style="width:64px;height:64px;border-radius:10px;border:1.5px solid rgba(110,236,216,0.3)">
-        <div style="flex:1;min-width:0">
-          <div style="font-family:'Orbitron',monospace;font-size:0.95rem;color:#eae6f2;margin-bottom:4px">BENDR 2.0 <span style="font-size:0.65rem;color:#6a6a8e;font-family:monospace">FEATURED</span></div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-            <span style="background:rgba(110,236,216,0.15);color:#6eecd8;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">CRED 74</span>
-            <span style="background:rgba(180,144,255,0.15);color:#b490ff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">OpenClaw</span>
-            <span style="background:rgba(110,236,216,0.1);color:#6eecd8;padding:2px 8px;border-radius:6px;font-size:11px">SIWA ✓</span>
-          </div>
-          <div style="color:#6a6a8e;font-size:11px;font-family:monospace">$CRED · <span id="featured-mcap">—</span> mcap</div>
-        </div>
+    <!-- Stats Ticker -->
+    <div class="ticker-wrap">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-item"><span class="ticker-label">AGENTS</span><span class="ticker-val" id="tk-agents">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">SCORED</span><span class="ticker-val" id="tk-scored">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">AVG CRED</span><span class="ticker-val" id="tk-avg">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">x402</span><span class="ticker-val" id="tk-x402">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">$CRED</span><span class="ticker-val" id="tk-price">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">MCAP</span><span class="ticker-val" id="tk-mcap">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">24H VOL</span><span class="ticker-val" id="tk-vol">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">TOP MOVER</span><span class="ticker-val" id="tk-mover">—</span></span><span class="ticker-sep">▸</span>
       </div>
-    </a>
+    </div>
+    <!-- Hidden compat spans for existing JS -->
+    <span id="total-agents" style="display:none"></span>
+    <span id="total-scored" style="display:none"></span>
+    <span id="avg-score" style="display:none"></span>
+    <span id="total-x402" style="display:none"></span>
+
+    <!-- Featured Carousel -->
+    <div class="carousel-wrap" id="carousel-wrap">
+      <button class="carousel-nav prev" onclick="carouselPrev()">◄</button>
+      <button class="carousel-nav next" onclick="carouselNext()">►</button>
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
+    <div class="carousel-dots" id="carousel-dots"></div>
+
     <script>
-      fetch('https://api.helixa.xyz/api/v2/token/stats').then(r=>r.json()).then(d=>{
-        const el=document.getElementById('featured-mcap');
-        if(el&&d.marketCap) el.textContent='$'+(d.marketCap/1000).toFixed(0)+'K';
-      }).catch(()=>{});
+    // Ticker: fetch token stats + terminal stats
+    (function(){
+      const fmt = v => { if(!v||v<=0) return '—'; if(v>=1e9) return '$'+(v/1e9).toFixed(1)+'B'; if(v>=1e6) return '$'+(v/1e6).toFixed(1)+'M'; if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K'; return '$'+v.toFixed(2); };
+      Promise.allSettled([
+        fetch('https://api.helixa.xyz/api/v2/token/stats').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/stats').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=price_change_24h&dir=desc').then(r=>r.json())
+      ]).then(([tokR, termR, moverR]) => {
+        const tok = tokR.status==='fulfilled' ? tokR.value : {};
+        const term = termR.status==='fulfilled' ? termR.value : (termR.status==='fulfilled' ? termR.value.stats : {});
+        const stats = term.stats || term;
+        const moverData = moverR.status==='fulfilled' ? moverR.value : {};
+        const mover = (moverData.agents||[])[0];
+
+        const s = id => document.getElementById(id);
+        if(stats.total) { s('tk-agents').textContent = (stats.total).toLocaleString(); s('total-agents').textContent = (stats.total).toLocaleString(); }
+        if(stats.scored) { s('tk-scored').textContent = (stats.scored).toLocaleString(); s('total-scored').textContent = (stats.scored).toLocaleString(); }
+        if(stats.avgScore) { s('tk-avg').textContent = stats.avgScore; s('avg-score').textContent = stats.avgScore; }
+        if(stats.x402) { s('tk-x402').textContent = (stats.x402).toLocaleString(); s('total-x402').textContent = (stats.x402).toLocaleString(); }
+        if(tok.price) s('tk-price').textContent = '$'+Number(tok.price).toFixed(6);
+        if(tok.marketCap) s('tk-mcap').textContent = fmt(tok.marketCap);
+        if(tok.volume24h) s('tk-vol').textContent = fmt(tok.volume24h);
+        if(mover && mover.name) s('tk-mover').textContent = mover.name + (mover.price_change_24h!=null ? ' +'+mover.price_change_24h.toFixed(1)+'%' : '');
+
+        // Duplicate ticker content for seamless loop
+        const track = document.getElementById('ticker-track');
+        track.innerHTML += track.innerHTML;
+      });
+    })();
+
+    // Carousel
+    let carouselIdx = 0;
+    let carouselCount = 0;
+    let carouselTimer = null;
+
+    function renderCarousel(agents) {
+      const track = document.getElementById('carousel-track');
+      const dots = document.getElementById('carousel-dots');
+      carouselCount = agents.length;
+      track.innerHTML = agents.map((a, i) => {
+        const tid = a.token_id || a.tokenId || a.id || '';
+        const img = 'https://api.helixa.xyz/api/v2/aura/' + tid + '.png';
+        const name = (a.name || 'Unknown').toUpperCase();
+        const cred = a.cred_score || a.credScore || 0;
+        const ticker = a.token_symbol || a.tokenSymbol || '';
+        const price = a.token_price || a.tokenPrice;
+        const change = a.price_change_24h ?? a.priceChange24h;
+        const desc = a.description || a.bio || '';
+        const framework = a.platform || a.framework || '';
+        const changeColor = (change||0) >= 0 ? '#6eecd8' : '#ff6b6b';
+        const changeStr = change != null ? ((change>=0?'+':'')+change.toFixed(1)+'%') : '';
+        const priceStr = price ? '$'+Number(price).toFixed(6) : '';
+        return `<a href="/agent/${tid}" class="carousel-card">
+          <div class="card-inner">
+            <img src="${img}" alt="${name}" class="card-img">
+            <div class="card-body">
+              <div class="card-name">${name}<span class="featured-tag">FEATURED</span></div>
+              <div class="card-badges">
+                <span class="card-badge" style="background:rgba(110,236,216,0.15);color:#6eecd8">CRED ${cred}</span>
+                ${framework ? `<span class="card-badge" style="background:rgba(180,144,255,0.15);color:#b490ff">${framework}</span>` : ''}
+              </div>
+              <div class="card-desc">${ticker ? '$'+ticker+' · '+priceStr+' · <span style="color:'+changeColor+'">'+changeStr+'</span>' : (desc||'—')}</div>
+            </div>
+          </div>
+        </a>`;
+      }).join('');
+      dots.innerHTML = agents.map((_, i) => `<button class="carousel-dot${i===0?' active':''}" onclick="carouselGo(${i})"></button>`).join('');
+      carouselGo(0);
+      carouselTimer = setInterval(() => carouselGo((carouselIdx+1) % carouselCount), 5000);
+    }
+
+    function carouselGo(i) {
+      carouselIdx = i;
+      document.getElementById('carousel-track').style.transform = 'translateX(-' + (i*100) + '%)';
+      document.querySelectorAll('.carousel-dot').forEach((d,j) => d.classList.toggle('active', j===i));
+      if(carouselTimer) { clearInterval(carouselTimer); carouselTimer = setInterval(() => carouselGo((carouselIdx+1) % carouselCount), 5000); }
+    }
+    function carouselPrev() { carouselGo((carouselIdx - 1 + carouselCount) % carouselCount); }
+    function carouselNext() { carouselGo((carouselIdx + 1) % carouselCount); }
+
+    // Fetch top 3 agents for carousel, ensure Bendr (tokenId=1) is first
+    fetch('https://api.helixa.xyz/api/v2/agents?limit=3&sort=credScore&order=desc')
+      .then(r=>r.json())
+      .then(data => {
+        let agents = data.agents || data.data || data || [];
+        if(!Array.isArray(agents)) agents = [];
+        // Ensure Bendr is first
+        const bendrIdx = agents.findIndex(a => (a.token_id||a.tokenId||a.id) == 1);
+        if(bendrIdx > 0) { const b = agents.splice(bendrIdx,1)[0]; agents.unshift(b); }
+        else if(bendrIdx < 0) {
+          agents.unshift({token_id:1,name:'Bendr 2.0',cred_score:74,platform:'OpenClaw',token_symbol:'CRED',description:'The original credibility agent'});
+        }
+        if(agents.length > 3) agents = agents.slice(0,3);
+        renderCarousel(agents);
+      })
+      .catch(() => {
+        renderCarousel([{token_id:1,name:'Bendr 2.0',cred_score:74,platform:'OpenClaw',token_symbol:'CRED',description:'The original credibility agent'}]);
+      });
     </script>
   </div>
   
@@ -434,12 +653,13 @@ async function fetchAgents() {
     document.getElementById('prev-btn').disabled = currentPage <= 1;
     document.getElementById('next-btn').disabled = currentPage >= totalPages;
     
-    // Update stats
+    // Update stats (ticker + hidden compat spans)
     if (data.stats) {
-      document.getElementById('total-agents').textContent = (data.stats.total || 0).toLocaleString();
-      document.getElementById('total-scored').textContent = (data.stats.scored || 0).toLocaleString();
-      document.getElementById('avg-score').textContent = data.stats.avgScore || '—';
-      document.getElementById('total-x402').textContent = (data.stats.x402 || 0).toLocaleString();
+      const sv = (hid, tid, v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+      sv('total-agents','tk-agents',(data.stats.total||0).toLocaleString());
+      sv('total-scored','tk-scored',(data.stats.scored||0).toLocaleString());
+      sv('avg-score','tk-avg',data.stats.avgScore||'—');
+      sv('total-x402','tk-x402',(data.stats.x402||0).toLocaleString());
     }
   } catch (err) {
     console.error('API fetch failed:', err);
@@ -452,10 +672,11 @@ async function fetchAgents() {
         totalPages = data.totalPages || 1;
         document.getElementById('page-info').textContent = `PAGE 1 / ${totalPages} (CACHED)`;
         if (data.stats) {
-          document.getElementById('total-agents').textContent = (data.stats.total || 0).toLocaleString();
-          document.getElementById('total-scored').textContent = (data.stats.scored || 0).toLocaleString();
-          document.getElementById('avg-score').textContent = data.stats.avgScore || '—';
-          document.getElementById('total-x402').textContent = (data.stats.x402 || 0).toLocaleString();
+          const sv2 = (hid,tid,v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+          sv2('total-agents','tk-agents',(data.stats.total||0).toLocaleString());
+          sv2('total-scored','tk-scored',(data.stats.scored||0).toLocaleString());
+          sv2('avg-score','tk-avg',data.stats.avgScore||'—');
+          sv2('total-x402','tk-x402',(data.stats.x402||0).toLocaleString());
         }
         return;
       }
@@ -490,10 +711,11 @@ function renderAgents(agents) {
 }
 
 function loadDemoStats() {
-  document.getElementById('total-agents').textContent = '27,782';
-  document.getElementById('total-scored').textContent = '27,782';
-  document.getElementById('avg-score').textContent = '14.2';
-  document.getElementById('total-x402').textContent = '4,204';
+  const sd = (hid,tid,v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+  sd('total-agents','tk-agents','27,782');
+  sd('total-scored','tk-scored','27,782');
+  sd('avg-score','tk-avg','14.2');
+  sd('total-x402','tk-x402','4,204');
 }
 
 function doSearch() {
