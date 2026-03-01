@@ -1,0 +1,20 @@
+import{j as e}from"./vendor-wallet-iWeBopzN.js";import{F as P}from"./ShieldCheckIcon-CzN8v7s7.js";import{r as a}from"./vendor-react-NLnOsXgy.js";import{b as E,I as T,a as _,bE as W,cq as F,by as U,c as u,aR as N}from"./index-4iv_fsnd.js";import{m as O}from"./ModalHeader-D8-mhjp4-CyTdNSiZ.js";import{l as V}from"./Layouts-BlFm53ED-BEYK3MIF.js";import{g as H,h as z,u as M,b as q,k as B}from"./shared-CwuyxHmv-D2n_r18v.js";import{w as s}from"./Screen-Bp-TN9gb-DmsLM9tu.js";import"./index-Dq_xe9dz-C-oGAtIE.js";const se={component:()=>{let[o,h]=a.useState(!0),{authenticated:p,user:w}=E(),{walletProxy:m,closePrivyModal:y,createAnalyticsEvent:v,client:g}=T(),{navigate:j,data:k,onUserCloseViaDialogOrKeybindRef:A}=_(),[n,C]=a.useState(void 0),[x,l]=a.useState(""),[c,f]=a.useState(!1),{entropyId:d,entropyIdVerifier:$,onCompleteNavigateTo:b,onSuccess:I,onFailure:R}=k.recoverWallet,i=(r="User exited before their wallet could be recovered")=>{y({shouldCallAuthOnSuccess:!1}),R(typeof r=="string"?new U(r):r)};return A.current=i,a.useEffect((()=>{if(!p)return i("User must be authenticated and have a Privy wallet before it can be recovered")}),[p]),e.jsxs(s,{children:[e.jsx(s.Header,{icon:P,title:"Enter your password",subtitle:"Please provision your account on this new device. To continue, enter your recovery password.",showClose:!0,onClose:i}),e.jsx(s.Body,{children:e.jsx(D,{children:e.jsxs("div",{children:[e.jsxs(H,{children:[e.jsx(z,{type:o?"password":"text",onChange:r=>(t=>{t&&C(t)})(r.target.value),disabled:c,style:{paddingRight:"2.3rem"}}),e.jsx(M,{style:{right:"0.75rem"},children:o?e.jsx(q,{onClick:()=>h(!1)}):e.jsx(B,{onClick:()=>h(!0)})})]}),!!x&&e.jsx(K,{children:x})]})})}),e.jsxs(s.Footer,{children:[e.jsx(s.HelpText,{children:e.jsxs(V,{children:[e.jsx("h4",{children:"Why is this necessary?"}),e.jsx("p",{children:"You previously set a password for this wallet. This helps ensure only you can access it"})]})}),e.jsx(s.Actions,{children:e.jsx(L,{loading:c||!m,disabled:!n,onClick:async()=>{f(!0);let r=await g.getAccessToken(),t=W(w,d);if(!r||!t||n===null)return i("User must be authenticated and have a Privy wallet before it can be recovered");try{v({eventName:"embedded_wallet_recovery_started",payload:{walletAddress:t.address}}),await m?.recover({accessToken:r,entropyId:d,entropyIdVerifier:$,recoveryPassword:n}),l(""),b?j(b):y({shouldCallAuthOnSuccess:!1}),I?.(t),v({eventName:"embedded_wallet_recovery_completed",payload:{walletAddress:t.address}})}catch(S){F(S)?l("Invalid recovery password, please try again."):l("An error has occurred, please try again.")}finally{f(!1)}},$hideAnimations:!d&&c,children:"Recover your account"})}),e.jsx(s.Watermark,{})]})]})}};let D=u.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+`,K=u.div`
+  line-height: 20px;
+  height: 20px;
+  font-size: 13px;
+  color: var(--privy-color-error);
+  text-align: left;
+  margin-top: 0.5rem;
+`,L=u(O)`
+  ${({$hideAnimations:o})=>o&&N`
+      && {
+        // Remove animations because the recoverWallet task on the iframe partially
+        // blocks the renderer, so the animation stutters and doesn't look good
+        transition: none;
+      }
+    `}
+`;export{se as PasswordRecoveryScreen,se as default};

@@ -410,9 +410,9 @@ export function Stake() {
             {!selectedAgent ? (
               <div className="card p-12 text-center">
                 <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted"><path d="M15 19l-7-7 7-7"/></svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted"><path d="M19 15l-7-7-7 7"/></svg>
                 </div>
-                <p className="text-muted">Select an agent to stake on</p>
+                <p className="text-muted text-center">Select an agent to stake on</p>
               </div>
             ) : (
               <>
