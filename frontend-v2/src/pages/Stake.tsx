@@ -86,6 +86,7 @@ export function Stake() {
   const [vouchAmount, setVouchAmount] = useState('');
   const [txPending, setTxPending] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [txSuccess, setTxSuccess] = useState('');
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'stake' | 'unstake' | 'vouch' | 'rewards'>('stake');
 
@@ -191,6 +192,11 @@ export function Stake() {
       if (selectedAgent) loadStakeInfo(selectedAgent.tokenId);
       loadBalance(); loadGlobal();
       setStakeAmount(''); setUnstakeAmount(''); setVouchAmount(''); setVouchAgentId('');
+      setTxSuccess(fn);
+      setTimeout(() => setTxSuccess(''), 5000);
+      // Bring focus back to the staking page
+      window.focus();
+      document.getElementById('stake-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e: any) {
       setError(e.reason || e.shortMessage || e.message || 'Transaction failed');
     }
@@ -331,7 +337,7 @@ export function Stake() {
           </div>
 
           {/* Right: Stake Panel */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-3" id="stake-panel">
             {!selectedAgent ? (
               <div className="card p-12 text-center">
                 <div className="text-4xl mb-3">👈</div>
@@ -484,6 +490,11 @@ export function Stake() {
 
                       {error && (
                         <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>
+                      )}
+                      {txSuccess && !error && (
+                        <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm animate-pulse">
+                          🎉 {txSuccess === 'stake' ? 'Staked successfully!' : txSuccess === 'unstake' ? 'Unstaked successfully!' : txSuccess === 'vouch' ? 'Vouch recorded!' : txSuccess === 'claimRewards' ? 'Rewards claimed!' : 'Transaction confirmed!'}
+                        </div>
                       )}
                       {txHash && !error && (
                         <div className="mt-4 p-3 rounded-lg bg-mint/10 border border-mint/30 text-sm">
