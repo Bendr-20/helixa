@@ -197,7 +197,7 @@ export function AgentProfile() {
                 {/* Staking Info */}
                 {stakeData && (
                   <div className="glass-card p-3 mt-4">
-                    <div className="text-muted text-xs mb-2 uppercase tracking-wider font-semibold">⚡ Staked</div>
+                    <div className="text-muted text-xs mb-2 uppercase tracking-wider font-semibold">Staked</div>
                     <div className="grid grid-cols-2 gap-2 text-center">
                       <div>
                         <div className="text-lg font-bold" style={{ color: '#6eecd8' }}>

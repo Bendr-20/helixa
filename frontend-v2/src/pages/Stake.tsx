@@ -318,7 +318,9 @@ export function Stake() {
           </div>
 
           <div className="card p-5 flex flex-col items-center justify-center text-center">
-            <div className="text-3xl mb-2">💰</div>
+            <div className="w-10 h-10 rounded-full bg-mint/15 flex items-center justify-center mx-auto mb-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mint"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
             <h3 className="font-heading font-bold text-lg mb-2">Need $CRED?</h3>
             <p className="text-sm text-muted mb-4">Swap ETH → $CRED on Uniswap (Base)</p>
             <a href={UNISWAP_URL} target="_blank" rel="noopener"
@@ -389,7 +391,7 @@ export function Stake() {
                           </span>
                           {a.stakedAmount && parseFloat(a.stakedAmount) > 0 && (
                             <div className="text-[10px] font-mono text-mint mt-0.5">
-                              ⚡ {parseFloat(a.stakedAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                              {parseFloat(a.stakedAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} staked
                             </div>
                           )}
                         </div>
@@ -408,7 +410,9 @@ export function Stake() {
           <div className="md:col-span-3" id="stake-panel">
             {!selectedAgent ? (
               <div className="card p-12 text-center">
-                <div className="text-4xl mb-3">👈</div>
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted"><path d="M15 19l-7-7 7-7"/></svg>
+                </div>
                 <p className="text-muted">Select an agent to stake on</p>
               </div>
             ) : (
@@ -561,7 +565,7 @@ export function Stake() {
                       )}
                       {txSuccess && !error && (
                         <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm animate-pulse">
-                          🎉 {txSuccess === 'stake' ? 'Staked successfully!' : txSuccess === 'unstake' ? 'Unstaked successfully!' : txSuccess === 'vouch' ? 'Vouch recorded!' : txSuccess === 'claimRewards' ? 'Rewards claimed!' : 'Transaction confirmed!'}
+                          {txSuccess === 'stake' ? 'Staked successfully.' : txSuccess === 'unstake' ? 'Unstaked successfully.' : txSuccess === 'vouch' ? 'Vouch recorded.' : txSuccess === 'claimRewards' ? 'Rewards claimed.' : 'Transaction confirmed.'}
                         </div>
                       )}
                       {txHash && !error && (
