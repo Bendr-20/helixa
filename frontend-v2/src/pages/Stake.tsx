@@ -401,14 +401,15 @@ export function Stake() {
                             <input type="number" placeholder="0.00" value={stakeAmount}
                               onChange={e => setStakeAmount(e.target.value)} className="input flex-1" />
                             <button onClick={async () => {
-                              const tierUsd = [0, 5, 50, 500, 999999][tierIdx(selectedAgent.credScore)];
                               try {
-                                const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3');
+                                // Get actual contract threshold for this agent
+                                const r = await fetch(`${API_URL}/api/v2/stake/${selectedAgent.tokenId}`);
                                 const d = await r.json();
-                                const price = parseFloat(d.pairs?.[0]?.priceUsd || '0.000001');
-                                const maxTokens = Math.floor(tierUsd / price);
-                                const balTokens = parseFloat(ethers.formatEther(credBalance));
-                                setStakeAmount(String(Math.min(maxTokens, Math.floor(balTokens))));
+                                const maxStake = BigInt(d.maxStakeRaw || '0');
+                                const alreadyStaked = BigInt(d.stakedRaw || '0');
+                                const remaining = maxStake > alreadyStaked ? maxStake - alreadyStaked : 0n;
+                                const cap = remaining < credBalance ? remaining : credBalance;
+                                setStakeAmount(ethers.formatEther(cap));
                               } catch {
                                 setStakeAmount(ethers.formatEther(credBalance));
                               }

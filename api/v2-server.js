@@ -562,17 +562,22 @@ app.get('/api/v2/stake/:id', async (req, res) => {
             'function effectiveStake(uint256) view returns (uint256)',
             'function pendingRewards(uint256) view returns (uint256)',
             'function getVouchCount(uint256) view returns (uint256)',
+            'function getMaxStake(uint8) view returns (uint256)',
             'function totalStaked() view returns (uint256)',
             'function totalEffectiveStake() view returns (uint256)',
             'function LOCK_PERIOD() view returns (uint256)',
             'function EARLY_UNSTAKE_PENALTY_BPS() view returns (uint256)',
         ];
+        const helixaAbi = ['function getCredScore(uint256) view returns (uint8)'];
         const stakingContract = new eth.Contract('0xd40ECD47201D8ea25181dc05a638e34469399613', stakingAbi, readProvider);
-        const [sd, eff, pending, vc, ts, te, lp, pp] = await Promise.all([
+        const helixaContract = new eth.Contract(V2_CONTRACT_ADDRESS, helixaAbi, readProvider);
+        const credScore = await helixaContract.getCredScore(tokenId).catch(() => 0);
+        const [sd, eff, pending, vc, maxStake, ts, te, lp, pp] = await Promise.all([
             stakingContract.stakes(tokenId),
             stakingContract.effectiveStake(tokenId),
             stakingContract.pendingRewards(tokenId),
             stakingContract.getVouchCount(tokenId),
+            stakingContract.getMaxStake(Number(credScore)),
             stakingContract.totalStaked(),
             stakingContract.totalEffectiveStake(),
             stakingContract.LOCK_PERIOD(),
@@ -583,6 +588,8 @@ app.get('/api/v2/stake/:id', async (req, res) => {
             staker: sd.staker,
             staked: eth.formatEther(sd.amount),
             stakedRaw: sd.amount.toString(),
+            maxStake: eth.formatEther(maxStake),
+            maxStakeRaw: maxStake.toString(),
             stakedAt: Number(sd.stakedAt),
             credAtStake: Number(sd.credAtStake),
             effectiveStake: eth.formatEther(eff),
