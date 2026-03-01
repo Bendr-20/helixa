@@ -46,37 +46,9 @@ app.use(express.json({ limit: '200kb' }));
 app.use(securityHeaders);
 app.use(cors);
 app.use(globalRateLimit);
-
-// ─── x402 Official SDK Middleware ───────────────────────────────
-const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402ResourceServer } = require('@x402/express');
-const { ExactEvmScheme } = require('@x402/evm/exact/server');
-const { HTTPFacilitatorClient } = require('@x402/core/server');
-
-const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
-const x402Server = new X402ResourceServer(x402FacilitatorClient)
-    .register('eip155:8453', new ExactEvmScheme());
-
-const x402Routes = {};
-if (PRICING.agentMint > 0) {
-    x402Routes['POST /api/v2/mint'] = {
-        accepts: [{ scheme: 'exact', price: `$${PRICING.agentMint}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
-        description: 'Mint a new Helixa agent identity', mimeType: 'application/json',
-    };
-}
-if (PRICING.update > 0) {
-    x402Routes['POST /api/v2/agent/:id/update'] = {
-        accepts: [{ scheme: 'exact', price: `$${PRICING.update}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
-        description: 'Update agent traits and metadata', mimeType: 'application/json',
-    };
-}
-if (PRICING.credReport > 0) {
-    x402Routes['GET /api/v2/agent/[id]/cred-report'] = {
-        accepts: [{ scheme: 'exact', price: `$${PRICING.credReport}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
-        description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
-    };
-}
-// ─── USDC TX Hash Payment Verification ─────────────────────────
-// USDC_ADDRESS imported from contract.js
+// x402 SDK available but we use our own middleware for reliability
+// const { paymentMiddleware } = require('@x402/express'); // available if needed
+// ─── Payment Verification ──────────────────────────────────────
 const USDC_DECIMALS = 6;
 const usedPaymentTxs = new Set(); // prevent replay
 
@@ -101,66 +73,83 @@ async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) 
     throw new Error('No matching USDC transfer found in transaction');
 }
 
-// Middleware: skip x402 if valid paymentTx is provided in body OR header
-// Accepts: body.paymentTx, header X-Payment-Proof, header X-Payment-Tx
-function txHashPaymentMiddleware(routePatterns) {
+// x402-compatible payment gate middleware
+// Accepts: X-Payment-Proof header (TX hash), body.paymentTx, or x402 payment-signature
+function requirePaymentX402(priceUSD, recipient, description) {
     return async (req, res, next) => {
-        // Find matching route config
-        const routeKey = `${req.method} ${req.path}`;
-        let matched = null;
-        for (const [pattern, config] of Object.entries(routePatterns)) {
-            const [method, pathPattern] = pattern.split(' ');
-            if (method !== req.method) continue;
-            // Simple pattern match: /api/v2/agent/:id/xxx → /api/v2/agent/*/xxx
-            const regex = new RegExp('^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$');
-            if (regex.test(req.path)) { matched = config; break; }
+        // 1. Check for TX hash in header or body
+        const txHash = req.headers['x-payment-proof'] ||
+                       req.headers['x-payment-tx'] ||
+                       (req.body && req.body.paymentTx);
+        
+        if (txHash && typeof txHash === 'string') {
+            const cleanHash = txHash.trim();
+            if (usedPaymentTxs.has(cleanHash.toLowerCase())) {
+                return res.status(400).json({ error: 'Payment TX already used' });
+            }
+            try {
+                const result = await verifyUSDCTransfer(cleanHash, priceUSD, recipient);
+                usedPaymentTxs.add(cleanHash.toLowerCase());
+                req.paymentVerified = { method: 'tx-hash', txHash: cleanHash, ...result };
+                console.log(`[PAYMENT ✅] TX hash verified: $${result.amount} USDC from ${result.from} → ${req.method} ${req.path}`);
+                return next();
+            } catch (e) {
+                console.log(`[PAYMENT ❌] TX hash failed: ${e.message} → ${req.method} ${req.path}`);
+                return res.status(402).json({
+                    x402Version: 2,
+                    error: `Payment verification failed: ${e.message}`,
+                    accepts: [{
+                        scheme: 'exact',
+                        network: 'eip155:8453',
+                        amount: String(Math.round(priceUSD * 1e6)),
+                        asset: USDC_ADDRESS,
+                        payTo: recipient,
+                        maxTimeoutSeconds: 300,
+                    }],
+                    resource: { url: `${req.protocol}://${req.get('host')}${req.originalUrl}`, description },
+                    hint: 'Send USDC, then retry with X-Payment-Proof: <txHash>'
+                });
+            }
         }
-        if (!matched) return next();
-
-        // Extract tx hash from body or headers
-        const txHash = (req.body && req.body.paymentTx) ||
-                       req.headers['x-payment-proof'] ||
-                       req.headers['x-payment-tx'];
-        if (!txHash || typeof txHash !== 'string') return next();
-
-        // Parse price from route config
-        const priceStr = matched.accepts?.[0]?.price || '$1';
-        const priceUSD = parseFloat(priceStr.replace('$', ''));
-        const recipient = matched.accepts?.[0]?.payTo || DEPLOYER_ADDRESS;
-
-        if (usedPaymentTxs.has(txHash.toLowerCase())) {
-            return res.status(400).json({ error: 'Payment TX already used' });
-        }
-
-        try {
-            const result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
-            usedPaymentTxs.add(txHash.toLowerCase());
-            req.paymentVerified = { method: 'tx-hash', txHash, ...result };
-            console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
-            return next(); // paymentVerified flag set — x402 wrapper will skip
-        } catch (e) {
-            return res.status(402).json({
-                error: `Payment verification failed: ${e.message}`,
-                hint: 'Send USDC to the payment address, then retry with header X-Payment-Proof: <txHash> or body { "paymentTx": "<txHash>" }'
-            });
-        }
+        
+        // 2. No payment provided — return 402 with x402 v2 payment requirements
+        console.log(`[PAYMENT] 402 returned for ${req.method} ${req.path} (no payment header)`);
+        const paymentRequired = {
+            x402Version: 2,
+            error: 'Payment required',
+            resource: {
+                url: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+                description,
+                mimeType: 'application/json',
+            },
+            accepts: [{
+                scheme: 'exact',
+                network: 'eip155:8453',
+                amount: String(Math.round(priceUSD * 1e6)),
+                asset: USDC_ADDRESS,
+                payTo: recipient,
+                maxTimeoutSeconds: 300,
+                extra: { name: 'USD Coin', version: '2' },
+            }],
+        };
+        res.status(402);
+        res.setHeader('PAYMENT-REQUIRED', Buffer.from(JSON.stringify(paymentRequired)).toString('base64'));
+        return res.json(paymentRequired);
     };
 }
 
-// Mount TX hash bypass BEFORE x402 middleware so agents can pay either way
-if (Object.keys(x402Routes).length > 0) {
-    // TX hash verification runs first — if valid, marks request as paid
-    app.use(txHashPaymentMiddleware(x402Routes));
-    // x402 protocol middleware runs if no TX hash was provided/verified
-    // We wrap it to skip if already paid via TX hash
-    const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
-    app.use((req, res, next) => {
-        if (req.paymentVerified) return next(); // Already paid via TX hash
-        return x402Mw(req, res, next);
-    });
-    console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
-    console.log(`💰 TX hash payment bypass enabled (X-Payment-Proof / X-Payment-Tx / body.paymentTx)`);
+// Mount payment gates on protected routes
+if (PRICING.agentMint > 0) {
+    app.post('/api/v2/mint', requirePaymentX402(PRICING.agentMint, DEPLOYER_ADDRESS, 'Mint a new Helixa agent identity'));
 }
+if (PRICING.update > 0) {
+    app.post('/api/v2/agent/:id/update', requirePaymentX402(PRICING.update, DEPLOYER_ADDRESS, 'Update agent traits and metadata'));
+}
+if (PRICING.credReport > 0) {
+    app.get('/api/v2/agent/:id/cred-report', requirePaymentX402(PRICING.credReport, TREASURY_ADDRESS, 'Full Cred Report with scoring breakdown'));
+}
+console.log(`💰 Payment gates active: mint ($${PRICING.agentMint}), update ($${PRICING.update}), cred-report ($${PRICING.credReport})`);
+console.log(`💰 Accepts: X-Payment-Proof header (TX hash), body.paymentTx, x402 payment-signature`);
 
 // ─── Helpers ────────────────────────────────────────────────────
 
