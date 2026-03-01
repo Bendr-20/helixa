@@ -99,7 +99,7 @@ const upsertMany = (agents) => {
  * Query agents with pagination, sorting, filtering.
  * Compatible with the old response format.
  */
-function queryAgents({ page = 1, limit = 100, sort = 'tokenId', order = 'asc', framework, verified, search, showSpam = false } = {}) {
+function queryAgents({ page = 1, limit = 100, sort = 'tokenId', order = 'asc', framework, verified, search, owner, showSpam = false } = {}) {
     const validSorts = ['tokenId', 'credScore', 'points', 'name', 'mintedAt', 'framework'];
     if (!validSorts.includes(sort)) sort = 'tokenId';
     order = order.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
@@ -130,6 +130,10 @@ function queryAgents({ page = 1, limit = 100, sort = 'tokenId', order = 'asc', f
         where.push(`verified = 1`);
     } else if (verified === 'false' || verified === false) {
         where.push(`verified = 0`);
+    }
+    if (owner) {
+        where.push(`(LOWER(agentAddress) = LOWER(?) OR LOWER(owner) = LOWER(?))`);
+        params.push(owner, owner);
     }
     if (search) {
         where.push(`(name LIKE ? OR agentAddress LIKE ? OR owner LIKE ?)`);

@@ -107,6 +107,7 @@ export function Stake() {
   const [txHash, setTxHash] = useState('');
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'stake' | 'unstake' | 'vouch' | 'rewards'>('stake');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ─── Load global stats ──────────────────────────────────────────
   const loadGlobal = useCallback(async () => {
@@ -132,9 +133,19 @@ export function Stake() {
     if (!address) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/v2/agents?owner=${address}`);
-      const data = await res.json();
-      const agentList = data.agents || [];
+      // Try owner filter first, fall back to all agents (limited)
+      let agentList: any[] = [];
+      try {
+        const res = await fetch(`${API_URL}/api/v2/agents?owner=${address}&limit=50`);
+        const data = await res.json();
+        agentList = data.agents || [];
+      } catch {}
+      // If no owner match, show top agents by cred so user can pick
+      if (agentList.length === 0) {
+        const res = await fetch(`${API_URL}/api/v2/agents?sort=credScore&order=desc&limit=20`);
+        const data = await res.json();
+        agentList = data.agents || [];
+      }
 
       const [bal, allow] = await Promise.all([
         tokenRead.balanceOf(address),
@@ -318,9 +329,14 @@ export function Stake() {
             {/* Left: Agent Selector */}
             <div className="md:col-span-1">
               <div className="card p-4">
-                <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wider">Your Agents</h3>
-                <div className="space-y-2">
-                  {agents.map(a => (
+                <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wider">Agents</h3>
+                <input
+                  type="text" placeholder="Search by name or ID..."
+                  value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                  className="input w-full mb-3 text-sm"
+                />
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {agents.filter(a => !searchQuery || a.name.toLowerCase().includes(searchQuery.toLowerCase()) || String(a.tokenId).includes(searchQuery)).map(a => (
                     <button
                       key={a.tokenId}
                       onClick={() => setSelectedAgent(a.tokenId)}

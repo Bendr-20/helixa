@@ -532,6 +532,7 @@ app.get('/api/v2/agents', async (req, res) => {
             framework: req.query.framework,
             verified: req.query.verified,
             search: req.query.search,
+            owner: req.query.owner,
             showSpam,
         });
 
