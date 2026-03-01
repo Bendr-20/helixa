@@ -287,12 +287,12 @@ export function Stake() {
         {/* Tier Explainer */}
         <div className="card p-6 mb-8">
           <h3 className="text-lg font-heading font-semibold mb-4">Cred Tiers & Boost Multipliers</h3>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollSnapType: 'x mandatory' }}>
             {TIER_NAMES.map((name, i) => (
-              <div key={name} className="text-center p-3 rounded-lg" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30` }}>
-                <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+ Cred</div>
-                <div className="font-bold" style={{ color: TIER_COLORS[i] }}>{name}</div>
-                <div className="text-xs text-muted mt-1">{['0.5x', '0.75x', '1x', '1.5x', '2x'][i]} boost</div>
+              <div key={name} className="text-center p-3 rounded-lg flex-shrink-0" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30`, minWidth: '5.5rem', scrollSnapAlign: 'start' }}>
+                <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+</div>
+                <div className="font-bold text-sm" style={{ color: TIER_COLORS[i] }}>{name}</div>
+                <div className="text-xs text-muted mt-1">{['0.5x', '0.75x', '1x', '1.5x', '2x'][i]}</div>
               </div>
             ))}
           </div>
