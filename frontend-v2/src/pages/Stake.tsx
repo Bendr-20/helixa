@@ -244,10 +244,10 @@ export function Stake() {
         {/* Header */}
         <div className="text-center mb-10">
           <h1 className="text-4xl font-heading font-bold mb-3">
-            <span className="text-gradient">Stake $CRED</span>
+            <span className="text-gradient">Cred Markets</span>
           </h1>
           <p className="text-muted text-lg max-w-2xl mx-auto">
-            Back agents you believe in. Higher cred = bigger boost on your stake.
+            Back the agents you believe in. Stake $CRED, earn rewards, build reputation.
           </p>
         </div>
 
