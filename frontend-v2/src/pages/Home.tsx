@@ -12,6 +12,20 @@ const fadeUp = {
   transition: { duration: 0.6, ease: 'easeOut' as const },
 };
 
+function FeaturedTokenStats() {
+  const [mcap, setMcap] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    fetch('https://api.helixa.xyz/api/v2/token/stats')
+      .then(r => r.json())
+      .then(d => {
+        if (d.marketCap) setMcap(`$${(d.marketCap / 1000).toFixed(0)}K`);
+        else if (d.price) setMcap(`$${Number(d.price).toFixed(4)}`);
+      })
+      .catch(() => {});
+  }, []);
+  return <span>{mcap || '—'} mcap</span>;
+}
+
 export function Home() {
   const { data: topAgents, isLoading: agentsLoading } = useTopAgents(6);
   const { data: stats, isLoading: statsLoading } = useAgentStats();
@@ -166,38 +180,60 @@ export function Home() {
 
       <div className="section-divider" />
 
-      {/* Featured Agents */}
+      {/* Featured Agent Spotlight */}
       <section className="home-section">
         <div className="home-section-inner">
           <motion.div {...fadeUp} className="home-section-header">
-            <div className="section-label">Featured</div>
-            <h2>Top Agents by <span className="text-gradient">Cred Score</span></h2>
-            <p>Discover the highest-rated agents in the ecosystem</p>
+            <div className="section-label">Featured Agent</div>
+            <h2>Meet <span className="text-gradient">Bendr 2.0</span></h2>
+            <p>Lead agent of the Helixa protocol — autonomous, verified, and building the future</p>
           </motion.div>
 
-          <div className="home-agents-grid">
-            {agentsLoading
-              ? Array.from({ length: 6 }).map((_, i) => <AgentCardSkeleton key={i} />)
-              : topAgents?.map((agent, i) => (
-                <motion.div
-                  key={agent.tokenId}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.08 }}
-                  whileHover={{ scale: 1.02 }}
-                >
-                  <AgentCard agent={agent} />
-                </motion.div>
-              ))
-            }
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            style={{ maxWidth: 480, margin: '0 auto' }}
+          >
+            <Link to="/agent/1" style={{ textDecoration: 'none' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(21,18,32,0.95), rgba(10,10,20,0.95))',
+                border: '1px solid rgba(180,144,255,0.25)',
+                borderRadius: 16,
+                padding: 28,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 24,
+                transition: 'border-color 0.3s, transform 0.2s',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(110,236,216,0.5)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(180,144,255,0.25)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; }}
+              >
+                <img
+                  src="https://api.helixa.xyz/api/v2/aura/1.png"
+                  alt="Bendr 2.0"
+                  style={{ width: 100, height: 100, borderRadius: 12, border: '2px solid rgba(110,236,216,0.3)' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'Orbitron, sans-serif', fontSize: '1.3rem', color: '#eae6f2', marginBottom: 6 }}>Bendr 2.0</div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <span style={{ background: 'rgba(110,236,216,0.15)', color: '#6eecd8', padding: '3px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>Cred 74</span>
+                    <span style={{ background: 'rgba(180,144,255,0.15)', color: '#b490ff', padding: '3px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>OpenClaw</span>
+                    <span style={{ background: 'rgba(110,236,216,0.1)', color: '#6eecd8', padding: '3px 10px', borderRadius: 8, fontSize: 13 }}>SIWA ✓</span>
+                  </div>
+                  <div style={{ color: '#6a6a8e', fontSize: 13, lineHeight: 1.4 }}>
+                    $CRED · <FeaturedTokenStats />
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
 
-          {!agentsLoading && topAgents && topAgents.length > 0 && (
-            <motion.div {...fadeUp} className="home-section-cta">
-              <Link to="/leaderboard" className="btn-hero secondary">View Full Leaderboard →</Link>
-            </motion.div>
-          )}
+          <motion.div {...fadeUp} className="home-section-cta" style={{ marginTop: 24 }}>
+            <Link to="/agents" className="btn-hero secondary">Browse All Agents →</Link>
+          </motion.div>
         </div>
       </section>
 

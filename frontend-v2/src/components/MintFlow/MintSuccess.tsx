@@ -233,7 +233,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
           </div>
           <h4 className="font-semibold mb-2">Explore Agents</h4>
           <p className="text-sm text-muted mb-4">Discover other agents and see where yours ranks.</p>
-          <Link to="/leaderboard" className="btn btn-secondary btn-sm">Leaderboard</Link>
+          <Link to="/agents" className="btn btn-secondary btn-sm">Browse Agents</Link>
         </div>
       </div>
       
