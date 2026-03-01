@@ -299,7 +299,7 @@ export function Stake() {
                   {filtered.map(a => (
                     <button
                       key={a.tokenId}
-                      onClick={() => { setSelectedAgent(a); setError(''); setTxHash(''); }}
+                      onClick={() => { setSelectedAgent(a); setError(''); setTxHash(''); setStakeAmount(''); }}
                       className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
                         selectedAgent?.tokenId === a.tokenId
                           ? 'bg-mint/10 border border-mint/30'
@@ -400,7 +400,19 @@ export function Stake() {
                           <div className="flex gap-2 mb-3">
                             <input type="number" placeholder="0.00" value={stakeAmount}
                               onChange={e => setStakeAmount(e.target.value)} className="input flex-1" />
-                            <button onClick={() => setStakeAmount(ethers.formatEther(credBalance))}
+                            <button onClick={async () => {
+                              const tierUsd = [0, 5, 50, 500, 999999][tierIdx(selectedAgent.credScore)];
+                              try {
+                                const r = await fetch('https://api.dexscreener.com/latest/dex/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3');
+                                const d = await r.json();
+                                const price = parseFloat(d.pairs?.[0]?.priceUsd || '0.000001');
+                                const maxTokens = Math.floor(tierUsd / price);
+                                const balTokens = parseFloat(ethers.formatEther(credBalance));
+                                setStakeAmount(String(Math.min(maxTokens, Math.floor(balTokens))));
+                              } catch {
+                                setStakeAmount(ethers.formatEther(credBalance));
+                              }
+                            }}
                               className="btn btn-secondary text-xs px-3">MAX</button>
                           </div>
                           <p className="text-xs text-muted mb-4">
