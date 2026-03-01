@@ -552,6 +552,56 @@ app.get('/api/v2/agent/:id', async (req, res) => {
     }
 });
 
+// GET /api/v2/stake/:id — Stake info for an agent
+app.get('/api/v2/stake/:id', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const { ethers: eth } = require('ethers');
+        const stakingAbi = [
+            'function stakes(uint256) view returns (address staker, uint256 amount, uint256 stakedAt, uint8 credAtStake)',
+            'function effectiveStake(uint256) view returns (uint256)',
+            'function pendingRewards(uint256) view returns (uint256)',
+            'function getVouchCount(uint256) view returns (uint256)',
+            'function totalStaked() view returns (uint256)',
+            'function totalEffectiveStake() view returns (uint256)',
+            'function LOCK_PERIOD() view returns (uint256)',
+            'function EARLY_UNSTAKE_PENALTY_BPS() view returns (uint256)',
+        ];
+        const stakingContract = new eth.Contract('0xd40ECD47201D8ea25181dc05a638e34469399613', stakingAbi, readProvider);
+        const [sd, eff, pending, vc, ts, te, lp, pp] = await Promise.all([
+            stakingContract.stakes(tokenId),
+            stakingContract.effectiveStake(tokenId),
+            stakingContract.pendingRewards(tokenId),
+            stakingContract.getVouchCount(tokenId),
+            stakingContract.totalStaked(),
+            stakingContract.totalEffectiveStake(),
+            stakingContract.LOCK_PERIOD(),
+            stakingContract.EARLY_UNSTAKE_PENALTY_BPS(),
+        ]);
+        res.json({
+            tokenId,
+            staker: sd.staker,
+            staked: eth.formatEther(sd.amount),
+            stakedRaw: sd.amount.toString(),
+            stakedAt: Number(sd.stakedAt),
+            credAtStake: Number(sd.credAtStake),
+            effectiveStake: eth.formatEther(eff),
+            effectiveStakeRaw: eff.toString(),
+            pendingRewards: eth.formatEther(pending),
+            pendingRewardsRaw: pending.toString(),
+            vouchCount: Number(vc),
+            global: {
+                totalStaked: eth.formatEther(ts),
+                totalEffective: eth.formatEther(te),
+                lockPeriodDays: Math.round(Number(lp) / 86400),
+                earlyPenaltyPct: Number(pp) / 100,
+            },
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/v2/metadata/:id — OpenSea-compatible metadata
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {

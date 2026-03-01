@@ -35,7 +35,6 @@ const STAKING_ABI = [
 ];
 
 const readProvider = new ethers.JsonRpcProvider(BASE_RPC);
-const stakingRead = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
 const tokenRead = new ethers.Contract(CRED_TOKEN, ERC20_ABI, readProvider);
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -109,19 +108,18 @@ export function Stake() {
     setLoading(false);
   }, []);
 
-  // ─── Load global stats ──────────────────────────────────────────
+  // ─── Load global stats (via API) ─────────────────────────────────
   const loadGlobal = useCallback(async () => {
     try {
-      const [ts, te, lp, pp] = await Promise.all([
-        stakingRead.totalStaked(),
-        stakingRead.totalEffectiveStake(),
-        stakingRead.LOCK_PERIOD(),
-        stakingRead.EARLY_UNSTAKE_PENALTY_BPS(),
-      ]);
-      setGlobalTotalStaked(ts);
-      setGlobalTotalEffective(te);
-      setLockDays(Math.round(Number(lp) / 86400));
-      setPenaltyPct(Number(pp) / 100);
+      // Use agent 0 (or 1) just to get global stats
+      const res = await fetch(`${API_URL}/api/v2/stake/1`);
+      const d = await res.json();
+      if (d.global) {
+        setGlobalTotalStaked(ethers.parseEther(d.global.totalStaked || '0'));
+        setGlobalTotalEffective(ethers.parseEther(d.global.totalEffective || '0'));
+        setLockDays(d.global.lockPeriodDays || 7);
+        setPenaltyPct(d.global.earlyPenaltyPct || 10);
+      }
     } catch {}
   }, []);
 
@@ -138,24 +136,27 @@ export function Stake() {
     } catch {}
   }, [address]);
 
-  // ─── Load stake info for selected agent ─────────────────────────
+  // ─── Load stake info for selected agent (via API) ────────────────
   const loadStakeInfo = useCallback(async (tokenId: number) => {
     setStakeLoading(true);
     setStakeInfo(null);
     try {
-      const [sd, eff, pending, vc] = await Promise.all([
-        stakingRead.stakes(tokenId),
-        stakingRead.effectiveStake(tokenId),
-        stakingRead.pendingRewards(tokenId),
-        stakingRead.getVouchCount(tokenId),
-      ]);
+      const res = await fetch(`${API_URL}/api/v2/stake/${tokenId}`);
+      const d = await res.json();
       setStakeInfo({
-        staked: sd.amount || sd[1] || 0n,
-        stakedAt: Number(sd.stakedAt || sd[2] || 0),
-        effectiveStake: eff,
-        pendingRewards: pending,
-        vouchCount: Number(vc),
+        staked: BigInt(d.stakedRaw || '0'),
+        stakedAt: d.stakedAt || 0,
+        effectiveStake: BigInt(d.effectiveStakeRaw || '0'),
+        pendingRewards: BigInt(d.pendingRewardsRaw || '0'),
+        vouchCount: d.vouchCount || 0,
       });
+      // Also update global stats from same response
+      if (d.global) {
+        setGlobalTotalStaked(ethers.parseEther(d.global.totalStaked || '0'));
+        setGlobalTotalEffective(ethers.parseEther(d.global.totalEffective || '0'));
+        setLockDays(d.global.lockPeriodDays || 7);
+        setPenaltyPct(d.global.earlyPenaltyPct || 10);
+      }
     } catch (e) {
       console.error('Failed to load stake info:', e);
       setStakeInfo({ staked: 0n, stakedAt: 0, effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0 });
