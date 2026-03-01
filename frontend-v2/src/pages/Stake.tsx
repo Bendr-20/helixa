@@ -290,47 +290,47 @@ export function Stake() {
         </div>
 
         {/* Tier Explainer + Buy $CRED */}
-        <div className="grid md:grid-cols-3 gap-4 mb-6">
-          <div className="md:col-span-2 card p-5">
-            <h3 className="text-sm font-heading font-semibold mb-4 uppercase tracking-wider text-muted">Staking Tiers</h3>
-            <div className="space-y-2">
-              {TIER_NAMES.map((name, i) => {
-                const pct = TIER_MIN_CRED[i];
-                return (
-                  <div key={name} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: `${TIER_COLORS[i]}08` }}>
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: TIER_COLORS[i], boxShadow: `0 0 8px ${TIER_COLORS[i]}60` }} />
-                    <div className="font-semibold text-sm w-24" style={{ color: TIER_COLORS[i] }}>{name}</div>
-                    <div className="text-xs text-muted flex-1">{pct === 0 ? '0–25' : pct === 26 ? '26–50' : pct === 51 ? '51–75' : pct === 76 ? '76–90' : '91–100'} Cred</div>
-                    <div className="text-xs font-mono text-right w-20">
-                      {i === 0 ? <span className="text-red-400">No stake</span> : <span>Max {TIER_MAX_STAKE_USD[i]}</span>}
-                    </div>
-                    <div className="text-xs font-mono text-right w-12" style={{ color: TIER_COLORS[i] }}>
-                      {i === 0 ? '—' : `${[0, 0.75, 1, 1.5, 2][i]}x`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-4 mt-3 text-xs text-muted">
-              <span>Max = stake cap</span>
-              <span>Multiplier = cred boost on effective stake</span>
+        <div className="card p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-muted">Cred Tiers</h3>
+            <div className="flex items-center gap-3">
+              <a href={`https://dexscreener.com/base/${CRED_CA}`} target="_blank" rel="noopener"
+                className="text-xs text-muted hover:text-mint transition-colors">Chart</a>
+              <a href={UNISWAP_URL} target="_blank" rel="noopener"
+                className="text-xs font-semibold px-3 py-1.5 rounded-full bg-mint/10 text-mint hover:bg-mint/20 transition-colors">
+                Get $CRED
+              </a>
             </div>
           </div>
-
-          <div className="card p-5 flex flex-col items-center justify-center text-center">
-            <div className="w-10 h-10 rounded-full bg-mint/15 flex items-center justify-center mx-auto mb-2">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-mint"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            </div>
-            <h3 className="font-heading font-bold text-lg mb-2">Need $CRED?</h3>
-            <p className="text-sm text-muted mb-4">Swap ETH → $CRED on Uniswap (Base)</p>
-            <a href={UNISWAP_URL} target="_blank" rel="noopener"
-              className="btn btn-primary w-full text-center">
-              Buy $CRED ↗
-            </a>
-            <a href={`https://dexscreener.com/base/${CRED_CA}`} target="_blank" rel="noopener"
-              className="text-xs text-mint mt-3 hover:underline">
-              View on DexScreener ↗
-            </a>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ minWidth: 420 }}>
+              <thead>
+                <tr className="text-xs text-muted uppercase tracking-wider">
+                  <th className="text-left pb-2 font-medium">Tier</th>
+                  <th className="text-left pb-2 font-medium">Cred Range</th>
+                  <th className="text-right pb-2 font-medium">Max Stake</th>
+                  <th className="text-right pb-2 font-medium">Boost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TIER_NAMES.map((name, i) => (
+                  <tr key={name} className="border-t border-white/5">
+                    <td className="py-2.5">
+                      <span className="font-semibold" style={{ color: TIER_COLORS[i] }}>{name}</span>
+                    </td>
+                    <td className="py-2.5 text-muted font-mono text-xs">
+                      {i === 0 ? '0–25' : i === 1 ? '26–50' : i === 2 ? '51–75' : i === 3 ? '76–90' : '91–100'}
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-xs">
+                      {i === 0 ? <span className="text-red-400/70">—</span> : TIER_MAX_STAKE_USD[i]}
+                    </td>
+                    <td className="py-2.5 text-right font-mono text-xs" style={{ color: TIER_COLORS[i] }}>
+                      {i === 0 ? '—' : `${[0, 0.75, 1, 1.5, 2][i]}×`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
