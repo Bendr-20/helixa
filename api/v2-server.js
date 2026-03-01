@@ -552,6 +552,43 @@ app.get('/api/v2/agent/:id', async (req, res) => {
     }
 });
 
+// GET /api/v2/stakes/batch — Staked amounts for multiple agents
+app.get('/api/v2/stakes/batch', async (req, res) => {
+    try {
+        const ids = (req.query.ids || '').split(',').map(Number).filter(n => n > 0).slice(0, 200);
+        if (!ids.length) return res.json({ stakes: {} });
+        const { ethers: eth } = require('ethers');
+        const stakingAbi = [
+            'function stakes(uint256) view returns (address staker, uint256 amount, uint256 stakedAt, uint8 credAtStake)',
+            'function effectiveStake(uint256) view returns (uint256)',
+        ];
+        const c = new eth.Contract('0xd40ECD47201D8ea25181dc05a638e34469399613', stakingAbi, readProvider);
+        const results = {};
+        // Batch in groups of 20 to avoid RPC overload
+        for (let i = 0; i < ids.length; i += 20) {
+            const batch = ids.slice(i, i + 20);
+            const calls = batch.map(id => Promise.all([
+                c.stakes(id).then(s => ({ amount: s.amount, staker: s.staker })).catch(() => ({ amount: 0n, staker: '0x0000000000000000000000000000000000000000' })),
+                c.effectiveStake(id).catch(() => 0n),
+            ]));
+            const batchResults = await Promise.all(calls);
+            batch.forEach((id, idx) => {
+                const [sd, eff] = batchResults[idx];
+                if (sd.amount > 0n) {
+                    results[id] = {
+                        staked: eth.formatEther(sd.amount),
+                        effective: eth.formatEther(eff),
+                        staker: sd.staker,
+                    };
+                }
+            });
+        }
+        res.json({ stakes: results });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/v2/stake/:id — Stake info for an agent
 app.get('/api/v2/stake/:id', async (req, res) => {
     try {

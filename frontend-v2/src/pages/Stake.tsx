@@ -56,8 +56,11 @@ function tierIdx(cred: number): number {
 function tierName(cred: number) { return TIER_NAMES[tierIdx(cred)]; }
 function tierColor(cred: number) { return TIER_COLORS[tierIdx(cred)]; }
 
-interface Agent { tokenId: number; name: string; credScore: number; framework: string; }
+interface Agent { tokenId: number; name: string; credScore: number; framework: string; stakedAmount?: string; }
 interface StakeInfo { staked: bigint; stakedAt: number; effectiveStake: bigint; pendingRewards: bigint; vouchCount: number; }
+
+const CRED_CA = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
+const UNISWAP_URL = `https://app.uniswap.org/swap?outputCurrency=${CRED_CA}&chain=base`;
 
 // ─── Component ────────────────────────────────────────────────────
 export function Stake() {
@@ -89,6 +92,7 @@ export function Stake() {
   const [txSuccess, setTxSuccess] = useState('');
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'stake' | 'unstake' | 'vouch' | 'rewards'>('stake');
+  const [sortBy, setSortBy] = useState<'cred' | 'staked'>('cred');
 
   // ─── Load agents (sorted by cred, no junk) ─────────────────────
   const loadAgents = useCallback(async () => {
@@ -96,14 +100,26 @@ export function Stake() {
     try {
       const res = await fetch(`${API_URL}/api/v2/agents?sort=credScore&order=desc&limit=200`);
       const data = await res.json();
-      const list = (data.agents || [])
-        .filter((a: any) => (a.credScore || 0) >= 26) // exclude junk
+      const list: Agent[] = (data.agents || [])
+        .filter((a: any) => (a.credScore || 0) >= 26)
         .map((a: any) => ({
           tokenId: a.tokenId,
           name: a.name,
           credScore: a.credScore || 0,
           framework: a.framework || '',
         }));
+      // Batch-load staking data
+      try {
+        const ids = list.map(a => a.tokenId).join(',');
+        const sr = await fetch(`${API_URL}/api/v2/stakes/batch?ids=${ids}`);
+        const sd = await sr.json();
+        if (sd.stakes) {
+          list.forEach(a => {
+            const s = sd.stakes[a.tokenId];
+            if (s) a.stakedAmount = s.staked;
+          });
+        }
+      } catch {}
       setAgents(list);
     } catch {}
     setLoading(false);
@@ -170,9 +186,17 @@ export function Stake() {
   useEffect(() => { if (selectedAgent) loadStakeInfo(selectedAgent.tokenId); }, [selectedAgent, loadStakeInfo]);
 
   // ─── Filtered agents ────────────────────────────────────────────
-  const filtered = search
+  const filtered = (search
     ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || String(a.tokenId).includes(search))
-    : agents;
+    : agents
+  ).sort((a, b) => {
+    if (sortBy === 'staked') {
+      const sa = parseFloat(a.stakedAmount || '0');
+      const sb = parseFloat(b.stakedAmount || '0');
+      if (sb !== sa) return sb - sa;
+    }
+    return b.credScore - a.credScore;
+  });
 
   // ─── Signer ─────────────────────────────────────────────────────
   async function getSigner() {
@@ -265,17 +289,46 @@ export function Stake() {
           <StatCard label="Early Exit Fee" value={`${penaltyPct}%`} />
         </div>
 
-        {/* Tier Explainer */}
-        <div className="card p-5 mb-6">
-          <h3 className="text-sm font-heading font-semibold mb-3 uppercase tracking-wider">Cred Tiers & Max Stake</h3>
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2" style={{ scrollSnapType: 'x mandatory' }}>
-            {TIER_NAMES.map((name, i) => (
-              <div key={name} className="text-center p-3 rounded-lg flex-shrink-0" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30`, minWidth: '5.5rem', scrollSnapAlign: 'start' }}>
-                <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+ Cred</div>
-                <div className="font-bold text-sm" style={{ color: TIER_COLORS[i] }}>{name}</div>
-                <div className="text-xs text-muted mt-1">Max {TIER_MAX_STAKE_USD[i]}</div>
-              </div>
-            ))}
+        {/* Tier Explainer + Buy $CRED */}
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
+          <div className="md:col-span-2 card p-5">
+            <h3 className="text-sm font-heading font-semibold mb-4 uppercase tracking-wider text-muted">Staking Tiers</h3>
+            <div className="space-y-2">
+              {TIER_NAMES.map((name, i) => {
+                const pct = TIER_MIN_CRED[i];
+                return (
+                  <div key={name} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ background: `${TIER_COLORS[i]}08` }}>
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: TIER_COLORS[i], boxShadow: `0 0 8px ${TIER_COLORS[i]}60` }} />
+                    <div className="font-semibold text-sm w-24" style={{ color: TIER_COLORS[i] }}>{name}</div>
+                    <div className="text-xs text-muted flex-1">{pct === 0 ? '0–25' : pct === 26 ? '26–50' : pct === 51 ? '51–75' : pct === 76 ? '76–90' : '91–100'} Cred</div>
+                    <div className="text-xs font-mono text-right w-20">
+                      {i === 0 ? <span className="text-red-400">No stake</span> : <span>Max {TIER_MAX_STAKE_USD[i]}</span>}
+                    </div>
+                    <div className="text-xs font-mono text-right w-12" style={{ color: TIER_COLORS[i] }}>
+                      {i === 0 ? '—' : `${[0, 0.75, 1, 1.5, 2][i]}x`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-4 mt-3 text-xs text-muted">
+              <span>Max = stake cap</span>
+              <span>Multiplier = cred boost on effective stake</span>
+            </div>
+          </div>
+
+          <div className="card p-5 flex flex-col items-center justify-center text-center">
+            <div className="text-3xl mb-2">💰</div>
+            <h3 className="font-heading font-bold text-lg mb-2">Need $CRED?</h3>
+            <p className="text-sm text-muted mb-4">Swap ETH → $CRED on Uniswap (Base)</p>
+            <a href={UNISWAP_URL} target="_blank" rel="noopener"
+              className="btn btn-primary w-full text-center">
+              Buy $CRED ↗
+            </a>
+            <a href={`https://dexscreener.com/base/${CRED_CA}`} target="_blank" rel="noopener"
+              className="text-xs text-mint mt-3 hover:underline">
+              View on DexScreener ↗
+            </a>
           </div>
         </div>
 
@@ -296,8 +349,18 @@ export function Stake() {
               <input
                 type="text" placeholder="Search agents..."
                 value={search} onChange={e => setSearch(e.target.value)}
-                className="input w-full mb-3 text-sm"
+                className="input w-full mb-2 text-sm"
               />
+              <div className="flex gap-1 mb-3">
+                <button onClick={() => setSortBy('cred')}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-all ${sortBy === 'cred' ? 'bg-mint/20 text-mint border border-mint/30' : 'text-muted hover:text-white border border-transparent'}`}>
+                  By Cred
+                </button>
+                <button onClick={() => setSortBy('staked')}
+                  className={`text-xs px-2.5 py-1 rounded-full transition-all ${sortBy === 'staked' ? 'bg-mint/20 text-mint border border-mint/30' : 'text-muted hover:text-white border border-transparent'}`}>
+                  Most Staked
+                </button>
+              </div>
               {loading ? (
                 <div className="flex justify-center py-8"><div className="spinner" style={{ width: 24, height: 24 }} /></div>
               ) : (
@@ -313,17 +376,22 @@ export function Stake() {
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="font-semibold text-sm truncate">{a.name}</div>
                           <div className="text-xs text-muted">#{a.tokenId} · {a.framework}</div>
                         </div>
-                        <div className="flex-shrink-0 ml-2">
+                        <div className="flex-shrink-0 ml-2 text-right">
                           <span className="text-xs font-mono font-semibold px-1.5 py-0.5 rounded" style={{
                             color: tierColor(a.credScore),
                             background: `${tierColor(a.credScore)}15`,
                           }}>
                             {a.credScore}
                           </span>
+                          {a.stakedAmount && parseFloat(a.stakedAmount) > 0 && (
+                            <div className="text-[10px] font-mono text-mint mt-0.5">
+                              ⚡ {parseFloat(a.stakedAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </button>
