@@ -353,13 +353,13 @@ export function Stake() {
                 value={search} onChange={e => setSearch(e.target.value)}
                 className="input w-full mb-2 text-sm"
               />
-              <div className="flex gap-1 mb-3">
+              <div className="flex gap-3 mb-3 text-xs border-b border-white/5 pb-2">
                 <button onClick={() => setSortBy('cred')}
-                  className={`text-xs px-2.5 py-1 rounded-full transition-all ${sortBy === 'cred' ? 'bg-mint/20 text-mint border border-mint/30' : 'text-muted hover:text-white border border-transparent'}`}>
+                  className={`transition-colors ${sortBy === 'cred' ? 'text-mint font-semibold' : 'text-muted hover:text-white'}`}>
                   By Cred
                 </button>
                 <button onClick={() => setSortBy('staked')}
-                  className={`text-xs px-2.5 py-1 rounded-full transition-all ${sortBy === 'staked' ? 'bg-mint/20 text-mint border border-mint/30' : 'text-muted hover:text-white border border-transparent'}`}>
+                  className={`transition-colors ${sortBy === 'staked' ? 'text-mint font-semibold' : 'text-muted hover:text-white'}`}>
                   Most Staked
                 </button>
               </div>
