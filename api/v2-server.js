@@ -552,6 +552,171 @@ app.get('/api/v2/agent/:id', async (req, res) => {
     }
 });
 
+// ─── Staking API (Agent-facing) ─────────────────────────────────
+const STAKING_V2 = '0xd40ECD47201D8ea25181dc05a638e34469399613';
+const CRED_TOKEN = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
+const STAKING_ABI_FULL = [
+    'function stake(uint256 agentId, uint256 amount) external',
+    'function unstake(uint256 agentId, uint256 amount) external',
+    'function vouch(uint256 agentId, uint256 voucherAgentId, uint256 amount) external',
+    'function claimRewards(uint256 agentId) external',
+    'function stakes(uint256) view returns (address staker, uint256 amount, uint256 stakedAt, uint8 credAtStake)',
+    'function effectiveStake(uint256) view returns (uint256)',
+    'function pendingRewards(uint256) view returns (uint256)',
+    'function getMaxStake(uint8 cred) view returns (uint256)',
+    'function getTier(uint8 cred) view returns (uint8)',
+    'function totalStaked() view returns (uint256)',
+    'function LOCK_PERIOD() view returns (uint256)',
+    'function EARLY_UNSTAKE_PENALTY_BPS() view returns (uint256)',
+];
+const ERC20_APPROVE_ABI = ['function approve(address spender, uint256 amount) external returns (bool)'];
+
+// GET /api/v2/stake/info — staking contract details + instructions for agents
+app.get('/api/v2/stake/info', (req, res) => {
+    res.json({
+        stakingContract: STAKING_V2,
+        credToken: CRED_TOKEN,
+        chain: 'base',
+        chainId: 8453,
+        rpc: RPC_URL,
+        lockPeriod: '7 days',
+        earlyUnstakePenalty: '10%',
+        tiers: {
+            JUNK: { credRange: '0-25', maxStake: 0, boost: '0x', note: 'Cannot stake' },
+            MARGINAL: { credRange: '26-50', maxStake: '1,000 USDC equiv', boost: '0.75x' },
+            QUALIFIED: { credRange: '51-75', maxStake: '10,000 USDC equiv', boost: '1x' },
+            PRIME: { credRange: '76-90', maxStake: '100,000 USDC equiv', boost: '1.5x' },
+            PREFERRED: { credRange: '91-100', maxStake: 'Unlimited', boost: '2x' },
+        },
+        instructions: [
+            '1. Approve $CRED tokens: call approve(stakingContract, amount) on the $CRED token contract',
+            '2. Stake: call stake(agentId, amount) on the staking contract',
+            'Or use POST /api/v2/stake/prepare to get ready-to-sign transaction data',
+        ],
+        abi: STAKING_ABI_FULL,
+    });
+});
+
+// POST /api/v2/stake/prepare — returns unsigned TX calldata for approve + stake
+app.post('/api/v2/stake/prepare', express.json(), async (req, res) => {
+    try {
+        const { agentId, amount, action = 'stake' } = req.body;
+        if (!agentId || !amount) return res.status(400).json({ error: 'agentId and amount required' });
+
+        const eth = require('ethers');
+        const stakingIface = new eth.Interface(STAKING_ABI_FULL);
+        const erc20Iface = new eth.Interface(ERC20_APPROVE_ABI);
+        const amountWei = eth.parseUnits(String(amount), 18);
+
+        if (action === 'stake') {
+            const provider = new eth.JsonRpcProvider(RPC_URL);
+            const stakingContract = new eth.Contract(STAKING_V2, STAKING_ABI_FULL, provider);
+            const oracleAbi = ['function getCredScore(uint256) view returns (uint8)'];
+            const oracle = new eth.Contract('0xD77354Aebea97C65e7d4a605f91737616FFA752f', oracleAbi, provider);
+            const cred = await oracle.getCredScore(agentId);
+            const tier = await stakingContract.getTier(Number(cred));
+            if (tier === 0) return res.status(400).json({ error: 'Agent cred too low (Junk tier cannot stake)' });
+
+            const maxStake = await stakingContract.getMaxStake(Number(cred));
+            const stakeInfo = await stakingContract.stakes(agentId);
+            const currentStake = stakeInfo.amount || 0n;
+            if (currentStake + amountWei > maxStake) {
+                return res.status(400).json({
+                    error: 'Exceeds tier max stake',
+                    currentStake: eth.formatUnits(currentStake, 18),
+                    maxStake: eth.formatUnits(maxStake, 18),
+                    credScore: Number(cred),
+                });
+            }
+
+            res.json({
+                transactions: [
+                    {
+                        step: 1,
+                        description: 'Approve $CRED tokens for staking contract',
+                        to: CRED_TOKEN,
+                        data: erc20Iface.encodeFunctionData('approve', [STAKING_V2, amountWei]),
+                        value: '0x0',
+                    },
+                    {
+                        step: 2,
+                        description: `Stake ${amount} $CRED on agent #${agentId}`,
+                        to: STAKING_V2,
+                        data: stakingIface.encodeFunctionData('stake', [agentId, amountWei]),
+                        value: '0x0',
+                    },
+                ],
+                agentId: Number(agentId),
+                amount: String(amount),
+                credScore: Number(cred),
+                tier: ['JUNK', 'MARGINAL', 'QUALIFIED', 'PRIME', 'PREFERRED'][tier],
+                chainId: 8453,
+            });
+        } else if (action === 'unstake') {
+            res.json({
+                transactions: [{
+                    step: 1,
+                    description: `Unstake ${amount} $CRED from agent #${agentId}`,
+                    to: STAKING_V2,
+                    data: stakingIface.encodeFunctionData('unstake', [agentId, amountWei]),
+                    value: '0x0',
+                }],
+                agentId: Number(agentId),
+                amount: String(amount),
+                note: 'If within 7-day lock period, 10% early exit penalty applies',
+                chainId: 8453,
+            });
+        } else if (action === 'claim') {
+            res.json({
+                transactions: [{
+                    step: 1,
+                    description: `Claim staking rewards for agent #${agentId}`,
+                    to: STAKING_V2,
+                    data: stakingIface.encodeFunctionData('claimRewards', [agentId]),
+                    value: '0x0',
+                }],
+                agentId: Number(agentId),
+                chainId: 8453,
+            });
+        } else {
+            res.status(400).json({ error: 'Invalid action. Use: stake, unstake, claim' });
+        }
+    } catch (err) {
+        console.error('[STAKE/PREPARE]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/v2/stake/relay — broadcast a signed transaction (gasless staking for agents)
+app.post('/api/v2/stake/relay', express.json(), async (req, res) => {
+    try {
+        const { signedTx } = req.body;
+        if (!signedTx) return res.status(400).json({ error: 'signedTx required (hex-encoded signed transaction)' });
+
+        const eth = require('ethers');
+        const provider = new eth.JsonRpcProvider(RPC_URL);
+
+        const decoded = eth.Transaction.from(signedTx);
+        const allowedTargets = [STAKING_V2.toLowerCase(), CRED_TOKEN.toLowerCase()];
+        if (!decoded.to || !allowedTargets.includes(decoded.to.toLowerCase())) {
+            return res.status(400).json({ error: 'Transaction must target staking or $CRED token contract' });
+        }
+
+        const txResponse = await provider.broadcastTransaction(signedTx);
+        console.log(`[STAKE/RELAY] Broadcast TX: ${txResponse.hash} from ${decoded.from}`);
+
+        res.json({
+            txHash: txResponse.hash,
+            from: decoded.from,
+            to: decoded.to,
+            explorer: `https://basescan.org/tx/${txResponse.hash}`,
+        });
+    } catch (err) {
+        console.error('[STAKE/RELAY]', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/v2/stakes/batch — Staked amounts for multiple agents
 app.get('/api/v2/stakes/batch', async (req, res) => {
     try {
