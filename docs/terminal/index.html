@@ -425,25 +425,28 @@
     (function(){
       const fmt = v => { if(!v||v<=0) return '—'; if(v>=1e9) return '$'+(v/1e9).toFixed(1)+'B'; if(v>=1e6) return '$'+(v/1e6).toFixed(1)+'M'; if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K'; return '$'+v.toFixed(2); };
       Promise.allSettled([
-        fetch('https://api.helixa.xyz/api/v2/token/stats').then(r=>r.json()),
-        fetch('https://api.helixa.xyz/api/terminal/stats').then(r=>r.json()),
-        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=price_change_24h&dir=desc').then(r=>r.json())
-      ]).then(([tokR, termR, moverR]) => {
-        const tok = tokR.status==='fulfilled' ? tokR.value : {};
-        const term = termR.status==='fulfilled' ? termR.value : (termR.status==='fulfilled' ? termR.value.stats : {});
-        const stats = term.stats || term;
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=cred_score&dir=desc').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=price_change_24h&dir=desc&filter=trending').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&q=Bendr').then(r=>r.json())
+      ]).then(([termR, moverR, credR]) => {
+        const termData = termR.status==='fulfilled' ? termR.value : {};
+        const stats = termData.stats || {};
         const moverData = moverR.status==='fulfilled' ? moverR.value : {};
         const mover = (moverData.agents||[])[0];
+        const credAgent = credR.status==='fulfilled' ? ((credR.value.agents||[])[0]) : null;
 
         const s = id => document.getElementById(id);
-        if(stats.total) { s('tk-agents').textContent = (stats.total).toLocaleString(); s('total-agents').textContent = (stats.total).toLocaleString(); }
-        if(stats.scored) { s('tk-scored').textContent = (stats.scored).toLocaleString(); s('total-scored').textContent = (stats.scored).toLocaleString(); }
-        if(stats.avgScore) { s('tk-avg').textContent = stats.avgScore; s('avg-score').textContent = stats.avgScore; }
-        if(stats.x402) { s('tk-x402').textContent = (stats.x402).toLocaleString(); s('total-x402').textContent = (stats.x402).toLocaleString(); }
-        if(tok.price) s('tk-price').textContent = '$'+Number(tok.price).toFixed(6);
-        if(tok.marketCap) s('tk-mcap').textContent = fmt(tok.marketCap);
-        if(tok.volume24h) s('tk-vol').textContent = fmt(tok.volume24h);
-        if(mover && mover.name) s('tk-mover').textContent = mover.name + (mover.price_change_24h!=null ? ' +'+mover.price_change_24h.toFixed(1)+'%' : '');
+        if(stats.total) { s('tk-agents').textContent = (stats.total).toLocaleString(); if(s('total-agents')) s('total-agents').textContent = (stats.total).toLocaleString(); }
+        if(stats.scored) { s('tk-scored').textContent = (stats.scored).toLocaleString(); if(s('total-scored')) s('total-scored').textContent = (stats.scored).toLocaleString(); }
+        if(stats.avgScore) { s('tk-avg').textContent = stats.avgScore; if(s('avg-score')) s('avg-score').textContent = stats.avgScore; }
+        if(stats.x402) { s('tk-x402').textContent = (stats.x402).toLocaleString(); if(s('total-x402')) s('total-x402').textContent = (stats.x402).toLocaleString(); }
+        // $CRED price from the Bendr/CRED agent row in terminal DB
+        if(credAgent && credAgent.token_market_cap) {
+          s('tk-mcap').textContent = fmt(credAgent.token_market_cap);
+          if(credAgent.volume_24h) s('tk-vol').textContent = fmt(credAgent.volume_24h);
+          if(credAgent.price_change_24h != null) s('tk-price').textContent = (credAgent.price_change_24h>=0?'+':'')+credAgent.price_change_24h.toFixed(1)+'%';
+        }
+        if(mover && mover.name) s('tk-mover').textContent = mover.name + (mover.price_change_24h!=null ? ' ('+(mover.price_change_24h>=0?'+':'')+mover.price_change_24h.toFixed(1)+'%)' : '');
 
         // Duplicate ticker content for seamless loop
         const track = document.getElementById('ticker-track');
