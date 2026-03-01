@@ -416,8 +416,22 @@ app.get('/api/v2/stats', async (req, res) => {
         const price = results[1];
         const balance = results[2] || 0n;
         
+        // Compute extra stats from indexer
+        let totalCredScore = 0, soulboundCount = 0, frameworkSet = new Set();
+        try {
+            const all = indexer.getAllAgents();
+            for (const a of all) {
+                totalCredScore += (a.credScore || 0);
+                if (a.soulbound) soulboundCount++;
+                if (a.framework) frameworkSet.add(a.framework);
+            }
+        } catch (e) { console.warn('Stats indexer error:', e.message); }
+
         res.json({
             totalAgents: Math.max(0, Number(total) - 1), // Hide test agent #0
+            totalCredScore,
+            frameworks: frameworkSet.size,
+            soulboundCount,
             mintPrice: ethers.formatEther(price),
             network: 'Base',
             chainId: 8453,
