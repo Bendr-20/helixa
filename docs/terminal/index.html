@@ -281,9 +281,26 @@
       <div class="stat">AVG CRED: <span class="stat-val" id="avg-score">—</span></div>
       <div class="stat">x402: <span class="stat-val" id="total-x402">—</span></div>
     </div>
-    <div style="text-align:center;margin:16px 0 8px">
-      <a href="https://app.uniswap.org/swap?outputCurrency=0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3&chain=base" target="_blank" rel="noopener" style="display:inline-block;padding:10px 32px;background:linear-gradient(135deg,#6eecd8,#b490ff);color:#0a0a14;font-family:'Orbitron',monospace;font-size:0.85rem;font-weight:700;text-decoration:none;border-radius:6px;letter-spacing:1.5px">BUY $CRED</a>
-    </div>
+    <a href="/agent/1" style="display:block;max-width:420px;margin:16px auto 8px;padding:14px 18px;background:linear-gradient(135deg,rgba(21,18,32,0.95),rgba(10,10,20,0.95));border:1px solid rgba(110,236,216,0.25);border-radius:12px;text-decoration:none;transition:border-color 0.3s,transform 0.2s" onmouseenter="this.style.borderColor='rgba(110,236,216,0.5)';this.style.transform='translateY(-2px)'" onmouseleave="this.style.borderColor='rgba(110,236,216,0.25)';this.style.transform='translateY(0)'">
+      <div style="display:flex;align-items:center;gap:14px">
+        <img src="https://api.helixa.xyz/api/v2/aura/1.png" alt="Bendr 2.0" style="width:64px;height:64px;border-radius:10px;border:1.5px solid rgba(110,236,216,0.3)">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Orbitron',monospace;font-size:0.95rem;color:#eae6f2;margin-bottom:4px">BENDR 2.0 <span style="font-size:0.65rem;color:#6a6a8e;font-family:monospace">FEATURED</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="background:rgba(110,236,216,0.15);color:#6eecd8;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">CRED 74</span>
+            <span style="background:rgba(180,144,255,0.15);color:#b490ff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600">OpenClaw</span>
+            <span style="background:rgba(110,236,216,0.1);color:#6eecd8;padding:2px 8px;border-radius:6px;font-size:11px">SIWA ✓</span>
+          </div>
+          <div style="color:#6a6a8e;font-size:11px;font-family:monospace">$CRED · <span id="featured-mcap">—</span> mcap</div>
+        </div>
+      </div>
+    </a>
+    <script>
+      fetch('https://api.helixa.xyz/api/v2/token/stats').then(r=>r.json()).then(d=>{
+        const el=document.getElementById('featured-mcap');
+        if(el&&d.marketCap) el.textContent='$'+(d.marketCap/1000).toFixed(0)+'K';
+      }).catch(()=>{});
+    </script>
   </div>
   
   <div class="search-box">

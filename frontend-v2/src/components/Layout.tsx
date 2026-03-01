@@ -9,7 +9,7 @@ const primaryLinks = [
   { href: '/mint', label: 'Mint' },
   { href: '/terminal', label: 'Terminal', external: true },
   { href: '/agents', label: 'Agents' },
-  // { href: '/token', label: '$CRED' }, // removed per Quigley — using featured agent instead
+  { href: '/token', label: '$CRED' },
 ];
 
 const moreLinks = [
