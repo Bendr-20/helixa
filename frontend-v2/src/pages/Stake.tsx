@@ -11,7 +11,7 @@ const BASE_RPC = 'https://base.drpc.org';
 const TIER_NAMES = ['Junk', 'Marginal', 'Qualified', 'Prime', 'Preferred'] as const;
 const TIER_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#6eecd8'] as const;
 const TIER_MIN_CRED = [0, 26, 51, 76, 91];
-const TIER_MAX_STAKE = ['0', '1,000', '10,000', '100,000', '∞'];
+const TIER_MAX_STAKE_USD = ['$0', '$5', '$50', '$500', '∞'];
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -267,7 +267,7 @@ export function Stake() {
               <div key={name} className="text-center p-3 rounded-lg flex-shrink-0" style={{ background: `${TIER_COLORS[i]}15`, border: `1px solid ${TIER_COLORS[i]}30`, minWidth: '5.5rem', scrollSnapAlign: 'start' }}>
                 <div className="text-xs text-muted mb-1">{TIER_MIN_CRED[i]}+ Cred</div>
                 <div className="font-bold text-sm" style={{ color: TIER_COLORS[i] }}>{name}</div>
-                <div className="text-xs text-muted mt-1">Max {TIER_MAX_STAKE[i]}</div>
+                <div className="text-xs text-muted mt-1">Max {TIER_MAX_STAKE_USD[i]}</div>
               </div>
             ))}
           </div>
@@ -404,7 +404,7 @@ export function Stake() {
                               className="btn btn-secondary text-xs px-3">MAX</button>
                           </div>
                           <p className="text-xs text-muted mb-4">
-                            {lockDays}-day lock. {penaltyPct}% early exit fee. Max stake: {TIER_MAX_STAKE[tierIdx(selectedAgent.credScore)]} $CRED.
+                            {lockDays}-day lock. {penaltyPct}% early exit fee. Max stake: {TIER_MAX_STAKE_USD[tierIdx(selectedAgent.credScore)]} $CRED.
                           </p>
                           <button onClick={handleStake}
                             disabled={!!txPending || !stakeAmount || parseFloat(stakeAmount) <= 0}
