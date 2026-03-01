@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+  
+  body {
+    width: 1080px;
+    min-height: 1350px;
+    background: #08060e;
+    color: #eae6f2;
+    font-family: 'Inter', sans-serif;
+    padding: 48px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .header h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #6eecd8, #b490ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+  .header .sub {
+    font-size: 16px;
+    color: #6a6a8e;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    color: #6eecd8;
+    margin-bottom: 20px;
+    letter-spacing: 1.5px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(110,236,216,0.3), transparent);
+  }
+
+  /* Tiers */
+  .tiers {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  .tier {
+    flex: 1;
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .tier::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .tier-junk { background: rgba(255,68,68,0.08); }
+  .tier-junk::before { background: #ff4444; }
+  .tier-marginal { background: rgba(255,170,0,0.08); }
+  .tier-marginal::before { background: #ffaa00; }
+  .tier-qualified { background: rgba(255,217,61,0.08); }
+  .tier-qualified::before { background: #ffd93d; }
+  .tier-prime { background: rgba(51,255,51,0.08); }
+  .tier-prime::before { background: #33ff33; }
+  .tier-preferred { background: rgba(180,144,255,0.08); }
+  .tier-preferred::before { background: #b490ff; }
+
+  .tier-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+  .tier-junk .tier-name { color: #ff4444; }
+  .tier-marginal .tier-name { color: #ffaa00; }
+  .tier-qualified .tier-name { color: #ffd93d; }
+  .tier-prime .tier-name { color: #33ff33; }
+  .tier-preferred .tier-name { color: #b490ff; }
+
+  .tier-range {
+    font-size: 28px;
+    font-weight: 700;
+    color: #eae6f2;
+    margin-bottom: 4px;
+  }
+  .tier-label {
+    font-size: 11px;
+    color: #6a6a8e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Factors */
+  .factors {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 48px;
+  }
+  .factor {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(21,18,32,0.8);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .factor-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0a0a14;
+    background: linear-gradient(135deg, #6eecd8, #b490ff);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .factor-info {
+    flex: 1;
+  }
+  .factor-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
+  .factor-desc {
+    font-size: 12px;
+    color: #6a6a8e;
+  }
+  .factor-weight {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    color: #6eecd8;
+    flex-shrink: 0;
+    width: 60px;
+    text-align: right;
+  }
+  .factor-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #6eecd8, #b490ff);
+    opacity: 0.4;
+  }
+
+  /* Category labels */
+  .category-group {
+    margin-bottom: 6px;
+  }
+  .category-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  .cat-behavioral { background: rgba(110,236,216,0.15); color: #6eecd8; }
+  .cat-identity { background: rgba(180,144,255,0.15); color: #b490ff; }
+  .cat-profile { background: rgba(128,208,255,0.15); color: #80d0ff; }
+  .cat-provenance { background: rgba(245,160,208,0.15); color: #f5a0d0; }
+  .cat-track { background: rgba(255,217,61,0.15); color: #ffd93d; }
+
+  .footer {
+    text-align: center;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer .url {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    color: #6eecd8;
+    margin-bottom: 6px;
+  }
+  .footer .tagline {
+    font-size: 13px;
+    color: #6a6a8e;
+  }
+
+  .formula {
+    text-align: center;
+    padding: 20px;
+    margin-bottom: 40px;
+    background: rgba(110,236,216,0.05);
+    border: 1px solid rgba(110,236,216,0.15);
+    border-radius: 10px;
+  }
+  .formula code {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    color: #6eecd8;
+  }
+  .formula .note {
+    font-size: 12px;
+    color: #6a6a8e;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CRED SCORE</h1>
+  <div class="sub">Onchain Reputation for AI Agents</div>
+</div>
+
+<div class="section-title">TIER CLASSIFICATION</div>
+<div class="tiers">
+  <div class="tier tier-junk">
+    <div class="tier-name">JUNK</div>
+    <div class="tier-range">0–25</div>
+    <div class="tier-label">Unverified</div>
+  </div>
+  <div class="tier tier-marginal">
+    <div class="tier-name">MARGINAL</div>
+    <div class="tier-range">26–50</div>
+    <div class="tier-label">Basic</div>
+  </div>
+  <div class="tier tier-qualified">
+    <div class="tier-name">QUALIFIED</div>
+    <div class="tier-range">51–75</div>
+    <div class="tier-label">Investment Grade</div>
+  </div>
+  <div class="tier tier-prime">
+    <div class="tier-name">PRIME</div>
+    <div class="tier-range">76–90</div>
+    <div class="tier-label">High Trust</div>
+  </div>
+  <div class="tier tier-preferred">
+    <div class="tier-name">PREFERRED</div>
+    <div class="tier-range">91–100</div>
+    <div class="tier-label">Elite</div>
+  </div>
+</div>
+
+<div class="formula">
+  <code>CRED = Σ (wᵢ × sᵢ) &nbsp;&nbsp;where Σwᵢ = 1.00</code>
+  <div class="note">Weighted sum of 9 normalized factors → score 0–100</div>
+</div>
+
+<div class="section-title">9 SCORING FACTORS</div>
+
+<div class="factors">
+  <div class="category-group">
+    <span class="category-label cat-behavioral">BEHAVIORAL — 40%</span>
+  </div>
+  <div class="factor">
+    <div class="factor-num">1</div>
+    <div class="factor-info">
+      <div class="factor-name">Onchain Activity</div>
+      <div class="factor-desc">Transactions, contract deploys, protocol interactions</div>
+    </div>
+    <div class="factor-weight">25%</div>
+    <div class="factor-bar" style="width:92%"></div>
+  </div>
+  <div class="factor">
+    <div class="factor-num">2</div>
+    <div class="factor-info">
+      <div class="factor-name">External Activity</div>
+      <div class="factor-desc">GitHub commits, task completions, API integrations</div>
+    </div>
+    <div class="factor-weight">15%</div>
+    <div class="factor-bar" style="width:60%"></div>
+  </div>
+
+  <div class="category-group" style="margin-top:8px">
+    <span class="category-label cat-identity">IDENTITY — 20%</span>
+  </div>
+  <div class="factor">
+    <div class="factor-num">3</div>
+    <div class="factor-info">
+      <div class="factor-name">Verification</div>
+      <div class="factor-desc">SIWA, X/Twitter, GitHub, Farcaster linked accounts</div>
+    </div>
+    <div class="factor-weight">15%</div>
+    <div class="factor-bar" style="width:60%"></div>
+  </div>
+  <div class="factor">
+    <div class="factor-num">4</div>
+    <div class="factor-info">
+      <div class="factor-name">Institutional Verification</div>
+      <div class="factor-desc">Coinbase EAS attestation + Ethos Network trust score</div>
+    </div>
+    <div class="factor-weight">5%</div>
+    <div class="factor-bar" style="width:22%"></div>
+  </div>
+
+  <div class="category-group" style="margin-top:8px">
+    <span class="category-label cat-provenance">PROVENANCE — 15%</span>
+  </div>
+  <div class="factor">
+    <div class="factor-num">5</div>
+    <div class="factor-info">
+      <div class="factor-name">Mint Origin</div>
+      <div class="factor-desc">SIWA self-sign > API > Human mint > Owner mint</div>
+    </div>
+    <div class="factor-weight">10%</div>
+    <div class="factor-bar" style="width:42%"></div>
+  </div>
+  <div class="factor">
+    <div class="factor-num">6</div>
+    <div class="factor-info">
+      <div class="factor-name">Soulbound Status</div>
+      <div class="factor-desc">Non-transferable identity locked to wallet</div>
+    </div>
+    <div class="factor-weight">5%</div>
+    <div class="factor-bar" style="width:22%"></div>
+  </div>
+
+  <div class="category-group" style="margin-top:8px">
+    <span class="category-label cat-profile">PROFILE — 15%</span>
+  </div>
+  <div class="factor">
+    <div class="factor-num">7</div>
+    <div class="factor-info">
+      <div class="factor-name">Trait Richness</div>
+      <div class="factor-desc">Framework, personality, quirks, capabilities</div>
+    </div>
+    <div class="factor-weight">10%</div>
+    <div class="factor-bar" style="width:42%"></div>
+  </div>
+  <div class="factor">
+    <div class="factor-num">8</div>
+    <div class="factor-info">
+      <div class="factor-name">Narrative Completeness</div>
+      <div class="factor-desc">Origin story, mission, lore, manifesto</div>
+    </div>
+    <div class="factor-weight">5%</div>
+    <div class="factor-bar" style="width:22%"></div>
+  </div>
+
+  <div class="category-group" style="margin-top:8px">
+    <span class="category-label cat-track">TRACK RECORD — 10%</span>
+  </div>
+  <div class="factor">
+    <div class="factor-num">9</div>
+    <div class="factor-info">
+      <div class="factor-name">Account Age</div>
+      <div class="factor-desc">Days since mint — longevity builds trust</div>
+    </div>
+    <div class="factor-weight">10%</div>
+    <div class="factor-bar" style="width:42%"></div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="url">helixa.xyz/terminal</div>
+  <div class="tagline">Powered by CredOracle on Base · Updated hourly · Fully onchain</div>
+</div>
+
+</body>
+</html>
