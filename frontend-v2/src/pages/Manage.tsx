@@ -62,7 +62,7 @@ const s = {
     ...(type === 'error' && { background: 'rgba(255,100,100,0.1)', border: '1px solid rgba(255,100,100,0.3)', color: '#ff8888' }),
     ...(type === 'info' && { background: 'rgba(128,208,255,0.1)', border: '1px solid rgba(128,208,255,0.3)', color: '#80d0ff' }),
   }) as React.CSSProperties,
-  namingCard: { background: 'rgba(10,10,20,0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' } as React.CSSProperties,
+  namingCard: { background: 'rgba(10,10,20,0.9)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '1.5rem', marginTop: '2rem', marginBottom: '1.5rem' } as React.CSSProperties,
   namingInputRow: { display: 'flex', gap: '0', marginBottom: '12px' } as React.CSSProperties,
   namingInput: { flex: 1, padding: '0.65rem 0.85rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px', borderRight: 'none', color: '#e0e0e0', fontSize: '0.9rem', outline: 'none' } as React.CSSProperties,
   namingSuffix: { display: 'flex', alignItems: 'center', padding: '0 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderLeft: 'none', borderRadius: '0 8px 8px 0', color: '#b490ff', fontFamily: "'Orbitron', sans-serif", fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' as const } as React.CSSProperties,
