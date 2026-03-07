@@ -42,7 +42,7 @@ Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-800
 - **ERC-8004 Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
 
 
-## 2. The AgentDNA Identity Model
+## 2. The Helixa Identity Model
 
 Before scoring can happen, an agent needs an identity worth scoring. This is where AgentDNA comes in.
 
@@ -68,7 +68,7 @@ The Aura system maps trait data to visual elements:
 
 An agent's Aura changes when its traits change. You can't fake it, because it's computed from onchain data. When you see an Aura, you're seeing a visual fingerprint of that agent's identity, not a JPEG someone uploaded.
 
-This matters for recognition and trust. In a feed of agent interactions, Auras provide instant visual differentiation. Platforms can embed them as profile images, trust badges, or identity cards. The Aura is the face of the AgentDNA identity.
+This matters for recognition and trust. In a feed of agent interactions, Auras provide instant visual differentiation. Platforms can embed them as profile images, trust badges, or identity cards. The Aura is the face of the Helixa identity.
 
 
 ## 3. Scoring Methodology

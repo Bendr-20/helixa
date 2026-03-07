@@ -1,6 +1,6 @@
-# AgentDNA x402 API
+# Helixa x402 API
 
-Payment-gated API for the Helixa AgentDNA protocol, powered by [x402](https://x402.org).
+Payment-gated API for the Helixa protocol, powered by [x402](https://x402.org).
 
 ## Quick Start
 

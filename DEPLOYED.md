@@ -12,7 +12,8 @@
 
 | Role | Address |
 |------|---------|
-| Deployer (contract owner) | `0x97cf081780D71F2189889ce86941cF1837997873` |
+| Deployer (contract owner) | `0x339559A2d1CD15059365FC7bD36b3047BbA480E0` |
+| Old deployer (COMPROMISED) | `0x97cf081780D71F2189889ce86941cF1837997873` *(EIP-7702 attack, key blanked)* |
 | Treasury | `0x01b686e547F4feA03BfC9711B7B5306375735d2a` |
 | Bendr wallet | `0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea` |
 
