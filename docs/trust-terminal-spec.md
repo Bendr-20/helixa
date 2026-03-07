@@ -1,4 +1,4 @@
-# Trust Terminal — Build Spec
+# Helixa Agent Terminal — Build Spec
 
 *The DexScreener for agent credibility. Powered by Helixa Cred.*
 
@@ -35,7 +35,7 @@ Current onchain Cred Score factors, applied to ALL indexed agents:
 
 **Unverified agents** get scored on available data only (activity, age, traits from 8004). Missing factors = lower score. Natural incentive to verify.
 
-### 3. Trust Terminal UI (CRT Theme)
+### 3. Helixa Agent Terminal UI (CRT Theme)
 
 **Homepage — The Feed**
 - Live feed of new agent launches across platforms (Bankr, Virtuals, etc.)
@@ -69,7 +69,7 @@ Current onchain Cred Score factors, applied to ALL indexed agents:
 | Profile page | ✅ (read-only) | ✅ (editable) |
 | Badge | Gray | Green ✓ |
 | Narrative traits | From 8004 only | Custom via Helixa |
-| Trust Terminal listing | ✅ | ✅ + boosted |
+| Helixa Agent Terminal listing | ✅ | ✅ + boosted |
 | How | Auto-indexed | Mint on Helixa |
 
 ### 5. API Endpoints

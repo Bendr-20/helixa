@@ -1048,7 +1048,7 @@ async function mintHandler(req, res) {
             console.error(`[8004 XREG] Cross-registration failed (non-fatal): ${e.message}`);
         }
         
-        // ─── Trust Terminal: merge/upgrade existing entry ────────
+        // ─── Helixa Agent Terminal: merge/upgrade existing entry ────────
         try {
             const Database = require('better-sqlite3');
             const termPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
@@ -2905,7 +2905,7 @@ app.get('/api/v2/token/stats', (req, res) => {
 });
 
 
-// ─── Trust Terminal API ──────────────────────────────────────
+// ─── Helixa Agent Terminal API ──────────────────────────────────────
 const terminalDbPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
 let terminalDb = null;
 try {
@@ -2913,9 +2913,9 @@ try {
     if (fs.existsSync(terminalDbPath)) {
         terminalDb = new Database(terminalDbPath, { readonly: true });
         terminalDb.pragma('journal_mode = WAL');
-        console.log('📡 Trust Terminal DB connected');
+        console.log('📡 Helixa Agent Terminal DB connected');
     }
-} catch (e) { console.warn('⚠️ Trust Terminal DB not available:', e.message); }
+} catch (e) { console.warn('⚠️ Helixa Agent Terminal DB not available:', e.message); }
 
 app.get('/api/terminal/agents', (req, res) => {
     if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });

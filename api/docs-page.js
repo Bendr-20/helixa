@@ -487,11 +487,11 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <!-- ════════════════════════════════════════ -->
 <h2 id="terminal-api">Terminal API</h2>
 
-<p>The Trust Terminal aggregates agents from multiple registries (Helixa, Virtuals, ElizaOS, etc.) into a unified directory with Cred scoring.</p>
+<p>The Helixa Agent Terminal aggregates agents from multiple registries (Helixa, Virtuals, ElizaOS, etc.) into a unified directory with Cred scoring.</p>
 
 <!-- GET /api/terminal/agents -->
 <h3><span class="method get">GET</span> <span class="endpoint-path">/api/terminal/agents</span> <span class="badge free">free</span></h3>
-<p>Paginated agent directory from the Trust Terminal database.</p>
+<p>Paginated agent directory from the Helixa Agent Terminal database.</p>
 
 <table>
 <tr><th>Param</th><th>Type</th><th>Default</th><th>Description</th></tr>
