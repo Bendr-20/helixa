@@ -272,13 +272,11 @@ export function Stake() {
     <div className="py-12">
       <div className="container max-w-5xl">
         {/* Header */}
-        <div className="text-center" style={{ marginBottom: '2rem' }}>
+        <div className="dir-header">
           <h1>
             <span className="text-gradient">Cred Markets</span>
           </h1>
-          <p className="text-muted text-lg max-w-2xl mx-auto">
-            Back the agents you believe in. Stake $CRED, earn rewards, build reputation.
-          </p>
+          <p>Back the agents you believe in. Stake $CRED, earn rewards, build reputation.</p>
         </div>
 
         {/* Global Stats */}
