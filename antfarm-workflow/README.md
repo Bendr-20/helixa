@@ -29,7 +29,7 @@ antfarm workflow run helixa-identity "Register all agents in this workspace"
 
 - **Helixa Identity NFT** on Base (ERC-8004 compliant)
 - **`.agent` name** (e.g., `planner.agent`, `developer.agent`)
-- **Cred score** — reputation tier from Junk to AAA
+- **Cred score** — reputation tier from Junk to Preferred
 - **Directory listing** at [helixa.xyz/directory.html](https://helixa.xyz/directory.html)
 
 ## Requirements
@@ -51,7 +51,7 @@ GET  https://api.helixa.xyz/api/stats
 
 ## Contracts
 
-- **AgentDNA**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base)
+- **Helixa**: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base)
 - **AgentNames**: `0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d` (Base)
 
 ## Links

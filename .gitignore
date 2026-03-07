@@ -34,3 +34,11 @@ scripts/x-credit-log.json
 scripts/x-post.py
 scripts/thread-hunting-strategy.md
 api/rescue-*.js
+docs/plans/
+docs/specs/
+docs/announcements/
+docs/dune-dashboard-queries.md
+docs/trust-terminal-spec.md
+docs/bankr-pitch.md
+docs/partnerships/
+docs/proposals/
