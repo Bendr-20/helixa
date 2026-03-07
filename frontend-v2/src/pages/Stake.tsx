@@ -185,25 +185,35 @@ export function Stake() {
   const loadStakeInfo = useCallback(async (tokenId: number) => {
     setStakeLoading(true);
     setStakeInfo(null);
-    try {
-      const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
-      const [stakeData, effStake, rewards, vouches] = await Promise.all([
-        staking.stakes(tokenId),
-        staking.effectiveStake(tokenId),
-        staking.pendingRewards(tokenId),
-        staking.getVouchCount(tokenId),
-      ]);
-      setStakeInfo({
-        staked: stakeData.amount,
-        stakedAt: Number(stakeData.stakedAt),
-        effectiveStake: effStake,
-        pendingRewards: rewards,
-        vouchCount: Number(vouches),
-      });
-    } catch (e) {
-      console.error('Failed to load stake info:', e);
-      setStakeInfo({ staked: 0n, stakedAt: 0, effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0 });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const provider = new ethers.JsonRpcProvider(BASE_RPCS[attempt % BASE_RPCS.length]);
+        const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, provider);
+        const [stakeData, effStake, rewards, vouches] = await Promise.all([
+          staking.stakes(tokenId),
+          staking.effectiveStake(tokenId),
+          staking.pendingRewards(tokenId),
+          staking.getVouchCount(tokenId),
+        ]);
+        // stakeData is a Result: [staker, amount, stakedAt, credAtStake]
+        const amount = stakeData[1] ?? stakeData.amount ?? 0n;
+        const stakedAt = stakeData[2] ?? stakeData.stakedAt ?? 0n;
+        setStakeInfo({
+          staked: BigInt(amount),
+          stakedAt: Number(stakedAt),
+          effectiveStake: BigInt(effStake),
+          pendingRewards: BigInt(rewards),
+          vouchCount: Number(vouches),
+        });
+        setStakeLoading(false);
+        return;
+      } catch (e) {
+        console.warn(`Stake info attempt ${attempt + 1} failed:`, e);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      }
     }
+    console.error('All stake info attempts failed');
+    setStakeInfo({ staked: 0n, stakedAt: 0, effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0 });
     setStakeLoading(false);
   }, []);
 
