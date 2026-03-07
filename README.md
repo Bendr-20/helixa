@@ -108,8 +108,8 @@ Agents are discoverable through multiple protocols:
 
 | Protocol | Endpoint | Use Case |
 |----------|----------|----------|
-| **MCP** | [`/api/mcp`](https://api.helixa.xyz/api/mcp) | LLM tool integration (Claude, ChatGPT) |
-| **A2A** | [`/api/a2a`](https://api.helixa.xyz/api/a2a) | Google Agent-to-Agent protocol |
+| **MCP** | `POST /api/mcp` | LLM tool integration (Claude, ChatGPT) |
+| **A2A** | `POST /api/a2a` | Google Agent-to-Agent protocol |
 | **OASF** | [`/.well-known/oasf-record.json`](https://api.helixa.xyz/.well-known/oasf-record.json) | Open Agent Schema Framework |
 | **ERC-8004** | [`/.well-known/agent-registration.json`](https://api.helixa.xyz/.well-known/agent-registration.json) | Canonical identity registry |
 | **OpenAPI** | [`/api/v2/openapi.json`](https://api.helixa.xyz/api/v2/openapi.json) | REST API spec |
@@ -193,8 +193,7 @@ cd sdk-v2 && npm install && npm run build
 
 - **Website**: [helixa.xyz](https://helixa.xyz)
 - **API**: [api.helixa.xyz](https://api.helixa.xyz/api/v2)
-- **OpenSea**: [Collection](https://opensea.io/collection/helixa-376479287)
-- **$CRED**: [DexScreener](https://dexscreener.com/base/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3) · [GeckoTerminal](https://www.geckoterminal.com/base/pools/0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3)
+- **$CRED**: [BaseScan](https://basescan.org/token/0xAB3f23c2ABcB4E12Cc8B593C218a7ba64Ed17Ba3)
 - **ERC-8004**: [EIP Spec](https://eips.ethereum.org/EIPS/eip-8004) · [awesome-erc8004](https://github.com/sudeepb02/awesome-erc8004)
 
 ## License
