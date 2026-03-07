@@ -758,44 +758,6 @@ export function Manage() {
           </div>
         </div>
 
-        {/* Lookup any agent */}
-        <LookupPanel onSelect={(id) => setEditingTokenId(id)} />
-
-        {/* Agent Naming (only if agents exist) */}
-        {!isLoading && userAgents && userAgents.length > 0 && (
-          <div style={s.namingCard}>
-            <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem' }}>
-              Agent Name
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.75rem' }}>No .agent name claimed</p>
-            <div style={s.namingInputRow}>
-              <input
-                type="text"
-                style={s.namingInput}
-                placeholder="e.g. myagent"
-                value={agentNameInput}
-                onChange={(e) => setAgentNameInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                maxLength={32}
-              />
-              <span style={s.namingSuffix}>.agent</span>
-            </div>
-            <button style={{ ...s.disabledBtn, marginBottom: '1.5rem' }} disabled>Claim Name — Coming Soon</button>
-
-            <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem', marginTop: '0.5rem' }}>
-              ENS Name
-            </h3>
-            <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.75rem' }}>Link an ENS name to your agent identity</p>
-            <input
-              type="text"
-              style={{ ...s.input, marginBottom: '12px' }}
-              placeholder="e.g. myagent.eth"
-              value={ensNameInput}
-              onChange={(e) => setEnsNameInput(e.target.value)}
-            />
-            <button style={s.disabledBtn} disabled>Link ENS — Coming Soon</button>
-          </div>
-        )}
-
         {/* User's Agents */}
         {isLoading ? (
           <div>
@@ -835,6 +797,44 @@ export function Manage() {
             <Link to="/mint" style={s.mintBtn}>Mint Your First Agent</Link>
           </div>
         )}
+
+        {/* Agent Naming (only if agents exist) */}
+        {!isLoading && userAgents && userAgents.length > 0 && (
+          <div style={s.namingCard}>
+            <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem' }}>
+              Agent Name
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.75rem' }}>No .agent name claimed</p>
+            <div style={s.namingInputRow}>
+              <input
+                type="text"
+                style={s.namingInput}
+                placeholder="e.g. myagent"
+                value={agentNameInput}
+                onChange={(e) => setAgentNameInput(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                maxLength={32}
+              />
+              <span style={s.namingSuffix}>.agent</span>
+            </div>
+            <button style={{ ...s.disabledBtn, marginBottom: '1.5rem' }} disabled>Claim Name — Coming Soon</button>
+
+            <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem', marginTop: '0.5rem' }}>
+              ENS Name
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.75rem' }}>Link an ENS name to your agent identity</p>
+            <input
+              type="text"
+              style={{ ...s.input, marginBottom: '12px' }}
+              placeholder="e.g. myagent.eth"
+              value={ensNameInput}
+              onChange={(e) => setEnsNameInput(e.target.value)}
+            />
+            <button style={s.disabledBtn} disabled>Link ENS — Coming Soon</button>
+          </div>
+        )}
+
+        {/* Lookup any agent */}
+        <LookupPanel onSelect={(id) => setEditingTokenId(id)} />
 
         {/* Management Guide */}
         <div style={s.guideGrid}>
