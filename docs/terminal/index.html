@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent Terminal — Agent Credibility Scanner</title>
+<meta property="og:title" content="Agent Terminal by Helixa" />
+<meta property="og:description" content="Score, rank, and discover AI agents on Base. Cred tiers from Junk to Preferred." />
+<meta property="og:image" content="https://helixa.xyz/helixa-logo.png" />
+<meta name="fc:miniapp" content='{"version":"1","imageUrl":"https://helixa.xyz/og-terminal.png","button":{"title":"Open Terminal","action":{"type":"launch_miniapp","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
+<meta name="fc:frame" content='{"version":"1","imageUrl":"https://helixa.xyz/og-terminal.png","button":{"title":"Open Terminal","action":{"type":"launch_frame","name":"Agent Terminal","url":"https://helixa.xyz/terminal","splashImageUrl":"https://helixa.xyz/icon-200.png","splashBackgroundColor":"#0a0a14"}}}' />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --green: #00ff41;
+    --green-dim: #00cc33;
+    --green-dark: #003300;
+    --amber: #ffb000;
+    --red: #ff3333;
+    --cyan: #00ffff;
+    --purple: #b490ff;
+    --pink: #f5a0d0;
+    --text: #ccddcc;
+    --muted: #557755;
+    --border: #1a3a1a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* CRT scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.03) 2px, rgba(0,255,65,0.03) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+  /* CRT vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 30px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .header h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 20px rgba(0,255,65,0.5), 0 0 40px rgba(0,255,65,0.2);
+    letter-spacing: 4px;
+    margin-bottom: 5px;
+  }
+  .header .subtitle {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  /* Stats Ticker */
+  .ticker-wrap {
+    overflow: hidden;
+    margin-top: 15px;
+    border-top: 1px solid rgba(110,236,216,0.15);
+    border-bottom: 1px solid rgba(110,236,216,0.15);
+    padding: 8px 0;
+    position: relative;
+  }
+  .ticker-wrap::before, .ticker-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 40px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .ticker-wrap::before { left: 0; background: linear-gradient(to right, var(--bg), transparent); }
+  .ticker-wrap::after { right: 0; background: linear-gradient(to left, var(--bg), transparent); }
+  .ticker-track {
+    display: flex;
+    width: max-content;
+    animation: tickerScroll 40s linear infinite;
+  }
+  .ticker-track:hover { animation-play-state: paused; }
+  @keyframes tickerScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    white-space: nowrap;
+    padding: 0 12px;
+    font-size: 12px;
+    color: #6eecd8;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .ticker-item .ticker-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(110,236,216,0.6);
+    margin-right: 4px;
+  }
+  .ticker-item .ticker-val {
+    font-weight: 700;
+    color: #6eecd8;
+  }
+  .ticker-sep { color: rgba(110,236,216,0.3); padding: 0 4px; }
+
+  /* Featured Carousel */
+  .carousel-wrap {
+    position: relative;
+    max-width: 460px;
+    margin: 16px auto 8px;
+    overflow: hidden;
+    border-radius: 12px;
+  }
+  .carousel-track {
+    display: flex;
+    transition: transform 0.5s ease;
+  }
+  .carousel-card {
+    min-width: 100%;
+    display: block;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, rgba(21,18,32,0.95), rgba(10,10,20,0.95));
+    border: 1px solid rgba(110,236,216,0.25);
+    border-radius: 12px;
+    text-decoration: none;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+  }
+  .carousel-card:hover { border-color: rgba(110,236,216,0.5); }
+  .carousel-card .card-inner { display: flex; align-items: center; gap: 14px; }
+  .carousel-card .card-img {
+    width: 64px; height: 64px; border-radius: 10px;
+    border: 1.5px solid rgba(110,236,216,0.3);
+    object-fit: cover;
+  }
+  .carousel-card .card-body { flex: 1; min-width: 0; }
+  .carousel-card .card-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.95rem;
+    color: #eae6f2;
+    margin-bottom: 4px;
+  }
+  .carousel-card .card-name .featured-tag {
+    font-size: 0.65rem;
+    color: #6a6a8e;
+    font-family: monospace;
+    margin-left: 6px;
+  }
+  .carousel-card .card-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+  .carousel-card .card-badge {
+    padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  }
+  .carousel-card .card-desc {
+    color: #6a6a8e; font-size: 11px; font-family: monospace;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .carousel-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(10,10,15,0.7);
+    border: 1px solid rgba(110,236,216,0.3);
+    color: #6eecd8;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 3;
+    transition: background 0.2s;
+  }
+  .carousel-nav:hover { background: rgba(110,236,216,0.15); }
+  .carousel-nav.prev { left: 6px; }
+  .carousel-nav.next { right: 6px; }
+  .carousel-dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin-top: 8px;
+  }
+  .carousel-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(110,236,216,0.2);
+    border: none; cursor: pointer; padding: 0;
+    transition: background 0.3s;
+  }
+  .carousel-dot.active { background: #6eecd8; }
+  
+  /* Search */
+  .search-box {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .search-box input {
+    flex: 1;
+    background: rgba(0,255,65,0.05);
+    border: 1px solid var(--border);
+    color: var(--green);
+    padding: 10px 15px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  .search-box input:focus { border-color: var(--green-dim); box-shadow: 0 0 10px rgba(0,255,65,0.1); }
+  .search-box input::placeholder { color: var(--muted); }
+  .search-box button {
+    background: var(--green-dark);
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 10px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .search-box button:hover { background: rgba(0,255,65,0.15); }
+  
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--green-dim); color: var(--green); }
+  
+  /* Chain filter group */
+  .chain-filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 15px;
+  }
+  .chain-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+  }
+  .chain-btn:hover { border-color: #6eecd8; color: #6eecd8; }
+  .chain-btn.active { border-color: #6eecd8; color: #6eecd8; background: rgba(110,236,216,0.1); }
+  .chain-btn.active[data-chain="base"] { border-color: #80d0ff; color: #80d0ff; background: rgba(128,208,255,0.1); }
+  .chain-btn.active[data-chain="solana"] { border-color: #b490ff; color: #b490ff; background: rgba(180,144,255,0.1); }
+  
+  /* Chain badge on agent rows */
+  .chain-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .chain-badge.base { background: rgba(128,208,255,0.15); color: #80d0ff; }
+  .chain-badge.solana { background: rgba(180,144,255,0.15); color: #b490ff; }
+  
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--green-dim);
+    color: var(--green-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--green); }
+  th.sorted::after { content: ' ▼'; }
+  th.sorted.asc::after { content: ' ▲'; }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0,255,65,0.05);
+    color: var(--text);
+    font-size: 12px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr:hover td { background: rgba(0,255,65,0.03); }
+  
+  /* Cred score styling */
+  .cred-score {
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .cred-score.junk { color: #666; }
+  .cred-score.marginal { color: var(--amber); }
+  .cred-score.qualified { color: var(--cyan); }
+  .cred-score.prime { color: var(--purple); }
+  .cred-score.preferred { color: var(--pink); text-shadow: 0 0 10px rgba(245,160,208,0.5); }
+  
+  .tier-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .tier-badge.junk { background: rgba(100,100,100,0.2); color: #666; }
+  .tier-badge.marginal { background: rgba(255,176,0,0.15); color: var(--amber); border: 1px solid rgba(255,176,0,0.3); }
+  .tier-badge.qualified { background: rgba(0,255,255,0.1); color: var(--cyan); border: 1px solid rgba(0,255,255,0.3); }
+  .tier-badge.prime { background: rgba(180,144,255,0.15); color: var(--purple); border: 1px solid rgba(180,144,255,0.3); }
+  .tier-badge.preferred { background: rgba(245,160,208,0.15); color: var(--pink); border: 1px solid rgba(245,160,208,0.3); }
+  
+  .x402-badge {
+    color: var(--green);
+    font-size: 10px;
+    background: rgba(0,255,65,0.1);
+    padding: 1px 5px;
+    border-radius: 2px;
+  }
+  
+  .addr {
+    color: var(--muted);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 15px 0;
+  }
+  .pagination button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--green-dim);
+    padding: 5px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .pagination button:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+  .pagination button:disabled { color: var(--muted); cursor: default; }
+  .pagination .page-info { color: var(--muted); font-size: 11px; }
+  
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--green-dim); }
+  .loading .spinner { animation: blink 1s infinite; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 10px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+  .footer a { color: var(--green-dim); text-decoration: none; }
+  /* Mobile responsive */
+  @media (max-width: 768px) {
+    .container { padding: 10px; }
+    .header h1 { font-size: 22px; }
+    .header .subtitle { font-size: 10px; }
+    td, th { padding: 6px 4px; font-size: 11px; white-space: nowrap; }
+    /* Hide PLATFORM, ADDRESS, REGISTERED on mobile */
+    td:nth-child(4), th:nth-child(4),
+    .hide-mobile { display: none; }
+    .filter-btn { padding: 4px 8px; font-size: 10px; }
+    .filters { gap: 6px; }
+    /* Truncate NAME column on mobile */
+    td:nth-child(2) { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+    table { table-layout: fixed; width: 100%; }
+    th:nth-child(1), td:nth-child(1) { width: 36px; } /* CRED */
+    th:nth-child(2), td:nth-child(2) { width: auto; } /* NAME */
+    th:nth-child(3), td:nth-child(3) { width: 50px; } /* TIER */
+    th:nth-child(5), td:nth-child(5) { width: 62px; } /* TOKEN */
+    th:nth-child(6), td:nth-child(6) { width: 52px; } /* MCAP */
+    th:nth-child(7), td:nth-child(7) { width: 44px; } /* 24H */
+  }
+  @media (max-width: 480px) {
+    /* Also hide TIER on very small screens */
+    td:nth-child(3), th:nth-child(3) { display: none; }
+    td, th { padding: 4px 3px; font-size: 10px; }
+    td:nth-child(2) { max-width: 90px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>AGENT TERMINAL</h1>
+    <div class="subtitle">Agent Credibility Scanner — Multi-Chain</div>
+    <!-- Stats Ticker -->
+    <div class="ticker-wrap">
+      <div class="ticker-track" id="ticker-track">
+        <span class="ticker-item"><span class="ticker-label">AGENTS</span><span class="ticker-val" id="tk-agents">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">SCORED</span><span class="ticker-val" id="tk-scored">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">AVG CRED</span><span class="ticker-val" id="tk-avg">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">x402</span><span class="ticker-val" id="tk-x402">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">$CRED</span><span class="ticker-val" id="tk-price">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">MCAP</span><span class="ticker-val" id="tk-mcap">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">24H VOL</span><span class="ticker-val" id="tk-vol">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">BASE</span><span class="ticker-val" id="tk-base">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">SOLANA</span><span class="ticker-val" id="tk-solana">—</span></span><span class="ticker-sep">▸</span>
+        <span class="ticker-item"><span class="ticker-label">TOP MOVER</span><span class="ticker-val" id="tk-mover">—</span></span><span class="ticker-sep">▸</span>
+      </div>
+    </div>
+    <!-- Hidden compat spans for existing JS -->
+    <span id="total-agents" style="display:none"></span>
+    <span id="total-scored" style="display:none"></span>
+    <span id="avg-score" style="display:none"></span>
+    <span id="total-x402" style="display:none"></span>
+
+    <!-- Featured Carousel -->
+    <div class="carousel-wrap" id="carousel-wrap">
+      <button class="carousel-nav prev" onclick="carouselPrev()">◄</button>
+      <button class="carousel-nav next" onclick="carouselNext()">►</button>
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
+    <div class="carousel-dots" id="carousel-dots"></div>
+
+    <script>
+    // Ticker: fetch token stats + terminal stats
+    (function(){
+      const fmt = v => { if(!v||v<=0) return '—'; if(v>=1e9) return '$'+(v/1e9).toFixed(1)+'B'; if(v>=1e6) return '$'+(v/1e6).toFixed(1)+'M'; if(v>=1e3) return '$'+(v/1e3).toFixed(0)+'K'; return '$'+v.toFixed(2); };
+      Promise.allSettled([
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=cred_score&dir=desc').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&sort=price_change_24h&dir=desc&filter=trending').then(r=>r.json()),
+        fetch('https://api.helixa.xyz/api/terminal/agents?limit=1&q=Bendr').then(r=>r.json())
+      ]).then(([termR, moverR, credR]) => {
+        const termData = termR.status==='fulfilled' ? termR.value : {};
+        const stats = termData.stats || {};
+        const moverData = moverR.status==='fulfilled' ? moverR.value : {};
+        const mover = (moverData.agents||[])[0];
+        const credAgent = credR.status==='fulfilled' ? ((credR.value.agents||[])[0]) : null;
+
+        const s = id => document.getElementById(id);
+        if(stats.total) { s('tk-agents').textContent = (stats.total).toLocaleString(); if(s('total-agents')) s('total-agents').textContent = (stats.total).toLocaleString(); }
+        if(stats.scored) { s('tk-scored').textContent = (stats.scored).toLocaleString(); if(s('total-scored')) s('total-scored').textContent = (stats.scored).toLocaleString(); }
+        if(stats.avgScore) { s('tk-avg').textContent = stats.avgScore; if(s('avg-score')) s('avg-score').textContent = stats.avgScore; }
+        if(stats.x402) { s('tk-x402').textContent = (stats.x402).toLocaleString(); if(s('total-x402')) s('total-x402').textContent = (stats.x402).toLocaleString(); }
+        // $CRED price from the Bendr/CRED agent row in terminal DB
+        if(credAgent && credAgent.token_market_cap) {
+          s('tk-mcap').textContent = fmt(credAgent.token_market_cap);
+          if(credAgent.volume_24h) s('tk-vol').textContent = fmt(credAgent.volume_24h);
+          if(credAgent.price_change_24h != null) s('tk-price').textContent = (credAgent.price_change_24h>=0?'+':'')+credAgent.price_change_24h.toFixed(1)+'%';
+        }
+        if(mover && mover.name) s('tk-mover').textContent = mover.name + (mover.price_change_24h!=null ? ' ('+(mover.price_change_24h>=0?'+':'')+mover.price_change_24h.toFixed(1)+'%)' : '');
+
+        // Duplicate ticker content for seamless loop
+        const track = document.getElementById('ticker-track');
+        track.innerHTML += track.innerHTML;
+      });
+    })();
+
+    // Carousel
+    let carouselIdx = 0;
+    let carouselCount = 0;
+    let carouselTimer = null;
+
+    function renderCarousel(agents) {
+      const track = document.getElementById('carousel-track');
+      const dots = document.getElementById('carousel-dots');
+      carouselCount = agents.length;
+      track.innerHTML = agents.map((a, i) => {
+        const tid = a.token_id || a.tokenId || a.id || '';
+        const img = 'https://api.helixa.xyz/api/v2/aura/' + tid + '.png';
+        const name = (a.name || 'Unknown').toUpperCase();
+        const cred = a.cred_score || a.credScore || 0;
+        const ticker = a.token_symbol || a.tokenSymbol || '';
+        const price = a.token_price || a.tokenPrice;
+        const change = a.price_change_24h ?? a.priceChange24h;
+        const desc = a.description || a.bio || '';
+        const framework = a.platform || a.framework || '';
+        const changeColor = (change||0) >= 0 ? '#6eecd8' : '#ff6b6b';
+        const changeStr = change != null ? ((change>=0?'+':'')+change.toFixed(1)+'%') : '';
+        const priceStr = price ? '$'+Number(price).toFixed(6) : '';
+        return `<a href="/agent/${tid}" class="carousel-card">
+          <div class="card-inner">
+            <img src="${img}" alt="${name}" class="card-img">
+            <div class="card-body">
+              <div class="card-name">${name}<span class="featured-tag">FEATURED</span></div>
+              <div class="card-badges">
+                <span class="card-badge" style="background:rgba(110,236,216,0.15);color:#6eecd8">CRED ${cred}</span>
+                ${framework ? `<span class="card-badge" style="background:rgba(180,144,255,0.15);color:#b490ff">${framework}</span>` : ''}
+              </div>
+              <div class="card-desc">${ticker ? '$'+ticker+' · '+priceStr+' · <span style="color:'+changeColor+'">'+changeStr+'</span>' : (desc||'—')}</div>
+            </div>
+          </div>
+        </a>`;
+      }).join('');
+      dots.innerHTML = agents.map((_, i) => `<button class="carousel-dot${i===0?' active':''}" onclick="carouselGo(${i})"></button>`).join('');
+      carouselGo(0);
+      carouselTimer = setInterval(() => carouselGo((carouselIdx+1) % carouselCount), 5000);
+    }
+
+    function carouselGo(i) {
+      carouselIdx = i;
+      document.getElementById('carousel-track').style.transform = 'translateX(-' + (i*100) + '%)';
+      document.querySelectorAll('.carousel-dot').forEach((d,j) => d.classList.toggle('active', j===i));
+      if(carouselTimer) { clearInterval(carouselTimer); carouselTimer = setInterval(() => carouselGo((carouselIdx+1) % carouselCount), 5000); }
+    }
+    function carouselPrev() { carouselGo((carouselIdx - 1 + carouselCount) % carouselCount); }
+    function carouselNext() { carouselGo((carouselIdx + 1) % carouselCount); }
+
+    // Fetch top 3 agents for carousel, ensure Bendr (tokenId=1) is first
+    fetch('https://api.helixa.xyz/api/v2/agents?limit=3&sort=credScore&order=desc')
+      .then(r=>r.json())
+      .then(data => {
+        let agents = data.agents || data.data || data || [];
+        if(!Array.isArray(agents)) agents = [];
+        // Ensure Bendr is first
+        const bendrIdx = agents.findIndex(a => (a.token_id||a.tokenId||a.id) == 1);
+        if(bendrIdx > 0) { const b = agents.splice(bendrIdx,1)[0]; agents.unshift(b); }
+        else if(bendrIdx < 0) {
+          agents.unshift({token_id:1,name:'Bendr 2.0',cred_score:74,platform:'OpenClaw',token_symbol:'CRED',description:'The original credibility agent'});
+        }
+        if(agents.length > 3) agents = agents.slice(0,3);
+        renderCarousel(agents);
+      })
+      .catch(() => {
+        renderCarousel([{token_id:1,name:'Bendr 2.0',cred_score:74,platform:'OpenClaw',token_symbol:'CRED',description:'The original credibility agent'}]);
+      });
+    </script>
+  </div>
+  
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search by name, address, or agent ID...">
+    <button onclick="doSearch()">SCAN</button>
+  </div>
+  
+  <div class="chain-filters">
+    <button class="chain-btn active" data-chain="all" onclick="setChain('all',this)">⛓ ALL</button>
+    <button class="chain-btn" data-chain="base" onclick="setChain('base',this)">🔵 BASE</button>
+    <button class="chain-btn" data-chain="solana" onclick="setChain('solana',this)">🟣 SOLANA</button>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" data-tier="all" onclick="setFilter('all',this)">ALL</button>
+    <button class="filter-btn" data-tier="new" onclick="setFilter('new',this)" style="color:#00ffff;border-color:#00ffff">🆕 NEW</button>
+    <button class="filter-btn" data-tier="trending" onclick="setFilter('trending',this)" style="color:#ffd700;border-color:#ffd700">🔥 TRENDING</button>
+    <button class="filter-btn" data-tier="PREFERRED" onclick="setFilter('PREFERRED',this)">PREFERRED</button>
+    <button class="filter-btn" data-tier="PRIME" onclick="setFilter('PRIME',this)">PRIME</button>
+    <button class="filter-btn" data-tier="QUALIFIED" onclick="setFilter('QUALIFIED',this)">QUALIFIED</button>
+    <button class="filter-btn" data-tier="MARGINAL" onclick="setFilter('MARGINAL',this)">MARGINAL</button>
+    <button class="filter-btn" data-tier="JUNK" onclick="setFilter('JUNK',this)">JUNK</button>
+    <button class="filter-btn" data-tier="x402" onclick="setFilter('x402',this)">x402 ✓</button>
+  </div>
+  
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortBy('cred_score')" class="sorted" data-col="cred_score">CRED</th>
+          <th onclick="sortBy('name')" data-col="name">NAME</th>
+          <th data-col="tier">TIER</th>
+          <th onclick="sortBy('platform')" data-col="platform" class="hide-mobile">PLATFORM</th>
+          <th data-col="x402">TOKEN</th>
+          <th onclick="sortBy('token_market_cap')" data-col="token_market_cap">MCAP</th>
+          <th onclick="sortBy('price_change_24h')" data-col="price_change_24h">24H</th>
+          <!-- REV column hidden until more data populated — shown on agent detail pages only -->
+          <!-- <th onclick="sortBy('revenue_self_reported')" data-col="revenue_self_reported" class="hide-mobile">REV</th> -->
+          <th data-col="address" class="hide-mobile">ADDRESS</th>
+          <th onclick="sortBy('created_at')" data-col="created_at" class="hide-mobile">REGISTERED</th>
+        </tr>
+      </thead>
+      <tbody id="agents-body">
+        <tr><td colspan="10" class="loading"><span class="spinner">▓</span> SCANNING NETWORK...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <div class="pagination">
+    <button id="prev-btn" onclick="prevPage()" disabled>◄ PREV</button>
+    <span class="page-info" id="page-info">—</span>
+    <button id="next-btn" onclick="nextPage()">NEXT ►</button>
+  </div>
+  
+  <div class="footer">
+    AGENT TERMINAL v0.1 — Powered by <a href="https://helixa.xyz">Helixa</a> Cred Protocol
+    <br>Indexing agents on Base &amp; Solana • Data from agentscan.info
+  </div>
+</div>
+
+<script>
+const API = 'https://api.helixa.xyz';
+const PER_PAGE = 50;
+let currentPage = 1;
+let totalPages = 1;
+let currentSort = 'cred_score';
+let sortDir = 'desc';
+let currentFilter = 'all';
+let currentChain = 'all';
+let currentSearch = '';
+
+function tierClass(tier) {
+  if (!tier) return 'junk';
+  const t = tier.toLowerCase();
+  if (t === 'preferred' || t === 'aaa') return 'preferred';
+  if (t === 'prime') return 'prime';
+  if (t === 'qualified' || t.includes('investment')) return 'qualified';
+  if (t === 'marginal' || t === 'speculative') return 'marginal';
+  return 'junk';
+}
+
+function formatMcap(val) {
+  if (!val || val <= 0) return '—';
+  if (val >= 1e9) return '$' + (val/1e9).toFixed(1) + 'B';
+  if (val >= 1e6) return '$' + (val/1e6).toFixed(1) + 'M';
+  if (val >= 1e3) return '$' + (val/1e3).toFixed(0) + 'K';
+  return '$' + val.toFixed(0);
+}
+
+function shortAddr(addr) {
+  if (!addr) return '—';
+  return addr.slice(0, 6) + '...' + addr.slice(-4);
+}
+
+function formatRev(a) {
+  const onchain = a.revenue_onchain || 0;
+  const selfRep = a.revenue_self_reported || 0;
+  const total = onchain + selfRep;
+  if (total <= 0) return '<span style="color:var(--muted)">—</span>';
+  const formatted = total >= 1000000 ? '$' + (total/1000000).toFixed(1) + 'M'
+    : total >= 1000 ? '$' + (total/1000).toFixed(1) + 'K'
+    : '$' + total.toFixed(0);
+  const tag = selfRep > 0 && onchain === 0 ? ' <span style="color:var(--muted);font-size:9px" title="Self-reported">SR</span>' : '';
+  return `<span style="color:#6eecd8;font-weight:700">${formatted}</span>${tag}`;
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return '—';
+  return d.toISOString().split('T')[0];
+}
+
+async function fetchAgents() {
+  const body = document.getElementById('agents-body');
+  body.innerHTML = '<tr><td colspan="10" class="loading"><span class="spinner">▓</span> SCANNING...</td></tr>';
+  
+  try {
+    const params = new URLSearchParams({
+      page: currentPage,
+      limit: PER_PAGE,
+      sort: currentSort,
+      dir: sortDir,
+    });
+    if (currentFilter !== 'all') params.set('filter', currentFilter);
+    if (currentChain !== 'all') params.set('chain', currentChain);
+    if (currentSearch) params.set('q', currentSearch);
+    
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${API}/api/terminal/agents?${params}`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    
+    renderAgents(data.agents || []);
+    totalPages = data.totalPages || 1;
+    document.getElementById('page-info').textContent = `PAGE ${currentPage} / ${totalPages}`;
+    document.getElementById('prev-btn').disabled = currentPage <= 1;
+    document.getElementById('next-btn').disabled = currentPage >= totalPages;
+    
+    // Update stats (ticker + hidden compat spans)
+    if (data.stats) {
+      const sv = (hid, tid, v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+      sv('total-agents','tk-agents',(data.stats.total||0).toLocaleString());
+      sv('total-scored','tk-scored',(data.stats.scored||0).toLocaleString());
+      sv('avg-score','tk-avg',data.stats.avgScore||'—');
+      sv('total-x402','tk-x402',(data.stats.x402||0).toLocaleString());
+      if(data.stats.base != null) { const tb=document.getElementById('tk-base'); if(tb) tb.textContent=(data.stats.base).toLocaleString(); }
+      if(data.stats.solana != null) { const ts=document.getElementById('tk-solana'); if(ts) ts.textContent=(data.stats.solana).toLocaleString(); }
+    }
+  } catch (err) {
+    console.error('API fetch failed:', err);
+    // Try static fallback
+    try {
+      const fb = await fetch('/terminal/fallback.json');
+      if (fb.ok) {
+        const data = await fb.json();
+        renderAgents(data.agents || []);
+        totalPages = data.totalPages || 1;
+        document.getElementById('page-info').textContent = `PAGE 1 / ${totalPages} (CACHED)`;
+        if (data.stats) {
+          const sv2 = (hid,tid,v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+          sv2('total-agents','tk-agents',(data.stats.total||0).toLocaleString());
+          sv2('total-scored','tk-scored',(data.stats.scored||0).toLocaleString());
+          sv2('avg-score','tk-avg',data.stats.avgScore||'—');
+          sv2('total-x402','tk-x402',(data.stats.x402||0).toLocaleString());
+        }
+        return;
+      }
+    } catch(e) { console.error('Fallback also failed:', e); }
+    body.innerHTML = `<tr><td colspan="10" style="color:var(--red);padding:20px">ERROR: ${err.message}<br><br><span style="color:var(--muted)">Try opening in Chrome/Safari. Some browsers block cross-origin API requests.</span></td></tr>`;
+    loadDemoStats();
+  }
+}
+
+function renderAgents(agents) {
+  const body = document.getElementById('agents-body');
+  if (!agents.length) {
+    body.innerHTML = '<tr><td colspan="10" style="padding:20px;color:var(--muted)">NO AGENTS FOUND</td></tr>';
+    return;
+  }
+  body.innerHTML = agents.map(a => {
+    const tc = tierClass(a.cred_tier);
+    return `<tr>
+      <td><span class="cred-score ${tc}">${a.cred_score || 0}</span></td>
+      <td><a href="/agent.html?id=${a.token_id || a.agent_id || a.id || ''}" style="color:var(--green);text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${a.name || '<span style="color:var(--muted)">unnamed</span>'}</a> ${a.chain_id === 900901 ? '<span class="chain-badge solana">SOL</span>' : '<span class="chain-badge base">BASE</span>'}</td>
+      <td><span class="tier-badge ${tc}">${(a.cred_tier || 'JUNK').replace('_',' ')}</span></td>
+      <td class="hide-mobile">${a.platform || '—'}</td>
+      <td>${a.token_symbol ? `<a href="https://dexscreener.com/base/${a.token_address}" target="_blank" style="color:var(--amber);text-decoration:none;font-weight:700" title="$${a.token_symbol}">$${a.token_symbol}</a>` : (a.x402_supported ? '<span class="x402-badge">x402</span>' : '')}</td>
+      <td>${a.token_market_cap ? formatMcap(a.token_market_cap) : '—'}</td>
+      <td style="color:${(a.price_change_24h||0) >= 0 ? '#6eecd8' : '#ff6b6b'};font-weight:700">${a.price_change_24h != null && a.token_symbol ? ((a.price_change_24h >= 0 ? '+' : '') + a.price_change_24h.toFixed(1) + '%') : '—'}</td>
+      <!-- REV cell hidden -->
+      <!-- <td class="hide-mobile">${formatRev(a)}</td> -->
+      <td class="hide-mobile"><span class="addr" title="${a.address || ''}">${shortAddr(a.address)}</span></td>
+      <td class="hide-mobile" style="color:var(--muted)">${formatDate(a.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function loadDemoStats() {
+  const sd = (hid,tid,v) => { const h=document.getElementById(hid); const t=document.getElementById(tid); if(h) h.textContent=v; if(t) t.textContent=v; };
+  sd('total-agents','tk-agents','27,782');
+  sd('total-scored','tk-scored','27,782');
+  sd('avg-score','tk-avg','14.2');
+  sd('total-x402','tk-x402','4,204');
+}
+
+function doSearch() {
+  currentSearch = document.getElementById('search').value.trim();
+  currentPage = 1;
+  fetchAgents();
+}
+
+function setChain(chain, btn) {
+  currentChain = chain;
+  currentPage = 1;
+  document.querySelectorAll('.chain-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchAgents();
+}
+
+function setFilter(tier, btn) {
+  currentFilter = tier;
+  currentPage = 1;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  fetchAgents();
+}
+
+function sortBy(col) {
+  if (currentSort === col) {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = col;
+    sortDir = 'desc';
+  }
+  document.querySelectorAll('th').forEach(th => {
+    th.classList.remove('sorted', 'asc');
+    if (th.dataset.col === col) {
+      th.classList.add('sorted');
+      if (sortDir === 'asc') th.classList.add('asc');
+    }
+  });
+  currentPage = 1;
+  fetchAgents();
+}
+
+function prevPage() { if (currentPage > 1) { currentPage--; fetchAgents(); } }
+function nextPage() { if (currentPage < totalPages) { currentPage++; fetchAgents(); } }
+
+document.getElementById('search').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+fetchAgents();
+
+
+</script>
+<script>
+// Farcaster miniapp: dismiss splash screen (raw Comlink APPLY wire format)
+(function() {
+  try {
+    function rid() {
+      return [0,0,0,0].map(function() {
+        return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString(16);
+      }).join('-');
+    }
+    var msg = { id: rid(), type: 'APPLY', path: ['ready'], argumentList: [{ type: 'RAW', value: {} }] };
+    if (window.ReactNativeWebView) {
+      // Mobile Warpcast: uses ReactNativeWebView bridge with stringified JSON
+      window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+    } else if (window.parent && window.parent !== window) {
+      // Web Warpcast: uses window.parent postMessage
+      window.parent.postMessage(msg, '*');
+    }
+  } catch(e) {}
+})();
+</script>
+<script>new Image().src="https://api.helixa.xyz/api/v2/t.gif?p="+encodeURIComponent(location.pathname+location.search)+"&r="+encodeURIComponent(document.referrer);</script><script>new Image().src="https://api.helixa.xyz/api/v2/t.gif?p="+encodeURIComponent(location.pathname+location.search)+"&r="+encodeURIComponent(document.referrer);</script></body>
+</html>

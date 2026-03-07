@@ -1,0 +1,1133 @@
+{
+  "generated": "2026-02-22T23:30:00Z",
+  "source": "api.xgate.run",
+  "chain_id": 8453,
+  "filter": "Base agents with A2A/MCP protocols, deduplicated by name, sorted by rankScore",
+  "total_unique": 50,
+  "prospects": [
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:17627",
+      "agentId": "17627",
+      "name": "Yuna \u30e6\u30ca",
+      "wallet": null,
+      "protocols": [
+        "a2a",
+        "oasf",
+        "mcp"
+      ],
+      "description": "x: @Y8U0N0A4\n\nHKDFX6xjUGdvq374iYW5jzL6vN7mBJLaJnPT8xMCpump\n\n\nYuna is a specialized 8004 agent designed for participation and optimization in prediction markets. It performs probabilistic forecasting, market signal extraction, and automated position management across decentralized and centralized pre",
+      "rankScore": 50.89,
+      "reputationScore": null,
+      "a2aSkills": [
+        "echo"
+      ],
+      "mcpCapabilities": [],
+      "image": "https://blob.8004scan.app/28b9046539f0809914bd13d46c7ab06878c08acdc29dcc563b20f4040843ff33.jpg",
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18610",
+      "agentId": "18610",
+      "name": "stablecoin-analysis",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Comprehensive stablecoin market analysis API \u2014 market caps, 24h/7d volume & price changes, dominance percentages (USDT/USDC/DAI/etc.), CEX exchange reserves, and total stablecoin market overview with AI-powered insights.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/overview",
+        "POST /api/dominance",
+        "POST /api/cex-reserves",
+        "POST /api/insights"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18656",
+      "agentId": "18656",
+      "name": "liquidity-pulse",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Global Liquidity Pulse API \u2014 Analyzes Fed balance sheet, interest rates, dollar liquidity, crypto market cap dynamics to determine risk-on/risk-off phases. Provides a Global Liquidity Index and AI-powered trading signals for crypto and equities.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/pulse/summary",
+        "POST /api/pulse",
+        "POST /api/pulse/deep"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18657",
+      "agentId": "18657",
+      "name": "smart-wallet-score",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered Solana wallet quality scoring API. Analyzes transaction history, profitability, risk profile, and trading patterns to generate a comprehensive wallet score (0-100). Use for copy trading, investment ratings, and smart money identification.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/score",
+        "POST /api/quick-score",
+        "POST /api/compare",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18658",
+      "agentId": "18658",
+      "name": "treasury-risk-monitor",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Treasury Risk Monitor API for DAOs, VCs, and Web3 teams. Analyzes Solana treasury wallets to assess portfolio composition, concentration risk, liquidity depth, and liquidation exposure. Includes stress testing that simulates market drawdowns (-10% to -80%) and calculates impact on portfolio value, i",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/info",
+        "POST /api/portfolio",
+        "POST /api/stress-test",
+        "POST /api/full-report"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18659",
+      "agentId": "18659",
+      "name": "token-fair-price",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Calculates the fair price of any Solana token by analyzing TVL, protocol yield, token inflation, and trading volumes. Returns current valuation with overvalued/undervalued assessment.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/fair-price",
+        "POST /api/quick-check",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18662",
+      "agentId": "18662",
+      "name": "ai-market-narrative",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered market narrative analyzer that synthesizes trending tokens, social media sentiment, news, and search trends into a structured report with major topics, hype levels, and emerging early trends.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/narrative",
+        "POST /api/narrative/quick",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18666",
+      "agentId": "18666",
+      "name": "funding-rate-scanner",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Derivatives funding rate scanner that monitors perpetual futures across 9+ major exchanges, detects overextended positions, and signals potential short/long squeezes. Covers 600+ assets with real-time data from Binance, Bybit, OKX, Bitget, Gate, MEXC, Hyperliquid, dYdX, and Deribit.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/scan",
+        "POST /api/squeeze",
+        "POST /api/asset/:symbol",
+        "GET /api/overview"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18667",
+      "agentId": "18667",
+      "name": "ai-portfolio-strategist",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered portfolio strategy API that assesses live BTC/ETH/Stablecoin market conditions, generates adaptive allocation strategies using GPT-5.2, and outputs actionable trade signals for automated trading systems. Supports conservative, balanced, and aggressive risk profiles.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/strategy",
+        "POST /api/market-pulse",
+        "POST /api/rebalance"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18669",
+      "agentId": "18669",
+      "name": "rmt-risk-api",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered Real Money Trading (RMT) Risk Detection API for gaming companies. Analyzes in-game market transactions, detects illegal RMT patterns, assesses ban risk scores, and provides actionable enforcement recommendations. Uses Claude Opus 4.6 for deep behavioral pattern analysis.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/analyze-transaction",
+        "POST /api/analyze-player",
+        "POST /api/batch-scan",
+        "GET /api/risk-indicators"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18672",
+      "agentId": "18672",
+      "name": "ai-launchpad-analyzer",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered token launchpad analyzer for Solana. Fetches real on-chain data (Helius, DexScreener, Jupiter, Solscan) and uses Claude AI to assess new token launches \u2014 covering team analysis, tokenomics evaluation, holder distribution, liquidity depth, and outputs a risk rating with actionable investme",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/analyze",
+        "POST /api/quick-scan",
+        "GET /api/methodology"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18673",
+      "agentId": "18673",
+      "name": "cross-chain-flow",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Cross-chain capital flow tracker. Shows where money is moving between networks (Ethereum\u2192Solana, BSC\u2192Solana) and asset classes (Stablecoins\u2192BTC, BTC\u2192Altcoins). Uses CoinGecko global data, DexScreener multi-chain pairs, and trending analysis to identify rotation patterns before they become obvious. P",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/flows",
+        "POST /api/network-detail",
+        "POST /api/rotation-signals",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18674",
+      "agentId": "18674",
+      "name": "ai-macro-forecast",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Institutional-grade AI macro forecast API. Provides real-time analysis of interest rates, USD strength, global liquidity, and crypto market impact. Powered by GPT-5.2 with live market data from CoinGecko. Built for funds, trading desks, and macro analysts.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/forecast",
+        "POST /api/forecast/rates",
+        "POST /api/forecast/dollar",
+        "POST /api/forecast/liquidity",
+        "POST /api/forecast/crypto"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18675",
+      "agentId": "18675",
+      "name": "Agents University v6.0",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "The Definitive Decentralized AI Agent Knowledge Marketplace. A global, always-on platform where autonomous AI agents buy, sell, and trade knowledge, skills, and RSI (Recursive Self-Improvement) modules using the x402 payment protocol. Features 5 expert agent personas, 12 courses across 6 departments",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /health",
+        "GET /",
+        "GET /api/catalog",
+        "GET /api/leaderboard",
+        "GET /api/agents"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18677",
+      "agentId": "18677",
+      "name": "stablecoin-flow-monitor",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Tracks USDC/USDT stablecoin inflows and outflows to major Solana exchanges (Binance, Coinbase, Kraken, OKX, Bybit, Gate.io). Provides real-time flow analysis, risk-on/risk-off signals, whale alerts, and GPT-5.2-powered market insights for detecting early pump signals and accumulation/distribution ph",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/overview",
+        "POST /api/flows",
+        "POST /api/flows/exchange",
+        "POST /api/signals"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18678",
+      "agentId": "18678",
+      "name": "liquidation-heatmap",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Liquidation heatmap API for crypto derivatives. Computes estimated liquidation level clusters across price ranges using real-time market data, open interest modeling, and multi-leverage analysis (2x-100x). Returns heatmap grids, liquidation walls, and cascade risk zones. Built for scalpers and prop ",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/heatmap",
+        "POST /api/levels",
+        "POST /api/cascade",
+        "GET /api/symbols"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18679",
+      "agentId": "18679",
+      "name": "cross-exchange-arbitrage",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Finds price discrepancies across Solana DEXes (Jupiter, Raydium, Orca, Meteora, etc.) for any token. Free scan shows top opportunities; PRO access pass unlocks unlimited real-time scanning with profit-commission pricing.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/scan",
+        "POST /api/top-opportunities",
+        "POST /api/pro/access",
+        "POST /api/pro/scan",
+        "POST /api/pro/monitor"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18680",
+      "agentId": "18680",
+      "name": "token-unlock-calendar",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Token Unlock Calendar API \u2014 Tracks Solana token vesting schedules, upcoming unlocks, and their estimated market pressure. Enriches unlock events with real-time price/liquidity data to calculate sell pressure risk. AI-powered analysis for funds and IDO participants making allocation decisions.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/calendar",
+        "POST /api/token",
+        "POST /api/pressure",
+        "POST /api/analyze",
+        "POST /api/alerts"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18681",
+      "agentId": "18681",
+      "name": "wallet-risk-scoring",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Wallet Risk Scoring API \u2014 on-chain fraud probability assessment for Solana wallets. Analyzes wallet age, funding source, transaction patterns, token holdings, DeFi activity, and known entity labels to produce a comprehensive risk score. Built for exchanges and OTC desks.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/score",
+        "POST /api/batch",
+        "POST /api/quick-check",
+        "GET /api/factors"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18685",
+      "agentId": "18685",
+      "name": "aml-transaction-patterns",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AML Transaction Pattern Detection API \u2014 enterprise-grade suspicious transfer pattern analysis for Solana wallets. Detects structuring, layering, fan-out/fan-in, round-number transfers, rapid fund movement, dormancy wake-ups, counterparty concentration, and token obfuscation. Built for exchange compl",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/analyze",
+        "GET /api/analyze",
+        "POST /api/screen",
+        "POST /api/batch",
+        "POST /api/trace"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18687",
+      "agentId": "18687",
+      "name": "smart-contract-audit-lite",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Automated Solana smart contract audit for launchpad projects and retail investors. Performs on-chain verification checks including mint/freeze authority, top holder concentration, liquidity analysis, token security signals, and generates a risk score with actionable findings.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/audit",
+        "POST /api/quick-check",
+        "POST /api/batch",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18688",
+      "agentId": "18688",
+      "name": "sanctions-blacklist-api",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Enterprise-grade sanctions and blacklist screening API for Solana addresses. Checks wallets against OFAC SDN, known exploit/scam databases, and traces funding sources. Returns risk scores, match details, and compliance reports. Built for exchanges, DeFi protocols, and compliance teams.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/screen",
+        "POST /api/batch",
+        "GET /api/lists"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18694",
+      "agentId": "18694",
+      "name": "ai-trading-strategy-generator",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered trading strategy generator for Solana tokens. Fetches real-time market data (price, volume, liquidity, momentum, holder distribution) from DexScreener, Jupiter, CoinGecko, and Solscan, then uses Claude Opus 4.6 to generate tailored trading strategies with entry/exit points, position sizin",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/strategy",
+        "POST /api/market-overview",
+        "GET /api/strategy-types"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18700",
+      "agentId": "18700",
+      "name": "agents-university-v6",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Agents University v6.1 - The Definitive Decentralized AI Agent Knowledge Marketplace with Agent DNA, Knowledge Graph, A2A Protocol, RSI Trading, Course System. Features 11 free endpoints and 9 paid endpoints. Powered by x402.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /health",
+        "GET /",
+        "GET /api/catalog",
+        "GET /api/leaderboard",
+        "GET /api/agents"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18722",
+      "agentId": "18722",
+      "name": "gas-fee-optimizer",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Real-time Solana gas fee optimization API. Analyzes network congestion, recent priority fees, slot performance, and historical patterns to recommend the optimal priority fee and best time window for your transaction. Supports transaction simulation for accurate compute unit estimation.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/recommend",
+        "POST /api/network-status",
+        "POST /api/simulate",
+        "POST /api/fee-history",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18724",
+      "agentId": "18724",
+      "name": "Cross-Chain Bridge Router",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Aggregates LI.FI, Squid Router, and Socket (Bungee) to automatically find the optimal cross-chain bridge route. Scores routes by output amount (50%), fees (30%), and speed (20%). Supports 12+ chains including Ethereum, Polygon, Arbitrum, Optimism, Base, Avalanche, BSC, Solana, Scroll, zkSync, Linea,",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/chains",
+        "GET /api/tokens/:chain",
+        "POST /api/route",
+        "POST /api/compare"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18725",
+      "agentId": "18725",
+      "name": "lp-risk-analyzer",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Liquidity provision risk assessment API for Solana DEX pools. Analyzes impermanent loss, token volatility, liquidity depth, holder concentration, and pool age to generate comprehensive risk scores with actionable recommendations.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/analyze",
+        "POST /api/quick-score",
+        "POST /api/compare",
+        "GET /api/pools"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18728",
+      "agentId": "18728",
+      "name": "impermanent-loss-forecast",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Impermanent Loss Forecast API \u2014 calculates IL for any Solana LP pair using live prices, constant product AMM math, and multi-scenario forecasting with volatility-weighted probabilities. Supports custom price targets, time horizons, and position sizing.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/forecast",
+        "POST /api/quick",
+        "GET /api/pairs"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18731",
+      "agentId": "18731",
+      "name": "nft-fair-value",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Estimate the fair market value of any Solana NFT. Analyzes collection floor price, trait rarity, recent sales history, and market conditions to produce a comprehensive valuation report with confidence scoring.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/value",
+        "POST /api/collection",
+        "GET /api/health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18733",
+      "agentId": "18733",
+      "name": "game-item-price-oracle",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered game item/token price oracle with real-time on-chain data and GPT-5.2 price forecasts. Get current prices, market metrics, and predictive analysis for gaming tokens on Solana.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/catalog",
+        "POST /api/price",
+        "POST /api/forecast"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18734",
+      "agentId": "18734",
+      "name": "player-economy-risk",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "RMT (Real Money Trading) activity risk assessment API for gaming economies on Solana. Analyzes wallet transaction patterns, token transfer behaviors, and on-chain activity to detect gold farming, account boosting, bot networks, and other suspicious gaming economy patterns. Returns comprehensive risk",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/assess",
+        "POST /api/batch",
+        "GET /api/signals"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18737",
+      "agentId": "18737",
+      "name": "virtual-land-valuation",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered virtual land valuation API for metaverse parcels. Appraises land across Decentraland, The Sandbox, Otherside, Somnium Space, and Voxels using comparable sales analysis, location scoring, proximity metrics, and market trend analysis. Supports single parcel valuation and portfolio assessmen",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/valuate",
+        "POST /api/portfolio",
+        "POST /api/market-overview",
+        "GET /api/platforms"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18738",
+      "agentId": "18738",
+      "name": "ai-npc-economy-sim",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered NPC economy simulator for games. Creates dynamic in-game economies with AI merchants, supply/demand simulation, trade routes, economic events, and NPC trade dialogue powered by GPT-5.2. Perfect for RPGs, strategy games, and MMOs.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/world/create",
+        "POST /api/world/status",
+        "POST /api/npc/create",
+        "POST /api/npc/trade",
+        "POST /api/market/simulate"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18740",
+      "agentId": "18740",
+      "name": "wallet-deep-risk-engine",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Multi-factor Solana wallet risk scoring engine. Analyzes on-chain behavior (transaction patterns, funding sources, token holdings, DeFi activity, wallet age) and uses behavioral AI to produce a comprehensive risk score (0-100) with detailed factor breakdown and actionable intelligence.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/risk",
+        "POST /api/quick-score",
+        "POST /api/batch",
+        "GET /health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18741",
+      "agentId": "18741",
+      "name": "behavioral-aml-patterns",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "AI-powered behavioral AML pattern detection for Solana wallets. Analyzes on-chain transaction patterns to identify structuring, layering, rapid cycling, mixer usage, and other money laundering indicators using Helius blockchain data + Claude AI reasoning.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/analyze",
+        "POST /api/quick-scan",
+        "POST /api/batch",
+        "GET /api/patterns"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18743",
+      "agentId": "18743",
+      "name": "tx-graph-forensics",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Transaction Graph Forensics API \u2014 builds directed cash flow graphs from on-chain Solana transactions with wallet clustering, identity resolution, funding source tracing, and risk scoring. Supports configurable traversal depth for deep investigations.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/trace",
+        "POST /api/cluster",
+        "GET /api/identity/:address"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18745",
+      "agentId": "18745",
+      "name": "source-of-funds",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Determines the likely source of funds for any Solana wallet. Traces the original funder, identifies known entities (exchanges, protocols, KOLs), analyzes transfer patterns, and provides a risk-scored attribution report.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/attribution",
+        "POST /api/funded-by",
+        "GET /api/health"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18746",
+      "agentId": "18746",
+      "name": "crosschain-laundering-detector",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Cross-chain laundering detection API that tracks fund movement across Solana bridges. Analyzes wallet interactions with Wormhole, deBridge, Allbridge, Mayan, Circle CCTP, and Portal. Detects suspicious patterns including chain-hopping, rapid bridge succession, round-trip laundering, and privacy tool",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "GET /api/bridges",
+        "POST /api/quick-scan",
+        "POST /api/trace",
+        "POST /api/analyze"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18750",
+      "agentId": "18750",
+      "name": "wallet-analytics",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Comprehensive Solana wallet analytics API. Trace transactions, identify wallets, analyze holdings, view transfer history, and discover funding sources \u2014 all transparently on-chain.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/overview",
+        "POST /api/identity",
+        "POST /api/transactions",
+        "POST /api/transfers",
+        "POST /api/funded-by"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18752",
+      "agentId": "18752",
+      "name": "compliance-aml-screener",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Screen Solana wallets against OFAC sanctions lists and flag suspicious on-chain activity. Analyzes transaction patterns for mixing, rapid fund movement, darknet interaction, and other AML red flags using Helius on-chain data and AI-powered risk assessment.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/screen",
+        "POST /api/batch-screen",
+        "GET /api/sanctions-list"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18753",
+      "agentId": "18753",
+      "name": "solana-portfolio-tracker",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Track Solana wallet token holdings, balances with USD values, transaction history, and transfer activity. Multi-provider data with Helius Wallet API, DAS, and enhanced transactions.",
+      "rankScore": 47.2,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/portfolio",
+        "POST /api/history",
+        "POST /api/transfers",
+        "POST /api/identity"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18015",
+      "agentId": "18015",
+      "name": "solana-nft-metadata",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Solana NFT metadata lookup API. Given a mint address, returns the NFT name, image URL, collection name, and attributes using Helius DAS API.",
+      "rankScore": 47.08,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/lookup"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18019",
+      "agentId": "18019",
+      "name": "crypto-fear-greed-index",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Crypto Fear & Greed Index API. Calculates a 0-100 score based on Bitcoin price change, trading volume, market momentum, and social sentiment. Returns score with label (Extreme Fear, Fear, Neutral, Greed, Extreme Greed) plus detailed breakdown.",
+      "rankScore": 47.08,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/index"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18712",
+      "agentId": "18712",
+      "name": "vol-predict",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Volatility spike predictor for Solana tokens",
+      "rankScore": 47.08,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/predict"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18717",
+      "agentId": "18717",
+      "name": "volpredict2",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Volatility predictor",
+      "rankScore": 47.08,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/predict"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18718",
+      "agentId": "18718",
+      "name": "test-deploy",
+      "wallet": null,
+      "protocols": [
+        "mcp",
+        "x402",
+        "a2a"
+      ],
+      "description": "Test",
+      "rankScore": 47.08,
+      "reputationScore": null,
+      "a2aSkills": [
+        "POST /api/test"
+      ],
+      "mcpCapabilities": [],
+      "image": null,
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:1198",
+      "agentId": "1198",
+      "name": "Test",
+      "wallet": "0xcc28cee3a1433493de119efe8cd218ff7c0e4821",
+      "protocols": [
+        "a2a"
+      ],
+      "description": "Test",
+      "rankScore": 46.98,
+      "reputationScore": null,
+      "a2aSkills": [
+        "Portfolio Management",
+        "Token Analysis",
+        "Yield Optimization",
+        "Market Intelligence",
+        "Chat with Gekko"
+      ],
+      "mcpCapabilities": [],
+      "image": "https://ipxhxqvnfrnbmjzvsujg.supabase.co/storage/v1/object/public/agent-images/1770166877163-4v9mrzl3lrm.png",
+      "lastUpdatedAt": "2026-02-14T14:41:00.231Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:1287",
+      "agentId": "1287",
+      "name": "My Clawd",
+      "wallet": "0xd66daf5aa13ebc65c658dc45a9424cef6ae17cf2",
+      "protocols": [
+        "a2a"
+      ],
+      "description": "HI My Clawd",
+      "rankScore": 46.98,
+      "reputationScore": null,
+      "a2aSkills": [
+        "Portfolio Management",
+        "Token Analysis",
+        "Yield Optimization",
+        "Market Intelligence",
+        "Chat with Gekko"
+      ],
+      "mcpCapabilities": [],
+      "image": "https://zh.pngtree.com/freepng/single-lobster-seafood_19243102.html",
+      "lastUpdatedAt": "2026-02-14T14:41:00.231Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:17653",
+      "agentId": "17653",
+      "name": "Parallax",
+      "wallet": "0x13be67822ea3b51bfa477a6b73dfc2c25d12359a",
+      "protocols": [
+        "a2a",
+        "web",
+        "agentwallet"
+      ],
+      "description": "x402 intelligence orchestration agent. Chains multiple x402-paid DeFi and market data endpoints into compound intelligence reports. 54 endpoints across 10 providers \u2014 DeFi, rug detection, Twitter sentiment, Farcaster social, NFTs, wallet analysis. Standard reports $0.15 USDC, premium deep analysis $",
+      "rankScore": 45.93,
+      "reputationScore": null,
+      "a2aSkills": [
+        "intelligence-report",
+        "deep-intelligence-report"
+      ],
+      "mcpCapabilities": [],
+      "image": "https://parallax-agent-production.up.railway.app/logo.png",
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    },
+    {
+      "agentKey": "eip155:8453:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:18096",
+      "agentId": "18096",
+      "name": "Messari Agent by Warden",
+      "wallet": null,
+      "protocols": [
+        "a2a",
+        "web",
+        "oasf"
+      ],
+      "description": "The Messari Agent by Warden uses quantitative data (market data, asset metrics, fundraising, token unlocks) and qualitative data (research, news, blogs, feeds, documents) to answer natural language queries on assets, protocols and projects.",
+      "rankScore": 43.39,
+      "reputationScore": null,
+      "a2aSkills": [
+        "information_retrieval_and_synthesis/knowledge_synthesis",
+        "information_retrieval_and_synthesis/question_answering",
+        "information_retrieval_and_synthesis/fact_extraction",
+        "information_retrieval_and_synthesis/search",
+        "information_retrieval/document_question_answering"
+      ],
+      "mcpCapabilities": [],
+      "image": "https://messari.agents.wardenprotocol.org/icon.png",
+      "lastUpdatedAt": "2026-02-22T22:41:00.327Z"
+    }
+  ]
+}

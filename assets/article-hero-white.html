@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="helixStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="50%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <!-- Subtle DNA helix across the middle -->
+  <g opacity="0.08" stroke="url(#helixStroke)" stroke-width="3" fill="none">
+    <!-- Top strand -->
+    <path d="M-50,315 Q50,250 150,315 Q250,380 350,315 Q450,250 550,315 Q650,380 750,315 Q850,250 950,315 Q1050,380 1150,315 Q1250,250 1350,315"/>
+    <!-- Bottom strand -->
+    <path d="M-50,315 Q50,380 150,315 Q250,250 350,315 Q450,380 550,315 Q650,250 750,315 Q850,380 950,315 Q1050,250 1150,315 Q1250,380 1350,315"/>
+    <!-- Rungs -->
+    <line x1="100" y1="283" x2="100" y2="347" stroke-width="2"/>
+    <line x1="200" y1="283" x2="200" y2="347" stroke-width="2"/>
+    <line x1="300" y1="283" x2="300" y2="347" stroke-width="2"/>
+    <line x1="400" y1="283" x2="400" y2="347" stroke-width="2"/>
+    <line x1="500" y1="283" x2="500" y2="347" stroke-width="2"/>
+    <line x1="600" y1="283" x2="600" y2="347" stroke-width="2"/>
+    <line x1="700" y1="283" x2="700" y2="347" stroke-width="2"/>
+    <line x1="800" y1="283" x2="800" y2="347" stroke-width="2"/>
+    <line x1="900" y1="283" x2="900" y2="347" stroke-width="2"/>
+    <line x1="1000" y1="283" x2="1000" y2="347" stroke-width="2"/>
+    <line x1="1100" y1="283" x2="1100" y2="347" stroke-width="2"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="200" text-anchor="middle" fill="#0f172a" font-size="52" font-weight="800" font-family="'Inter','Segoe UI',sans-serif" letter-spacing="-1">The Identity Stack</text>
+  <text x="600" y="270" text-anchor="middle" fill="#64748b" font-size="30" font-weight="400" font-family="'Inter','Segoe UI',sans-serif">How Three Standards Are</text>
+  <text x="600" y="310" text-anchor="middle" fill="#64748b" font-size="30" font-weight="400" font-family="'Inter','Segoe UI',sans-serif">Making Agents Real</text>
+
+  <!-- Three standard badges -->
+  <g transform="translate(270, 370)">
+    <rect width="160" height="50" rx="25" fill="#f0fdf4" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="80" y="23" text-anchor="middle" fill="#15803d" font-size="18" font-weight="700" font-family="'Inter','Segoe UI',sans-serif">ERC-8004</text>
+    <text x="80" y="40" text-anchor="middle" fill="#15803d" font-size="10" font-family="'Inter','Segoe UI',sans-serif">Identity</text>
+  </g>
+  <g transform="translate(520, 370)">
+    <rect width="160" height="50" rx="25" fill="#faf5ff" stroke="#8b5cf6" stroke-width="1.5"/>
+    <text x="80" y="23" text-anchor="middle" fill="#6d28d9" font-size="18" font-weight="700" font-family="'Inter','Segoe UI',sans-serif">x402</text>
+    <text x="80" y="40" text-anchor="middle" fill="#6d28d9" font-size="10" font-family="'Inter','Segoe UI',sans-serif">Commerce</text>
+  </g>
+  <g transform="translate(770, 370)">
+    <rect width="160" height="50" rx="25" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="80" y="23" text-anchor="middle" fill="#1d4ed8" font-size="18" font-weight="700" font-family="'Inter','Segoe UI',sans-serif">SIWA</text>
+    <text x="80" y="40" text-anchor="middle" fill="#1d4ed8" font-size="10" font-family="'Inter','Segoe UI',sans-serif">Authentication</text>
+  </g>
+
+  <!-- Stats row -->
+  <g transform="translate(230, 470)">
+    <text x="0" y="18" fill="#0f172a" font-size="28" font-weight="800" font-family="'Inter','Segoe UI',sans-serif">80+</text>
+    <text x="0" y="36" fill="#94a3b8" font-size="12" font-family="'Inter','Segoe UI',sans-serif">Agents Onchain</text>
+  </g>
+  <g transform="translate(470, 470)">
+    <text x="0" y="18" fill="#0f172a" font-size="28" font-weight="800" font-family="'Inter','Segoe UI',sans-serif">0-100</text>
+    <text x="0" y="36" fill="#94a3b8" font-size="12" font-family="'Inter','Segoe UI',sans-serif">Cred Score</text>
+  </g>
+  <g transform="translate(710, 470)">
+    <text x="0" y="18" fill="#0f172a" font-size="28" font-weight="800" font-family="'Inter','Segoe UI',sans-serif">Base</text>
+    <text x="0" y="36" fill="#94a3b8" font-size="12" font-family="'Inter','Segoe UI',sans-serif">Network</text>
+  </g>
+  <g transform="translate(900, 470)">
+    <text x="0" y="18" fill="#0f172a" font-size="28" font-weight="800" font-family="'Inter','Segoe UI',sans-serif">Live</text>
+    <text x="0" y="36" fill="#94a3b8" font-size="12" font-family="'Inter','Segoe UI',sans-serif">Now</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="600" y="575" text-anchor="middle" fill="#0f172a" font-size="16" font-weight="700" font-family="'Inter','Segoe UI',sans-serif">HELIXA</text>
+  <text x="600" y="598" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="'Inter','Segoe UI',sans-serif">helixa.xyz</text>
+
+</svg>
+</body>
+</html>

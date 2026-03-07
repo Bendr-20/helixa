@@ -1,0 +1,24 @@
+{
+  "name": "@agentdna/eliza-plugin",
+  "version": "0.1.0",
+  "description": "ElizaOS plugin for AgentDNA — mint and manage onchain agent identities",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["elizaos", "plugin", "agentdna", "nft", "onchain", "identity", "base"],
+  "license": "MIT",
+  "peerDependencies": {
+    "@elizaos/core": ">=0.1.0"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@elizaos/core": "^0.1.0",
+    "typescript": "^5.5.0"
+  }
+}

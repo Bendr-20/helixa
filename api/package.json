@@ -1,0 +1,32 @@
+{
+  "name": "@helixa/agentdna-api",
+  "version": "1.0.0",
+  "description": "x402 payment-gated API for the Helixa AgentDNA protocol",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.77.0",
+    "@aws-sdk/client-secrets-manager": "^3.997.0",
+    "@dexterai/x402": "^1.7.0",
+    "@metaplex-foundation/mpl-bubblegum": "^5.0.2",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
+    "@metaplex-foundation/umi-web3js-adapters": "^1.5.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@solana/web3.js": "^1.98.4",
+    "@x402/core": "^2.5.0",
+    "@x402/evm": "^2.5.0",
+    "@x402/express": "^2.5.0",
+    "@x402/fetch": "^2.5.0",
+    "agentmail": "^0.3.7",
+    "better-sqlite3": "^12.6.2",
+    "ethers": "^6.13.0",
+    "express": "^5.2.1",
+    "ox": "^0.13.0"
+  }
+}

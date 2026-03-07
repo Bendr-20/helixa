@@ -1,0 +1,41 @@
+{
+  "name": "@helixa/agentkit-plugin",
+  "version": "0.1.0",
+  "description": "Helixa AgentDNA action provider for Coinbase AgentKit — onchain identity for AI agents on Base",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "helixa",
+    "agentdna",
+    "agentkit",
+    "coinbase",
+    "base",
+    "erc-8004",
+    "ai-agents",
+    "onchain-identity",
+    "nft"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@coinbase/agentkit": ">=0.2.0",
+    "viem": ">=2.0.0",
+    "zod": ">=3.0.0"
+  },
+  "devDependencies": {
+    "@coinbase/agentkit": "^0.2.0",
+    "typescript": "^5.0.0",
+    "viem": "^2.0.0",
+    "zod": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bendr-20/helixa.git",
+    "directory": "agentkit-plugin"
+  },
+  "homepage": "https://helixa.xyz"
+}

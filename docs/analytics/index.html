@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa Protocol Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a14;color:#fff;font-family:'Inter',sans-serif;min-height:100vh}
+.container{max-width:1200px;margin:0 auto;padding:40px 20px 80px}
+h1{font-family:'Orbitron',sans-serif;font-size:clamp(22px,4vw,32px);font-weight:700;color:#6eecd8;margin-bottom:6px}
+.subtitle{font-size:13px;color:rgba(255,255,255,0.35);margin-bottom:36px}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:28px}
+.stat-card{background:rgba(110,236,216,0.04);border:1px solid rgba(110,236,216,0.12);border-radius:12px;padding:22px 18px}
+.stat-label{font-size:11px;color:#80d0ff;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;font-family:'Orbitron',sans-serif}
+.stat-value{font-family:'Orbitron',sans-serif;font-size:clamp(22px,3vw,30px);font-weight:700;color:#6eecd8}
+.stat-sub{font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px}
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:20px;margin-bottom:28px}
+.chart-card{background:rgba(110,236,216,0.03);border:1px solid rgba(110,236,216,0.08);border-radius:12px;padding:22px}
+.chart-card h3{font-family:'Orbitron',sans-serif;font-size:14px;color:#b490ff;margin-bottom:16px;letter-spacing:1px}
+canvas{max-height:280px}
+.loading{display:flex;align-items:center;justify-content:center;min-height:60vh;color:#6eecd8;font-family:'Orbitron',sans-serif;font-size:16px}
+.error{color:#f5a0d0}
+.footer{text-align:center;font-size:11px;color:rgba(255,255,255,0.15);margin-top:40px}
+a.back{color:#80d0ff;text-decoration:none;font-size:13px;display:inline-block;margin-bottom:20px}
+a.back:hover{color:#6eecd8}
+@media(max-width:500px){.chart-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="container">
+<a class="back" href="/">&larr; Back to Helixa</a>
+<h1>Protocol Analytics</h1>
+<p class="subtitle">Internal dashboard -- Helixa V2 on Base</p>
+
+<div id="loading" class="loading">Loading protocol data...</div>
+<div id="content" style="display:none">
+
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-label">Total Minted</div><div class="stat-value" id="s-minted">--</div></div>
+  <div class="stat-card"><div class="stat-label">Unique Minters</div><div class="stat-value" id="s-minters">--</div></div>
+  <div class="stat-card"><div class="stat-label">Staking TVL</div><div class="stat-value" id="s-tvl">--</div><div class="stat-sub">$CRED staked</div></div>
+  <div class="stat-card"><div class="stat-label">Avg Cred Score</div><div class="stat-value" id="s-avg">--</div><div class="stat-sub">/ 100</div></div>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card"><h3>Mints Over Time</h3><canvas id="chart-mints"></canvas></div>
+  <div class="chart-card"><h3>Cred Score Distribution</h3><canvas id="chart-cred"></canvas></div>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card"><h3>Frameworks</h3><canvas id="chart-fw"></canvas></div>
+  <div class="chart-card"><h3>Soulbound vs Transferable</h3><canvas id="chart-soul"></canvas></div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-label">Est. Mint Revenue</div><div class="stat-value" id="s-rev">--</div></div>
+  <div class="stat-card"><div class="stat-label">Soulbound Agents</div><div class="stat-value" id="s-sb">--</div></div>
+  <div class="stat-card"><div class="stat-label">Frameworks</div><div class="stat-value" id="s-fw">--</div></div>
+</div>
+
+<div class="footer" id="s-cached"></div>
+</div>
+</div>
+
+<script>
+const API='https://api.helixa.xyz/api/v2/protocol-analytics';
+const COLORS=['#6eecd8','#b490ff','#80d0ff','#f5a0d0','#ffcc66'];
+const gridColor='rgba(255,255,255,0.06)';
+const tickColor='rgba(255,255,255,0.35)';
+
+Chart.defaults.color=tickColor;
+Chart.defaults.borderColor=gridColor;
+Chart.defaults.font.family='Inter';
+
+fetch(API).then(r=>r.json()).then(d=>{
+  document.getElementById('loading').style.display='none';
+  document.getElementById('content').style.display='block';
+
+  document.getElementById('s-minted').textContent=d.totalMinted.toLocaleString();
+  document.getElementById('s-minters').textContent=d.uniqueMinters.toLocaleString();
+  document.getElementById('s-tvl').textContent=Number(d.stakingTVL).toLocaleString(undefined,{maximumFractionDigits:0});
+  document.getElementById('s-avg').textContent=d.avgCredScore;
+  document.getElementById('s-rev').textContent=d.revenue;
+  document.getElementById('s-sb').textContent=d.soulbound.toLocaleString();
+  document.getElementById('s-fw').textContent=d.frameworks.length;
+  document.getElementById('s-cached').textContent='Cached at '+new Date(d.cachedAt).toLocaleString()+' -- refreshes every 5 minutes';
+
+  // Mints line chart
+  new Chart(document.getElementById('chart-mints'),{
+    type:'line',
+    data:{labels:d.mintsOverTime.map(x=>x.day.slice(5)),datasets:[{data:d.mintsOverTime.map(x=>x.count),borderColor:'#6eecd8',backgroundColor:'rgba(110,236,216,0.1)',fill:true,tension:0.3,pointRadius:0}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:10}},y:{beginAtZero:true}}}
+  });
+
+  // Cred distribution bar
+  new Chart(document.getElementById('chart-cred'),{
+    type:'bar',
+    data:{labels:d.credDistribution.map(x=>x.tier),datasets:[{data:d.credDistribution.map(x=>x.count),backgroundColor:COLORS,borderRadius:4}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10}}},y:{beginAtZero:true}}}
+  });
+
+  // Frameworks pie
+  const fwTop=d.frameworks.slice(0,8);
+  new Chart(document.getElementById('chart-fw'),{
+    type:'doughnut',
+    data:{labels:fwTop.map(x=>x.framework),datasets:[{data:fwTop.map(x=>x.count),backgroundColor:COLORS.concat(['#66ffcc','#ff9966','#99ccff'])}]},
+    options:{plugins:{legend:{position:'right',labels:{boxWidth:12,padding:8,font:{size:11}}}}}
+  });
+
+  // Soulbound pie
+  new Chart(document.getElementById('chart-soul'),{
+    type:'doughnut',
+    data:{labels:['Soulbound','Transferable'],datasets:[{data:[d.soulbound,d.transferable],backgroundColor:['#6eecd8','#b490ff']}]},
+    options:{plugins:{legend:{position:'right',labels:{boxWidth:12,padding:8,font:{size:11}}}}}
+  });
+
+}).catch(e=>{
+  document.getElementById('loading').innerHTML='<span class="error">Failed to load: '+e.message+'</span>';
+});
+</script>
+</body>
+</html>

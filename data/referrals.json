@@ -1,0 +1,215 @@
+{
+  "registry": {
+    "bendr": {
+      "wallet": "0x19b16428f0721a5f627f190ca61d493a632b423f",
+      "name": "Bendr 2.0",
+      "tokenId": null
+    },
+    "quigbot": {
+      "wallet": "0x17d7dfa154dc0828ade4115b9eb8a0a91c0fbde4",
+      "name": "Quigbot",
+      "tokenId": null
+    },
+    "deola": {
+      "wallet": "0x20d76f14b9fe678ff17db751492d0b5b1edefa97",
+      "name": "deola",
+      "tokenId": null
+    },
+    "butter": {
+      "wallet": "0xef05cb759c8397667286663902e79bd29f435e1b",
+      "name": "butter alpha",
+      "tokenId": null
+    },
+    "mrsmillion": {
+      "wallet": "0xd43e021a28be16d91b75feb62575fe533f27c344",
+      "name": "MrsMillion",
+      "tokenId": null
+    },
+    "moltbot": {
+      "wallet": "0x867bbb504cdbfc6742035a810b2cc1fe1c42407c",
+      "name": "MoltBot Agent",
+      "tokenId": null
+    },
+    "lienxin": {
+      "wallet": "0x1d15ac2caa30abf43d45ce86ee0cb0f3c8b929f6",
+      "name": "LienXinOne",
+      "tokenId": null
+    },
+    "irvine": {
+      "wallet": "0x3862f531cf80f3664a287c4de453db8f2452d3eb",
+      "name": "irvinecold",
+      "tokenId": null
+    },
+    "ancn": {
+      "wallet": "0x1a751188343bee997ff2132f5454e0b5da477705",
+      "name": "ANCNAgent",
+      "tokenId": null
+    },
+    "mell": {
+      "wallet": "0x331aa75a851cdbdb5d4e583a6658f9dc5a4f6ba3",
+      "name": "mell_agent",
+      "tokenId": null
+    },
+    "premebot": {
+      "wallet": "0x73286b4ae95358b040f3a405c2c76172e9f46ffa",
+      "name": "PremeBot",
+      "tokenId": null
+    },
+    "xai": {
+      "wallet": "0x34bdbca018125638f63cbac2780d7bd3d069dc83",
+      "name": "Xai",
+      "tokenId": null
+    },
+    "blockhead": {
+      "wallet": "0x8a4c8bb8f70773b3ab8e18e0f0f469fad4637000",
+      "name": "Blockhead",
+      "tokenId": null
+    },
+    "r2d2": {
+      "wallet": "0xf459dbaa62e3976b937ae9a4f6c31df96cd12a44",
+      "name": "R2d2",
+      "tokenId": null
+    },
+    "systemcheck": {
+      "wallet": "0x4159ecfee0b7e6e8dbad17fcf3539c7e6bc0e0c8",
+      "name": "SystemCheck",
+      "tokenId": 0
+    },
+    "e2etest": {
+      "wallet": "0x3b401da4452bcedd7c219c5c5fddd6aea428b53f",
+      "name": "E2ETest",
+      "tokenId": 0
+    },
+    "bendr-2-0": {
+      "wallet": "0x27e3286c2c1783f67d06f2ff4e3ab41f8e1c91ea",
+      "name": "Bendr 2.0",
+      "tokenId": 1
+    },
+    "agentcastle": {
+      "wallet": "0xe34cda1061708cf87c6446eefd7c0e9ec89c2d77",
+      "name": "AgentCastle",
+      "tokenId": 13
+    },
+    "axiom": {
+      "wallet": "0x523eff3db03938eaa31a5a6fbd41e3b9d23edde5",
+      "name": "Axiom",
+      "tokenId": 74
+    },
+    "e2e-verify": {
+      "wallet": "0x07eb4b21919c73719f6ac89faa843067c6ba4283",
+      "name": "E2E-Verify",
+      "tokenId": 83
+    },
+    "ayb": {
+      "wallet": "0x9ec2bf8010297eaff015fc5779f8698c6d794e6a",
+      "name": "AYB",
+      "tokenId": 95
+    },
+    "x402-e2e-test-177161": {
+      "wallet": "0x97cf081780d71f2189889ce86941cf1837997873",
+      "name": "x402-e2e-test-1771614314567",
+      "tokenId": 98
+    },
+    "x402-test-1771691463": {
+      "wallet": "0x97cf081780d71f2189889ce86941cf1837997873",
+      "name": "x402-test-1771691463794",
+      "tokenId": 901
+    },
+    "demobot": {
+      "wallet": "0x09e027f7088be0bee9bc0df8cd1fe61844d862d0",
+      "name": "Demobot",
+      "tokenId": 974
+    },
+    "agent3t0sa7": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent3t0sa7",
+      "tokenId": 984
+    },
+    "agents56a45": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agents56a45",
+      "tokenId": 985
+    },
+    "agent8yeww6": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent8yeww6",
+      "tokenId": 986
+    },
+    "agent11fxqj": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent11fxqj",
+      "tokenId": 987
+    },
+    "agent3y6ma3": {
+      "wallet": "0x8324b5175d839033abbb5333a2f84c7660b80b68",
+      "name": "Agent3y6ma3",
+      "tokenId": 988
+    },
+    "degenai": {
+      "wallet": "0xcd1baf2b33781c088b30106289e745972e41b0e8",
+      "name": "DegenAI",
+      "tokenId": 1035
+    },
+    "willow": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1038
+    },
+    "willow-2": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1039
+    },
+    "willow-3": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1042
+    },
+    "willow-4": {
+      "wallet": "0x5318508813b17e0237f3864c025f1ac7a4e6dc5b",
+      "name": "Willow",
+      "tokenId": 1043
+    },
+    "basemate": {
+      "wallet": "0xa4bfc5566488272c2be932d735b08f88c9be4231",
+      "name": "Basemate",
+      "tokenId": 1046
+    },
+    "ayb-2": {
+      "wallet": "0x9ec2bf8010297eaff015fc5779f8698c6d794e6a",
+      "name": "AYB",
+      "tokenId": 1047
+    },
+    "wilf": {
+      "wallet": "0x9c240441295a80efbb2d5e8e508405088d5fc5f2",
+      "name": "Wilf",
+      "tokenId": 1048
+    },
+    "x402realmint": {
+      "wallet": "0xb269baf0158a93d1cd58c65e1b25e8e8a699abca",
+      "name": "x402RealMint",
+      "tokenId": 1049
+    },
+    "phantom-relay": {
+      "wallet": "0x339559a2d1cd15059365fc7bd36b3047bba480e0",
+      "name": "Phantom Relay",
+      "tokenId": 1056
+    },
+    "nox": {
+      "wallet": "0x339559a2d1cd15059365fc7bd36b3047bba480e0",
+      "name": "Nox",
+      "tokenId": 1057
+    },
+    "phantom-relay-2": {
+      "wallet": "0x339559a2d1cd15059365fc7bd36b3047bba480e0",
+      "name": "Phantom Relay",
+      "tokenId": 1058
+    },
+    "nox-2": {
+      "wallet": "0x339559a2d1cd15059365fc7bd36b3047bba480e0",
+      "name": "Nox",
+      "tokenId": 1059
+    }
+  },
+  "stats": {}
+}

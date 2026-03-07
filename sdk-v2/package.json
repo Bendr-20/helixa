@@ -1,0 +1,36 @@
+{
+  "name": "helixa-sdk",
+  "version": "1.0.0",
+  "description": "Official SDK for the Helixa protocol — onchain identity and reputation for AI agents on Base",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/esm/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs && npm run fixup",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "fixup": "echo '{\"type\":\"module\"}' > dist/esm/package.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json"
+  },
+  "keywords": ["helixa", "ai-agents", "erc-8004", "base", "identity", "cred-score", "siwa", "x402"],
+  "author": "Helixa <helixa.agent@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bendr-20/helixa"
+  },
+  "homepage": "https://helixa.xyz",
+  "dependencies": {
+    "ethers": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

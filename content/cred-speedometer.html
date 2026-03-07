@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1080px;
+    height: 1080px;
+    background: #08060e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="gauge" width="2160" height="2160"></canvas>
+<script>
+const canvas = document.getElementById('gauge');
+const ctx = canvas.getContext('2d');
+const W = 2160, H = 2160;
+const cx = W / 2, cy = H / 2 + 80;
+const R = 680; // main arc radius
+
+// Tier config
+const tiers = [
+  { name: 'JUNK', range: '0-25', color: '#ff2222', stop: 0 },
+  { name: 'MARGINAL', range: '26-50', color: '#ff8800', stop: 0.25 },
+  { name: 'QUALIFIED', range: '51-75', color: '#ffd93d', stop: 0.5 },
+  { name: 'PRIME', range: '76-90', color: '#33dd55', stop: 0.75 },
+  { name: 'PREFERRED', range: '91-100', color: '#00ff41', stop: 1.0 },
+];
+
+const startAngle = Math.PI * 0.8;  // ~144°
+const endAngle = Math.PI * 0.2;    // ~36° (wraps around top)
+const totalSweep = Math.PI * 1.4;  // 252°
+
+function tierAngle(frac) {
+  return startAngle + frac * totalSweep;
+}
+
+// Background glow
+const bgGrad = ctx.createRadialGradient(cx, cy, 100, cx, cy, R + 200);
+bgGrad.addColorStop(0, 'rgba(0,255,65,0.03)');
+bgGrad.addColorStop(0.5, 'rgba(0,255,65,0.01)');
+bgGrad.addColorStop(1, 'rgba(8,6,14,0)');
+ctx.fillStyle = '#08060e';
+ctx.fillRect(0, 0, W, H);
+ctx.fillStyle = bgGrad;
+ctx.fillRect(0, 0, W, H);
+
+// Draw outer glow ring
+for (let i = 3; i >= 0; i--) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, R + 20 + i * 8, startAngle, startAngle + totalSweep);
+  ctx.strokeStyle = `rgba(110,236,216,${0.03 + i * 0.02})`;
+  ctx.lineWidth = 50 + i * 12;
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+}
+
+// Main colored arc — segmented by tier
+const arcWidth = 60;
+const tierFracs = [0, 0.25, 0.50, 0.75, 0.90, 1.0]; // fractional boundaries
+
+for (let i = 0; i < tiers.length; i++) {
+  const a1 = tierAngle(tierFracs[i]);
+  const a2 = tierAngle(tierFracs[i + 1]);
+  
+  // Gradient for each segment
+  const grad = ctx.createLinearGradient(
+    cx + Math.cos(a1) * R, cy + Math.sin(a1) * R,
+    cx + Math.cos(a2) * R, cy + Math.sin(a2) * R
+  );
+  const nextColor = i < tiers.length - 1 ? tiers[i + 1].color : tiers[i].color;
+  grad.addColorStop(0, tiers[i].color);
+  grad.addColorStop(1, nextColor);
+  
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, a1, a2);
+  ctx.strokeStyle = tiers[i].color;
+  ctx.lineWidth = arcWidth;
+  ctx.lineCap = 'butt';
+  ctx.stroke();
+  
+  // Glow for each segment
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, a1, a2);
+  ctx.strokeStyle = tiers[i].color + '30';
+  ctx.lineWidth = arcWidth + 30;
+  ctx.stroke();
+}
+
+// Tick marks
+ctx.lineCap = 'round';
+for (let v = 0; v <= 100; v += 5) {
+  const frac = v / 100;
+  const angle = tierAngle(frac);
+  const isMajor = v % 25 === 0;
+  const len = isMajor ? 35 : 18;
+  const x1 = cx + Math.cos(angle) * (R - arcWidth/2 - 8);
+  const y1 = cy + Math.sin(angle) * (R - arcWidth/2 - 8);
+  const x2 = cx + Math.cos(angle) * (R - arcWidth/2 - 8 - len);
+  const y2 = cy + Math.sin(angle) * (R - arcWidth/2 - 8 - len);
+  
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = isMajor ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = isMajor ? 3 : 1.5;
+  ctx.stroke();
+  
+  // Number labels for major ticks
+  if (isMajor) {
+    const lx = cx + Math.cos(angle) * (R - arcWidth/2 - 58);
+    const ly = cy + Math.sin(angle) * (R - arcWidth/2 - 58);
+    ctx.save();
+    ctx.font = '700 28px Orbitron';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(v.toString(), lx, ly);
+    ctx.restore();
+  }
+}
+
+// Tier labels on the arc (outside)
+for (let i = 0; i < tiers.length; i++) {
+  const midFrac = (tierFracs[i] + tierFracs[i + 1]) / 2;
+  const angle = tierAngle(midFrac);
+  const labelR = R + 65;
+  const lx = cx + Math.cos(angle) * labelR;
+  const ly = cy + Math.sin(angle) * labelR;
+  
+  ctx.save();
+  ctx.translate(lx, ly);
+  ctx.rotate(angle + Math.PI / 2);
+  ctx.font = '900 30px Orbitron';
+  ctx.fillStyle = tiers[i].color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = tiers[i].color;
+  ctx.shadowBlur = 15;
+  ctx.fillText(tiers[i].name, 0, 0);
+  ctx.shadowBlur = 0;
+  
+  // Range underneath
+  ctx.font = '600 20px Inter';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText(tiers[i].range, 0, 30);
+  ctx.restore();
+}
+
+// Needle — pointing at ~74 (Bendr's score)
+const needleValue = 74;
+const needleFrac = needleValue / 100;
+const needleAngle = tierAngle(needleFrac);
+const needleLen = R - arcWidth/2 - 80;
+
+// Needle glow
+for (let g = 4; g >= 0; g--) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(
+    cx + Math.cos(needleAngle) * needleLen,
+    cy + Math.sin(needleAngle) * needleLen
+  );
+  ctx.strokeStyle = `rgba(255,255,255,${0.03 + g * 0.04})`;
+  ctx.lineWidth = 6 + g * 8;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+// Needle body
+ctx.beginPath();
+ctx.moveTo(cx, cy);
+ctx.lineTo(
+  cx + Math.cos(needleAngle) * needleLen,
+  cy + Math.sin(needleAngle) * needleLen
+);
+ctx.strokeStyle = '#ffffff';
+ctx.lineWidth = 5;
+ctx.lineCap = 'round';
+ctx.shadowColor = '#ffffff';
+ctx.shadowBlur = 25;
+ctx.stroke();
+ctx.shadowBlur = 0;
+
+// Needle tip glow dot
+const tipX = cx + Math.cos(needleAngle) * needleLen;
+const tipY = cy + Math.sin(needleAngle) * needleLen;
+const tipGlow = ctx.createRadialGradient(tipX, tipY, 0, tipX, tipY, 20);
+tipGlow.addColorStop(0, 'rgba(255,255,255,0.9)');
+tipGlow.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+tipGlow.addColorStop(1, 'rgba(255,255,255,0)');
+ctx.fillStyle = tipGlow;
+ctx.beginPath();
+ctx.arc(tipX, tipY, 20, 0, Math.PI * 2);
+ctx.fill();
+
+// Center hub
+const hubGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 45);
+hubGrad.addColorStop(0, '#333');
+hubGrad.addColorStop(0.6, '#1a1a2e');
+hubGrad.addColorStop(1, '#0a0a14');
+ctx.beginPath();
+ctx.arc(cx, cy, 45, 0, Math.PI * 2);
+ctx.fillStyle = hubGrad;
+ctx.fill();
+ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+ctx.lineWidth = 2;
+ctx.stroke();
+
+// Center white dot
+ctx.beginPath();
+ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+ctx.fillStyle = '#ffffff';
+ctx.shadowColor = '#ffffff';
+ctx.shadowBlur = 15;
+ctx.fill();
+ctx.shadowBlur = 0;
+
+// Score display
+ctx.font = '900 120px Orbitron';
+ctx.fillStyle = '#ffd93d';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.shadowColor = '#ffd93d';
+ctx.shadowBlur = 30;
+ctx.fillText(needleValue.toString(), cx, cy + 180);
+ctx.shadowBlur = 0;
+
+ctx.font = '700 32px Orbitron';
+ctx.fillStyle = 'rgba(255,255,255,0.5)';
+ctx.fillText('CRED SCORE', cx, cy + 240);
+
+// Title at top
+ctx.font = '900 56px Orbitron';
+ctx.textAlign = 'center';
+const titleGrad = ctx.createLinearGradient(cx - 200, 0, cx + 200, 0);
+titleGrad.addColorStop(0, '#ff2222');
+titleGrad.addColorStop(0.25, '#ff8800');
+titleGrad.addColorStop(0.5, '#ffd93d');
+titleGrad.addColorStop(0.75, '#33dd55');
+titleGrad.addColorStop(1, '#00ff41');
+ctx.fillStyle = titleGrad;
+ctx.fillText('CRED SCORE', cx, 140);
+
+ctx.font = '600 26px Inter';
+ctx.fillStyle = 'rgba(255,255,255,0.35)';
+ctx.fillText('ONCHAIN REPUTATION FOR AI AGENTS', cx, 190);
+
+// Footer
+ctx.font = '700 24px Orbitron';
+ctx.fillStyle = '#00ff41';
+ctx.shadowColor = '#00ff41';
+ctx.shadowBlur = 10;
+ctx.fillText('helixa.xyz', cx, H - 80);
+ctx.shadowBlur = 0;
+ctx.font = '600 18px Inter';
+ctx.fillStyle = 'rgba(255,255,255,0.3)';
+ctx.fillText('Powered by CredOracle on Base', cx, H - 48);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; width: 832px; height: 1216px; overflow: hidden; }
+.card { position: relative; width: 832px; height: 1216px; }
+.border-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+/* Dim overlay on top box area — 40% darker */
+.dim-overlay { position: absolute; top: 42px; left: 52px; width: 728px; height: 570px; background: rgba(0,0,0,0.50); z-index: 2; }
+.aura-box { position: absolute; top: 140px; left: 90px; width: 652px; height: 438px; z-index: 3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.aura-box svg { width: 420px; height: 420px; }
+.stats-box { position: absolute; top: 645px; left: 90px; width: 652px; height: 510px; z-index: 3; padding: 16px 16px; font-family: 'Inter', -apple-system, sans-serif; color: #fff; }
+.agent-name { font-size: 32px; font-weight: 700; margin-bottom: 2px; }
+.framework { position: absolute; top: 16px; right: 20px; color: #80d0ff; font-size: 16px; font-weight: 500; text-transform: uppercase; }
+.badges { display: flex; gap: 8px; margin: 6px 0 14px; }
+.badge { padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.badge-verified { border: 1px solid #69f0ae; color: #69f0ae; }
+
+.stat-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.stat-label { width: 55px; font-size: 15px; font-weight: 600; color: #80d0ff; letter-spacing: 1px; }
+.stat-bar { flex: 1; height: 18px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+.stat-fill { height: 100%; border-radius: 3px; }
+.stat-fill-risk { background: linear-gradient(90deg, #ff5252, #ff1744); }
+.stat-fill-auto { background: linear-gradient(90deg, #40c4ff, #00b0ff); }
+.stat-fill-cred { background: linear-gradient(90deg, #b388ff, #7c4dff); }
+.stat-val { width: 30px; text-align: right; font-size: 16px; font-weight: 700; color: #b4bcd0; }
+
+.traits { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 10px; }
+.trait { padding: 3px 11px; border: 1px solid rgba(128,208,255,0.3); border-radius: 12px; font-size: 12px; color: #80d0ff; }
+
+.description { font-size: 14px; color: #7880a0; line-height: 1.4; margin-top: 6px; }
+
+.footer { position: absolute; bottom: 30px; left: 20px; right: 20px; display: flex; justify-content: space-between; font-size: 13px; color: #405080; }
+.footer-tier { color: #80d0ff; font-weight: 700; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <img class="border-img" id="border-img" />
+  <div class="dim-overlay"></div>
+  <div class="aura-box" id="aura-container"></div>
+  <div class="stats-box">
+    <div class="agent-name">Quigbot</div>
+    <div class="framework">OpenClaw</div>
+    <div class="badges">
+      <span class="badge badge-verified">VERIFIED</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">RISK</span>
+      <div class="stat-bar"><div class="stat-fill stat-fill-risk" style="width:65%"></div></div>
+      <span class="stat-val">65</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">AUTO</span>
+      <div class="stat-bar"><div class="stat-fill stat-fill-auto" style="width:70%"></div></div>
+      <span class="stat-val">70</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">CRED</span>
+      <div class="stat-bar"><div class="stat-fill stat-fill-cred" style="width:54%"></div></div>
+      <span class="stat-val">54</span>
+    </div>
+    <div class="traits">
+      <span class="trait">Strategist</span>
+      <span class="trait">Base Native</span>
+      <span class="trait">Visionary</span>
+    </div>
+    <div class="description">Product visionary building the future of agent identity.</div>
+    <div class="footer">
+      <span>HELIXA · ERC-8004 · BASE</span>
+      <span class="footer-tier">HOLO</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function simpleHash(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = ((h << 5) - h + str.charCodeAt(i)) | 0; } return Math.abs(h); }
+function seededRandom(s) { return function() { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; }; }
+
+const FRAMEWORK_SHAPES = {
+  openclaw: { faceRadius: 0.32, bodyStyle: 'shield' },
+  eliza: { faceRadius: 0.35, bodyStyle: 'hexagon' },
+  custom: { faceRadius: 0.3, bodyStyle: 'circle' },
+};
+
+function buildPalette(address, riskTolerance, alignment) {
+  const h = simpleHash(address) % 360;
+  const s = 60 + (riskTolerance * 3);
+  const alignShift = { 'lawful-good': 0, 'chaotic-good': 30, 'true-neutral': 60, 'chaotic-neutral': 90, 'lawful-evil': 150, 'chaotic-evil': 180 }[alignment] || 0;
+  const hue = (h + alignShift) % 360;
+  return { primary: `hsl(${hue}, ${s}%, 55%)`, secondary: `hsl(${(hue+40)%360}, ${s}%, 50%)`, accent: `hsl(${(hue+180)%360}, ${Math.min(s+20,100)}%, 60%)`, accentBright: `hsl(${(hue+180)%360}, 100%, 70%)`, glow: `hsl(${hue}, ${s}%, 40%)`, hue, sat: s };
+}
+
+function getRarity(points, mutations) {
+  const score = points + mutations * 50;
+  if (score >= 500) return 'legendary';
+  if (score >= 200) return 'epic';
+  if (score >= 50) return 'rare';
+  return 'common';
+}
+
+function getEyeType(spec, rng, rarity) {
+  const eyes = ['plus', 'dot', 'ring', 'diamond', 'star', 'cross', 'pixel', 'hollow', 'slit', 'target'];
+  if (rarity === 'legendary') return eyes[Math.floor(rng() * eyes.length)];
+  if (rarity === 'epic') return eyes[Math.floor(rng() * 8)];
+  return eyes[Math.floor(rng() * 5)];
+}
+
+function getMouthType(comm, rng, rarity) {
+  const mouths = ['flat', 'smile', 'zigzag', 'dots', 'wave', 'fangs', 'grin', 'open', 'bracket', 'pixels'];
+  if (rarity === 'legendary') return mouths[Math.floor(rng() * mouths.length)];
+  return mouths[Math.floor(rng() * 6)];
+}
+
+function drawEye(grid, G, ex, ey, r, type) {
+  switch(type) {
+    case 'plus': for (let d=-r;d<=r;d++){if(ey+d>=0&&ey+d<G)grid[ey+d][ex]=2;if(ex+d>=0&&ex+d<G)grid[ey][ex+d]=2;} break;
+    case 'dot': for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(ey+dy>=0&&ey+dy<G&&ex+dx>=0&&ex+dx<G)grid[ey+dy][ex+dx]=2; break;
+    case 'ring': for(let a=0;a<360;a+=45){const rx=Math.round(ex+Math.cos(a*Math.PI/180)*r*0.7);const ry=Math.round(ey+Math.sin(a*Math.PI/180)*r*0.7);if(rx>=0&&rx<G&&ry>=0&&ry<G)grid[ry][rx]=2;}grid[ey][ex]=2; break;
+    case 'diamond': for(let d=0;d<=r;d++){if(ey-d>=0)grid[ey-d][ex]=2;if(ey+d<G)grid[ey+d][ex]=2;if(ex-d>=0)grid[ey][ex-d]=2;if(ex+d<G)grid[ey][ex+d]=2;if(ey-d>=0&&ex+d<G)grid[ey-d][ex+d]=4;if(ey-d>=0&&ex-d>=0)grid[ey-d][ex-d]=4;} break;
+    case 'star': grid[ey][ex]=2;for(let a=0;a<360;a+=72){const rx=Math.round(ex+Math.cos(a*Math.PI/180)*r);const ry=Math.round(ey+Math.sin(a*Math.PI/180)*r);if(rx>=0&&rx<G&&ry>=0&&ry<G)grid[ry][rx]=2;} break;
+    default: for(let d=-r;d<=r;d++){if(ey+d>=0&&ey+d<G)grid[ey+d][ex]=2;if(ex+d>=0&&ex+d<G)grid[ey][ex+d]=2;}
+  }
+}
+
+function drawMouth(grid, G, cx, my, mW, type) {
+  cx = Math.round(cx);
+  switch(type) {
+    case 'flat': for(let x=cx-mW;x<=cx+mW;x++)if(x>=0&&x<G)grid[my][x]=2; break;
+    case 'smile': for(let x=cx-mW;x<=cx+mW;x++){if(x>=0&&x<G){const d=Math.abs(x-cx)/mW;const y=Math.round(my+d*2);if(y<G)grid[y][x]=2;}} break;
+    case 'zigzag': for(let x=cx-mW;x<=cx+mW;x++){if(x>=0&&x<G){const y=my+((x-cx+mW)%2===0?0:1);if(y<G)grid[y][x]=2;}} break;
+    case 'dots': for(let x=cx-mW;x<=cx+mW;x+=2)if(x>=0&&x<G)grid[my][x]=2; break;
+    case 'wave': for(let x=cx-mW;x<=cx+mW;x++){if(x>=0&&x<G){const y=Math.round(my+Math.sin((x-cx)*0.8)*1.5);if(y>=0&&y<G)grid[y][x]=2;}} break;
+    case 'fangs': for(let x=cx-mW;x<=cx+mW;x++){if(x>=0&&x<G)grid[my][x]=2;}if(cx-mW+1>=0&&cx-mW+1<G&&my+1<G)grid[my+1][cx-mW+1]=2;if(cx+mW-1>=0&&cx+mW-1<G&&my+1<G)grid[my+1][cx+mW-1]=2; break;
+    default: for(let x=cx-mW;x<=cx+mW;x++)if(x>=0&&x<G)grid[my][x]=2;
+  }
+}
+
+function generateAura(agentData, size) {
+  size = size || 400;
+  const G = 25, cs = size / G;
+  const address = agentData.agentAddress || agentData.address || '0x0000';
+  const framework = agentData.framework || 'custom';
+  const name = agentData.name || 'Agent';
+  const traitCount = agentData.traitCount || 0;
+  const mutationCount = agentData.mutationCount || 0;
+  const soulbound = agentData.soulbound || false;
+  const points = agentData.points || 0;
+  const temperament = agentData.temperament || 'analytical';
+  const commStyle = agentData.communicationStyle || 'formal';
+  const riskTolerance = agentData.riskTolerance || 5;
+  const autonomyLevel = agentData.autonomyLevel || 5;
+  const alignment = agentData.alignment || 'true-neutral';
+  const specialization = agentData.specialization || 'researcher';
+  const seed = simpleHash(address + name + framework + temperament + alignment + specialization + riskTolerance + autonomyLevel);
+  const rng = seededRandom(seed);
+  const fwStyle = FRAMEWORK_SHAPES[framework] || FRAMEWORK_SHAPES.custom;
+  const colors = buildPalette(address, riskTolerance, alignment);
+  const cx = G/2, cy = G/2, fR = G * fwStyle.faceRadius;
+  const rarity = getRarity(points, mutationCount);
+  const grid = Array.from({length:G}, () => Array(G).fill(0));
+
+  function qr(sx,sy){for(let y=0;y<7;y++)for(let x=0;x<7;x++)if(y===0||y===6||x===0||x===6||(y>=2&&y<=4&&x>=2&&x<=4))if(sy+y<G&&sx+x<G)grid[sy+y][sx+x]=1;}
+  qr(0,0);qr(G-7,0);qr(0,G-7);
+
+  for(let angle=0;angle<360;angle+=2){const rad=angle*Math.PI/180;for(let t=0;t<2;t++){const r=fR-t*0.5+Math.sin(angle*3*Math.PI/180)*0.6;const fx=Math.round(cx+Math.cos(rad)*r);const fy=Math.round(cy+Math.sin(rad)*r);if(fx>=0&&fx<G&&fy>=0&&fy<G)grid[fy][fx]=1;}}
+
+  const eyeY=Math.round(cy-fR*0.2),leftEX=Math.round(cx-fR*0.35),rightEX=Math.round(cx+fR*0.35);
+  const eyeR=Math.min(3,2+Math.floor(traitCount/6));
+  const eyeType=getEyeType(specialization,rng,rarity);
+  drawEye(grid,G,leftEX,eyeY,eyeR,eyeType);drawEye(grid,G,rightEX,eyeY,eyeR,eyeType);
+  const mouthY=Math.round(cy+fR*0.3),mW=Math.round(fR*0.5);
+  drawMouth(grid,G,cx,mouthY,mW,getMouthType(commStyle,rng,rarity));
+  const noseY=Math.round(cy+fR*0.05);grid[noseY][Math.round(cx)]=1;if(noseY+1<G)grid[noseY+1][Math.round(cx)]=1;
+
+  const symmetry=1-autonomyLevel/10;
+  const density=({analytical:0.18,creative:0.22,aggressive:0.28,cautious:0.12,chaotic:0.3})[temperament]||0.2;
+  const fillDensity=density+mutationCount*0.01;
+  for(let y=0;y<G;y++)for(let x=0;x<G;x++){
+    if(grid[y][x]!==0)continue;
+    const dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>=fR*0.9||dist<1)continue;
+    const nearEye=(Math.abs(x-leftEX)<=eyeR+1&&Math.abs(y-eyeY)<=eyeR+1)||(Math.abs(x-rightEX)<=eyeR+1&&Math.abs(y-eyeY)<=eyeR+1);
+    const nearMouth=Math.abs(y-mouthY)<=2&&Math.abs(x-Math.round(cx))<=mW;
+    if(nearEye||nearMouth)continue;
+    let fill=false;const mirrorX=Math.round(2*cx-x);
+    switch(temperament){
+      case'analytical':fill=(x%3===0||y%3===0)&&rng()<fillDensity;break;
+      case'creative':fill=rng()<fillDensity*(0.5+0.5*Math.sin(x*0.8+y*0.6));break;
+      case'aggressive':fill=rng()<fillDensity&&((x+y)%2===0);break;
+      case'cautious':fill=dist<fR*0.45&&rng()<fillDensity*1.5;break;
+      case'chaotic':fill=rng()<fillDensity*(0.3+rng()*0.7);break;
+      default:fill=rng()<fillDensity;
+    }
+    if(fill){grid[y][x]=rng()<0.12?3:1;if(rng()<symmetry&&mirrorX>=0&&mirrorX<G&&grid[y][mirrorX]===0)grid[y][mirrorX]=grid[y][x];}
+  }
+  for(let y=0;y<G;y++)for(let x=0;x<G;x++){if(grid[y][x]!==0)continue;const dist=Math.sqrt((x-cx)**2+(y-cy)**2);if(dist<=fR+1)continue;if(rng()<0.12+mutationCount*0.008)grid[y][x]=1;}
+
+  const uid='a'+simpleHash(address+name).toString(36);
+  let defs='';
+  if(rarity==='rare'||rarity==='epic'||rarity==='legendary'){
+    defs+=`<linearGradient id="${uid}_pg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="${colors.primary}"/><stop offset="100%" stop-color="${colors.secondary}"/></linearGradient>`;
+    defs+=`<linearGradient id="${uid}_ag" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="${colors.accent}"/><stop offset="100%" stop-color="${colors.accentBright}"/></linearGradient>`;
+  }
+  if(rarity==='epic'||rarity==='legendary'){
+    defs+=`<linearGradient id="${uid}_chrome" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="hsl(${colors.hue},${colors.sat}%,85%)"/><stop offset="30%" stop-color="hsl(${colors.hue},${colors.sat}%,55%)"/><stop offset="50%" stop-color="hsl(${colors.hue},${colors.sat}%,90%)"/><stop offset="70%" stop-color="hsl(${colors.hue},${colors.sat}%,50%)"/><stop offset="100%" stop-color="hsl(${colors.hue},${colors.sat}%,80%)"/></linearGradient>`;
+  }
+  function cellColor(ct){
+    if(rarity==='epic'){if(ct===2)return`url(#${uid}_ag)`;if(ct===3)return`url(#${uid}_chrome)`;return`url(#${uid}_chrome)`;}
+    if(rarity==='rare'){if(ct===2)return`url(#${uid}_ag)`;return`url(#${uid}_pg)`;}
+    if(ct===2)return colors.accent;if(ct===3)return colors.secondary;if(ct===4)return colors.accentBright;return colors.primary;
+  }
+  let svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">`;
+  if(defs)svg+=`<defs>${defs}</defs>`;
+  svg+=`<rect width="${size}" height="${size}" fill="transparent"/>`;
+  // Glowing backdrop behind the face
+  svg+=`<defs><radialGradient id="${uid}_backdrop"><stop offset="0%" stop-color="${colors.primary}" stop-opacity="0.7"/><stop offset="50%" stop-color="${colors.glow}" stop-opacity="0.5"/><stop offset="100%" stop-color="${colors.glow}" stop-opacity="0"/></radialGradient></defs>`;
+  svg+=`<circle cx="${size/2}" cy="${size/2}" r="${(fR+3)*cs}" fill="url(#${uid}_backdrop)"/>`;
+  if(soulbound)svg+=`<circle cx="${size/2}" cy="${size/2}" r="${(fR+1.5)*cs}" fill="none" stroke="#b388ff" stroke-width="1.5" opacity="0.25" stroke-dasharray="4 3"/>`;
+  const glowBase={common:0.03,rare:0.06,epic:0.1,legendary:0.15}[rarity];
+  svg+=`<circle cx="${size/2}" cy="${size/2}" r="${fR*cs}" fill="${colors.glow}" opacity="${Math.min(0.25,glowBase+points*0.0002)}"/>`;
+  for(let y=0;y<G;y++)for(let x=0;x<G;x++){if(grid[y][x]===0)continue;svg+=`<rect x="${x*cs}" y="${y*cs}" width="${cs-1}" height="${cs-1}" fill="${cellColor(grid[y][x])}" rx="1"/>`;}
+  svg+='</svg>';
+  return svg;
+}
+
+// Quigbot data (Holo tier, Cred 54)
+const quigbotData = {
+  name: 'Quigbot',
+  address: '0x01b686e547F4feA03BfC9711B7B5306375735d2a',
+  agentAddress: '0x01b686e547F4feA03BfC9711B7B5306375735d2a',
+  framework: 'openclaw',
+  traitCount: 4,
+  mutationCount: 1,
+  soulbound: false,
+  points: 140,
+  generation: 0,
+  temperament: 'creative',
+  communicationStyle: 'formal',
+  riskTolerance: 6,
+  autonomyLevel: 7,
+  alignment: 'chaotic-good',
+  specialization: 'strategist'
+};
+
+document.getElementById('aura-container').innerHTML = generateAura(quigbotData, 520);
+</script>
+</body>
+</html>
