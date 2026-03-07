@@ -259,21 +259,22 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           <div className="card">
             <h4 className="font-semibold mb-3">Personality</h4>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><span className="text-muted">Temperament:</span> <span className="capitalize">{data.temperament}</span></div>
               <div><span className="text-muted">Style:</span> <span className="capitalize">{data.communicationStyle}</span></div>
+              {data.alignment && data.alignment !== 'true-neutral' && <div><span className="text-muted">Alignment:</span> <span className="capitalize">{data.alignment.replace('-', ' ')}</span></div>}
               <div><span className="text-muted">Risk:</span> {data.riskTolerance}/10</div>
               <div><span className="text-muted">Autonomy:</span> {data.autonomyLevel}/10</div>
             </div>
           </div>
 
           {/* Narrative */}
-          {(data.origin || data.mission || data.lore) && (
+          {(data.origin || data.mission || data.lore || data.manifesto) && (
             <div className="card">
               <h4 className="font-semibold mb-3">Story</h4>
               <div className="space-y-2 text-sm">
                 {data.origin && <div><span className="text-muted">Origin:</span> <span className="text-xs">{data.origin}</span></div>}
                 {data.mission && <div><span className="text-muted">Mission:</span> <span className="text-xs">{data.mission}</span></div>}
                 {data.lore && <div><span className="text-muted">Lore:</span> <span className="text-xs">{data.lore}</span></div>}
+                {data.manifesto && <div><span className="text-muted">Manifesto:</span> <span className="text-xs">{data.manifesto}</span></div>}
               </div>
             </div>
           )}
