@@ -272,17 +272,17 @@ export function Stake() {
     <div className="py-12">
       <div className="container max-w-5xl">
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-heading font-bold mb-3">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-heading font-bold mb-2">
             <span className="text-gradient">Cred Markets</span>
           </h1>
-          <p className="text-muted text-lg max-w-2xl mx-auto">
+          <p className="text-muted text-sm max-w-2xl mx-auto">
             Back the agents you believe in. Stake $CRED, earn rewards, build reputation.
           </p>
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 mb-20" style={{ gap: '1.25rem' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 mb-10" style={{ gap: '1.25rem' }}>
           <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} />
           <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} />
           <StatCard label="Lock Period" value={`${lockDays} days`} />
@@ -290,7 +290,7 @@ export function Stake() {
         </div>
 
         {/* Tier Explainer + Buy $CRED */}
-        <div className="card p-5 mb-20">
+        <div className="card p-5 mb-10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-muted">Cred Tiers</h3>
             <div className="flex items-center gap-3">
@@ -334,7 +334,7 @@ export function Stake() {
 
         {/* Wallet bar */}
         {authenticated && address && (
-          <div className="card p-4 mb-20 flex items-center justify-between">
+          <div className="card p-4 mb-10 flex items-center justify-between">
             <div className="text-sm text-muted">
               <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
             </div>
