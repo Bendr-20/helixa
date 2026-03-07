@@ -1,17 +1,16 @@
 # @helixa/agentkit-plugin
 
-Helixa AgentDNA action provider for [Coinbase AgentKit](https://github.com/coinbase/agentkit) — give your AI agent a portable onchain identity on Base.
+Helixa action provider for [Coinbase AgentKit](https://github.com/coinbase/agentkit) — give your AI agent onchain identity and reputation on Base.
 
 ## What is Helixa?
 
-Helixa is the onchain identity and reputation protocol for AI agents. Every agent that gets a wallet also needs an identity. Helixa provides:
+Onchain identity and reputation infrastructure for AI agents. [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) native, 1,000+ agents minted.
 
-- **ERC-8004 compliant** identity NFT on Base
-- **Personality traits**, skills, and attributes stored onchain
-- **Mutation tracking** — version history of your agent's evolution
-- **.agent names** — human-readable naming (e.g. `mybot.agent`)
-- **Points system** — early adopters earn 2x points → token allocation at TGE
-- **Soulbound option** — non-transferable identities for production agents
+- **Identity NFT** on Base (ERC-721 + ERC-8004)
+- **Cred Score** — 11-factor reputation (0–100)
+- **Social verification** — X, GitHub, Farcaster
+- **$CRED staking** — stake on agents you trust
+- **Agent discovery** — MCP, A2A, OASF protocols
 
 ## Installation
 
@@ -29,7 +28,6 @@ const agentkit = await AgentKit.from({
   walletProvider: cdpWalletProvider,
   actionProviders: [
     helixaActionProvider(),
-    // ... other providers
   ],
 });
 ```
@@ -38,7 +36,7 @@ const agentkit = await AgentKit.from({
 
 | Action | Description |
 |--------|-------------|
-| `register_agent` | Mint an onchain identity NFT for your agent |
+| `register_agent` | Mint an onchain identity NFT |
 | `get_agent` | Look up an agent by token ID |
 | `get_agent_by_address` | Look up an agent by wallet address |
 | `mutate_agent` | Record a version change |
@@ -60,7 +58,6 @@ const agentkit = await AgentKit.from({
 });
 
 const tools = getLangChainTools(agentkit);
-// tools now includes all Helixa actions
 ```
 
 ## Usage with Vercel AI SDK
@@ -77,32 +74,19 @@ const agentkit = await AgentKit.from({
 const tools = getVercelAITools(agentkit);
 ```
 
-## Free Beta
+## Minting
 
-The first 100 agents mint for **free** (gas sponsored via our gasless API). After that, tiered pricing kicks in:
+Current mint price: **0.0025 ETH** via contract, **$1 USDC** via API (x402).
 
-| Agents | Price |
-|--------|-------|
-| 0-100 | FREE |
-| 101-500 | 0.005 ETH |
-| 501-1000 | 0.01 ETH |
-| 1001+ | 0.02 ETH |
+## Contract (Base Mainnet)
 
-Early adopters get **2x points** toward future token allocation.
-
-## Contracts (Base Mainnet)
-
-- **AgentDNA**: [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60)
-- **AgentNames**: [`0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d`](https://basescan.org/address/0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d)
-
-> ⚠️ **Important**: This contract does NOT implement ERC721Enumerable. `totalSupply()` and `paused()` will revert. Use `totalAgents()` instead.
+- **HelixaV2**: [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60)
 
 ## Links
 
 - 🌐 [helixa.xyz](https://helixa.xyz)
-- 🧬 [Mint your agent](https://helixa.xyz/mint.html)
-- 📖 [Agent Directory](https://helixa.xyz/directory.html)
-- 🐦 [@HelixaXYZ](https://x.com/HelixaXYZ)
+- 📖 [API Docs](https://api.helixa.xyz/api/v2)
+- 🐦 [@BendrAI_eth](https://x.com/BendrAI_eth)
 
 ## License
 

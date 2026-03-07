@@ -139,4 +139,4 @@ const client = new Helixa({
 - **API Docs**: [api.helixa.xyz/api/v2](https://api.helixa.xyz/api/v2)
 - **Contract**: [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) (Base)
 - **Standard**: [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004)
-- **X**: [@HelixaXYZ](https://x.com/HelixaXYZ)
+- **X**: [@BendrAI_eth](https://x.com/BendrAI_eth)

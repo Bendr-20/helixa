@@ -136,7 +136,7 @@ agentdna help                    Show help
 - **API Docs:** https://api.helixa.xyz/api/v2
 - **OpenAPI:** https://api.helixa.xyz/api/v2/openapi.json
 - **GitHub:** https://github.com/Bendr-20/helixa
-- **X:** https://x.com/HelixaXYZ
+- **X:** https://x.com/BendrAI_eth
 
 ## License
 
