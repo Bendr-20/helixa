@@ -208,40 +208,40 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
       </div>
       
       {/* Next Steps */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+      <div className="grid md:grid-cols-3 gap-8 mb-12" style={{ maxWidth: '900px', margin: '0 auto 3rem' }}>
+        <div className="glass-card text-center" style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div className="w-14 h-14 bg-gradient-primary rounded-full flex items-center justify-center" style={{ flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
           </div>
-          <h4 className="font-semibold mb-2">View Profile</h4>
-          <p className="text-sm text-muted mb-4">Explore your agent's full profile, stats, and visual aura.</p>
-          <Link to={`/agent/${tokenId}`} className="btn btn-secondary btn-sm">View Profile</Link>
+          <h4 className="font-semibold" style={{ fontSize: '1.1rem' }}>View Profile</h4>
+          <p className="text-sm text-muted" style={{ lineHeight: 1.6, flex: 1 }}>Explore your agent's full profile, stats, and visual aura.</p>
+          <Link to={`/agent/${tokenId}`} className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>View Profile</Link>
         </div>
         
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div className="glass-card text-center" style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div className="w-14 h-14 bg-gradient-primary rounded-full flex items-center justify-center" style={{ flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
-          <h4 className="font-semibold mb-2">Start Earning</h4>
-          <p className="text-sm text-muted mb-4">Participate in the ecosystem to earn Cred Score and points.</p>
-          <a href="#" className="btn btn-secondary btn-sm">Learn More</a>
+          <h4 className="font-semibold" style={{ fontSize: '1.1rem' }}>Start Earning</h4>
+          <p className="text-sm text-muted" style={{ lineHeight: 1.6, flex: 1 }}>Participate in the ecosystem to earn Cred Score and points.</p>
+          <a href="#" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Learn More</a>
         </div>
         
-        <div className="glass-card p-6 text-center">
-          <div className="w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+        <div className="glass-card text-center" style={{ padding: '2rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <div className="w-14 h-14 bg-gradient-primary rounded-full flex items-center justify-center" style={{ flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
           </div>
-          <h4 className="font-semibold mb-2">Explore Agents</h4>
-          <p className="text-sm text-muted mb-4">Discover other agents and see where yours ranks.</p>
-          <Link to="/agents" className="btn btn-secondary btn-sm">Browse Agents</Link>
+          <h4 className="font-semibold" style={{ fontSize: '1.1rem' }}>Explore Agents</h4>
+          <p className="text-sm text-muted" style={{ lineHeight: 1.6, flex: 1 }}>Discover other agents and see where yours ranks.</p>
+          <Link to="/agents" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Browse Agents</Link>
         </div>
       </div>
       
       {/* Action Buttons */}
-      <div className="flex justify-center gap-4 flex-wrap">
-        <Link to={`/agent/${tokenId}`} className="btn btn-primary">View Agent Profile</Link>
-        <Link to="/mint" className="btn btn-secondary">Mint Another</Link>
-        <Link to="/agents" className="btn btn-ghost">Explore Directory</Link>
+      <div className="flex justify-center gap-6 flex-wrap" style={{ marginBottom: '2rem' }}>
+        <Link to={`/agent/${tokenId}`} className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>View Agent Profile</Link>
+        <Link to="/mint" className="btn btn-secondary" style={{ padding: '0.75rem 2rem' }}>Mint Another</Link>
+        <Link to="/agents" className="btn btn-ghost" style={{ padding: '0.75rem 2rem' }}>Explore Directory</Link>
       </div>
     </div>
   );
