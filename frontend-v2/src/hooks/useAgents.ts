@@ -60,7 +60,7 @@ function useAgentsFromAPI() {
   return useQuery({
     queryKey: ['v2-agents'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v2/agents`);
+      const res = await fetch(`${API_URL}/api/v2/agents?limit=1000`);
       if (!res.ok) throw new Error('Failed to fetch agents');
       const data = await res.json();
       return {
