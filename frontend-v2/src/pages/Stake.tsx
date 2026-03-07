@@ -282,7 +282,7 @@ export function Stake() {
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 mb-6" style={{ gap: '1.25rem' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 mb-10" style={{ gap: '1.25rem' }}>
           <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} />
           <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} />
           <StatCard label="Lock Period" value={`${lockDays} days`} />
@@ -290,7 +290,7 @@ export function Stake() {
         </div>
 
         {/* Tier Explainer + Buy $CRED */}
-        <div className="card p-5 mb-6">
+        <div className="card p-5 mb-10">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-muted">Cred Tiers</h3>
             <div className="flex items-center gap-3">
@@ -334,7 +334,7 @@ export function Stake() {
 
         {/* Wallet bar */}
         {authenticated && address && (
-          <div className="card p-4 mb-6 flex items-center justify-between">
+          <div className="card p-4 mb-10 flex items-center justify-between">
             <div className="text-sm text-muted">
               <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
             </div>
