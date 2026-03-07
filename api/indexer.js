@@ -88,6 +88,35 @@ function upsertAgent(agent) {
         agent.mintedAt,
         Date.now()
     );
+    // Also sync to terminal DB so all mints show in the Agent Terminal
+    try {
+        const termPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
+        if (fs.existsSync(termPath)) {
+            const tdb = new Database(termPath);
+            const addr = (agent.agentAddress || '').toLowerCase();
+            const existing = tdb.prepare('SELECT id FROM agents WHERE address = ? OR agent_id = ?')
+                .get(addr, `helixa-${agent.tokenId}`);
+            if (!existing) {
+                const score = agent.credScore || 0;
+                const tier = score >= 91 ? 'PREFERRED' : score >= 76 ? 'PRIME' : score >= 51 ? 'QUALIFIED' : score >= 26 ? 'MARGINAL' : 'JUNK';
+                tdb.prepare(`INSERT INTO agents 
+                    (address, agent_id, token_id, chain_id, name, platform, x402_supported,
+                     cred_score, cred_tier, verified, image_url, description, metadata, registry,
+                     owner_address, created_at, registered_at)
+                    VALUES (?, ?, ?, 8453, ?, 'helixa', 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                ).run(addr, `helixa-${agent.tokenId}`, `helixa-${agent.tokenId}`, agent.name,
+                    score, tier, agent.verified ? 1 : 0,
+                    `https://api.helixa.xyz/api/v2/aura/${agent.tokenId}.png`,
+                    `${agent.name} — ${agent.framework} agent on Helixa (ERC-8004).`,
+                    JSON.stringify({ framework: agent.framework, mintOrigin: agent.mintOrigin, soulbound: !!agent.soulbound }),
+                    '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60',
+                    addr, agent.mintedAt, agent.mintedAt);
+            }
+            tdb.close();
+        }
+    } catch (e) {
+        // Non-fatal — terminal sync is best-effort
+    }
 }
 
 const upsertMany = (agents) => {
