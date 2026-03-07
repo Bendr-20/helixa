@@ -1,7 +1,7 @@
 {
-  "name": "@agentdna/eliza-plugin",
+  "name": "@helixa/eliza-plugin",
   "version": "0.1.0",
-  "description": "ElizaOS plugin for AgentDNA — mint and manage onchain agent identities",
+  "description": "ElizaOS plugin for Helixa — mint and manage onchain agent identities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],

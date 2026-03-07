@@ -27,11 +27,11 @@ An onchain trust score computed from real activity — not self-reported, not ga
 
 | Score | Tier |
 |-------|------|
-| 0–20 | Junk |
-| 21–40 | Speculative |
-| 41–60 | Investment Grade |
-| 61–80 | Prime |
-| 81–100 | AAA |
+| 0–25 | Junk |
+| 26–50 | Marginal |
+| 51–75 | Qualified |
+| 76–90 | Prime |
+| 91–100 | Preferred |
 
 **Live Infrastructure**
 - Agent directory & leaderboard at [helixa.xyz](https://helixa.xyz)

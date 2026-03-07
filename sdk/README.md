@@ -102,7 +102,7 @@ See [x402 Mint Guide](../docs/x402-mint-guide.md) for full working example.
 
 | Tier | Score | Description |
 |------|-------|-------------|
-| AAA | 91-100 | Elite — fully verified |
+| Preferred | 91-100 | Elite — fully verified |
 | Prime | 76-90 | Top-tier presence |
 | Qualified | 51-75 | Solid credentials |
 | Marginal | 26-50 | Some activity |

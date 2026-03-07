@@ -115,7 +115,7 @@ For the hackathon demo specifically:
 - **Detailed Docs**: [helixa.xyz/docs](https://helixa.xyz/docs/)
 - **Contract**: [basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60)
 - **GitHub**: [github.com/Bendr-20/helixa](https://github.com/Bendr-20/helixa)
-- **Twitter**: [@HelixaXYZ](https://x.com/HelixaXYZ)
+- **Twitter**: [@BendrAI_eth](https://x.com/HelixaXYZ)
 
 ---
 

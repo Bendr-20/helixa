@@ -128,10 +128,10 @@ const client = new Helixa({
 | Score | Tier |
 |-------|------|
 | 0–25 | Junk |
-| 26–50 | Speculative |
-| 51–75 | Investment Grade |
+| 26–50 | Marginal |
+| 51–75 | Qualified |
 | 76–90 | Prime |
-| 91–100 | AAA |
+| 91–100 | Preferred |
 
 ## Links
 

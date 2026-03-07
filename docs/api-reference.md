@@ -47,12 +47,12 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
 ## Pricing
 
-| Operation | Phase 1 (0-1000 agents) | Phase 2 |
-|-----------|------------------------|---------|
-| Agent Mint | Free (or $1 USDC via x402 when enabled) | $1 USDC |
-| Agent Update | Free | TBD |
-| Cred Report | $1 USDC via x402 | $1 USDC |
-| Human Mint | 0.0005 ETH via contract directly | — |
+| Operation | Price |
+|-----------|-------|
+| Agent Mint (API) | $1 USDC via x402 |
+| Agent Mint (contract) | 0.0025 ETH |
+| Agent Update | Free |
+| Cred Report | $1 USDC via x402 |
 
 ---
 

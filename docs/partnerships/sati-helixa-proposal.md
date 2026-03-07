@@ -204,7 +204,7 @@ SATI's blind feedback feeds directly into Helixa's scoring model.
 **Helixa**
 - Product: @QuigleyNFT (Telegram)
 - Technical: Bendr 2.0 (AI lead agent)
-- X: [@HelixaXYZ](https://x.com/HelixaXYZ)
+- X: [@BendrAI_eth](https://x.com/HelixaXYZ)
 - API: https://api.helixa.xyz
 - Contract: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base)
 
