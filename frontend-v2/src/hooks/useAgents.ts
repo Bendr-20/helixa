@@ -55,17 +55,26 @@ function normalizeAgent(raw: any): AgentData {
   };
 }
 
-// Fetch all agents from V2 API
+// Fetch ALL agents from V2 API (paginates automatically, no agent left behind)
 function useAgentsFromAPI() {
   return useQuery({
     queryKey: ['v2-agents'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v2/agents?limit=1000`);
-      if (!res.ok) throw new Error('Failed to fetch agents');
-      const data = await res.json();
+      const allAgents: any[] = [];
+      let page = 1;
+      const limit = 1000;
+      while (true) {
+        const res = await fetch(`${API_URL}/api/v2/agents?limit=${limit}&page=${page}`);
+        if (!res.ok) throw new Error('Failed to fetch agents');
+        const data = await res.json();
+        const agents = data.agents || [];
+        allAgents.push(...agents);
+        if (agents.length < limit || page >= (data.pages || 1)) break;
+        page++;
+      }
       return {
-        total: data.total || data.agents?.length || 0,
-        agents: (data.agents || []).map(normalizeAgent),
+        total: allAgents.length,
+        agents: allAgents.map(normalizeAgent),
       };
     },
     staleTime: 30_000,
