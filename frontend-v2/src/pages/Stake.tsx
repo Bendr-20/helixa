@@ -125,19 +125,23 @@ export function Stake() {
     setLoading(false);
   }, []);
 
-  // ─── Load global stats (via API) ─────────────────────────────────
+  // ─── Load global stats (direct from contract) ─────────────────────
   const loadGlobal = useCallback(async () => {
     try {
-      // Use agent 0 (or 1) just to get global stats
-      const res = await fetch(`${API_URL}/api/v2/stake/1`);
-      const d = await res.json();
-      if (d.global) {
-        setGlobalTotalStaked(ethers.parseEther(d.global.totalStaked || '0'));
-        setGlobalTotalEffective(ethers.parseEther(d.global.totalEffective || '0'));
-        setLockDays(d.global.lockPeriodDays || 7);
-        setPenaltyPct(d.global.earlyPenaltyPct || 10);
-      }
-    } catch {}
+      const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
+      const [total, totalEff, lockPeriod, penaltyBps] = await Promise.all([
+        staking.totalStaked(),
+        staking.totalEffectiveStake(),
+        staking.LOCK_PERIOD(),
+        staking.EARLY_UNSTAKE_PENALTY_BPS(),
+      ]);
+      setGlobalTotalStaked(total);
+      setGlobalTotalEffective(totalEff);
+      setLockDays(Number(lockPeriod) / 86400);
+      setPenaltyPct(Number(penaltyBps) / 100);
+    } catch (e) {
+      console.error('Failed to load global staking stats:', e);
+    }
   }, []);
 
   // ─── Load balance ───────────────────────────────────────────────
@@ -153,27 +157,25 @@ export function Stake() {
     } catch {}
   }, [address]);
 
-  // ─── Load stake info for selected agent (via API) ────────────────
+  // ─── Load stake info for selected agent (direct from contract) ────
   const loadStakeInfo = useCallback(async (tokenId: number) => {
     setStakeLoading(true);
     setStakeInfo(null);
     try {
-      const res = await fetch(`${API_URL}/api/v2/stake/${tokenId}`);
-      const d = await res.json();
+      const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
+      const [stakeData, effStake, rewards, vouches] = await Promise.all([
+        staking.stakes(tokenId),
+        staking.effectiveStake(tokenId),
+        staking.pendingRewards(tokenId),
+        staking.getVouchCount(tokenId),
+      ]);
       setStakeInfo({
-        staked: BigInt(d.stakedRaw || '0'),
-        stakedAt: d.stakedAt || 0,
-        effectiveStake: BigInt(d.effectiveStakeRaw || '0'),
-        pendingRewards: BigInt(d.pendingRewardsRaw || '0'),
-        vouchCount: d.vouchCount || 0,
+        staked: stakeData.amount,
+        stakedAt: Number(stakeData.stakedAt),
+        effectiveStake: effStake,
+        pendingRewards: rewards,
+        vouchCount: Number(vouches),
       });
-      // Also update global stats from same response
-      if (d.global) {
-        setGlobalTotalStaked(ethers.parseEther(d.global.totalStaked || '0'));
-        setGlobalTotalEffective(ethers.parseEther(d.global.totalEffective || '0'));
-        setLockDays(d.global.lockPeriodDays || 7);
-        setPenaltyPct(d.global.earlyPenaltyPct || 10);
-      }
     } catch (e) {
       console.error('Failed to load stake info:', e);
       setStakeInfo({ staked: 0n, stakedAt: 0, effectiveStake: 0n, pendingRewards: 0n, vouchCount: 0 });
