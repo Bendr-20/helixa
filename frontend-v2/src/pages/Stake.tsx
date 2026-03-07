@@ -3,10 +3,10 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 
 // ─── Constants ────────────────────────────────────────────────────
-const STAKING_ADDRESS = '0x0adb95311B9B6007cA045bD05d0FEecfa2d8C4b0';
+const STAKING_ADDRESS = '0xd40ECD47201D8ea25181dc05a638e34469399613';
 const CRED_TOKEN = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
-const BASE_RPC = 'https://base.drpc.org';
+const BASE_RPC = 'https://mainnet.base.org';
 
 const TIER_NAMES = ['Junk', 'Marginal', 'Qualified', 'Prime', 'Preferred'] as const;
 const TIER_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#6eecd8'] as const;
