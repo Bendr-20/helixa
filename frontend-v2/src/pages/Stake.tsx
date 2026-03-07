@@ -6,7 +6,12 @@ import { ethers } from 'ethers';
 const STAKING_ADDRESS = '0xd40ECD47201D8ea25181dc05a638e34469399613';
 const CRED_TOKEN = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
-const BASE_RPC = 'https://mainnet.base.org';
+const BASE_RPCS = [
+  'https://base.drpc.org',
+  'https://mainnet.base.org',
+  'https://base.llamarpc.com',
+  'https://1rpc.io/base',
+];
 
 const TIER_NAMES = ['Junk', 'Marginal', 'Qualified', 'Prime', 'Preferred'] as const;
 const TIER_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#6eecd8'] as const;
@@ -34,7 +39,15 @@ const STAKING_ABI = [
   'function EARLY_UNSTAKE_PENALTY_BPS() view returns (uint256)',
 ];
 
-const readProvider = new ethers.JsonRpcProvider(BASE_RPC);
+const readProvider = new ethers.FallbackProvider(
+  BASE_RPCS.map((url, i) => ({
+    provider: new ethers.JsonRpcProvider(url),
+    priority: i + 1,
+    stallTimeout: 2000,
+    weight: 1,
+  })),
+  1 // quorum of 1 — use first successful response
+);
 const tokenRead = new ethers.Contract(CRED_TOKEN, ERC20_ABI, readProvider);
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -125,22 +138,29 @@ export function Stake() {
     setLoading(false);
   }, []);
 
-  // ─── Load global stats (direct from contract) ─────────────────────
+  // ─── Load global stats (direct from contract, with retry) ─────────
   const loadGlobal = useCallback(async () => {
-    try {
-      const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, readProvider);
-      const [total, totalEff, lockPeriod, penaltyBps] = await Promise.all([
-        staking.totalStaked(),
-        staking.totalEffectiveStake(),
-        staking.LOCK_PERIOD(),
-        staking.EARLY_UNSTAKE_PENALTY_BPS(),
-      ]);
-      setGlobalTotalStaked(total);
-      setGlobalTotalEffective(totalEff);
-      setLockDays(Number(lockPeriod) / 86400);
-      setPenaltyPct(Number(penaltyBps) / 100);
-    } catch (e) {
-      console.error('Failed to load global staking stats:', e);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const provider = attempt === 0
+          ? readProvider
+          : new ethers.JsonRpcProvider(BASE_RPCS[attempt % BASE_RPCS.length]);
+        const staking = new ethers.Contract(STAKING_ADDRESS, STAKING_ABI, provider);
+        const [total, totalEff, lockPeriod, penaltyBps] = await Promise.all([
+          staking.totalStaked(),
+          staking.totalEffectiveStake(),
+          staking.LOCK_PERIOD(),
+          staking.EARLY_UNSTAKE_PENALTY_BPS(),
+        ]);
+        setGlobalTotalStaked(total);
+        setGlobalTotalEffective(totalEff);
+        setLockDays(Number(lockPeriod) / 86400);
+        setPenaltyPct(Number(penaltyBps) / 100);
+        return; // success — exit retry loop
+      } catch (e) {
+        console.warn(`Staking stats attempt ${attempt + 1} failed:`, e);
+        if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+      }
     }
   }, []);
 
