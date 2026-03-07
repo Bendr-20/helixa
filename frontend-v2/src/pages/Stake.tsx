@@ -273,10 +273,10 @@ export function Stake() {
       <div className="container max-w-5xl">
         {/* Header */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-heading font-bold mb-2">
+          <div className="font-heading font-bold mb-2" style={{ fontSize: '1.5rem', lineHeight: '1.2' }}>
             <span className="text-gradient">Cred Markets</span>
-          </h1>
-          <p className="text-muted text-sm max-w-2xl mx-auto">
+          </div>
+          <p className="text-muted max-w-2xl mx-auto" style={{ fontSize: '0.875rem' }}>
             Back the agents you believe in. Stake $CRED, earn rewards, build reputation.
           </p>
         </div>
