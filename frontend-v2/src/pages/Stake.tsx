@@ -272,17 +272,17 @@ export function Stake() {
     <div className="py-12">
       <div className="container max-w-5xl">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="font-heading font-bold mb-2" style={{ fontSize: '1.5rem', lineHeight: '1.2' }}>
+        <div className="text-center" style={{ marginBottom: '1.5rem' }}>
+          <div className="font-heading font-bold" style={{ fontSize: '1.4rem', lineHeight: '1.2', marginBottom: '0.5rem' }}>
             <span className="text-gradient">Cred Markets</span>
           </div>
-          <p className="text-muted max-w-2xl mx-auto" style={{ fontSize: '0.875rem' }}>
+          <p className="text-muted max-w-2xl mx-auto" style={{ fontSize: '0.8rem' }}>
             Back the agents you believe in. Stake $CRED, earn rewards, build reputation.
           </p>
         </div>
 
         {/* Global Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 mb-10" style={{ gap: '1.25rem' }}>
+        <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: '1.25rem', marginBottom: '3rem' }}>
           <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} />
           <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} />
           <StatCard label="Lock Period" value={`${lockDays} days`} />
@@ -290,7 +290,7 @@ export function Stake() {
         </div>
 
         {/* Tier Explainer + Buy $CRED */}
-        <div className="card p-5 mb-10">
+        <div className="card p-5" style={{ marginBottom: '3rem' }}>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-heading font-semibold uppercase tracking-wider text-muted">Cred Tiers</h3>
             <div className="flex items-center gap-3">
@@ -334,7 +334,7 @@ export function Stake() {
 
         {/* Wallet bar */}
         {authenticated && address && (
-          <div className="card p-4 mb-10 flex items-center justify-between">
+          <div className="card p-4 flex items-center justify-between" style={{ marginBottom: '3rem' }}>
             <div className="text-sm text-muted">
               <span className="font-mono">{address.slice(0, 6)}...{address.slice(-4)}</span>
             </div>
