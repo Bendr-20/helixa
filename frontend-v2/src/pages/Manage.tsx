@@ -675,8 +675,9 @@ export function Manage() {
   const { authenticated } = usePrivy();
   const { wallets } = useWallets();
   const address = wallets[0]?.address as `0x${string}` | undefined;
+  const allWalletAddresses = wallets.map(w => w.address).filter(Boolean);
   const isConnected = authenticated && !!address;
-  const { data: userAgents, isLoading } = useAgentsByOwner(address);
+  const { data: userAgents, isLoading } = useAgentsByOwner(address, allWalletAddresses);
   const [editingTokenId, setEditingTokenId] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
   const [agentNameInput, setAgentNameInput] = useState('');

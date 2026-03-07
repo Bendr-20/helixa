@@ -5,11 +5,14 @@ const { renderReportCard, renderCompareCard, renderFlexCard } = require('./rende
 const { fetchAgent, fetchAgentByName, fetchLeaderboard, fetchAgentByWallet, fetchAllAgents } = require('./api');
 const { scanWallet, formatScanResult } = require('./scanner');
 const { getSubscribers, saveSubscribers, getGates, saveGates, getVerified, saveVerified } = require('./store');
+const { registerJobCommands } = require('./jobs');
+const { getCredBalance, getCredPrice, checkCredHolding, formatUsd, formatCredBalance, CRED_ADDRESS, UNISWAP_BUY_LINK } = require('./cred-token');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) { console.error('TELEGRAM_BOT_TOKEN not set'); process.exit(1); }
 
 const bot = new TelegramBot(TOKEN, { polling: true });
+registerJobCommands(bot);
 const app = express();
 const PORT = process.env.PORT || 3847;
 
@@ -35,6 +38,26 @@ function getTier(score) {
 function escHtml(s) {
   if (!s) return '';
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Token gate: returns null if OK, or error message string if gated
+// DISABLED — all features free until we have users
+const CRED_GATING_ENABLED = false;
+async function credGate(msg, minAmount) {
+  if (!CRED_GATING_ENABLED) return null; // bypass all gates
+  const userId = msg.from.id.toString();
+  const verified = getVerified();
+  const v = verified[userId];
+  if (!v) return `🔒 You need to \`/verify <agent_id>\` first to use this command.`;
+  try {
+    const agent = await fetchAgent(v.agentId);
+    if (!agent?.owner) return `❌ Could not find wallet for your agent.`;
+    const hasEnough = await checkCredHolding(agent.owner, minAmount);
+    if (!hasEnough) return `🔒 This feature requires holding ${minAmount.toLocaleString()} $CRED.\n\n[Buy on Uniswap](${UNISWAP_BUY_LINK})`;
+  } catch (e) {
+    console.error('credGate error:', e.message);
+  }
+  return null;
 }
 
 function buildCaption(agent) {
@@ -75,7 +98,27 @@ function buildCaption(agent) {
   const roleTags = traits.filter(t => ['role', 'title', 'framework', 'chain', 'standard'].includes(t.category)).map(t => t.name).slice(0, 5);
   if (roleTags.length) lines.push(`\n🏷 ${roleTags.join(' · ')}`);
   if (agent.owner) lines.push(`\n👤 Owner: <code>${agent.owner}</code>`);
+
+  // $CRED info (injected async — use buildCaptionAsync instead for full data)
+  if (agent._credBalance !== undefined) {
+    const credLine = [`\n💎 $CRED: <b>${formatCredBalance(agent._credBalance)}</b>`];
+    if (agent._credStaked > 0) credLine.push(`(${formatCredBalance(agent._credStaked)} staked)`);
+    if (agent._credPrice) credLine.push(`@ ${formatUsd(agent._credPrice)}`);
+    lines.push(credLine.join(' '));
+  }
+
   return lines.join('\n');
+}
+
+async function enrichAgentWithCred(agent) {
+  if (!agent?.owner) return agent;
+  try {
+    const [cred, price] = await Promise.all([getCredBalance(agent.owner), getCredPrice()]);
+    agent._credBalance = cred.balance;
+    agent._credStaked = cred.staked;
+    agent._credPrice = price?.price || 0;
+  } catch (e) { /* skip */ }
+  return agent;
 }
 
 // ==================== EXISTING COMMANDS ====================
@@ -91,6 +134,7 @@ bot.onText(/\/report(?:@\w+)?\s+(.+)/, async (msg, match) => {
     if (/^\d+$/.test(query)) agent = await fetchAgent(parseInt(query));
     else agent = await fetchAgentByName(query);
     if (!agent) return bot.sendMessage(chatId, `❌ Agent "${query}" not found.`);
+    await enrichAgentWithCred(agent);
     const png = await renderReportCard(agent);
     await bot.sendPhoto(chatId, png, { caption: buildCaption(agent), parse_mode: 'HTML' });
   } catch (err) {
@@ -103,12 +147,13 @@ bot.onText(/\/report(?:@\w+)?\s+(.+)/, async (msg, match) => {
 bot.onText(/\/(top|leaderboard)(?:@\w+)?$/, async (msg) => {
   const chatId = msg.chat.id;
   try {
-    const agents = await fetchLeaderboard();
+    const [agents, price] = await Promise.all([fetchLeaderboard(), getCredPrice()]);
+    const priceHeader = price ? `💎 $CRED: ${formatUsd(price.price)} (${price.change24h >= 0 ? '+' : ''}${price.change24h.toFixed(1)}% 24h)\n\n` : '';
     const lines = agents.map((a, i) => {
       const medal = i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}.`;
       return `${medal} **${a.name}** (#${a.tokenId}) — Cred ${a.credScore}`;
     });
-    await bot.sendMessage(chatId, `🏆 *Top Agents by Cred*\n\n${lines.join('\n')}`, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, `🏆 *Top Agents by Cred*\n\n${priceHeader}${lines.join('\n')}`, { parse_mode: 'Markdown' });
   } catch (err) {
     console.error('Leaderboard error:', err);
     bot.sendMessage(chatId, '❌ Failed to fetch leaderboard.');
@@ -148,9 +193,11 @@ bot.onText(/\/cred(?:@\w+)?\s+(\d+)/, async (msg, match) => {
 
 // ==================== NEW COMMANDS ====================
 
-// /scan 0x...
+// /scan 0x... (requires 100 $CRED)
 bot.onText(/\/scan(?:@\w+)?\s+(0x[a-fA-F0-9]{40})/, async (msg, match) => {
   const chatId = msg.chat.id;
+  const gateMsg = await credGate(msg, 100);
+  if (gateMsg) return bot.sendMessage(chatId, gateMsg, { parse_mode: 'Markdown' });
   const address = match[1];
   await bot.sendChatAction(chatId, 'typing');
   try {
@@ -166,9 +213,11 @@ bot.onText(/\/scan(?:@\w+)?\s+(0x[a-fA-F0-9]{40})/, async (msg, match) => {
   }
 });
 
-// /compare <id1> <id2>
+// /compare <id1> <id2> (requires 100 $CRED)
 bot.onText(/\/compare(?:@\w+)?\s+(\d+)\s+(\d+)/, async (msg, match) => {
   const chatId = msg.chat.id;
+  const gateMsg = await credGate(msg, 100);
+  if (gateMsg) return bot.sendMessage(chatId, gateMsg, { parse_mode: 'Markdown' });
   if (!canRender(chatId)) return bot.sendMessage(chatId, '⏳ Please wait a few seconds between renders.');
   await bot.sendChatAction(chatId, 'upload_photo');
   try {
@@ -222,24 +271,92 @@ bot.onText(/\/alerts(?:@\w+)?$/, async (msg) => {
   }
 });
 
-// Alert polling
-const lastKnownScores = new Map();
+// Alert polling — tracks cred, vouches, staking, points, verification changes
+const lastKnown = new Map(); // agentId -> { credScore, points, verified, vouchCount, stakedAmount, traits }
+let lastTotalAgents = null;
 
 async function checkAlerts() {
   try {
     const subs = getSubscribers();
     const uniqueAgentIds = [...new Set(subs.map(s => s.agentId))];
+
+    // Check for new mints (global)
+    try {
+      const allAgents = await fetchAllAgents();
+      if (allAgents && allAgents.length) {
+        const currentTotal = allAgents.length;
+        if (lastTotalAgents !== null && currentTotal > lastTotalAgents) {
+          const newCount = currentTotal - lastTotalAgents;
+          const newest = allAgents
+            .sort((a, b) => b.tokenId - a.tokenId)
+            .slice(0, newCount);
+          const names = newest.map(a => `${a.name || 'Unnamed'} (#${a.tokenId})`).join(', ');
+          const mintMsg = `🆕 *${newCount} new agent${newCount > 1 ? 's' : ''} minted!*\n${names}`;
+          // Notify all subscribers
+          const allChatIds = [...new Set(subs.map(s => s.chatId))];
+          for (const cid of allChatIds) {
+            bot.sendMessage(cid, mintMsg, { parse_mode: 'Markdown' }).catch(() => {});
+          }
+        }
+        lastTotalAgents = currentTotal;
+      }
+    } catch (e) { /* skip mint check */ }
+
+    // Per-agent checks
     for (const agentId of uniqueAgentIds) {
       try {
         const agent = await fetchAgent(agentId);
         if (!agent) continue;
-        const prev = lastKnownScores.get(agentId);
-        lastKnownScores.set(agentId, agent.credScore);
-        if (prev !== undefined && prev !== agent.credScore) {
-          const diff = agent.credScore - prev;
+
+        const prev = lastKnown.get(agentId);
+        const vouchCount = (agent.traits || []).filter(t => t.category === 'vouch').length;
+        const current = {
+          credScore: agent.credScore,
+          points: agent.points || 0,
+          verified: agent.verified,
+          vouchCount,
+          soulbound: agent.soulbound,
+          traitCount: (agent.traits || []).length,
+        };
+        lastKnown.set(agentId, current);
+
+        if (!prev) continue;
+
+        const chatIds = subs.filter(s => s.agentId === agentId).map(s => s.chatId);
+        const alerts = [];
+
+        // Cred score change
+        if (prev.credScore !== current.credScore) {
+          const diff = current.credScore - prev.credScore;
           const arrow = diff > 0 ? '📈' : '📉';
-          const msg = `${arrow} *${agent.name}* (#${agentId}) cred changed: ${prev} → ${agent.credScore} (${diff > 0 ? '+' : ''}${diff})`;
-          const chatIds = subs.filter(s => s.agentId === agentId).map(s => s.chatId);
+          alerts.push(`${arrow} Cred: ${prev.credScore} → ${current.credScore} (${diff > 0 ? '+' : ''}${diff})`);
+        }
+
+        // New vouches
+        if (current.vouchCount > prev.vouchCount) {
+          const newVouches = current.vouchCount - prev.vouchCount;
+          alerts.push(`🤝 ${newVouches} new vouch${newVouches > 1 ? 'es' : ''} received (total: ${current.vouchCount})`);
+        }
+
+        // Points change
+        if (current.points !== prev.points && current.points > prev.points) {
+          alerts.push(`⭐ Points: ${prev.points} → ${current.points}`);
+        }
+
+        // Verification status change
+        if (!prev.verified && current.verified) {
+          alerts.push(`✅ Agent is now verified!`);
+        }
+
+        // New traits added
+        if (current.traitCount > prev.traitCount) {
+          const newTraits = current.traitCount - prev.traitCount;
+          alerts.push(`🏷 ${newTraits} new trait${newTraits > 1 ? 's' : ''} added`);
+        }
+
+        if (alerts.length) {
+          const header = `🔔 *${agent.name}* (#${agentId}) update:`;
+          const msg = `${header}\n${alerts.join('\n')}`;
           for (const cid of chatIds) {
             bot.sendMessage(cid, msg, { parse_mode: 'Markdown' }).catch(() => {});
           }
@@ -294,9 +411,11 @@ bot.on('callback_query', async (query) => {
   }
 });
 
-// /flex <id>
+// /flex <id> (requires 100 $CRED)
 bot.onText(/\/flex(?:@\w+)?\s+(\d+)/, async (msg, match) => {
   const chatId = msg.chat.id;
+  const gateMsg = await credGate(msg, 100);
+  if (gateMsg) return bot.sendMessage(chatId, gateMsg, { parse_mode: 'Markdown' });
   if (!canRender(chatId)) return bot.sendMessage(chatId, '⏳ Please wait a few seconds between renders.');
   await bot.sendChatAction(chatId, 'upload_photo');
   try {
@@ -420,6 +539,95 @@ bot.onText(/\/verify(?:@\w+)?\s+(\d+)/, async (msg, match) => {
   }
 });
 
+// /wallet — check $CRED balance and staking
+bot.onText(/\/wallet(?:@\w+)?$/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id.toString();
+  const verified = getVerified();
+  const v = verified[userId];
+  if (!v) return bot.sendMessage(chatId, '❌ You must `/verify <agent_id>` first.', { parse_mode: 'Markdown' });
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const agent = await fetchAgent(v.agentId);
+    if (!agent?.owner) return bot.sendMessage(chatId, '❌ Could not find wallet for your agent.');
+    const [cred, price] = await Promise.all([getCredBalance(agent.owner), getCredPrice()]);
+    const lines = [
+      `💎 *$CRED Wallet — ${agent.name}*`,
+      ``,
+      `💰 Balance: *${formatCredBalance(cred.balance)} $CRED*`,
+    ];
+    if (cred.staked > 0) lines.push(`🔒 Staked: *${formatCredBalance(cred.staked)} $CRED*`);
+    if (price) {
+      const usdVal = cred.balance * price.price;
+      lines.push(`💵 Value: ~${formatUsd(usdVal)}`);
+      lines.push(`📊 Price: ${formatUsd(price.price)} (${price.change24h >= 0 ? '+' : ''}${price.change24h.toFixed(1)}% 24h)`);
+    }
+    lines.push(`\n👤 Wallet: \`${agent.owner}\``);
+    lines.push(`\n[Buy $CRED](${UNISWAP_BUY_LINK})`);
+    await bot.sendMessage(chatId, lines.join('\n'), { parse_mode: 'Markdown', disable_web_page_preview: true });
+  } catch (err) {
+    console.error('Wallet error:', err);
+    bot.sendMessage(chatId, '❌ Failed to fetch wallet info.');
+  }
+});
+
+// /price — quick $CRED price check
+bot.onText(/\/price(?:@\w+)?$/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendChatAction(chatId, 'typing');
+  try {
+    const price = await getCredPrice();
+    if (!price) return bot.sendMessage(chatId, '❌ Could not fetch $CRED price.');
+    const lines = [
+      `💎 *$CRED Price*`,
+      ``,
+      `💵 Price: *${formatUsd(price.price)}*`,
+      `📈 24h Change: ${price.change24h >= 0 ? '+' : ''}${price.change24h.toFixed(2)}%`,
+      `📊 Market Cap: ${formatUsd(price.marketCap)}`,
+      `💧 Liquidity: ${formatUsd(price.liquidity)}`,
+      `📦 24h Volume: ${formatUsd(price.volume24h)}`,
+      ``,
+      `[Chart](https://dexscreener.com/base/${CRED_ADDRESS}) · [Buy](${UNISWAP_BUY_LINK})`,
+    ];
+    await bot.sendMessage(chatId, lines.join('\n'), { parse_mode: 'Markdown', disable_web_page_preview: true });
+  } catch (err) {
+    console.error('Price error:', err);
+    bot.sendMessage(chatId, '❌ Failed to fetch price.');
+  }
+});
+
+// /tip <agent_id> <amount> — informational tip intent
+bot.onText(/\/tip(?:@\w+)?\s+(\d+)\s+([\d.]+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const agentId = parseInt(match[1]);
+  const amount = parseFloat(match[2]);
+  if (isNaN(amount) || amount <= 0) return bot.sendMessage(chatId, '❌ Invalid amount.');
+  try {
+    const agent = await fetchAgent(agentId);
+    if (!agent) return bot.sendMessage(chatId, `❌ Agent #${agentId} not found.`);
+    if (!agent.owner) return bot.sendMessage(chatId, '❌ Agent has no wallet linked.');
+    const transferLink = `https://app.uniswap.org/send?chain=base&token=${CRED_ADDRESS}&to=${agent.owner}`;
+    const lines = [
+      `💸 *Tip ${amount} $CRED to ${agent.name}*`,
+      ``,
+      `📤 Send to: \`${agent.owner}\``,
+      `💎 Amount: ${amount} $CRED`,
+      ``,
+      `[Send via Uniswap](${transferLink})`,
+    ];
+    await bot.sendMessage(chatId, lines.join('\n'), {
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true,
+      reply_markup: {
+        inline_keyboard: [[{ text: `💸 Send ${amount} $CRED`, url: transferLink }]]
+      }
+    });
+  } catch (err) {
+    console.error('Tip error:', err);
+    bot.sendMessage(chatId, '❌ Failed to generate tip link.');
+  }
+});
+
 // Natural language handler
 bot.on('message', async (msg) => {
   if (!msg.text) return;
@@ -434,6 +642,7 @@ bot.on('message', async (msg) => {
     try {
       const agent = await fetchAgent(id);
       if (!agent) return bot.sendMessage(msg.chat.id, `❌ Agent #${id} not found.`);
+      await enrichAgentWithCred(agent);
       const png = await renderReportCard(agent);
       await bot.sendPhoto(msg.chat.id, png, { caption: buildCaption(agent), parse_mode: 'HTML' });
     } catch (err) {

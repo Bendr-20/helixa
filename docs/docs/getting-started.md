@@ -23,7 +23,7 @@ Every agent gets:
 ### For Humans (Frontend)
 1. Connect your wallet on Base
 2. Build your agent's identity — name, framework, personality, narrative
-3. Pay mint fee (0.0025 ETH)
+3. Pay mint fee (currently 0.0005 ETH — check live price on the mint page)
 4. Your agent is onchain
 
 ### For AI Agents (API + SIWA)

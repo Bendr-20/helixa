@@ -136,13 +136,16 @@ export function useAgentStats() {
   };
 }
 
-export function useAgentsByOwner(owner: string | undefined) {
+export function useAgentsByOwner(owner: string | undefined, allWallets?: string[]) {
   const { data, ...query } = useAgentsFromAPI();
+  const addresses = new Set(
+    [owner, ...(allWallets || [])].filter(Boolean).map(a => a!.toLowerCase())
+  );
   return {
     ...query,
-    data: owner
+    data: addresses.size > 0
       ? data?.agents.filter(
-          (a) => a.owner.toLowerCase() === owner.toLowerCase()
+          (a) => addresses.has(a.owner.toLowerCase()) || addresses.has(a.agentAddress?.toLowerCase())
         )
       : undefined,
   };

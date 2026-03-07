@@ -138,7 +138,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
       if (hasPersonality) {
         setMintStage('personality');
         try {
-          setPersonality(tokenId, {
+          await setPersonality(tokenId, {
             quirks: data.quirks.join(', '),
             communicationStyle: data.communicationStyle,
             values: (data as any).personalityValues || '',
@@ -146,7 +146,10 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
             riskTolerance: data.riskTolerance,
             autonomyLevel: data.autonomyLevel,
           });
-        } catch {}
+        } catch (e: any) {
+          console.error('Personality tx failed:', e);
+          setMintError('Mint succeeded but personality save failed. You can set it later on the Manage page.');
+        }
       }
 
       // Set narrative if any fields provided
@@ -154,13 +157,16 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
       if (hasNarrative) {
         setMintStage('narrative');
         try {
-          setNarrative(tokenId, {
+          await setNarrative(tokenId, {
             origin: data.origin || '',
             mission: data.mission || '',
             lore: data.lore || '',
             manifesto: data.manifesto || '',
           });
-        } catch {}
+        } catch (e: any) {
+          console.error('Narrative tx failed:', e);
+          setMintError('Mint succeeded but narrative save failed. You can set it later on the Manage page.');
+        }
       }
 
       setMintStage('done');
