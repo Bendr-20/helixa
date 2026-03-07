@@ -91,6 +91,7 @@ export function Stake() {
 
   const [credBalance, setCredBalance] = useState<bigint>(0n);
   const [allowance, setAllowance] = useState<bigint>(0n);
+  const [globalLoading, setGlobalLoading] = useState(true);
   const [globalTotalStaked, setGlobalTotalStaked] = useState<bigint>(0n);
   const [globalTotalEffective, setGlobalTotalEffective] = useState<bigint>(0n);
   const [lockDays, setLockDays] = useState(7);
@@ -140,6 +141,7 @@ export function Stake() {
 
   // ─── Load global stats (direct from contract, with retry) ─────────
   const loadGlobal = useCallback(async () => {
+    setGlobalLoading(true);
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const provider = attempt === 0
@@ -156,12 +158,14 @@ export function Stake() {
         setGlobalTotalEffective(totalEff);
         setLockDays(Number(lockPeriod) / 86400);
         setPenaltyPct(Number(penaltyBps) / 100);
+        setGlobalLoading(false);
         return; // success — exit retry loop
       } catch (e) {
         console.warn(`Staking stats attempt ${attempt + 1} failed:`, e);
         if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
       }
     }
+    setGlobalLoading(false);
   }, []);
 
   // ─── Load balance ───────────────────────────────────────────────
@@ -303,10 +307,10 @@ export function Stake() {
 
         {/* Global Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
-          <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} />
-          <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} />
-          <StatCard label="Lock Period" value={`${lockDays} days`} />
-          <StatCard label="Early Exit Fee" value={`${penaltyPct}%`} />
+          <StatCard label="Total Staked" value={`${fmt(globalTotalStaked)} $CRED`} loading={globalLoading} />
+          <StatCard label="Effective Stake" value={`${fmt(globalTotalEffective)} $CRED`} loading={globalLoading} />
+          <StatCard label="Lock Period" value={`${lockDays} days`} loading={globalLoading} />
+          <StatCard label="Early Exit Fee" value={`${penaltyPct}%`} loading={globalLoading} />
         </div>
 
         {/* Tier Explainer + Buy $CRED */}
@@ -606,11 +610,15 @@ export function Stake() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, loading }: { label: string; value: string; loading?: boolean }) {
   return (
     <div className="card text-center" style={{ padding: '1.25rem 1rem' }}>
       <div className="text-xs text-muted uppercase tracking-wider mb-2">{label}</div>
-      <div className="font-heading font-bold text-lg">{value}</div>
+      <div className="font-heading font-bold text-lg">
+        {loading ? (
+          <div style={{ display: 'inline-block', width: '1.25rem', height: '1.25rem', border: '2px solid rgba(110,236,216,0.2)', borderTopColor: '#6eecd8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        ) : value}
+      </div>
     </div>
   );
 }
