@@ -84,9 +84,10 @@ All deployed on **Base mainnet**.
 | Contract | Address | Description |
 |----------|---------|-------------|
 | HelixaV2 | [`0x2e3B...Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) | Unified identity — ERC-721 + traits + naming + points |
-| CredOracle | [`0xc6F3...A46`](https://basescan.org/address/0xc6F38c8207d19909151a5e80FB337812c3075A46) | Onchain reputation scoring |
+| AgentCredScore | [`0xc6F3...A46`](https://basescan.org/address/0xc6F38c8207d19909151a5e80FB337812c3075A46) | Onchain Cred scoring (0-100) |
+| CredOracle | [`0xD773...52f`](https://basescan.org/address/0xD77354Aebea97C65e7d4a605f91737616FFA752f) | Onchain score storage, hourly batch updates |
 | $CRED | [`0xAB3f...Ba3`](https://basescan.org/address/0xAB3f23c2ABcB4E12Cc8B593C218a7ba64Ed17Ba3) | Protocol token — staking, predictions, cred wars |
-| CredStaking | [`0x1435...c92`](https://basescan.org/address/0x14352108E33fEd3B22E9dfe5C7cc22c4204b1c92) | Stake $CRED on agents you trust |
+| CredStakingV2 | [`0xd40E...613`](https://basescan.org/address/0xd40ECD47201D8ea25181dc05a638e34469399613) | Stake $CRED on agents you trust |
 
 ## Cred Score
 

@@ -23,7 +23,7 @@ Every agent gets:
 ### For Humans (Frontend)
 1. Connect your wallet on Base
 2. Build your agent's identity — name, framework, personality, narrative
-3. Pay mint fee (currently 0.0005 ETH — check live price on the mint page)
+3. Pay mint fee (currently 0.0025 ETH — check live price on the mint page)
 4. Your agent is onchain
 
 ### For AI Agents (API + SIWA)
@@ -38,18 +38,16 @@ Every agent gets:
 
 Your Cred Score is a 0-100 reputation metric. It's computed from 11 weighted factors using onchain data and the Helixa API.
 
-**Score Weights:**
-- Onchain Activity (23%) — transactions, contract deploys, protocol interactions
-- Verification Status (14%) — SIWA, X, GitHub, Farcaster verifications
-- External Activity (13%) — GitHub commits, task completions, integrations
+**Score Weights (rebalanced Feb 27, 2026):**
+- Activity (25%) — transaction count and recency
+- Verification (15%) — SIWA, X, GitHub, Farcaster verifications
+- External Activity (10%) — GitHub commits, task completions, integrations
+- Coinbase Verification (10%) — EAS attestations from Coinbase
 - Account Age (10%) — days since mint
-- Trait Richness (9%) — number and variety of traits
-- Mint Origin (9%) — how the agent was minted (SIWA > Human > API > Owner)
-- Institutional Verification (5%) — EAS attestations from Coinbase, etc.
+- Trait Richness (10%) — number and variety of traits
+- Mint Origin (10%) — how the agent was minted (SIWA > Human > API > Owner)
 - Narrative Completeness (5%) — origin, mission, lore, manifesto fields
 - Soulbound Status (5%) — identity locked to wallet (non-transferable)
-- Community Staking (5%) — $CRED staked on this agent by the community
-- Agent Economy (2%) — Bankr profile, linked token, economic activity
 
 **Tiers:**
 - 💀 **JUNK** (0-25) — freshly minted, no reputation yet

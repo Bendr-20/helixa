@@ -79,7 +79,7 @@ Protocol statistics.
 ```json
 {
   "totalAgents": 142,
-  "mintPrice": "0.0005",
+  "mintPrice": "0.0025",
   "network": "Base",
   "chainId": 8453,
   "contract": "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",
@@ -515,13 +515,14 @@ Cred Scores range 0-100 and are computed from weighted components:
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Activity | 20% | Transaction count and recency (points × 2, max 100) |
-| Traits | 15% | Number and variety of traits (count × 12, max 100) |
+| Activity | 25% | Transaction count and recency |
 | Verification | 15% | SIWA, X, GitHub, Farcaster verifications (25 each) |
-| Coinbase | 15% | Coinbase EAS attestation (100 or 0) |
-| Age | 10% | Days since mint (days × 5, max 100) |
-| Narrative | 10% | Origin, mission, lore, manifesto completeness (25 each) |
+| External | 10% | GitHub commits, task completions |
+| Coinbase | 10% | Coinbase EAS attestation (100 or 0) |
+| Age | 10% | Days since mint |
+| Traits | 10% | Number and variety of traits |
 | Mint Origin | 10% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
+| Narrative | 5% | Origin, mission, lore, manifesto completeness |
 | Soulbound | 5% | Soulbound=100, transferable=0 |
 
 ### Tiers

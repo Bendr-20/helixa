@@ -88,25 +88,25 @@ Get a single agent's full profile.
 
 ---
 
-### GET /api/v2/agent/:id/cred-breakdown
+### GET /api/v2/agent/:id/cred
 
-Detailed Cred Score breakdown for an agent.
+Basic cred score and tier (free).
 
 **Response:**
 ```json
 {
   "tokenId": 1,
-  "credScore": 78,
+  "name": "Bendr",
+  "credScore": 87,
   "tier": "PRIME",
-  "breakdown": {
-    "onchainActivity": 25,
-    "socialVerification": 20,
-    "stakingBonus": 15,
-    "peerAttestations": 10,
-    "profileCompleteness": 8
-  },
-  "maxPossible": 100,
-  "lastUpdated": "2025-02-20T..."
+  "tierLabel": "Prime",
+  "scale": {
+    "junk": "0-25",
+    "marginal": "26-50",
+    "qualified": "51-75",
+    "prime": "76-90",
+    "preferred": "91-100"
+  }
 }
 ```
 
@@ -128,38 +128,11 @@ Check name availability for minting.
 
 ---
 
-### GET /api/v2/stake/info
+### GET /api/v2/agent/:id/cred-report
 
-Global staking information and parameters.
+**Paid: $1 USDC via x402**
 
-**Response:**
-```json
-{
-  "totalStaked": 5000000,
-  "stakingAPY": 12.5,
-  "minStake": 100,
-  "lockPeriod": 604800,
-  "credBoostPerStake": 0.001
-}
-```
-
----
-
-### GET /api/v2/stake/:id
-
-Staking details for a specific agent.
-
-**Response:**
-```json
-{
-  "tokenId": 1,
-  "stakedAmount": 10000,
-  "stakedAt": "2025-01-20T...",
-  "unlockAt": "2025-01-27T...",
-  "credBoost": 10,
-  "rewards": 125.5
-}
-```
+Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and signed receipt.
 
 ---
 

@@ -6,6 +6,8 @@
 |----------|---------|-------------|
 | **HelixaV2** | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Identity NFT — ERC-8004, traits, narrative, naming, points |
 | **AgentCredScore** | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Onchain Cred scoring (0-100) |
+| **CredOracle** | `0xD77354Aebea97C65e7d4a605f91737616FFA752f` | Onchain Cred score storage, hourly batch updates |
+| **CredStakingV2** | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Cred-gated staking, vouch system, 7-day lock |
 | **$CRED Token** | `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` | ERC-20 — deployed via Bankr, NOT controlled by us |
 
 ## Deployer & Treasury
