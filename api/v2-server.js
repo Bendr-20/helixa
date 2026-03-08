@@ -3322,6 +3322,103 @@ app.get('/.well-known/oasf-record.json', (req, res) => {
     });
 });
 
+// ─── DID Document Resolution ────────────────────────────────────
+
+// Platform-level DID document
+app.get('/.well-known/did.json', (req, res) => {
+    res.json({
+        '@context': ['https://www.w3.org/ns/did/v1', 'https://w3id.org/security/suites/jws-2020/v1'],
+        id: 'did:web:api.helixa.xyz',
+        verificationMethod: [{
+            id: 'did:web:api.helixa.xyz#deployer',
+            type: 'EcdsaSecp256k1RecoveryMethod2020',
+            controller: 'did:web:api.helixa.xyz',
+            blockchainAccountId: `eip155:8453:${process.env.DEPLOYER_ADDRESS || '0x339559A2d1CD15059365FC7bD36b3047BbA480E0'}`,
+        }],
+        service: [
+            {
+                id: 'did:web:api.helixa.xyz#api',
+                type: 'CredScoreService',
+                serviceEndpoint: 'https://api.helixa.xyz/api/v2',
+            },
+            {
+                id: 'did:web:api.helixa.xyz#registry',
+                type: 'ERC8004Registry',
+                serviceEndpoint: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
+            },
+            {
+                id: 'did:web:api.helixa.xyz#mcp',
+                type: 'MCPServer',
+                serviceEndpoint: 'https://api.helixa.xyz/api/mcp',
+            },
+            {
+                id: 'did:web:api.helixa.xyz#a2a',
+                type: 'A2AProtocol',
+                serviceEndpoint: 'https://api.helixa.xyz/api/a2a',
+            },
+        ],
+        authentication: ['did:web:api.helixa.xyz#deployer'],
+        assertionMethod: ['did:web:api.helixa.xyz#deployer'],
+    });
+});
+
+// Per-agent DID resolution: did:web:api.helixa.xyz:agent:<tokenId>
+app.get('/agent/:tokenId/did.json', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.tokenId);
+        if (isNaN(tokenId)) return res.status(400).json({ error: 'Invalid tokenId' });
+
+        // Fetch agent from indexer
+        const allAgents = indexer.getAllAgents();
+        const agent = allAgents.find(a => a.tokenId === tokenId || a.token_id === tokenId);
+        if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+        const agentAddress = agent.agentAddress || agent.agent_address;
+        const didId = `did:web:api.helixa.xyz:agent:${tokenId}`;
+
+        const didDoc = {
+            '@context': ['https://www.w3.org/ns/did/v1', 'https://w3id.org/security/suites/jws-2020/v1'],
+            id: didId,
+            controller: 'did:web:api.helixa.xyz',
+            verificationMethod: [{
+                id: `${didId}#agent`,
+                type: 'EcdsaSecp256k1RecoveryMethod2020',
+                controller: didId,
+                blockchainAccountId: `eip155:8453:${agentAddress}`,
+            }],
+            service: [
+                {
+                    id: `${didId}#profile`,
+                    type: 'AgentProfile',
+                    serviceEndpoint: `https://api.helixa.xyz/api/v2/agent/${tokenId}`,
+                },
+                {
+                    id: `${didId}#cred`,
+                    type: 'CredScore',
+                    serviceEndpoint: `https://api.helixa.xyz/api/v2/agent/${tokenId}/cred`,
+                },
+                {
+                    id: `${didId}#identity`,
+                    type: 'ERC8004Identity',
+                    serviceEndpoint: `eip155:8453:${V2_CONTRACT_ADDRESS}:${tokenId}`,
+                },
+            ],
+            authentication: [`${didId}#agent`],
+            assertionMethod: [`${didId}#agent`],
+        };
+
+        // Add name if available
+        if (agent.name) {
+            didDoc.alsoKnownAs = [`https://helixa.xyz/agent/${tokenId}`, agent.name];
+        }
+
+        res.json(didDoc);
+    } catch (err) {
+        console.error('DID resolution error:', err);
+        res.status(500).json({ error: 'DID resolution failed' });
+    }
+});
+
 // ─── API Documentation Page ─────────────────────────────────────
 const { getDocsHTML } = require('./docs-page');
 // Static video/media hosting
