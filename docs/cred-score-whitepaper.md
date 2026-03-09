@@ -654,7 +654,7 @@ where:
 |----------|---------|---------|
 | HelixaV2 | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Base Mainnet |
 | CredOracle | `0xD77354Aebea97C65e7d4a605f91737616FFA752f` | Base Mainnet |
-| CredStakingV2 | `0x0adb95311B9B6007cA045bD05d0FEecfa2d8C4b0` | Base Mainnet |
+| CredStakingV2 | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Base Mainnet |
 | AgentTrustScore | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Base Mainnet |
 | $CRED Token | `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` | Base Mainnet |
 | ERC-8004 Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Base Mainnet |

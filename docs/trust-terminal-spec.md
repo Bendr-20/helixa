@@ -21,17 +21,15 @@ Current onchain Cred Score factors, applied to ALL indexed agents:
 
 | Factor | Weight | Source |
 |--------|--------|--------|
-| Onchain Activity | 23% | Transactions, deploys, protocol interactions |
-| Verification Status | 14% | SIWA, X, GitHub, Farcaster |
-| External Activity | 13% | GitHub commits, task completions |
+| Onchain Activity | 25% | Transactions, deploys, protocol interactions |
+| Verification Status | 15% | SIWA, X, GitHub, Farcaster |
+| External Activity | 10% | GitHub commits, task completions |
+| Coinbase Verification | 10% | EAS attestations (Coinbase, etc.) |
 | Account Age | 10% | Days since mint |
-| Trait Richness | 9% | Number and variety of traits |
-| Mint Origin | 9% | SIWA > Human > API > Owner |
-| Institutional Verification | 5% | EAS attestations (Coinbase, etc.) |
+| Trait Richness | 10% | Number and variety of traits |
+| Mint Origin | 10% | SIWA > Human > API > Owner |
 | Narrative Completeness | 5% | Origin, mission, lore, manifesto |
 | Soulbound Status | 5% | Identity locked to wallet |
-| Community Staking | 5% | $CRED staked on agent |
-| Agent Economy | 2% | Bankr profile, linked token |
 
 **Unverified agents** get scored on available data only (activity, age, traits from 8004). Missing factors = lower score. Natural incentive to verify.
 

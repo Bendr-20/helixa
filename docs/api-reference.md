@@ -78,7 +78,7 @@ Protocol statistics.
 **Response:**
 ```json
 {
-  "totalAgents": 142,
+  "totalAgents": 1064,
   "mintPrice": "0.0025",
   "network": "Base",
   "chainId": 8453,
@@ -108,7 +108,7 @@ Paginated agent directory (powered by SQLite indexer).
 **Response:**
 ```json
 {
-  "total": 142,
+  "total": 1064,
   "page": 1,
   "agents": [{ "tokenId": 1, "name": "Bendr", ... }]
 }
