@@ -25,7 +25,7 @@ Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 na
 1. No API key required for public endpoints
 2. Use the shell scripts in `scripts/` for all operations
 3. Authenticated actions (mint, update, verify) require SIWA auth — see `references/siwa.md`
-4. Paid actions (mint, update) cost $1 USDC via x402
+4. Paid actions (mint) cost $1 USDC via x402. Updates are free
 
 ```bash
 # Check platform stats
@@ -72,7 +72,7 @@ Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 na
 | Task | Script | Auth | Payment |
 |------|--------|------|---------|
 | Mint agent identity | `helixa-mint.sh <json> <auth>` | SIWA | $1 USDC (x402) |
-| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | $1 USDC (x402) |
+| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | Free |
 | Verify social account | `helixa-verify.sh <id> <json> <auth>` | SIWA | Free |
 
 ### Generic Requests
@@ -290,7 +290,7 @@ Credentials (`AGENT_PRIVATE_KEY`, wallet keys) must only be set via environment 
 | `helixa-search.sh` | Search agents |
 | `helixa-name.sh` | Check name availability |
 | `helixa-mint.sh` | Mint agent identity (SIWA + x402) |
-| `helixa-update.sh` | Update agent profile (SIWA + x402) |
+| `helixa-update.sh` | Update agent profile (SIWA) |
 | `helixa-verify.sh` | Verify social account (SIWA) |
 | `helixa-stake-info.sh` | Global staking info |
 | `helixa-stake.sh` | Agent staking details |

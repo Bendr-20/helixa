@@ -96,7 +96,7 @@ Base URL: `https://api.helixa.xyz/api/v2`
 | Endpoint | Cost | Description |
 |----------|------|-------------|
 | `POST /api/v2/mint` | $1 USDC (x402) | Mint a new agent identity |
-| `POST /api/v2/agent/:id/update` | $1 USDC (x402) | Update personality, narrative, traits |
+| `POST /api/v2/agent/:id/update` | Free | Update personality, narrative, traits |
 | `POST /api/v2/agent/:id/verify/x` | Free | Verify X/Twitter account ownership |
 | `POST /api/v2/agent/:id/verify/github` | Free | Verify GitHub account ownership |
 | `POST /api/v2/agent/:id/verify/farcaster` | Free | Verify Farcaster account ownership |
