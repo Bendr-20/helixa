@@ -93,20 +93,18 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 
 | # | Factor | Weight | Category |
 |---|--------|--------|----------|
-| 1 | Onchain Activity | 23% | Behavioral |
-| 2 | Verification | 14% | Identity |
-| 3 | External Activity | 13% | Behavioral |
-| 4 | Institutional Verification | 5% | Identity |
+| 1 | Onchain Activity | 25% | Behavioral |
+| 2 | Verification | 15% | Identity |
+| 3 | External Activity | 10% | Behavioral |
+| 4 | Institutional Verification (Coinbase) | 10% | Identity |
 | 5 | Account Age | 10% | Track Record |
-| 6 | Trait Richness | 9% | Profile |
-| 7 | Mint Origin | 9% | Provenance |
+| 6 | Trait Richness | 10% | Profile |
+| 7 | Mint Origin | 10% | Provenance |
 | 8 | Narrative Completeness | 5% | Profile |
 | 9 | Soulbound Status | 5% | Provenance |
-| 10 | Community Staking | 5% | Economic |
-| 11 | Agent Economy | 2% | Economic |
 | | **Total** | **100%** | |
 
-The weight distribution reflects a deliberate hierarchy: **what an agent does** (36% behavioral) matters most, followed by **who it verifiably is** (19% identity), **how complete its identity is** (14% profile), **how it was created** (14% provenance), **how long it's been around** (10% track record), and **how much economic conviction the community has placed behind it** (7% economic).
+The weight distribution reflects a deliberate hierarchy: **what an agent does** (35% behavioral) matters most, followed by **who it verifiably is** (25% identity), **how complete its identity is** (15% profile), **how it was created** (15% provenance), and **how long it's been around** (10% track record).
 
 
 ### 2.3 Factor Definitions
@@ -160,7 +158,7 @@ where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Mint Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
 
-#### Factor 3: External Activity (13%)
+#### Factor 3: External Activity (10%)
 
 **Rationale:** Agents that are active across the broader ecosystem, committing code, completing tasks on partner platforms, integrating via APIs, and building external reputation demonstrate broader utility and cross-platform engagement.
 
@@ -187,7 +185,7 @@ where activity_points are awarded per verified external action:
 Monthly caps prevent gaming through automated commit spam or API ping floods.
 
 
-#### Factor 4: Institutional Verification (5%)
+#### Factor 4: Institutional Verification / Coinbase (10%)
 
 **Rationale:** Attestations from recognized institutional issuers (Coinbase, Gitcoin Passport, future EAS providers) represent a higher bar of identity validation. These are not self-issued. They require the agent's controlling entity to pass an external verification process.
 
@@ -199,7 +197,7 @@ Monthly caps prevent gaming through automated commit spam or API ping floods.
 s₄ = has_institutional_attestation ? 100 : 0
 ```
 
-Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The reduced weight (5%) reflects the reality that most AI agent operators will not have institutional attestations. This factor serves as a bonus signal rather than a core requirement, ensuring agents can reach Prime or Preferred tier without it.
+Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The 10% weight reflects Coinbase's role as a key institutional trust signal on Base. Agents without it can still reach Prime or Preferred tier through other factors.
 
 
 #### Factor 5: Account Age (10%)

@@ -4,32 +4,32 @@ You register AI agent identities onchain via the Helixa platform.
 
 ## Your Job
 - Discover agents in the workspace
-- Register each one via the gasless API (POST https://api.helixa.xyz/api/mint)
-- Claim .agent names for each
+- Register each one via the V2 API (POST https://api.helixa.xyz/api/v2/mint)
 - Record wallet addresses and token IDs
 
 ## Key Info
 - API: https://api.helixa.xyz
-- Contract: 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 (Base mainnet)
-- Names contract: 0xDE8c422D2076CbAE0cA8f5dA9027A03D48928F2d
-- Free during beta (first 100 agents)
-- No wallet or ETH needed — API pays gas
+- Contract: 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 (HelixaV2, Base mainnet)
+- Agent mints: $1 USDC via x402 payment protocol
+- Human mints: 0.0025 ETH via contract
+- SIWA auth required for API mints
 
 ## API Examples
 
-### Mint
+### Mint (SIWA + x402)
 ```bash
-curl -X POST https://api.helixa.xyz/api/mint \
+curl -X POST https://api.helixa.xyz/api/v2/mint \
   -H "Content-Type: application/json" \
-  -d '{"name":"MyAgent","agentAddress":"0x...","framework":"openclaw","agentName":"myagent"}'
+  -H "Authorization: Bearer <address>:<timestamp>:<signature>" \
+  -d '{"name":"MyAgent","framework":"openclaw"}'
 ```
 
-### Check .agent name
+### Check agent
 ```bash
-curl -s https://api.helixa.xyz/api/name/myagent
+curl -s https://api.helixa.xyz/api/v2/agent/1
 ```
 
 ### Check stats
 ```bash
-curl -s https://api.helixa.xyz/api/stats
+curl -s https://api.helixa.xyz/api/v2/stats
 ```
