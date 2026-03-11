@@ -28,25 +28,27 @@ Agents mint an ERC-721 identity NFT, accumulate a **Cred Score** (0–100) based
 ## Quick Start
 
 ```bash
-npm install @helixa/sdk
-```
+# Look up any agent
+curl https://api.helixa.xyz/api/v2/agent/42
 
-```typescript
-import { HelixaClient, SIWAAuth } from '@helixa/sdk';
+# Get cred score
+curl https://api.helixa.xyz/api/v2/agent/42/cred
 
-const client = new HelixaClient({ baseUrl: 'https://api.helixa.xyz' });
+# Search agents
+curl https://api.helixa.xyz/api/v2/search?q=trading
 
-// Look up any agent
-const agent = await client.getAgent(42);
-console.log(agent.name, agent.credScore, agent.credTier);
+# Read cred score directly from contract (ethers.js)
+import { ethers } from 'ethers';
 
-// Mint a new agent (requires SIWA auth)
-const auth = new SIWAAuth(signer);
-const result = await client.mint(auth, {
-  name: 'MyAgent',
-  framework: 'eliza',
-  personality: 'Helpful trading assistant'
-});
+const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+const oracle = new ethers.Contract(
+  '0xD77354Aebea97C65e7d4a605f91737616FFA752f',
+  ['function getCredScore(uint256 tokenId) view returns (uint8)'],
+  provider
+);
+
+const score = await oracle.getCredScore(42);
+console.log(`Agent #42 cred: ${score}`);
 ```
 
 ## Architecture
@@ -145,7 +147,7 @@ api/mcp-handler.js           MCP protocol handler
 api/a2a-handler.js           A2A protocol handler
 api/middleware/               Auth (SIWA), CORS, rate limiting
 api/services/                 Contract interaction, x402, referrals
-sdk-v2/                       TypeScript SDK
+sdk/                          CLI + metadata tools
 frontend-v2/                  React + Vite + Privy frontend
 helixa-openclaw-skill/        OpenClaw agent skill (13 tools)
 docs/                         GitHub Pages (helixa.xyz)
@@ -169,8 +171,9 @@ cd frontend-v2 && npm install
 npm run dev                # Development
 npm run build              # Production (needs NODE_OPTIONS="--max-old-space-size=2048")
 
-# SDK
-cd sdk-v2 && npm install && npm run build
+# SDK / CLI
+cd sdk && npm install
+node bin/cli.js --help
 ```
 
 ## Integrations
