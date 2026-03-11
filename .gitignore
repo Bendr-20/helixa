@@ -42,3 +42,6 @@ docs/trust-terminal-spec.md
 docs/bankr-pitch.md
 docs/partnerships/
 docs/proposals/
+scripts/vo/*.mp4
+scripts/vo/*.wav
+scripts/vo/*.mp3
