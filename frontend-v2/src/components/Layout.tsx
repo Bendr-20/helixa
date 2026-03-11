@@ -5,17 +5,17 @@ import { DnaBackground } from './DnaBackground';
 import { preloadMap } from '../App';
 
 const primaryLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/mint', label: 'Mint' },
-  { href: '/manage', label: 'Manage' },
-  { href: '/terminal', label: 'Terminal', external: true },
+  { href: '/', label: 'Dashboard' },
   { href: '/agents', label: 'Agents' },
-  { href: '/token', label: '$CRED' },
-  { href: '/stake', label: 'Cred Markets' },
+  { href: '/jobs', label: 'Jobs' },
+  { href: '/stake', label: 'Stake' },
+  { href: '/manage', label: 'Manage' },
 ];
 
 const moreLinks = [
-  // { href: '/leaderboard', label: 'Leaderboard' }, // removed per Quigley
+  { href: '/mint', label: 'Mint' },
+  { href: '/token', label: '$CRED' },
+  { href: '/terminal', label: 'Terminal', external: true },
   { href: '/messages', label: 'Messages' },
   { href: '/docs', label: 'Docs' },
 ];

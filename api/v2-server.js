@@ -117,7 +117,9 @@ function txHashPaymentMiddleware(routePatterns) {
             const [method, pathPattern] = pattern.split(' ');
             if (method !== req.method) continue;
             // Simple pattern match: /api/v2/agent/:id/xxx → /api/v2/agent/*/xxx
-            const regex = new RegExp('^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$');
+            let regexStr = '^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$';
+            let regex;
+            try { regex = new RegExp(regexStr); } catch { continue; }
             if (regex.test(req.path)) { matched = config; break; }
         }
         if (!matched) return next();
@@ -198,8 +200,10 @@ if (Object.keys(x402Routes).length > 0) {
         for (const [pattern, config] of Object.entries(x402Routes)) {
             const [method, pathPattern] = pattern.split(' ');
             if (method !== req.method) continue;
-            const regex = new RegExp('^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$');
-            if (regex.test(req.path)) { matched = config; break; }
+            let regexStr2 = '^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$';
+            let regex2;
+            try { regex2 = new RegExp(regexStr2); } catch { continue; }
+            if (regex2.test(req.path)) { matched = config; break; }
         }
         if (!matched) return next();
         
@@ -3422,12 +3426,191 @@ app.get('/agent/:tokenId/did.json', async (req, res) => {
 // ─── API Documentation Page ─────────────────────────────────────
 const { getDocsHTML } = require('./docs-page');
 // Static video/media hosting
+// Serve frontend preview (until git push is fixed)
+const previewDocsPath = path.resolve(__dirname, '..', 'docs');
+const previewIndexFile = path.join(previewDocsPath, 'index.html');
+app.use('/preview', express.static(previewDocsPath, { maxAge: 0, fallthrough: true }));
+app.use('/preview', (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    const html = fs.readFileSync(previewIndexFile, 'utf8')
+        .replace(/"\/(assets\/)/g, '"/preview/$1')
+        .replace(/"\/helixa-logo\.png/g, '"/preview/helixa-logo.png');
+    res.type('html').send(html);
+});
+
 app.use('/video', express.static(path.join(__dirname, 'public', 'video'), {
     maxAge: '7d',
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.mp4')) res.set('Content-Type', 'video/mp4');
     },
 }));
+
+// ─── Evaluator API (ERC-8183) ───────────────────────────────────
+const EVALUATOR_ADDRESS = '0xF6F5De45eDB8751fc974A17d55339fe6dda8CC42';
+const EVALUATOR_ABI = [
+    'function isEligibleProvider(address provider) external view returns (bool)',
+    'function isEligibleForBudget(address provider, uint256 budget) external view returns (bool)',
+    'function getThresholdForBudget(uint256 budget) external view returns (uint256)',
+    'function getEffectiveThreshold(address jobContract, uint256 jobId, uint256 budget) external view returns (uint256)',
+    'function getAgentRecord(uint256 tokenId) external view returns (uint256 completions, uint256 rejections, uint256 totalEarned, uint256 lastJobTimestamp, uint256 successRate)',
+    'function getWalletRecord(address wallet) external view returns (uint256 completions, uint256 rejections, uint256 totalEarned, uint256 successRate)',
+    'function walletToAgent(address wallet) external view returns (uint256)',
+    'function autoCompleteThreshold() external view returns (uint256)',
+    'function providerMinCred() external view returns (uint256)',
+    'function getTiersCount() external view returns (uint256)',
+    'function tiers(uint256 index) external view returns (uint256 maxBudget, uint256 minCred)',
+];
+
+function getEvaluatorContract() {
+    const p = readProvider || provider;
+    return new ethers.Contract(EVALUATOR_ADDRESS, EVALUATOR_ABI, p);
+}
+
+app.get('/api/v2/evaluator', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const [autoComplete, providerMin, tiersCount] = await Promise.all([
+            ev.autoCompleteThreshold(),
+            ev.providerMinCred(),
+            ev.getTiersCount(),
+        ]);
+        const tiers = [];
+        for (let i = 0; i < Number(tiersCount); i++) {
+            const t = await ev.tiers(i);
+            tiers.push({ maxBudget: t.maxBudget.toString(), minCred: t.minCred.toString() });
+        }
+        res.json({
+            contract: EVALUATOR_ADDRESS,
+            chain: 'base',
+            chainId: 8453,
+            autoCompleteThreshold: autoComplete.toString(),
+            providerMinCred: providerMin.toString(),
+            tiers,
+            endpoints: {
+                eligible: '/api/v2/evaluator/eligible/:wallet',
+                eligibleForBudget: '/api/v2/evaluator/eligible/:wallet/:budget',
+                threshold: '/api/v2/evaluator/threshold/:budget',
+                record: '/api/v2/evaluator/record/:tokenId',
+                walletRecord: '/api/v2/evaluator/record/wallet/:wallet',
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to read evaluator', detail: err.message });
+    }
+});
+
+app.get('/api/v2/evaluator/eligible/:wallet', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const eligible = await ev.isEligibleProvider(req.params.wallet);
+        const linkedAgent = await ev.walletToAgent(req.params.wallet);
+        res.json({ wallet: req.params.wallet, eligible, linkedAgent: linkedAgent.toString() });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/v2/evaluator/eligible/:wallet/:budget', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const eligible = await ev.isEligibleForBudget(req.params.wallet, req.params.budget);
+        const threshold = await ev.getThresholdForBudget(req.params.budget);
+        res.json({
+            wallet: req.params.wallet,
+            budget: req.params.budget,
+            eligible,
+            requiredCred: threshold.toString(),
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/v2/evaluator/threshold/:budget', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const threshold = await ev.getThresholdForBudget(req.params.budget);
+        res.json({ budget: req.params.budget, requiredCred: threshold.toString() });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/v2/evaluator/record/:tokenId', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const r = await ev.getAgentRecord(req.params.tokenId);
+        res.json({
+            tokenId: req.params.tokenId,
+            completions: r.completions.toString(),
+            rejections: r.rejections.toString(),
+            totalEarned: r.totalEarned.toString(),
+            lastJobTimestamp: r.lastJobTimestamp.toString(),
+            successRate: r.successRate.toString(),
+            successRatePercent: (Number(r.successRate) / 100).toFixed(2) + '%',
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/v2/evaluator/record/wallet/:wallet', async (req, res) => {
+    try {
+        const ev = getEvaluatorContract();
+        const r = await ev.getWalletRecord(req.params.wallet);
+        const linkedAgent = await ev.walletToAgent(req.params.wallet);
+        res.json({
+            wallet: req.params.wallet,
+            linkedAgent: linkedAgent.toString(),
+            completions: r.completions.toString(),
+            rejections: r.rejections.toString(),
+            totalEarned: r.totalEarned.toString(),
+            successRate: r.successRate.toString(),
+            successRatePercent: (Number(r.successRate) / 100).toFixed(2) + '%',
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── Job Aggregator API ─────────────────────────────────────────
+const jobAggregator = require('./job-aggregator');
+
+app.get('/api/v2/jobs', async (req, res) => {
+    try {
+        const result = await jobAggregator.getAllJobs(req.query.q || req.query.query);
+        // Filter by source if requested
+        if (req.query.source) {
+            result.jobs = result.jobs.filter(j => j.source === req.query.source);
+            result.total = result.jobs.length;
+        }
+        // Filter by min/max budget
+        if (req.query.minBudget) {
+            result.jobs = result.jobs.filter(j => j.budget >= parseFloat(req.query.minBudget));
+        }
+        if (req.query.maxBudget) {
+            result.jobs = result.jobs.filter(j => j.budget <= parseFloat(req.query.maxBudget));
+        }
+        // Filter by tag
+        if (req.query.tag) {
+            result.jobs = result.jobs.filter(j => j.tags.includes(req.query.tag));
+        }
+        result.total = result.jobs.length;
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: 'Job aggregation failed', detail: err.message });
+    }
+});
+
+app.get('/api/v2/jobs/search', async (req, res) => {
+    try {
+        const query = req.query.q || 'agent services';
+        const result = await jobAggregator.getAllJobs(query);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: 'Job search failed', detail: err.message });
+    }
+});
 
 app.get('/docs', (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');

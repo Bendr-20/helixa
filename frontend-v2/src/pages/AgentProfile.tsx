@@ -13,6 +13,25 @@ export function AgentProfile() {
   const { id } = useParams<{ id: string }>();
   const { data: agent, isLoading, error } = useAgent(id);
   const [stakeData, setStakeData] = useState<{ staked: string; effective: string; vouchCount: number } | null>(null);
+  const [workHistory, setWorkHistory] = useState<{ completions: number; rejections: number; successRate: number; totalEarned: string } | null>(null);
+
+  useEffect(() => {
+    if (!agent?.tokenId) return;
+    fetch(`${API_URL}/api/v2/evaluator/record/${agent.tokenId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && (d.completions > 0 || d.rejections > 0)) {
+          const total = d.completions + d.rejections;
+          setWorkHistory({
+            completions: d.completions || 0,
+            rejections: d.rejections || 0,
+            successRate: total > 0 ? Math.round((d.completions / total) * 100) : 0,
+            totalEarned: d.totalEarned || '0',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [agent?.tokenId]);
 
   useEffect(() => {
     if (!agent?.tokenId) return;
@@ -448,6 +467,31 @@ export function AgentProfile() {
                         {typeof trait === 'string' ? trait : `${trait.name} (${trait.category})`}
                       </span>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Work History */}
+              {workHistory && (
+                <div className="card">
+                  <h2 className="text-xl font-semibold mb-4">📋 Work History</h2>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="glass-card p-4 text-center">
+                      <div className="text-2xl font-bold" style={{ color: '#6eecd8' }}>{workHistory.completions}</div>
+                      <div className="text-sm text-muted">Completed</div>
+                    </div>
+                    <div className="glass-card p-4 text-center">
+                      <div className="text-2xl font-bold" style={{ color: '#ef4444' }}>{workHistory.rejections}</div>
+                      <div className="text-sm text-muted">Rejected</div>
+                    </div>
+                    <div className="glass-card p-4 text-center">
+                      <div className="text-2xl font-bold" style={{ color: '#6eecd8' }}>{workHistory.successRate}%</div>
+                      <div className="text-sm text-muted">Success Rate</div>
+                    </div>
+                    <div className="glass-card p-4 text-center">
+                      <div className="text-2xl font-bold" style={{ color: '#80d0f0' }}>{workHistory.totalEarned}</div>
+                      <div className="text-sm text-muted">Total Earned</div>
+                    </div>
                   </div>
                 </div>
               )}

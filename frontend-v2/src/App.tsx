@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 // Lazy-loaded pages with preload support
 const pageImports = {
+  dashboard: () => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })),
   home: () => import('./pages/Home').then(m => ({ default: m.Home })),
   mint: () => import('./pages/Mint').then(m => ({ default: m.Mint })),
   directory: () => import('./pages/Directory').then(m => ({ default: m.Directory })),
@@ -18,8 +19,10 @@ const pageImports = {
   credReport: () => import('./pages/CredReport').then(m => ({ default: m.CredReport })),
   stake: () => import('./pages/Stake').then(m => ({ default: m.Stake })),
   analytics: () => import('./pages/Analytics').then(m => ({ default: m.Analytics })),
+  jobs: () => import('./pages/Jobs').then(m => ({ default: m.Jobs })),
 };
 
+const Dashboard = lazy(pageImports.dashboard);
 const Home = lazy(pageImports.home);
 const Mint = lazy(pageImports.mint);
 const Directory = lazy(pageImports.directory);
@@ -33,6 +36,7 @@ const MessagesPage = lazy(pageImports.messages);
 const CredReport = lazy(pageImports.credReport);
 const StakePage = lazy(pageImports.stake);
 const AnalyticsPage = lazy(pageImports.analytics);
+const JobsPage = lazy(pageImports.jobs);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -46,9 +50,10 @@ function usePreloadPages() {
 
 // Map nav paths to preload functions for hover preloading
 export const preloadMap: Record<string, () => void> = {
-  '/': pageImports.home,
+  '/': pageImports.dashboard,
   '/mint': pageImports.mint,
   '/agents': pageImports.directory,
+  '/directory': pageImports.directory,
   // '/leaderboard': pageImports.leaderboard,
   '/docs': pageImports.docs,
   '/manage': pageImports.manage,
@@ -56,6 +61,7 @@ export const preloadMap: Record<string, () => void> = {
   '/messages': pageImports.messages,
   '/cred-report': pageImports.credReport,
   '/stake': pageImports.stake,
+  '/jobs': pageImports.jobs,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -104,9 +110,11 @@ function AnimatedRoutes() {
     <PageTransition>
       <Suspense fallback={<PageSpinner />}>
         <Routes location={location}>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/mint" element={<Mint />} />
           <Route path="/agents" element={<Directory />} />
+          <Route path="/directory" element={<Directory />} />
           <Route path="/agent/:id" element={<AgentProfile />} />
           {/* <Route path="/leaderboard" element={<Leaderboard />} /> */}
           <Route path="/manage" element={<Manage />} />
@@ -117,6 +125,7 @@ function AnimatedRoutes() {
           <Route path="/cred-report" element={<CredReport />} />
           <Route path="/stake" element={<StakePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/jobs" element={<JobsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

@@ -604,7 +604,8 @@ function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void })
       <SoulboundPanel tokenId={tokenId} meta={meta} />
 
       {/* Launch Token with Bankr */}
-      <LaunchTokenPanel tokenId={tokenId} meta={meta} />
+      {/* Hidden until Bankr partner API key is configured */}
+      {/* <LaunchTokenPanel tokenId={tokenId} meta={meta} /> */}
 
       <div style={{ textAlign: 'center', padding: '8px 0 32px' }}>
         <button style={{ ...s.saveBtn, ...(saving ? { opacity: 0.5, cursor: 'not-allowed' } : {}) }} onClick={save} disabled={saving}>
