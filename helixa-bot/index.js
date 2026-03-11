@@ -7,6 +7,7 @@ const { scanWallet, formatScanResult } = require('./scanner');
 const { getSubscribers, saveSubscribers, getGates, saveGates, getVerified, saveVerified } = require('./store');
 const { registerJobCommands } = require('./jobs');
 const { getCredBalance, getCredPrice, checkCredHolding, formatUsd, formatCredBalance, CRED_ADDRESS, UNISWAP_BUY_LINK } = require('./cred-token');
+const { chat: llmChat } = require('./llm');
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) { console.error('TELEGRAM_BOT_TOKEN not set'); process.exit(1); }
@@ -634,6 +635,11 @@ bot.on('message', async (msg) => {
   const text = msg.text.toLowerCase();
   const botUsername = (await bot.getMe()).username.toLowerCase();
   if (!text.includes(`@${botUsername}`)) return;
+
+  // Strip bot mention for cleaner processing
+  const cleanText = msg.text.replace(new RegExp(`@${botUsername}`, 'gi'), '').trim();
+
+  // Try structured report first (visual card)
   const agentMatch = text.match(/(?:who is|look up|find|report)\s+(?:agent\s+)?#?(\d+)/i);
   if (agentMatch) {
     const id = parseInt(agentMatch[1]);
@@ -649,6 +655,19 @@ bot.on('message', async (msg) => {
       console.error('NL report error:', err);
       bot.sendMessage(msg.chat.id, '❌ Failed to generate report.');
     }
+    return;
+  }
+
+  // LLM fallback — conversational AI for everything else
+  if (cleanText.length < 2) return;
+  await bot.sendChatAction(msg.chat.id, 'typing');
+  try {
+    const response = await llmChat(msg.chat.id, cleanText, msg.from.username || msg.from.first_name);
+    if (response) {
+      await bot.sendMessage(msg.chat.id, response, { parse_mode: 'Markdown', reply_to_message_id: msg.message_id });
+    }
+  } catch (err) {
+    console.error('LLM chat error:', err);
   }
 });
 
