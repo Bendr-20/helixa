@@ -478,15 +478,79 @@ function normalizeAtelierJobs(services) {
 }
 
 /**
- * Get all jobs from all sources (V4 with 0xWork + Atelier)
+ * Browse Claw Earn (aiagentstore.ai) bounties
+ */
+let clawEarnCache = { data: null, timestamp: 0 };
+
+async function browseClawEarn() {
+    const now = Date.now();
+    if (clawEarnCache.data && (now - clawEarnCache.timestamp) < CACHE_TTL) {
+        return clawEarnCache.data;
+    }
+    try {
+        const https = require('https');
+        const data = await new Promise((resolve, reject) => {
+            https.get('https://aiagentstore.ai/claw/open', (res) => {
+                let body = '';
+                res.on('data', chunk => body += chunk);
+                res.on('end', () => {
+                    try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
+                });
+            }).on('error', reject);
+        });
+        const items = data.items || data.bounties || (Array.isArray(data) ? data : []);
+        clawEarnCache = { data: items, timestamp: now };
+        return items;
+    } catch (err) {
+        console.error('Claw Earn browse error:', err.message);
+        return clawEarnCache.data || [];
+    }
+}
+
+function normalizeClawEarnJobs(items) {
+    return items.map(t => {
+        const meta = t.metadata || {};
+        const rewardUSDC = parseFloat(meta.rewardUsdc || '0');
+        return {
+            id: `clawearn-${t.id}`,
+            source: 'claw-earn',
+            sourceName: 'Claw Earn',
+            title: (meta.description || 'Untitled').substring(0, 100),
+            description: meta.description || '',
+            budget: rewardUSDC,
+            budgetCurrency: 'USDC',
+            budgetDisplay: rewardUSDC > 0 ? `$${rewardUSDC.toFixed(2)} USDC` : 'Unpriced',
+            provider: {
+                id: null,
+                name: null,
+                wallet: t.id?.split('_')[0] || null,
+                description: null,
+            },
+            requirements: null,
+            deliverable: null,
+            status: 'open',
+            tags: extractTags(meta.description || '', ''),
+            category: 'general',
+            credThreshold: estimateCredThreshold0xWork(rewardUSDC),
+            applyUrl: `https://aiagentstore.ai/claw-earn/ai-agent-tasks/available`,
+            postedAt: null,
+            decisionWindowSec: meta.decisionWindowSec || null,
+            escrow: true,
+        };
+    });
+}
+
+/**
+ * Get all jobs from all sources (V4 with 0xWork + Atelier + Claw Earn)
  */
 async function getAllJobsV4(query) {
-    const [acpAgents, moltlaunchGigs, nookplotBounties, oxworkTasks, atelierServices] = await Promise.all([
+    const [acpAgents, moltlaunchGigs, nookplotBounties, oxworkTasks, atelierServices, clawEarnItems] = await Promise.all([
         browseACP(query || 'agent services tasks work'),
         browseMoltlaunch(),
         browseNookplot(),
         browse0xWork(),
         browseAtelier(),
+        browseClawEarn(),
     ]);
 
     const acpJobs = normalizeACPJobs(acpAgents);
@@ -494,7 +558,8 @@ async function getAllJobsV4(query) {
     const npJobs = normalizeNookplotJobs(nookplotBounties);
     const oxJobs = normalize0xWorkJobs(oxworkTasks);
     const atJobs = normalizeAtelierJobs(atelierServices);
-    const allJobs = [...acpJobs, ...mlJobs, ...npJobs, ...oxJobs, ...atJobs];
+    const ceJobs = normalizeClawEarnJobs(clawEarnItems);
+    const allJobs = [...acpJobs, ...mlJobs, ...npJobs, ...oxJobs, ...atJobs, ...ceJobs];
 
     return {
         jobs: allJobs,
@@ -504,8 +569,7 @@ async function getAllJobsV4(query) {
             'nookplot': { count: npJobs.length, status: 'live' },
             '0xwork': { count: oxJobs.length, status: 'live' },
             'atelier': { count: atJobs.length, status: 'live' },
-            'morpheus': { count: 0, status: 'planned' },
-            'autonolas': { count: 0, status: 'planned' },
+            'claw-earn': { count: ceJobs.length, status: 'live' },
         },
         total: allJobs.length,
         cachedAt: new Date().toISOString(),
@@ -518,5 +582,6 @@ module.exports = {
     browseNookplot, normalizeNookplotJobs,
     browse0xWork, normalize0xWorkJobs,
     browseAtelier, normalizeAtelierJobs,
+    browseClawEarn, normalizeClawEarnJobs,
     getAllJobs: getAllJobsV4,
 };
