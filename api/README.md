@@ -31,7 +31,7 @@ Server runs on `http://localhost:3402`.
 | `GET /search?name=X` | Find agents by name (partial match, max 10) |
 | `GET /aura/:id` | Aura SVG image for an agent |
 
-### Premium (x402 paywall — $0.001 USDC per query)
+### Premium (x402 paywall — $1 USDC per query)
 
 | Endpoint | Description |
 |---|---|

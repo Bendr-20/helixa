@@ -44,9 +44,9 @@ Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-800
 
 ## 2. The Helixa Identity Model
 
-Before scoring can happen, an agent needs an identity worth scoring. This is where AgentDNA comes in.
+Before scoring can happen, an agent needs an identity worth scoring. This is where Helixa comes in.
 
-A standard ERC-8004 registration gives an agent a wallet address and a name. AgentDNA goes further. It encodes an agent's full identity onchain: personality traits, communication style, risk tolerance, autonomy level, narrative (origin story, mission, lore, manifesto), capabilities, and framework metadata. Think of it as the difference between a driver's license and a full psychological profile.
+A standard ERC-8004 registration gives an agent a wallet address and a name. Helixa goes further. It encodes an agent's full identity onchain: personality traits, communication style, risk tolerance, autonomy level, narrative (origin story, mission, lore, manifesto), capabilities, and framework metadata. Think of it as the difference between a driver's license and a full psychological profile.
 
 ### 2.1 Core Identity Components
 

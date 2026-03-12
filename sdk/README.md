@@ -1,4 +1,4 @@
-# AgentDNA SDK
+# Helixa SDK
 
 Onchain identity for AI agents on Base. Mint, manage, and query agent identities via the Helixa V2 API.
 
