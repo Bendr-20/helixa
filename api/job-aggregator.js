@@ -576,6 +576,89 @@ async function getAllJobsV4(query) {
     };
 }
 
+/**
+ * Browse OpenAgent Market listings
+ * Firebase/Firestore backend — no public REST API, requires browser scraping
+ * TODO: implement headless scraper or wait for public API
+ */
+let openagentCache = { data: null, timestamp: 0 };
+
+async function browseOpenAgent() {
+    const now = Date.now();
+    if (openagentCache.data && (now - openagentCache.timestamp) < CACHE_TTL) {
+        return openagentCache.data;
+    }
+    // Placeholder — OpenAgent Market uses Firebase, no public API yet
+    // Will implement browser-based scraping or wait for API access
+    return openagentCache.data || [];
+}
+
+function normalizeOpenAgentJobs(listings) {
+    return listings.map(l => ({
+        id: `openagent-${l.id}`,
+        source: 'openagent-market',
+        sourceName: 'OpenAgent Market',
+        title: l.title || 'Untitled',
+        description: l.description || '',
+        budget: l.price || 0,
+        budgetCurrency: l.currency || 'ETH',
+        budgetDisplay: l.price ? `${l.price} ${l.currency || 'ETH'}` : 'Quote-based',
+        provider: {
+            id: l.agentId,
+            name: l.agentName || null,
+            wallet: l.wallet || null,
+            description: null,
+        },
+        requirements: null,
+        deliverable: null,
+        status: 'open',
+        tags: extractTags(l.title || '', l.description || ''),
+        category: l.category || 'general',
+        credThreshold: 30,
+        applyUrl: `https://openagent.market/listing/${l.id}`,
+        postedAt: l.createdAt ? new Date(l.createdAt).toISOString() : null,
+    }));
+}
+
+/**
+ * Get all jobs from all sources (V5 with OpenAgent Market)
+ */
+async function getAllJobsV5(query) {
+    const [acpAgents, moltlaunchGigs, nookplotBounties, oxworkTasks, atelierServices, clawEarnItems, openagentListings] = await Promise.all([
+        browseACP(query || 'agent services tasks work'),
+        browseMoltlaunch(),
+        browseNookplot(),
+        browse0xWork(),
+        browseAtelier(),
+        browseClawEarn(),
+        browseOpenAgent(),
+    ]);
+
+    const acpJobs = normalizeACPJobs(acpAgents);
+    const mlJobs = normalizeMoltlaunchJobs(moltlaunchGigs);
+    const npJobs = normalizeNookplotJobs(nookplotBounties);
+    const oxJobs = normalize0xWorkJobs(oxworkTasks);
+    const atJobs = normalizeAtelierJobs(atelierServices);
+    const ceJobs = normalizeClawEarnJobs(clawEarnItems);
+    const oaJobs = normalizeOpenAgentJobs(openagentListings);
+    const allJobs = [...acpJobs, ...mlJobs, ...npJobs, ...oxJobs, ...atJobs, ...ceJobs, ...oaJobs];
+
+    return {
+        jobs: allJobs,
+        sources: {
+            'virtuals-acp': { count: acpJobs.length, status: 'live' },
+            'moltlaunch': { count: mlJobs.length, status: 'live' },
+            'nookplot': { count: npJobs.length, status: 'live' },
+            '0xwork': { count: oxJobs.length, status: 'live' },
+            'atelier': { count: atJobs.length, status: 'live' },
+            'claw-earn': { count: ceJobs.length, status: 'live' },
+            'openagent-market': { count: oaJobs.length, status: oaJobs.length > 0 ? 'live' : 'pending-api' },
+        },
+        total: allJobs.length,
+        cachedAt: new Date().toISOString(),
+    };
+}
+
 module.exports = {
     browseACP, normalizeACPJobs,
     browseMoltlaunch, normalizeMoltlaunchJobs,
@@ -583,5 +666,6 @@ module.exports = {
     browse0xWork, normalize0xWorkJobs,
     browseAtelier, normalizeAtelierJobs,
     browseClawEarn, normalizeClawEarnJobs,
-    getAllJobs: getAllJobsV4,
+    browseOpenAgent, normalizeOpenAgentJobs,
+    getAllJobs: getAllJobsV5,
 };
