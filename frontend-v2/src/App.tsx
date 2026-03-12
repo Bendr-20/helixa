@@ -110,8 +110,8 @@ function AnimatedRoutes() {
     <PageTransition>
       <Suspense fallback={<PageSpinner />}>
         <Routes location={location}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/home" element={<Home />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/mint" element={<Mint />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/directory" element={<Directory />} />
