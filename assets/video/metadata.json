@@ -1,0 +1,11 @@
+{
+  "queue_id": "b2a42369-15f4-40ec-a3f0-e80eff76bcca",
+  "model": "wan-2.6-image-to-video",
+  "prompt": "static crystal entity with subtle glow pulsing, floating particles drift slowly, holographic panels flicker gently, maintain exact crystal form throughout, no transformation, no morphing, no human features, minimal ambient movement only, dark void background",
+  "duration": "5s",
+  "resolution": "720p",
+  "audio": false,
+  "source_image": "/home/ubuntu/.openclaw/workspace/agentdna/assets/001-a-holographic-crystal-ai-news-anchor-ent.webp",
+  "source_video": null,
+  "generated_at": "2026-03-12T15:16:58.988133"
+}
