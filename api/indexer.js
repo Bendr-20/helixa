@@ -53,6 +53,19 @@ function initDb() {
         CREATE INDEX IF NOT EXISTS idx_agents_verified ON agents(verified);
         CREATE INDEX IF NOT EXISTS idx_agents_credScore ON agents(credScore);
         CREATE INDEX IF NOT EXISTS idx_agents_name ON agents(name COLLATE NOCASE);
+
+        CREATE TABLE IF NOT EXISTS soul_vault (
+            tokenId INTEGER PRIMARY KEY,
+            publicSoul TEXT,
+            sharedSoul TEXT,
+            privateSoul TEXT,
+            accessControl TEXT,
+            soulSovereign INTEGER DEFAULT 0,
+            sovereignWallet TEXT,
+            soulHash TEXT,
+            updatedAt INTEGER,
+            createdAt INTEGER
+        );
     `);
     return db;
 }

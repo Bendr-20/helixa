@@ -10,6 +10,7 @@ contract MockCredOracle {
     mapping(uint256 => uint256) public scores;
     function setScore(uint256 tokenId, uint256 score) external { scores[tokenId] = score; }
     function getScore(uint256 tokenId) external view returns (uint256) { return scores[tokenId]; }
+    function getCredScore(uint256 tokenId) external view returns (uint8) { return uint8(scores[tokenId]); }
 }
 
 contract MockHelixa {

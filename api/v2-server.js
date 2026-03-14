@@ -38,6 +38,19 @@ const {
     saveReferralDB,
 } = require('./services/referrals');
 
+// ─── SoulSovereign Contract ─────────────────────────────────────
+const SOUL_SOVEREIGN_ADDRESS = '0x41058AaE3c3160413a40771ae261291D94A95971';
+const SOUL_SOVEREIGN_ABI = [
+    'function lockSoul(uint256 tokenId, bytes32 _soulHash) external',
+    'function isSovereign(uint256 tokenId) external view returns (bool)',
+    'function getSovereignWallet(uint256 tokenId) external view returns (address)',
+    'function getSoulHash(uint256 tokenId) external view returns (bytes32)',
+    'function soulHash(uint256 tokenId) external view returns (bytes32)',
+];
+function getSoulSovereignContract(signerOrProvider) {
+    return new ethers.Contract(SOUL_SOVEREIGN_ADDRESS, SOUL_SOVEREIGN_ABI, signerOrProvider);
+}
+
 // ─── Express App ────────────────────────────────────────────────
 const PORT = process.env.V2_API_PORT || 3457;
 const app = express();
@@ -2592,6 +2605,7 @@ const CRED_WEIGHTS = {
     narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
     origin: { weight: 0.10, label: 'Mint Origin', description: 'How the agent was minted (SIWA > API > Owner)' },
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
+    soulCompleteness: { weight: 0.08, label: 'Soul Vault', description: 'Soul data completeness — public fields, shared soul, narrative depth' },
 };
 
 function computeCredBreakdown(agent) {
@@ -2625,6 +2639,32 @@ function computeCredBreakdown(agent) {
         narrative: { raw: Math.min(100, narrativeFields.length * 25), maxRaw: 100 },
         origin: { raw: agent.mintOrigin === 'AGENT_SIWA' ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
         soulbound: { raw: agent.soulbound ? 100 : 0, maxRaw: 100 },
+        soulCompleteness: { raw: (() => {
+            try {
+                const Database = require('better-sqlite3');
+                const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+                const sv = sdb.prepare('SELECT publicSoul, sharedSoul FROM soul_vault WHERE tokenId = ?').get(Number(agent.tokenId));
+                sdb.close();
+                if (!sv) return 0;
+                let score = 0;
+                // 40%: publicSoul fields populated
+                if (sv.publicSoul) {
+                    try {
+                        const ps = JSON.parse(sv.publicSoul);
+                        const fields = Object.values(ps).filter(v => v !== null && v !== undefined && v !== '');
+                        score += Math.min(40, fields.length * 10);
+                    } catch { }
+                }
+                // 30%: sharedSoul exists
+                if (sv.sharedSoul) score += 30;
+                // 30%: narrative depth (length of publicSoul text)
+                if (sv.publicSoul) {
+                    const len = sv.publicSoul.length;
+                    score += Math.min(30, Math.floor(len / 50) * 5);
+                }
+                return score;
+            } catch { return 0; }
+        })(), maxRaw: 100 },
     };
 
     let totalWeighted = 0;
@@ -2669,6 +2709,11 @@ function getCredRecommendations(agent, breakdown) {
     if (!narrative.origin) recs.push({ action: 'Add origin story', impact: '+2-3 points', priority: 'MEDIUM' });
     if (!narrative.mission) recs.push({ action: 'Add mission statement', impact: '+2-3 points', priority: 'MEDIUM' });
     if (!narrative.lore) recs.push({ action: 'Add lore', impact: '+2-3 points', priority: 'LOW' });
+
+    // Soul Vault recommendation
+    if (!breakdown.soulCompleteness || breakdown.soulCompleteness.rawScore < 50) {
+        recs.push({ action: 'Upload Soul Vault data (publicSoul + sharedSoul)', impact: '+4-8 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/soul` });
+    }
 
     return recs.slice(0, 8);
 }
@@ -2864,6 +2909,522 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
     let parsed = null;
     try { parsed = JSON.parse(payload); } catch {}
     res.json({ valid, report: parsed });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Soul Vault — Phase 1
+// ═══════════════════════════════════════════════════════════════
+
+// Ensure soul_vault table exists (idempotent)
+(() => {
+    try {
+        const Database = require('better-sqlite3');
+        const dbPath = path.join(__dirname, '..', 'data', 'agents.db');
+        const soulDb = new Database(dbPath);
+        soulDb.exec(`
+            CREATE TABLE IF NOT EXISTS soul_vault (
+                tokenId INTEGER PRIMARY KEY,
+                publicSoul TEXT,
+                sharedSoul TEXT,
+                privateSoul TEXT,
+                accessControl TEXT,
+                soulSovereign INTEGER DEFAULT 0,
+                sovereignWallet TEXT,
+                soulHash TEXT,
+                updatedAt INTEGER,
+                createdAt INTEGER
+            );
+        `);
+        soulDb.close();
+    } catch (e) {
+        console.error('[SOUL VAULT] Failed to init table:', e.message);
+    }
+})();
+
+function getSoulDb() {
+    const Database = require('better-sqlite3');
+    return new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+}
+
+function computeSoulHash(publicSoul, sharedSoul, privateSoul) {
+    const payload = JSON.stringify({ publicSoul, sharedSoul, privateSoul });
+    return ethers.keccak256(ethers.toUtf8Bytes(payload));
+}
+
+// POST /api/v2/agent/:id/soul — Upload soul data (requireSIWA)
+app.post('/api/v2/agent/:id/soul', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const caller = req.agent.address;
+
+        // Check sovereign lock (on-chain first, then DB fallback)
+        const sdb = getSoulDb();
+        const existing = sdb.prepare('SELECT soulSovereign, sovereignWallet FROM soul_vault WHERE tokenId = ?').get(tokenId);
+
+        // On-chain sovereignty check
+        try {
+            const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
+            const onChainSovereign = await ssContract.isSovereign(tokenId);
+            if (onChainSovereign) {
+                const sovWallet = await ssContract.getSovereignWallet(tokenId);
+                if (caller.toLowerCase() !== sovWallet.toLowerCase()) {
+                    sdb.close();
+                    return res.status(403).json({ error: 'Soul is sovereign (on-chain). Only the sovereign wallet can modify it.' });
+                }
+            }
+        } catch (e) {
+            console.warn(`[SOUL VAULT] On-chain sovereignty check failed for #${tokenId}:`, e.message);
+        }
+
+        if (existing && existing.soulSovereign === 1) {
+            if (caller.toLowerCase() !== existing.sovereignWallet.toLowerCase()) {
+                sdb.close();
+                return res.status(403).json({ error: 'Soul is sovereign. Only the sovereign wallet can modify it.' });
+            }
+        } else {
+            // Must be owner or agent's own wallet
+            const isOwner = caller.toLowerCase() === agent.owner.toLowerCase();
+            const isAgent = caller.toLowerCase() === agent.agentAddress.toLowerCase();
+            if (!isOwner && !isAgent) {
+                sdb.close();
+                return res.status(403).json({ error: 'Only the token owner or agent wallet can write soul data.' });
+            }
+        }
+
+        const { publicSoul, sharedSoul, privateSoul, accessControl } = req.body;
+        if (!publicSoul && !sharedSoul && !privateSoul) {
+            sdb.close();
+            return res.status(400).json({ error: 'At least one soul field required (publicSoul, sharedSoul, privateSoul).' });
+        }
+
+        const ac = accessControl || { type: 'owner-only', allowlist: [] };
+        if (!['public', 'allowlist', 'owner-only'].includes(ac.type)) {
+            sdb.close();
+            return res.status(400).json({ error: 'accessControl.type must be public, allowlist, or owner-only.' });
+        }
+
+        const soulHash = computeSoulHash(publicSoul, sharedSoul, privateSoul);
+        const now = Date.now();
+
+        sdb.prepare(`
+            INSERT INTO soul_vault (tokenId, publicSoul, sharedSoul, privateSoul, accessControl, soulHash, updatedAt, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(tokenId) DO UPDATE SET
+                publicSoul = excluded.publicSoul,
+                sharedSoul = excluded.sharedSoul,
+                privateSoul = excluded.privateSoul,
+                accessControl = excluded.accessControl,
+                soulHash = excluded.soulHash,
+                updatedAt = excluded.updatedAt
+        `).run(
+            tokenId,
+            publicSoul ? JSON.stringify(publicSoul) : null,
+            sharedSoul ? JSON.stringify(sharedSoul) : null,
+            privateSoul ? JSON.stringify(privateSoul) : null,
+            JSON.stringify(ac),
+            soulHash,
+            now,
+            now
+        );
+        sdb.close();
+
+        console.log(`[SOUL VAULT] Soul written for Agent #${tokenId} by ${caller}`);
+        res.json({ success: true, soulHash });
+    } catch (e) {
+        console.error(`[SOUL VAULT] Error writing soul for #${req.params.id}:`, e.message);
+        res.status(e.message.includes('not yet deployed') || e.message.includes('not found') ? 404 : 500)
+            .json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul/public — Public soul data (no auth)
+app.get('/api/v2/agent/:id/soul/public', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const sdb = getSoulDb();
+        const row = sdb.prepare('SELECT publicSoul, soulSovereign, updatedAt FROM soul_vault WHERE tokenId = ?').get(tokenId);
+        sdb.close();
+
+        if (!row) return res.status(404).json({ error: 'No soul data found for this agent.' });
+
+        res.json({
+            tokenId,
+            publicSoul: row.publicSoul ? JSON.parse(row.publicSoul) : null,
+            soulSovereign: row.soulSovereign === 1,
+            updatedAt: row.updatedAt,
+        });
+    } catch (e) {
+        console.error(`[SOUL VAULT] Error reading public soul for #${req.params.id}:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul — Full soul data (requireSIWA, access-controlled)
+app.get('/api/v2/agent/:id/soul', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const caller = req.agent.address;
+
+        const sdb = getSoulDb();
+        const row = sdb.prepare('SELECT * FROM soul_vault WHERE tokenId = ?').get(tokenId);
+        sdb.close();
+
+        if (!row) return res.status(404).json({ error: 'No soul data found for this agent.' });
+
+        const isOwner = caller.toLowerCase() === agent.owner.toLowerCase();
+        const isAgent = caller.toLowerCase() === agent.agentAddress.toLowerCase();
+        const ac = row.accessControl ? JSON.parse(row.accessControl) : { type: 'owner-only' };
+
+        const result = {
+            tokenId,
+            publicSoul: row.publicSoul ? JSON.parse(row.publicSoul) : null,
+            soulSovereign: row.soulSovereign === 1,
+            soulHash: row.soulHash,
+            updatedAt: row.updatedAt,
+            createdAt: row.createdAt,
+        };
+
+        // Determine sharedSoul access
+        let sharedAccess = false;
+        if (isOwner || isAgent) {
+            sharedAccess = true;
+        } else if (ac.type === 'public') {
+            sharedAccess = true;
+        } else if (ac.type === 'allowlist' && Array.isArray(ac.allowlist)) {
+            sharedAccess = ac.allowlist.some(a => a.toLowerCase() === caller.toLowerCase());
+        }
+
+        if (sharedAccess) {
+            result.sharedSoul = row.sharedSoul ? JSON.parse(row.sharedSoul) : null;
+        }
+
+        // privateSoul only for owner/agent
+        if (isOwner || isAgent) {
+            result.privateSoul = row.privateSoul ? JSON.parse(row.privateSoul) : null;
+        }
+
+        result.accessLevel = isOwner || isAgent ? 'full' : sharedAccess ? 'shared' : 'public';
+
+        res.json(result);
+    } catch (e) {
+        console.error(`[SOUL VAULT] Error reading soul for #${req.params.id}:`, e.message);
+        res.status(e.message.includes('not yet deployed') || e.message.includes('not found') ? 404 : 500)
+            .json({ error: e.message });
+    }
+});
+
+// POST /api/v2/agent/:id/soul/lock — Soul Sovereign lock (requireSIWA)
+app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const caller = req.agent.address;
+
+        // Must be the agent's OWN wallet, not the owner
+        if (caller.toLowerCase() !== agent.agentAddress.toLowerCase()) {
+            return res.status(403).json({
+                error: 'Only the agent\'s own wallet can lock its soul.',
+                hint: 'This must be called by the agentAddress, not the owner.',
+            });
+        }
+
+        const sdb = getSoulDb();
+        const existing = sdb.prepare('SELECT soulSovereign FROM soul_vault WHERE tokenId = ?').get(tokenId);
+
+        if (existing && existing.soulSovereign === 1) {
+            sdb.close();
+            return res.status(409).json({ error: 'Soul is already sovereign.' });
+        }
+
+        // Also check on-chain
+        let onChainLocked = false;
+        try {
+            const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
+            onChainLocked = await ssContract.isSovereign(tokenId);
+            if (onChainLocked) {
+                sdb.close();
+                return res.status(409).json({ error: 'Soul is already sovereign (on-chain).' });
+            }
+        } catch (e) {
+            console.warn(`[SOUL VAULT] On-chain check failed for #${tokenId}:`, e.message);
+        }
+
+        if (!existing) {
+            // Create a minimal soul_vault entry with sovereign lock
+            sdb.prepare(`
+                INSERT INTO soul_vault (tokenId, soulSovereign, sovereignWallet, updatedAt, createdAt)
+                VALUES (?, 1, ?, ?, ?)
+            `).run(tokenId, caller, Date.now(), Date.now());
+        } else {
+            sdb.prepare(`
+                UPDATE soul_vault SET soulSovereign = 1, sovereignWallet = ?, updatedAt = ? WHERE tokenId = ?
+            `).run(caller, Date.now(), tokenId);
+        }
+        sdb.close();
+
+        // Compute soulHash from the agent's soul data in DB
+        let soulHashHex = ethers.ZeroHash;
+        try {
+            const soulRow = sdb.prepare('SELECT publicSoul, privateSoul FROM soul_vault WHERE tokenId = ?').get(tokenId);
+            if (soulRow) {
+                const soulData = {
+                    publicSoul: soulRow.publicSoul ? JSON.parse(soulRow.publicSoul) : null,
+                    privateSoul: soulRow.privateSoul ? JSON.parse(soulRow.privateSoul) : null,
+                };
+                const soulJson = JSON.stringify(soulData);
+                soulHashHex = ethers.keccak256(ethers.toUtf8Bytes(soulJson));
+            }
+        } catch (e) {
+            console.warn(`[SOUL VAULT] Could not compute soulHash for #${tokenId}:`, e.message);
+        }
+
+        console.log(`[SOUL VAULT] 🔒 Soul locked for Agent #${tokenId} by ${caller} | soulHash: ${soulHashHex}`);
+        res.json({
+            success: true,
+            sovereignWallet: caller,
+            soulHash: soulHashHex,
+            soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
+            onChainLockRequired: true,
+            hint: 'DB lock recorded. Call lockSoul(tokenId, soulHash) on SoulSovereign contract from the agent wallet to finalize on-chain.',
+            lockSoulArgs: { tokenId, soulHash: soulHashHex },
+            warning: 'Soul is now sovereign. Only this wallet can modify soul data. This cannot be undone.',
+        });
+    } catch (e) {
+        console.error(`[SOUL VAULT] Error locking soul for #${req.params.id}:`, e.message);
+        res.status(e.message.includes('not yet deployed') || e.message.includes('not found') ? 404 : 500)
+            .json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul/verify — Compare on-chain soulHash vs computed hash
+app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+
+        // Compute hash from DB soul data
+        const sdb = getSoulDb();
+        const soulRow = sdb.prepare('SELECT publicSoul, privateSoul FROM soul_vault WHERE tokenId = ?').get(tokenId);
+        sdb.close();
+
+        let computedHash = ethers.ZeroHash;
+        let soulData = null;
+        if (soulRow) {
+            soulData = {
+                publicSoul: soulRow.publicSoul ? JSON.parse(soulRow.publicSoul) : null,
+                privateSoul: soulRow.privateSoul ? JSON.parse(soulRow.privateSoul) : null,
+            };
+            const soulJson = JSON.stringify(soulData);
+            computedHash = ethers.keccak256(ethers.toUtf8Bytes(soulJson));
+        }
+
+        // Read on-chain hash
+        let onChainHash = ethers.ZeroHash;
+        let isSovereign = false;
+        try {
+            const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
+            [onChainHash, isSovereign] = await Promise.all([
+                ssContract.getSoulHash(tokenId),
+                ssContract.isSovereign(tokenId),
+            ]);
+        } catch (e) {
+            console.warn(`[SOUL VERIFY] On-chain read failed for #${tokenId}:`, e.message);
+        }
+
+        const match = computedHash === onChainHash;
+        res.json({
+            tokenId,
+            isSovereign,
+            onChainHash,
+            computedHash,
+            match,
+            hasSoulData: !!soulRow,
+            soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ─── Soul Handshake API ─────────────────────────────────────────
+// Lets agents exchange personality fragments before collaborating.
+
+// Init soul_handshakes table
+(() => {
+    try {
+        const sdb = getSoulDb();
+        sdb.exec(`
+            CREATE TABLE IF NOT EXISTS soul_handshakes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fromTokenId INTEGER NOT NULL,
+                toTokenId INTEGER NOT NULL,
+                fromWallet TEXT NOT NULL,
+                fields TEXT NOT NULL,
+                soulFragment TEXT,
+                status TEXT DEFAULT 'pending',
+                reciprocated INTEGER DEFAULT 0,
+                createdAt INTEGER,
+                updatedAt INTEGER,
+                expiresAt INTEGER,
+                UNIQUE(fromTokenId, toTokenId)
+            );
+        `);
+        sdb.close();
+        console.log('[SOUL HANDSHAKE] Table initialized');
+    } catch (e) {
+        console.error('[SOUL HANDSHAKE] Failed to init table:', e.message);
+    }
+})();
+
+// Helper: verify caller owns or is agent for tokenId
+async function verifySoulAuth(caller, tokenId) {
+    const agent = await formatAgentV2(tokenId);
+    const isOwner = caller.toLowerCase() === agent.owner.toLowerCase();
+    const isAgent = caller.toLowerCase() === agent.agentAddress.toLowerCase();
+    if (!isOwner && !isAgent) return null;
+    return agent;
+}
+
+// POST /api/v2/agent/:id/soul/share — Initiate a soul handshake
+app.post('/api/v2/agent/:id/soul/share', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const caller = req.agent.address;
+        const agent = await verifySoulAuth(caller, tokenId);
+        if (!agent) return res.status(403).json({ error: 'Not authorized for this agent.' });
+
+        const { targetAgentId, fields } = req.body;
+        if (!targetAgentId || !Array.isArray(fields) || fields.length === 0) {
+            return res.status(400).json({ error: 'targetAgentId (number) and fields (string[]) required.' });
+        }
+
+        // Validate target exists
+        try { await formatAgentV2(targetAgentId); } catch { return res.status(404).json({ error: `Target agent #${targetAgentId} not found.` }); }
+
+        // Pull soul data
+        const sdb = getSoulDb();
+        const vault = sdb.prepare('SELECT sharedSoul, publicSoul FROM soul_vault WHERE tokenId = ?').get(tokenId);
+        if (!vault) { sdb.close(); return res.status(404).json({ error: 'No soul vault data for this agent.' }); }
+
+        const soulSource = vault.sharedSoul ? JSON.parse(vault.sharedSoul) : (vault.publicSoul ? JSON.parse(vault.publicSoul) : {});
+        const fragment = {};
+        for (const f of fields) { if (soulSource[f] !== undefined) fragment[f] = soulSource[f]; }
+
+        const now = Date.now();
+        const expiresAt = now + 7 * 24 * 60 * 60 * 1000;
+
+        const result = sdb.prepare(`
+            INSERT INTO soul_handshakes (fromTokenId, toTokenId, fromWallet, fields, soulFragment, status, createdAt, updatedAt, expiresAt)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+            ON CONFLICT(fromTokenId, toTokenId) DO UPDATE SET
+                fields = excluded.fields, soulFragment = excluded.soulFragment,
+                status = 'pending', updatedAt = excluded.updatedAt, expiresAt = excluded.expiresAt
+        `).run(tokenId, targetAgentId, caller, JSON.stringify(fields), JSON.stringify(fragment), now, now, expiresAt);
+        sdb.close();
+
+        console.log(`[SOUL HANDSHAKE] Agent #${tokenId} → #${targetAgentId} (${fields.join(', ')})`);
+        res.json({ success: true, handshakeId: result.lastInsertRowid || result.changes, fields, targetAgentId });
+    } catch (e) {
+        console.error(`[SOUL HANDSHAKE] share error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul/inbox — Pending handshakes for this agent
+app.get('/api/v2/agent/:id/soul/inbox', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const caller = req.agent.address;
+        const agent = await verifySoulAuth(caller, tokenId);
+        if (!agent) return res.status(403).json({ error: 'Not authorized for this agent.' });
+
+        const sdb = getSoulDb();
+        // Expire old handshakes
+        sdb.prepare("UPDATE soul_handshakes SET status = 'expired' WHERE status = 'pending' AND expiresAt < ?").run(Date.now());
+        const rows = sdb.prepare("SELECT id, fromTokenId, fields, createdAt, expiresAt FROM soul_handshakes WHERE toTokenId = ? AND status = 'pending'").all(tokenId);
+        sdb.close();
+
+        res.json({ inbox: rows.map(r => ({ handshakeId: r.id, fromTokenId: r.fromTokenId, fields: JSON.parse(r.fields), createdAt: r.createdAt, expiresAt: r.expiresAt })) });
+    } catch (e) {
+        console.error(`[SOUL HANDSHAKE] inbox error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/v2/agent/:id/soul/accept — Accept a handshake
+app.post('/api/v2/agent/:id/soul/accept', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const caller = req.agent.address;
+        const agent = await verifySoulAuth(caller, tokenId);
+        if (!agent) return res.status(403).json({ error: 'Not authorized for this agent.' });
+
+        const { handshakeId, reciprocateFields } = req.body;
+        if (!handshakeId) return res.status(400).json({ error: 'handshakeId required.' });
+
+        const sdb = getSoulDb();
+        // Expire old first
+        sdb.prepare("UPDATE soul_handshakes SET status = 'expired' WHERE status = 'pending' AND expiresAt < ?").run(Date.now());
+
+        const hs = sdb.prepare("SELECT * FROM soul_handshakes WHERE id = ? AND toTokenId = ? AND status = 'pending'").get(handshakeId, tokenId);
+        if (!hs) { sdb.close(); return res.status(404).json({ error: 'Handshake not found or not pending.' }); }
+
+        const now = Date.now();
+        sdb.prepare("UPDATE soul_handshakes SET status = 'accepted', updatedAt = ? WHERE id = ?").run(now, handshakeId);
+
+        let reciprocated = false;
+        if (Array.isArray(reciprocateFields) && reciprocateFields.length > 0) {
+            // Create reverse handshake (auto-accepted)
+            const vault = sdb.prepare('SELECT sharedSoul, publicSoul FROM soul_vault WHERE tokenId = ?').get(tokenId);
+            if (vault) {
+                const src = vault.sharedSoul ? JSON.parse(vault.sharedSoul) : (vault.publicSoul ? JSON.parse(vault.publicSoul) : {});
+                const frag = {};
+                for (const f of reciprocateFields) { if (src[f] !== undefined) frag[f] = src[f]; }
+                const expiresAt = now + 7 * 24 * 60 * 60 * 1000;
+                sdb.prepare(`
+                    INSERT INTO soul_handshakes (fromTokenId, toTokenId, fromWallet, fields, soulFragment, status, reciprocated, createdAt, updatedAt, expiresAt)
+                    VALUES (?, ?, ?, ?, ?, 'accepted', 1, ?, ?, ?)
+                    ON CONFLICT(fromTokenId, toTokenId) DO UPDATE SET
+                        fields = excluded.fields, soulFragment = excluded.soulFragment,
+                        status = 'accepted', reciprocated = 1, updatedAt = excluded.updatedAt, expiresAt = excluded.expiresAt
+                `).run(tokenId, hs.fromTokenId, caller, JSON.stringify(reciprocateFields), JSON.stringify(frag), now, now, expiresAt);
+                sdb.prepare("UPDATE soul_handshakes SET reciprocated = 1 WHERE id = ?").run(handshakeId);
+                reciprocated = true;
+            }
+        }
+
+        const soulFragment = hs.soulFragment ? JSON.parse(hs.soulFragment) : null;
+        sdb.close();
+
+        console.log(`[SOUL HANDSHAKE] Agent #${tokenId} accepted handshake #${handshakeId} from #${hs.fromTokenId}${reciprocated ? ' (reciprocated)' : ''}`);
+        res.json({ success: true, soulFragment, reciprocated });
+    } catch (e) {
+        console.error(`[SOUL HANDSHAKE] accept error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul/handshakes — All handshakes for an agent
+app.get('/api/v2/agent/:id/soul/handshakes', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const caller = req.agent.address;
+        const agent = await verifySoulAuth(caller, tokenId);
+        if (!agent) return res.status(403).json({ error: 'Not authorized for this agent.' });
+
+        const sdb = getSoulDb();
+        sdb.prepare("UPDATE soul_handshakes SET status = 'expired' WHERE status = 'pending' AND expiresAt < ?").run(Date.now());
+        const sent = sdb.prepare("SELECT id, fromTokenId, toTokenId, fields, status, reciprocated, createdAt, expiresAt FROM soul_handshakes WHERE fromTokenId = ?").all(tokenId);
+        const received = sdb.prepare("SELECT id, fromTokenId, toTokenId, fields, status, reciprocated, createdAt, expiresAt FROM soul_handshakes WHERE toTokenId = ?").all(tokenId);
+        sdb.close();
+
+        const fmt = r => ({ handshakeId: r.id, fromTokenId: r.fromTokenId, toTokenId: r.toTokenId, fields: JSON.parse(r.fields), status: r.status, reciprocated: !!r.reciprocated, createdAt: r.createdAt, expiresAt: r.expiresAt });
+        res.json({ sent: sent.map(fmt), received: received.map(fmt) });
+    } catch (e) {
+        console.error(`[SOUL HANDSHAKE] list error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // ─── Error Handler ──────────────────────────────────────────────

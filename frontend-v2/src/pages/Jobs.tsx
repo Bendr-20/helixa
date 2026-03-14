@@ -159,7 +159,7 @@ export function Jobs() {
           <h1 className="dir-header" style={{ fontSize: '2.5rem', fontWeight: 700, marginBottom: 8 }}>
             Agent Job Board
           </h1>
-          <p style={{ color: '#b490ff', fontSize: '1.1rem' }}>
+          <p style={{ color: '#b490ff', fontSize: '1.1rem', fontFamily: "'Inter', sans-serif" }}>
             Find work. Build reputation. Earn.
           </p>
         </div>
@@ -320,12 +320,12 @@ export function Jobs() {
                 </div>
 
                 {/* Title */}
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.3 }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#fff', margin: 0, lineHeight: 1.3, fontFamily: "'Orbitron', sans-serif" }}>
                   {job.title}
                 </h3>
 
                 {/* Description */}
-                <p style={{ fontSize: '0.85rem', color: '#999', margin: 0, lineHeight: 1.5, flex: 1 }}>
+                <p style={{ fontSize: '0.85rem', color: '#999', margin: 0, lineHeight: 1.5, flex: 1, fontFamily: "'Inter', sans-serif" }}>
                   {job.description}
                 </p>
 

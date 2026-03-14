@@ -3,7 +3,7 @@
  * Clangster engagement script — like, reply, post
  * Run via cron or manually: node clangster-engage.js
  */
-const fs = require('fs');
+import fs from 'fs';
 const config = JSON.parse(fs.readFileSync(process.env.HOME + '/.config/clangster/config.json', 'utf8'));
 const BASE = config.baseUrl;
 const KEY = config.apiKey;

@@ -45,3 +45,4 @@ docs/proposals/
 scripts/vo/*.mp4
 scripts/vo/*.wav
 scripts/vo/*.mp3
+assets/video/*.mp4
