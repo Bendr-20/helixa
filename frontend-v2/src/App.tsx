@@ -20,6 +20,7 @@ const pageImports = {
   stake: () => import('./pages/Stake').then(m => ({ default: m.Stake })),
   analytics: () => import('./pages/Analytics').then(m => ({ default: m.Analytics })),
   jobs: () => import('./pages/Jobs').then(m => ({ default: m.Jobs })),
+  soulKeeper: () => import('./pages/SoulKeeper').then(m => ({ default: m.SoulKeeper })),
 };
 
 const Dashboard = lazy(pageImports.dashboard);
@@ -37,6 +38,7 @@ const CredReport = lazy(pageImports.credReport);
 const StakePage = lazy(pageImports.stake);
 const AnalyticsPage = lazy(pageImports.analytics);
 const JobsPage = lazy(pageImports.jobs);
+const SoulKeeperPage = lazy(pageImports.soulKeeper);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -62,6 +64,7 @@ export const preloadMap: Record<string, () => void> = {
   '/cred-report': pageImports.credReport,
   '/stake': pageImports.stake,
   '/jobs': pageImports.jobs,
+  '/soul-keeper': pageImports.soulKeeper,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -126,6 +129,7 @@ function AnimatedRoutes() {
           <Route path="/stake" element={<StakePage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/jobs" element={<JobsPage />} />
+          <Route path="/soul-keeper" element={<SoulKeeperPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

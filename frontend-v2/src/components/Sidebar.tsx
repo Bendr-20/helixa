@@ -8,6 +8,7 @@ const navItems = [
   { href: '/terminal', label: 'Terminal', icon: '💻', external: true },
   { href: '/jobs', label: 'Jobs', icon: '💼' },
   { href: '/stake', label: 'Stake', icon: '💎' },
+  { href: '/soul-keeper', label: 'Soul Keeper', icon: '🔗' },
   { href: '/manage', label: 'Manage', icon: '⚙️' },
 ];
 
