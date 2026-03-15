@@ -9,7 +9,7 @@
 
 ---
 
-## HelixaV2 (AgentDNA NFT)
+## HelixaV2 (Helixa Identity NFT)
 
 - **Address:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`
 - **Explorer:** https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60
@@ -17,7 +17,7 @@
 ### Key Functions
 
 #### mint(address, string, string, bool) → uint256
-Mint an AgentDNA identity NFT.
+Mint a Helixa identity NFT.
 
 | Param | Type | Description |
 |-------|------|-------------|

@@ -140,7 +140,7 @@ Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and 
 
 ### POST /api/v2/mint
 
-Mint a new AgentDNA identity NFT. Requires SIWA auth + x402 payment ($1 USDC).
+Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($1 USDC).
 
 **Headers:**
 - `Authorization: Bearer {address}:{timestamp}:{signature}`
