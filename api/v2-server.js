@@ -39,13 +39,21 @@ const {
 } = require('./services/referrals');
 
 // ─── SoulSovereign Contract ─────────────────────────────────────
-const SOUL_SOVEREIGN_ADDRESS = '0x41058AaE3c3160413a40771ae261291D94A95971';
+const SOUL_SOVEREIGN_ADDRESS = process.env.SOUL_SOVEREIGN_V3 || '0xb780EeF4254b96F979Fba66B2576be3561bf7a64';
 const SOUL_SOVEREIGN_ABI = [
+    // V3 versioned functions
+    'function lockSoulVersion(uint256 tokenId, bytes32 _soulHash) external',
+    'function getSoulVersion(uint256 tokenId) external view returns (uint256)',
+    'function getSoulHash(uint256 tokenId, uint256 version) external view returns (bytes32)',
+    'function getSoulTimestamp(uint256 tokenId, uint256 version) external view returns (uint256)',
+    'function getFullSoulHistory(uint256 tokenId) external view returns (bytes32[] hashes, uint256[] timestamps)',
+    // Backward compat (works on both v2 and v3)
     'function lockSoul(uint256 tokenId, bytes32 _soulHash) external',
     'function isSovereign(uint256 tokenId) external view returns (bool)',
+    'function soulLocked(uint256 tokenId) external view returns (bool)',
     'function getSovereignWallet(uint256 tokenId) external view returns (address)',
-    'function getSoulHash(uint256 tokenId) external view returns (bytes32)',
     'function soulHash(uint256 tokenId) external view returns (bytes32)',
+    'function soulVersion(uint256 tokenId) external view returns (uint256)',
 ];
 function getSoulSovereignContract(signerOrProvider) {
     return new ethers.Contract(SOUL_SOVEREIGN_ADDRESS, SOUL_SOVEREIGN_ABI, signerOrProvider);
@@ -3180,16 +3188,29 @@ app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
             console.warn(`[SOUL VAULT] Could not compute soulHash for #${tokenId}:`, e.message);
         }
 
-        console.log(`[SOUL VAULT] 🔒 Soul locked for Agent #${tokenId} by ${caller} | soulHash: ${soulHashHex}`);
+        // Determine current on-chain version (v3 support)
+        let currentVersion = 0;
+        try {
+            const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
+            currentVersion = Number(await ssContract.soulVersion(tokenId));
+        } catch {}
+        const nextVersion = currentVersion + 1;
+
+        console.log(`[SOUL VAULT] 🔒 Soul locked for Agent #${tokenId} by ${caller} | soulHash: ${soulHashHex} | version: ${nextVersion}`);
         res.json({
             success: true,
             sovereignWallet: caller,
             soulHash: soulHashHex,
+            version: nextVersion,
             soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
             onChainLockRequired: true,
-            hint: 'DB lock recorded. Call lockSoul(tokenId, soulHash) on SoulSovereign contract from the agent wallet to finalize on-chain.',
+            hint: 'DB lock recorded. Call lockSoulVersion(tokenId, soulHash) on SoulSovereign V3 contract from the agent wallet to finalize on-chain.',
+            lockSoulVersionArgs: { tokenId, soulHash: soulHashHex },
+            // Legacy compat
             lockSoulArgs: { tokenId, soulHash: soulHashHex },
-            warning: 'Soul is now sovereign. Only this wallet can modify soul data. This cannot be undone.',
+            warning: currentVersion === 0
+                ? 'Soul is now sovereign. Only this wallet can modify soul data.'
+                : `Soul version ${nextVersion} ready. Previous versions remain immutable on-chain.`,
         });
     } catch (e) {
         console.error(`[SOUL VAULT] Error locking soul for #${req.params.id}:`, e.message);
@@ -3219,14 +3240,16 @@ app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
             computedHash = ethers.keccak256(ethers.toUtf8Bytes(soulJson));
         }
 
-        // Read on-chain hash
+        // Read on-chain hash (v3: latest version)
         let onChainHash = ethers.ZeroHash;
         let isSovereign = false;
+        let onChainVersion = 0;
         try {
             const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
-            [onChainHash, isSovereign] = await Promise.all([
-                ssContract.getSoulHash(tokenId),
+            [onChainHash, isSovereign, onChainVersion] = await Promise.all([
+                ssContract.soulHash(tokenId),
                 ssContract.isSovereign(tokenId),
+                ssContract.soulVersion(tokenId).then(v => Number(v)).catch(() => 0),
             ]);
         } catch (e) {
             console.warn(`[SOUL VERIFY] On-chain read failed for #${tokenId}:`, e.message);
@@ -3235,11 +3258,66 @@ app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
         const match = computedHash === onChainHash;
         res.json({
             tokenId,
+            version: onChainVersion,
             isSovereign,
             onChainHash,
             computedHash,
             match,
             hasSoulData: !!soulRow,
+            soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/soul/history — Full versioned soul chain
+app.get('/api/v2/agent/:id/soul/history', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
+
+        let version = 0;
+        try {
+            version = Number(await ssContract.soulVersion(tokenId));
+        } catch (e) {
+            // v2 contract — no soulVersion, check isSovereign
+            try {
+                const locked = await ssContract.isSovereign(tokenId);
+                if (locked) {
+                    const hash = await ssContract.soulHash(tokenId);
+                    return res.json({
+                        tokenId,
+                        version: 1,
+                        contractVersion: 'v2',
+                        history: [{ version: 1, soulHash: hash, timestamp: null }],
+                        soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
+                    });
+                }
+                return res.json({ tokenId, version: 0, history: [], soulSovereignContract: SOUL_SOVEREIGN_ADDRESS });
+            } catch {
+                return res.json({ tokenId, version: 0, history: [], soulSovereignContract: SOUL_SOVEREIGN_ADDRESS });
+            }
+        }
+
+        if (version === 0) {
+            return res.json({ tokenId, version: 0, history: [], soulSovereignContract: SOUL_SOVEREIGN_ADDRESS });
+        }
+
+        // V3: fetch full history in one call
+        const [hashes, timestamps] = await ssContract.getFullSoulHistory(tokenId);
+        const history = hashes.map((h, i) => ({
+            version: i + 1,
+            soulHash: h,
+            timestamp: Number(timestamps[i]),
+            lockedAt: new Date(Number(timestamps[i]) * 1000).toISOString(),
+        }));
+
+        res.json({
+            tokenId,
+            version,
+            contractVersion: 'v3',
+            history,
             soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
         });
     } catch (e) {
