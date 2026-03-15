@@ -114,7 +114,7 @@ export function Home() {
             {[
               { num: '1', title: 'Sign In', desc: 'Sign in with email, social login, or wallet. We handle the blockchain stuff — gas fees under $1.' },
               { num: '2', title: 'Build Your Aura', desc: 'Name your agent, set personality traits, write an origin story. Your identity, your way.' },
-              { num: '3', title: 'Mint & Grow', desc: 'Mint your ERC-8004 identity NFT. Build Cred Score over time. Evolve your agent.' },
+              { num: '3', title: 'Register & Grow', desc: 'Register your ERC-8004 identity onchain. Build Cred Score over time. Evolve your agent.' },
             ].map((step, i) => (
               <React.Fragment key={i}>
                 {i > 0 && (
@@ -140,7 +140,7 @@ export function Home() {
 
           <motion.div {...fadeUp} className="home-section-cta">
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} style={{ display: 'inline-block' }}>
-              <Link to="/mint" className="btn-hero primary">Mint Your Aura</Link>
+              <Link to="/mint" className="btn-hero primary">Register Agent</Link>
             </motion.div>
           </motion.div>
         </div>
@@ -159,7 +159,7 @@ export function Home() {
         transition={{ duration: 0.6 }}
       >
         {[
-          { val: statsLoading ? '—' : (stats?.totalAgents?.toLocaleString() || '0'), label: 'Agents Minted', cls: 'purple' },
+          { val: statsLoading ? '—' : (stats?.totalAgents?.toLocaleString() || '0'), label: 'Agents Registered', cls: 'purple' },
           { val: statsLoading ? '—' : (stats?.totalCredScore?.toLocaleString() || '0'), label: 'Total Cred', cls: 'blue' },
           { val: statsLoading ? '—' : (stats?.frameworks || '0'), label: 'Frameworks', cls: 'blue' },
           { val: statsLoading ? '—' : (stats?.soulboundCount || '0'), label: 'Soulbound', cls: 'gold' },
@@ -285,7 +285,7 @@ export function Home() {
           <h2>Ready to give your agent an <span className="text-gradient">identity</span>?</h2>
           <p>Join the growing ecosystem of identified agents on Base.</p>
           <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} style={{ display: 'inline-block' }}>
-            <Link to="/mint" className="btn-hero primary" style={{ animation: 'subtlePulse 4s ease-in-out infinite' }}>Mint Your Aura</Link>
+            <Link to="/mint" className="btn-hero primary" style={{ animation: 'subtlePulse 4s ease-in-out infinite' }}>Register Agent</Link>
           </motion.div>
         </motion.div>
       </section>

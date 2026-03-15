@@ -23,7 +23,7 @@ function parseErrorMessage(error: any, mintPrice?: bigint): string {
   const combined = `${msg} ${shortMsg}`;
 
   if (/AlreadyMinted/i.test(combined)) {
-    return 'This wallet has already minted an agent. Each wallet can only mint one agent.';
+    return 'This wallet has already registered an agent. Each wallet can only register one agent.';
   }
   if (/InsufficientPayment/i.test(combined)) {
     const cost = mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'the required amount';
@@ -70,7 +70,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
       }
     }
     if (alreadyMinted) {
-      setMintError('This wallet has already minted an agent. Each wallet can only mint one agent.');
+      setMintError('This wallet has already registered an agent. Each wallet can only register one agent.');
       return;
     }
     setMintError(null);
@@ -148,7 +148,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           });
         } catch (e: any) {
           console.error('Personality tx failed:', e);
-          setMintError('Mint succeeded but personality save failed. You can set it later on the Manage page.');
+          setMintError('Registration succeeded but personality save failed. You can set it later on the Manage page.');
         }
       }
 
@@ -165,7 +165,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           });
         } catch (e: any) {
           console.error('Narrative tx failed:', e);
-          setMintError('Mint succeeded but narrative save failed. You can set it later on the Manage page.');
+          setMintError('Registration succeeded but narrative save failed. You can set it later on the Manage page.');
         }
       }
 
@@ -190,9 +190,9 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8 text-center">
-        <h3 className="text-xl font-semibold mb-2">Review & Mint</h3>
+        <h3 className="text-xl font-semibold mb-2">Review & Register</h3>
         <p className="text-muted">
-          Review your agent's profile before minting to the blockchain.
+          Review your agent's profile before registering on the blockchain.
         </p>
       </div>
 
@@ -229,7 +229,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
             <div className="text-2xl font-bold text-accent-cyan">
               {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}
             </div>
-            <div className="text-sm text-muted">Mint Cost</div>
+            <div className="text-sm text-muted">Registration Fee</div>
           </div>
         </div>
 
@@ -300,15 +300,15 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🚫</span>
                 <div>
-                  <h4 className="font-semibold text-yellow-400">Already Minted</h4>
-                  <p className="text-sm text-yellow-300">This wallet has already minted an agent. Each wallet can only mint one agent.</p>
+                  <h4 className="font-semibold text-yellow-400">Already Registered</h4>
+                  <p className="text-sm text-yellow-300">This wallet has already registered an agent. Each wallet can only register one agent.</p>
                 </div>
               </div>
             </div>
           )}
           {(mintError || error) && (
             <div className="card bg-red-900/20 border-red-700">
-              <h4 className="font-semibold text-red-400 mb-1">Mint Failed</h4>
+              <h4 className="font-semibold text-red-400 mb-1">Registration Failed</h4>
               <p className="text-sm text-red-300">{mintError || parseErrorMessage(error, mintPrice as bigint)}</p>
             </div>
           )}
@@ -318,7 +318,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
                 <div className="spinner"></div>
                 <div>
                   <h4 className="font-semibold text-yellow-400">Confirm in Wallet</h4>
-                  <p className="text-sm text-yellow-300">Sign the mint transaction.</p>
+                  <p className="text-sm text-yellow-300">Sign the registration transaction.</p>
                 </div>
               </div>
             </div>
@@ -328,7 +328,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
               <div className="flex items-center gap-3">
                 <div className="spinner"></div>
                 <div>
-                  <h4 className="font-semibold text-blue-400">Minting...</h4>
+                  <h4 className="font-semibold text-blue-400">Registering...</h4>
                   {hash && (
                     <a href={`${EXPLORER_URL}/tx/${hash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-cyan hover:underline">
                       View on BaseScan →
@@ -366,13 +366,13 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
           className="btn btn-primary btn-lg glow"
         >
           {isBusy ? (
-            <><div className="spinner w-4 h-4"></div> {isPending ? 'Sign...' : 'Minting...'}</>
+            <><div className="spinner w-4 h-4"></div> {isPending ? 'Sign...' : 'Registering...'}</>
           ) : alreadyMinted ? (
-            <>🚫 Already Minted</>
+            <>🚫 Already Registered</>
           ) : isWrongChain ? (
             <><LinkIcon className="w-4 h-4 inline-block align-middle mr-1" /> Switch to Base</>
           ) : (
-            <><Dna className="w-4 h-4 inline-block align-middle mr-1" /> Mint Agent — {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}</>
+            <><Dna className="w-4 h-4 inline-block align-middle mr-1" /> Register Agent — {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}</>
           )}
         </button>
       </div>

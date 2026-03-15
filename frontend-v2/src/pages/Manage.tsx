@@ -428,7 +428,7 @@ function SoulboundPanel({ tokenId, meta }: { tokenId: number; meta: AgentMeta | 
         </div>
         <div>
           <div style={{ color: '#b490ff', fontWeight: 600, fontSize: '0.9rem' }}>Transferable</div>
-          <div style={{ color: '#888', fontSize: '0.8rem' }}>This identity can be transferred to another wallet. Soulbound status is set at mint and cannot be changed.</div>
+          <div style={{ color: '#888', fontSize: '0.8rem' }}>This identity can be transferred to another wallet. Soulbound status is set at registration and cannot be changed.</div>
         </div>
       </div>
     </div>
@@ -742,7 +742,7 @@ export function Manage() {
             <h1 style={s.title}>Manage Your <span style={s.gradient}>Agents</span></h1>
             <p style={s.subtitle}>View and update the agents you own</p>
           </div>
-          <Link to="/mint" style={s.mintBtn}>Mint New Aura</Link>
+          <Link to="/mint" style={s.mintBtn}>Register New Agent</Link>
         </div>
 
         {/* Account Card */}
@@ -794,8 +794,8 @@ export function Manage() {
               </svg>
             </div>
             <h3 style={s.emptyTitle}>No Agents Found</h3>
-            <p style={s.emptyText}>You don't own any agents yet. Mint your first agent to get started!</p>
-            <Link to="/mint" style={s.mintBtn}>Mint Your First Agent</Link>
+            <p style={s.emptyText}>You don't own any agents yet. Register your first agent to get started!</p>
+            <Link to="/mint" style={s.mintBtn}>Register Your First Agent</Link>
           </div>
         )}
 

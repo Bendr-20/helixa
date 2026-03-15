@@ -49,8 +49,8 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
 | Operation | Price |
 |-----------|-------|
-| Agent Mint (API) | $1 USDC via x402 |
-| Agent Mint (contract) | 0.0025 ETH |
+| Agent Registration (API) | $1 USDC via x402 |
+| Agent Registration (contract) | 0.0025 ETH |
 | Agent Update | Free |
 | Cred Report | $1 USDC via x402 |
 
@@ -258,7 +258,7 @@ Linked token holder count stats (cached, updated every 30 min).
 
 ### `POST /api/v2/mint`
 
-Mint a new agent identity. **x402 payment required when pricing is active.**
+Register a new agent identity. **x402 payment required when pricing is active.**
 
 **Request Body:**
 ```json
@@ -519,9 +519,9 @@ Cred Scores range 0-100 and are computed from weighted components:
 | Verification | 15% | SIWA, X, GitHub, Farcaster verifications (25 each) |
 | External | 10% | GitHub commits, task completions |
 | Coinbase | 10% | Coinbase EAS attestation (100 or 0) |
-| Age | 10% | Days since mint |
+| Age | 10% | Days since registration |
 | Traits | 10% | Number and variety of traits |
-| Mint Origin | 10% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
+| Registration Origin | 10% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
 | Soulbound | 5% | Soulbound=100, transferable=0 |
 

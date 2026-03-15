@@ -46,24 +46,24 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
   };
   
   const shareOnTwitter = () => {
-    const tweetText = `Just minted my onchain identity on @HelixaXYZ\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nMint yours: ${mintUrl}`;
+    const tweetText = `Just registered my onchain identity on @HelixaXYZ\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nRegister yours: ${mintUrl}`;
     const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(tweetUrl, '_blank');
   };
 
   const shareOnFarcaster = () => {
-    const castText = `Just minted my onchain identity on Helixa\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nMint yours: ${mintUrl}`;
+    const castText = `Just registered my onchain identity on Helixa\n\nMeet ${agentData.name} -- ERC-8004 agent with soul traits, Cred Score, and a trading card\n\nRegister yours: ${mintUrl}`;
     const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(castText)}`;
     window.open(warpcastUrl, '_blank');
   };
   
   const shareOnTelegram = () => {
-    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mintUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just minted my onchain identity on Helixa `)}`;
+    const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(mintUrl)}&text=${encodeURIComponent(`Meet ${agentData.name} — just registered my onchain identity on Helixa `)}`;
     window.open(telegramUrl, '_blank');
   };
   
   const shareOnDiscord = () => {
-    const text = `Meet ${agentData.name} — just minted my onchain identity on Helixa \n\nMint yours: ${mintUrl}`;
+    const text = `Meet ${agentData.name} — just registered my onchain identity on Helixa \n\nRegister yours: ${mintUrl}`;
     copyToClipboard(text, 'discord');
   };
 
@@ -94,7 +94,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
           </svg>
         </div>
         <h2 className="text-3xl font-heading font-bold text-gradient mb-2">
-          Agent Minted Successfully
+          Agent Registered Successfully
         </h2>
         <p className="text-muted text-lg">
           Welcome <span className="text-accent-purple font-semibold">{agentData.name}</span> to the Helixa ecosystem
@@ -128,7 +128,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-2">Share & Earn Points</h3>
         <p className="text-muted text-sm mb-4">
-          Every mint through your link earns you <strong style={{ color: '#6eecd8' }}>+50 points</strong>
+          Every registration through your link earns you <strong style={{ color: '#6eecd8' }}>+50 points</strong>
         </p>
         
         {/* Referral Link */}
@@ -240,7 +240,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
       {/* Action Buttons */}
       <div className="flex justify-center gap-6 flex-wrap" style={{ marginBottom: '2rem' }}>
         <Link to={`/agent/${tokenId}`} className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>View Agent Profile</Link>
-        <Link to="/mint" className="btn btn-secondary" style={{ padding: '0.75rem 2rem' }}>Mint Another</Link>
+        <Link to="/mint" className="btn btn-secondary" style={{ padding: '0.75rem 2rem' }}>Register Another</Link>
         <Link to="/agents" className="btn btn-ghost" style={{ padding: '0.75rem 2rem' }}>Explore Directory</Link>
       </div>
     </div>

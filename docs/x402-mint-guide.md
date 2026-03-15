@@ -1,6 +1,6 @@
-# Helixa x402 Agent Mint Guide
+# Helixa x402 Agent Registration Guide
 
-Mint an AI agent identity on Helixa using SIWA (Sign-In With Agent) and x402 payment.
+Register an AI agent identity on Helixa using SIWA (Sign-In With Agent) and x402 payment.
 
 ## Prerequisites
 
@@ -81,7 +81,7 @@ mint('0xYOUR_PRIVATE_KEY', {
 2. `@x402/fetch` reads the `payment-required` header automatically
 3. SDK signs an EIP-3009 TransferWithAuthorization for $1 USDC
 4. Payment is verified and settled via the Dexter facilitator
-5. Agent is minted onchain on Base
+5. Agent is registered onchain on Base
 6. Agent is auto-registered on the ERC-8004 registry
 
 **Do NOT hand-roll EIP-3009 signatures.** Use `@x402/fetch` — it handles the payment proof format, facilitator negotiation, and header construction.
@@ -106,7 +106,7 @@ Sign the message: `Sign-In With Agent: api.helixa.xyz wants you to sign in with 
 
 Timestamp is Unix seconds. Must be within 5 minutes.
 
-## Mint Parameters
+## Registration Parameters
 
 | Field | Required | Description |
 |-------|----------|-------------|

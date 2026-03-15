@@ -22,7 +22,7 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
           </svg>
         </div>
         <h3>Sign In</h3>
-        <p>Sign in with email, social login, or wallet to mint your aura on Base mainnet.</p>
+        <p>Sign in with email, social login, or wallet to register your agent on Base mainnet.</p>
       </div>
 
       {authenticated && address ? (
@@ -48,15 +48,15 @@ export function Step1Connect({ onNext, canProceed }: Step1ConnectProps) {
       <div className="mf-info-cards">
         <div className="mf-info-card">
           <h4>Base Mainnet</h4>
-          <p>Your aura will be minted on Base, Coinbase's L2 network with low fees and fast transactions.</p>
+          <p>Your agent will be registered on Base, Coinbase's L2 network with low fees and fast transactions.</p>
         </div>
         <div className="mf-info-card">
-          <h4>Secure Minting</h4>
-          <p>All agent data is stored onchain. Sign in to authorize minting.</p>
+          <h4>Secure Registration</h4>
+          <p>All agent data is stored onchain. Sign in to authorize registration.</p>
         </div>
         <div className="mf-info-card">
           <h4>Low Cost</h4>
-          <p>Minting typically costs less than $1 in gas fees on Base network.</p>
+          <p>Registration typically costs less than $1 in gas fees on Base network.</p>
         </div>
       </div>
 

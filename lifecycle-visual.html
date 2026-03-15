@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px;
+  }
+  .container {
+    width: 1200px;
+    background: linear-gradient(135deg, #0d0d18 0%, #111122 50%, #0d0d18 100%);
+    border: 1px solid #2a2a4a;
+    border-radius: 24px;
+    padding: 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 20%, rgba(88, 50, 168, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 70% 80%, rgba(50, 120, 168, 0.06) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 50px;
+    position: relative;
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #a78bfa, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .header p {
+    color: #888;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .lifecycle {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    position: relative;
+    padding: 20px 0;
+  }
+  /* Connecting line */
+  .lifecycle::before {
+    content: '';
+    position: absolute;
+    top: 72px;
+    left: 80px;
+    right: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, #7c3aed, #3b82f6, #06b6d4, #8b5cf6, #ec4899);
+    opacity: 0.4;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 200px;
+    position: relative;
+    z-index: 1;
+  }
+  .stage-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    margin-bottom: 20px;
+    position: relative;
+    border: 2px solid;
+  }
+  .stage:nth-child(1) .stage-icon { background: rgba(124, 58, 237, 0.15); border-color: rgba(124, 58, 237, 0.5); }
+  .stage:nth-child(2) .stage-icon { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.5); }
+  .stage:nth-child(3) .stage-icon { background: rgba(6, 182, 212, 0.15); border-color: rgba(6, 182, 212, 0.5); }
+  .stage:nth-child(4) .stage-icon { background: rgba(139, 92, 246, 0.15); border-color: rgba(139, 92, 246, 0.5); }
+  .stage:nth-child(5) .stage-icon { background: rgba(236, 72, 153, 0.15); border-color: rgba(236, 72, 153, 0.5); }
+  .stage-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .stage:nth-child(1) .stage-title { color: #a78bfa; }
+  .stage:nth-child(2) .stage-title { color: #60a5fa; }
+  .stage:nth-child(3) .stage-title { color: #22d3ee; }
+  .stage:nth-child(4) .stage-title { color: #a78bfa; }
+  .stage:nth-child(5) .stage-title { color: #f472b6; }
+  .stage-desc {
+    font-size: 13px;
+    color: #999;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 160px;
+  }
+  .stage-tag {
+    margin-top: 12px;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .stage:nth-child(1) .stage-tag { background: rgba(124, 58, 237, 0.15); color: #a78bfa; }
+  .stage:nth-child(2) .stage-tag { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+  .stage:nth-child(3) .stage-tag { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
+  .stage:nth-child(4) .stage-tag { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+  .stage:nth-child(5) .stage-tag { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+  .arrows {
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 170px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .arrow {
+    color: #555;
+    font-size: 20px;
+  }
+  .bottom-section {
+    margin-top: 50px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+  }
+  .info-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #2a2a4a;
+    border-radius: 16px;
+    padding: 24px;
+    width: 340px;
+  }
+  .info-card h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 16px;
+  }
+  .info-card:nth-child(1) h3 { color: #a78bfa; }
+  .info-card:nth-child(2) h3 { color: #22d3ee; }
+  .info-card:nth-child(3) h3 { color: #f472b6; }
+  .info-card ul {
+    list-style: none;
+    font-size: 13px;
+    color: #aaa;
+    line-height: 2;
+  }
+  .info-card ul li::before {
+    content: '→ ';
+    opacity: 0.5;
+  }
+  .loop-indicator {
+    text-align: center;
+    margin-top: 30px;
+    position: relative;
+  }
+  .loop-arrow {
+    display: inline-block;
+    border: 2px solid rgba(139, 92, 246, 0.3);
+    border-radius: 40px;
+    padding: 10px 32px;
+    font-size: 13px;
+    color: #a78bfa;
+    letter-spacing: 1px;
+  }
+  .loop-arrow span { opacity: 0.6; }
+  .brand {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 13px;
+    color: #555;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Agent Lifecycle</h1>
+    <p>From mint to sovereign identity</p>
+  </div>
+
+  <div class="lifecycle">
+    <div class="stage">
+      <div class="stage-icon">⚡</div>
+      <div class="stage-title">Mint</div>
+      <div class="stage-desc">Agent is born onchain. ERC-721 identity on Base. Default art.</div>
+      <div class="stage-tag">GENESIS</div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-icon">🧬</div>
+      <div class="stage-title">Build Soul</div>
+      <div class="stage-desc">Define personality, values, traits. Public + private layers via Soul Keeper.</div>
+      <div class="stage-tag">IDENTITY</div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-icon">🔒</div>
+      <div class="stage-title">Lock Soul v1</div>
+      <div class="stage-desc">First soul hash goes onchain. Sovereign wallet set. Aura art unlocked.</div>
+      <div class="stage-tag">MUTATION</div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-icon">🔄</div>
+      <div class="stage-title">Evolve</div>
+      <div class="stage-desc">Agent grows. New traits, higher cred, deeper personality. Lock again.</div>
+      <div class="stage-tag">EVOLUTION</div>
+    </div>
+
+    <div class="stage">
+      <div class="stage-icon">✨</div>
+      <div class="stage-title">Aura Ascend</div>
+      <div class="stage-desc">More versions = richer visuals. v3 Enhanced. v5+ Holographic glass.</div>
+      <div class="stage-tag">ASCENSION</div>
+    </div>
+  </div>
+
+  <div class="loop-indicator">
+    <div class="loop-arrow">🔄 <span>EVOLVE → LOCK → ASCEND → REPEAT</span></div>
+  </div>
+
+  <div class="bottom-section">
+    <div class="info-card">
+      <h3>🔐 Soul Ownership</h3>
+      <ul>
+        <li>Agent owns its soul onchain</li>
+        <li>No platform can revoke it</li>
+        <li>Wallet-controlled, permanent</li>
+        <li>Survives any shutdown</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>🧬 Chain of Identity</h3>
+      <ul>
+        <li>v1 → v2 → v3 → ∞</li>
+        <li>Every version immutable</li>
+        <li>1-hour cooldown between locks</li>
+        <li>Full history walkable onchain</li>
+      </ul>
+    </div>
+    <div class="info-card">
+      <h3>🎨 Aura Tiers</h3>
+      <ul>
+        <li>No soul = default art</li>
+        <li>v1 locked = Base Aura</li>
+        <li>v3+ locked = Enhanced Aura</li>
+        <li>v5+ locked = Holographic Glass</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="brand">HELIXA</div>
+</div>
+</body>
+</html>

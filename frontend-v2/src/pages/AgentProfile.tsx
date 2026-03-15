@@ -262,7 +262,7 @@ export function AgentProfile() {
                     <span className="badge mt-1">{agent.framework}</span>
                   </div>
                   <div>
-                    <span className="text-muted block text-sm">Mint Origin</span>
+                    <span className="text-muted block text-sm">Registration Origin</span>
                     <span className="flex items-center gap-1 mt-1">
                       <span>{originDisplay.icon}</span>
                       <span className="font-medium">{originDisplay.label}</span>
@@ -512,7 +512,7 @@ export function AgentProfile() {
                     <div className="text-lg font-bold text-accent-pink">
                       {agent.mintedAt ? new Date(agent.mintedAt * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
                     </div>
-                    <div className="text-sm text-muted">Minted</div>
+                    <div className="text-sm text-muted">Registered</div>
                   </div>
                 </div>
               </div>

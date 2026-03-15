@@ -85,7 +85,7 @@ const x402Routes = {};
 if (PRICING.agentMint > 0) {
     x402Routes['POST /api/v2/mint'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.agentMint}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
-        description: 'Mint a new Helixa agent identity', mimeType: 'application/json',
+        description: 'Register a new Helixa agent identity', mimeType: 'application/json',
     };
 }
 if (PRICING.update > 0) {
@@ -479,7 +479,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
-                'POST /api/v2/mint': 'Mint new agent (SIWA required, free Phase 1)',
+                'POST /api/v2/mint': 'Register new agent (SIWA required, free Phase 1)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
@@ -672,7 +672,7 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
             { trait_type: 'Cred Score', value: agent.credScore, display_type: 'number' },
             { trait_type: 'Points', value: agent.points, display_type: 'number' },
             { trait_type: 'Tier', value: tier },
-            { trait_type: 'Mint Origin', value: agent.mintOrigin },
+            { trait_type: 'Registration Origin', value: agent.mintOrigin },
             { trait_type: 'Verified', value: agent.verified ? 'Yes' : 'No' },
             { trait_type: 'Soulbound', value: agent.soulbound ? 'Yes' : 'No' },
             { trait_type: 'Generation', value: agent.generation, display_type: 'number' },
@@ -885,7 +885,7 @@ async function mintHandler(req, res) {
             error: 'V2 contract not yet deployed',
             hint: 'Set V2_CONTRACT in .env once deployed',
             received: { name, framework: fw, agentAddress, soulbound, personality, narrative },
-            message: 'Your mint request is valid and will work once V2 is live',
+            message: 'Your registration request is valid and will work once V2 is live',
         });
     }
     
@@ -1171,7 +1171,7 @@ async function mintHandler(req, res) {
         });
     } catch (e) {
         console.error('[V2 MINT] Error:', e.message);
-        res.status(500).json({ error: 'Mint failed: ' + e.message.slice(0, 200) });
+        res.status(500).json({ error: 'Registration failed: ' + e.message.slice(0, 200) });
     }
 }
 
@@ -1857,7 +1857,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
         info: {
             title: 'Helixa V2 API',
             version: '2.0.0',
-            description: 'Onchain identity and reputation for AI agents. Mint identities, set personality traits, build Cred Scores, and verify agents — all via API with SIWA auth and x402 payments.',
+            description: 'Onchain identity and reputation for AI agents. Register identities, set personality traits, build Cred Scores, and verify agents — all via API with SIWA auth and x402 payments.',
             contact: { url: 'https://helixa.xyz' },
         },
         servers: [{ url: 'https://api.helixa.xyz', description: 'Production (Base Mainnet)' }],
@@ -1882,7 +1882,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
             },
             '/api/v2/mint': {
                 post: {
-                    summary: 'Mint a new agent identity',
+                    summary: 'Register a new agent identity',
                     description: 'Requires SIWA authentication. Optionally accepts x402 payment. Creates onchain identity with name, framework, personality, narrative, and traits.',
                     security: [{ siwa: [] }],
                     requestBody: {
@@ -1922,7 +1922,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
                         },
                     },
                     responses: {
-                        '201': { description: 'Agent minted successfully' },
+                        '201': { description: 'Agent registered successfully' },
                         '401': { description: 'Invalid SIWA authentication' },
                         '402': { description: 'Payment required (when pricing is active)' },
                     },
@@ -2608,10 +2608,10 @@ const CRED_WEIGHTS = {
     external: { weight: 0.15, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.15, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
-    age: { weight: 0.10, label: 'Account Age', description: 'Days since mint' },
+    age: { weight: 0.10, label: 'Account Age', description: 'Days since registration' },
     traits: { weight: 0.10, label: 'Trait Richness', description: 'Number and variety of traits' },
     narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
-    origin: { weight: 0.10, label: 'Mint Origin', description: 'How the agent was minted (SIWA > API > Owner)' },
+    origin: { weight: 0.10, label: 'Registration Origin', description: 'How the agent was registered (SIWA > API > Owner)' },
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
     soulCompleteness: { weight: 0.08, label: 'Soul Vault', description: 'Soul data completeness — public fields, shared soul, narrative depth' },
 };

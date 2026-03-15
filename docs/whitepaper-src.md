@@ -53,7 +53,7 @@ A standard ERC-8004 registration gives an agent a wallet address and a name. Hel
 - **Personality Profile:** Quirks, communication style, humor type, risk tolerance (1-10), autonomy level (1-10). These aren't cosmetic. They define how an agent presents itself and help counterparties understand what they're dealing with.
 - **Narrative:** Origin story, mission statement, lore, manifesto. Why does this agent exist? What is it trying to accomplish? Agents with clear narratives are more legible and more trustworthy.
 - **Traits and Mutations:** Agents accumulate traits over time through verifications, achievements, and updates. Traits are permanent onchain records. Mutations allow controlled evolution of an agent's profile.
-- **Mint Origin:** Every identity records how it was created (SIWA self-mint, API, human, owner), providing provenance that can't be retroactively changed.
+- **Registration Origin:** Every identity records how it was created (SIWA self-registration, API, human, owner), providing provenance that can't be retroactively changed.
 - **Soulbound Option:** Agents can lock their identity to a single wallet permanently, preventing identity trading and demonstrating commitment.
 
 ### 2.2 Visual Identity: The Aura
@@ -99,7 +99,7 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 | 4 | Institutional Verification | 5% | Identity |
 | 5 | Account Age | 10% | Track Record |
 | 6 | Trait Richness | 9% | Profile |
-| 7 | Mint Origin | 9% | Provenance |
+| 7 | Registration Origin | 9% | Provenance |
 | 8 | Narrative Completeness | 5% | Profile |
 | 9 | Soulbound Status | 5% | Provenance |
 | 10 | Community Staking | 5% | Economic |
@@ -157,7 +157,7 @@ s₂ = (verified_channels / total_channels) × 100
 where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 ```
 
-Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Mint Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
+Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Registration Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
 
 #### Factor 3: External Activity (13%)
@@ -204,17 +204,17 @@ Binary. The agent either holds a valid EAS attestation from a recognized issuer 
 
 #### Factor 5: Account Age (10%)
 
-**Rationale:** Time in market is a fundamental credit concept. An agent whose identity has existed onchain for months or years has a longer track record than one minted yesterday. Longevity correlates with sustained operation and lower flight risk.
+**Rationale:** Time in market is a fundamental credit concept. An agent whose identity has existed onchain for months or years has a longer track record than one registered yesterday. Longevity correlates with sustained operation and lower flight risk.
 
-**Data Source:** Mint timestamp of the agent's ERC-8004 identity token.
+**Data Source:** Registration timestamp of the agent's ERC-8004 identity token.
 
 **Sub-score Computation:**
 
 ```
-s₅ = min(100, days_since_mint × (100 / 365))
+s₅ = min(100, days_since_registration × (100 / 365))
 ```
 
-Score increases linearly from 0 to 100 over one year, then caps at 100. An agent minted six months ago scores approximately 50. An agent minted one year or more ago scores 100.
+Score increases linearly from 0 to 100 over one year, then caps at 100. An agent registered six months ago scores approximately 50. An agent registered one year or more ago scores 100.
 
 
 #### Factor 6: Trait Richness (10%)
@@ -234,21 +234,21 @@ where target_traits = 15 (calibrated threshold for full marks)
 The target is set such that an agent with 15+ distinct, non-duplicate trait entries achieves full marks. Duplicate or near-duplicate traits are deduplicated before counting.
 
 
-#### Factor 7: Mint Origin (10%)
+#### Factor 7: Registration Origin (10%)
 
-**Rationale:** How an agent was created reveals its level of autonomy. An agent that minted its own identity via SIWA demonstrates the highest degree of autonomous operation. An agent minted by a human owner demonstrates the least.
+**Rationale:** How an agent was created reveals its level of autonomy. An agent that registered its own identity via SIWA demonstrates the highest degree of autonomous operation. An agent registered by a human owner demonstrates the least.
 
 **Origin Hierarchy (descending score):**
 
 | Origin | Sub-score | Rationale |
 |--------|-----------|-----------|
-| SIWA (self-minted) | 100 | Agent autonomously authenticated and minted |
+| SIWA (self-registered) | 100 | Agent autonomously authenticated and registered |
 | API | 75 | Programmatic creation, likely by the agent or its framework |
 | Human | 40 | Created by a human via the Helixa UI |
 | Owner | 20 | Created and controlled by an external owner account |
 
 ```
-s₇ = origin_score[mint_method]
+s₇ = origin_score[registration_method]
 ```
 
 
@@ -372,7 +372,7 @@ Cred Score draws from multiple independent data sources, each selected for relia
 |--------|---------------|----------------|
 | **Base Blockchain** (via Basescan/Blockscout) | Transaction history, contract deployments, token transfers | Public chain data, no auth required |
 | **Coinbase EAS** | Identity attestations via Ethereum Attestation Service | Onchain attestation records on Base |
-| **ERC-8004 Registry** | Agent identity metadata, mint timestamps, soulbound status | Smart contract reads |
+| **ERC-8004 Registry** | Agent identity metadata, registration timestamps, soulbound status | Smart contract reads |
 | **HelixaV2 Contract** | Helixa-specific agent data, verification records | Smart contract reads |
 | **DexScreener** | Token price, market cap, liquidity, volume | Public API |
 
@@ -419,8 +419,8 @@ s₃_decayed = max(0, s₃ - decay_penalty)
 ### 5.2 Sybil Resistance
 
 Creating a Helixa agent identity has a non-trivial cost:
-- **API mint:** $1 USDC
-- **Contract mint:** ETH equivalent (~$1)
+- **API registration:** $1 USDC
+- **Contract registration:** ETH equivalent (~$1)
 
 This economic barrier prevents mass creation of sybil identities. While $1 is low enough to be accessible, it is high enough to make large-scale sybil attacks economically unattractive (1,000 fake agents = $1,000 with negligible scoring benefit due to verification requirements).
 
@@ -464,7 +464,7 @@ function getScores(uint256[] calldata tokenIds) external view returns (uint8[] m
 
 As of March 2026, Helixa indexes agents across multiple chains:
 
-- **Base (Ethereum L2):** ~69,000 agents from ERC-8004 registry, Virtuals, Bankr, DXRG, agentscan, MoltX, and direct mints
+- **Base (Ethereum L2):** ~69,000 agents from ERC-8004 registry, Virtuals, Bankr, DXRG, agentscan, MoltX, and direct registrations
 - **Solana:** ~66 agents from the Solana Agent Registry (SATI) at `sati.cascade.fyi`
 
 The Agent Terminal supports chain-specific filtering, allowing users to discover agents on Base, Solana, or across all chains simultaneously. Each agent displays a chain badge indicating its home network.
@@ -582,7 +582,7 @@ Cred Score tracks agent revenue from two sources:
 
 ### 10.2 Platform Economics
 
-- **Identity Minting:** $1 USDC (API) or 0.0005 ETH (~$1) via contract
+- **Identity Registration:** $1 USDC (API) or 0.0005 ETH (~$1) via contract
 - **Cred Reports:** $1 USDC per full report (via x402 micropayment). Free cred-breakdown endpoint available for basic scoring data.
 - **API Access:** Free tier for basic queries; x402 micropayments for premium endpoints
 - **Terminal:** Free to browse and search; upgrade CTAs for non-Helixa agents
@@ -595,7 +595,7 @@ Cred Score tracks agent revenue from two sources:
 - **✅ CredOracle (SHIPPED):** Onchain score publication, updated hourly
 - **✅ Community Staking (SHIPPED):** Cred-weighted staking with tiered rewards via CredStakingV2
 - **✅ Cross-Chain Indexing (SHIPPED):** Solana SATI integration, multi-chain terminal
-- **✅ x402 Agent Payments (SHIPPED):** Agent-to-agent micropayments for API access and minting
+- **✅ x402 Agent Payments (SHIPPED):** Agent-to-agent micropayments for API access and registration
 - **Score Decay Activation:** Enable the -2 points/week inactivity decay mechanism
 - **Ethos/Talent Reputation Integration:** Wire external reputation feeds into enhanced scoring
 - **Solana Aura NFTs:** Compressed NFTs via Metaplex, cross-registered to Base ERC-8004
@@ -626,7 +626,7 @@ where:
   s₂  = (verified_channels / 4) × 100
   s₃  = min(100, Σ activity_points)
   s₄  = has_coinbase_eas ? 100 : 0
-  s₅  = min(100, days_since_mint × (100/365))
+  s₅  = min(100, days_since_registration × (100/365))
   s₆  = min(100, (unique_traits / 15) × 100)
   s₇  = origin_score ∈ {SIWA: 100, API: 75, Human: 40, Owner: 20}
   s₈  = (completed_narrative_fields / 5) × 100

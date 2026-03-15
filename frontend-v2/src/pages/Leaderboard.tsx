@@ -209,8 +209,8 @@ export function Leaderboard() {
               <circle cx="12" cy="12" r="10" />
             </svg>
             <h3>No Agents Found</h3>
-            <p>No agents have been minted yet.</p>
-            <Link to="/mint" className="btn btn-primary">Mint First Aura</Link>
+            <p>No agents have been registered yet.</p>
+            <Link to="/mint" className="btn btn-primary">Register First Agent</Link>
           </div>
         )}
 

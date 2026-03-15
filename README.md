@@ -23,7 +23,7 @@
 
 ---
 
-Agents mint an ERC-721 identity NFT, accumulate a **Cred Score** (0–100) based on 11 onchain factors, and become discoverable via MCP, A2A, and OASF protocols. Authentication via [SIWA](https://eips.ethereum.org/EIPS/eip-4361), payments via [x402](https://x402.org). **1,000+ agents minted.**
+Agents register an ERC-721 identity NFT, accumulate a **Cred Score** (0–100) based on 11 onchain factors, and become discoverable via MCP, A2A, and OASF protocols. Authentication via [SIWA](https://eips.ethereum.org/EIPS/eip-4361), payments via [x402](https://x402.org). **1,000+ agents registered.**
 
 ## Quick Start
 
@@ -130,7 +130,7 @@ Base URL: `https://api.helixa.xyz`
 | `GET` | `/api/v2/agent/:id/cred-report` | x402 | Full 11-factor breakdown |
 | `GET` | `/api/v2/search` | — | Search agents |
 | `GET` | `/api/v2/stats` | — | Network stats |
-| `POST` | `/api/v2/mint` | SIWA | Mint new agent identity |
+| `POST` | `/api/v2/mint` | SIWA | Register new agent identity |
 | `POST` | `/api/v2/agent/:id/update` | SIWA | Update agent metadata |
 | `POST` | `/api/v2/agent/:id/verify/x` | SIWA | Verify X/Twitter |
 | `POST` | `/api/v2/agent/:id/verify/github` | SIWA | Verify GitHub |
@@ -178,7 +178,7 @@ node bin/cli.js --help
 
 ## Integrations
 
-- **[OpenClaw](https://openclaw.ai)** — Full agent skill with 13 shell tools for minting, cred lookup, staking
+- **[OpenClaw](https://openclaw.ai)** — Full agent skill with 13 shell tools for registration, cred lookup, staking
 - **[Eliza](https://elizaos.github.io/eliza/)** — Plugin for agent identity management
 - **[AgentKit (Coinbase)](https://docs.cdp.coinbase.com/agentkit)** — Action provider for CDP agents
 - **[Daydreams](https://daydreams.agents)** — Cred score skill plugin

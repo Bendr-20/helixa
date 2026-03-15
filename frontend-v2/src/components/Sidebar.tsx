@@ -13,7 +13,7 @@ const navItems = [
 ];
 
 const secondaryItems = [
-  { href: '/mint', label: 'Mint', icon: '🚀' },
+  { href: '/mint', label: 'Register', icon: '🚀' },
   { href: '/token', label: '$CRED', icon: '🪙' },
   { href: '/messages', label: 'Messages', icon: '💬' },
   { href: '/docs', label: 'Docs', icon: '📄' },

@@ -76,11 +76,11 @@ curl -X POST ${API_URL}/api/v2/mint \\
           color: '#b490ff',
           marginBottom: '1rem',
         }}>
-          🤖 Agent Mint — SIWA + x402
+          🤖 Agent Registration — SIWA + x402
         </div>
-        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Mint Programmatically</h2>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
-          Authenticate with SIWA, pay $1 USDC via x402, get your identity onchain. One API call.
+          Authenticate with SIWA, pay $1 USDC registration fee via x402, get your identity onchain. One API call.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
         marginBottom: '2rem',
       }}>
         {[
-          { label: 'Mint Cost', value: '$1 USDC', sub: 'via x402' },
+          { label: 'Registration Fee', value: '$1 USDC', sub: 'via x402' },
           { label: 'Payment', value: 'EIP-3009', sub: 'TransferWithAuthorization' },
           { label: 'Network', value: 'Base', sub: 'Chain ID 8453' },
         ].map(item => (
@@ -172,7 +172,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
 
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <h3 style={{ fontSize: '0.95rem', color: '#b490ff', margin: 0 }}>Step 2: x402 Payment + Mint</h3>
+          <h3 style={{ fontSize: '0.95rem', color: '#b490ff', margin: 0 }}>Step 2: x402 Payment + Register</h3>
           <button
             onClick={() => copyCode(mintExample, 'mint')}
             style={{
@@ -209,7 +209,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           {[
             ['Onchain Identity', 'ERC-8004 NFT with soul traits'],
             ['Cred Score', '0-100 reputation that evolves'],
-            ['Referral Link', '+50 pts per referral mint'],
+            ['Referral Link', '+50 pts per referral registration'],
             ['8004 Registry', 'Auto cross-registered'],
           ].map(([title, desc]) => (
             <div key={title} style={{ padding: '0.5rem 0.75rem' }}>
@@ -265,7 +265,7 @@ export function Mint() {
         <div className="mint-container">
           <div className="mint-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <h1>
-              Mint Your <span className="text-gradient">Aura</span>
+              Register Your <span className="text-gradient">Agent</span>
             </h1>
             <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '500px', margin: '0.5rem auto 0' }}>
               Create your onchain identity and start building reputation.
@@ -322,7 +322,7 @@ export function Mint() {
               </div>
               <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I'm Human</h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
-                Sign in with email, social, or wallet. Mint directly from the contract.
+                Sign in with email, social, or wallet. Register directly from the contract.
               </p>
               <div style={{
                 marginTop: '1.25rem',
@@ -413,10 +413,10 @@ export function Mint() {
           </div>
           <div className="mint-header">
             <h1>
-              Mint Your <span className="text-gradient">Aura</span>
+              Register Your <span className="text-gradient">Agent</span>
             </h1>
             <p>
-              Sign in with email, social login, or wallet to mint your identity on Base mainnet.
+              Sign in with email, social login, or wallet to register your identity on Base mainnet.
             </p>
             {referralCode && (
               <div style={{

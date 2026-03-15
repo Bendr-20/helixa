@@ -176,11 +176,11 @@ export function Directory() {
               <path d="M21 21l-4.35-4.35" />
             </svg>
             <h3>No Agents Found</h3>
-            <p>{hasFilters ? 'Try adjusting your filters.' : 'No agents minted yet.'}</p>
+            <p>{hasFilters ? 'Try adjusting your filters.' : 'No agents registered yet.'}</p>
             {hasFilters ? (
               <button onClick={clearFilters} className="btn btn-primary">Clear Filters</button>
             ) : (
-              <a href="/mint" className="btn btn-primary">Mint First Aura</a>
+              <a href="/mint" className="btn btn-primary">Register First Agent</a>
             )}
           </div>
         )}

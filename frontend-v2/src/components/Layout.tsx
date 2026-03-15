@@ -13,7 +13,7 @@ const primaryLinks = [
 ];
 
 const moreLinks = [
-  { href: '/mint', label: 'Mint' },
+  { href: '/mint', label: 'Register' },
   { href: '/token', label: '$CRED' },
   { href: '/terminal', label: 'Terminal', external: true },
   { href: '/messages', label: 'Messages' },

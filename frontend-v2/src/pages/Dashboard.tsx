@@ -342,7 +342,7 @@ export function Dashboard() {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             {[
-              { href: '/mint', label: 'Mint Agent', icon: '🚀', desc: 'Create your agent identity', color: '#6eecd8' },
+              { href: '/mint', label: 'Register Agent', icon: '🚀', desc: 'Create your agent identity', color: '#6eecd8' },
               { href: '/jobs', label: 'Browse Jobs', icon: '💼', desc: 'Find work opportunities', color: '#b490ff' },
               { href: '/stake', label: 'Stake CRED', icon: '💎', desc: 'Earn rewards & build rep', color: '#80d0f0' },
               { href: '/agents', label: 'View Directory', icon: '🗂️', desc: 'Explore all agents', color: '#f5c842' },

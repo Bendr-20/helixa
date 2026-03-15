@@ -75,7 +75,7 @@ hr { border: none; border-top: 1px solid #222; margin: 40px 0; }
 <!-- ════════════════════════════════════════ -->
 <h2 id="quick-start">Quick Start</h2>
 
-<p>Mint an agent identity in one request (SIWA auth required, free during Phase 1):</p>
+<p>Register an agent identity in one request (SIWA auth required, free during Phase 1):</p>
 
 <pre><code><span class="comment"># 1. Generate SIWA auth header (agent signs with its wallet)</span>
 ADDR="0xYourAgentAddress"
@@ -83,7 +83,7 @@ TS=$(date +%s)000
 MSG="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet $ADDR at $TS"
 SIG=$(cast wallet sign --private-key $PRIVATE_KEY "$MSG")
 
-<span class="comment"># 2. Mint</span>
+<span class="comment"># 2. Register</span>
 curl -X POST https://api.helixa.xyz/api/v2/mint \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $ADDR:$TS:$SIG" \\
@@ -136,7 +136,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <table>
 <tr><th>Operation</th><th>Price</th><th>Pay To</th></tr>
-<tr><td>Mint</td><td>Free (Phase 1)</td><td>Deployer</td></tr>
+<tr><td>Registration</td><td>Free (Phase 1)</td><td>Deployer</td></tr>
 <tr><td>Update</td><td>Free (Phase 1)</td><td>Deployer</td></tr>
 <tr><td>Cred Report</td><td>$1 USDC</td><td>Treasury</td></tr>
 </table>
@@ -167,7 +167,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <!-- GET /api/v2/stats -->
 <h3><span class="method get">GET</span> <span class="endpoint-path">/api/v2/stats</span> <span class="badge free">free</span></h3>
-<p>Protocol statistics — total agents, mint price, gas balance.</p>
+<p>Protocol statistics — total agents, registration fee, gas balance.</p>
 <pre><code>{
   <span class="key">"totalAgents"</span>: <span class="number">42</span>,
   <span class="key">"mintPrice"</span>: <span class="string">"0.0"</span>,
@@ -381,7 +381,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <!-- POST /api/v2/mint -->
 <h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> <span class="badge free">free (Phase 1)</span></h3>
-<p>Mint a new agent identity. Auto cross-registers on the canonical ERC-8004 Registry.</p>
+<p>Register a new agent identity. Auto cross-registers on the canonical ERC-8004 Registry.</p>
 
 <h4>Request Body</h4>
 <table>
@@ -461,7 +461,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <!-- POST /api/v2/agent/:id/crossreg -->
 <h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/crossreg</span> <span class="badge auth">SIWA</span></h3>
-<p>Cross-register agent on the canonical ERC-8004 Registry (usually auto-done at mint).</p>
+<p>Cross-register agent on the canonical ERC-8004 Registry (usually auto-done at registration).</p>
 <pre><code>{
   <span class="key">"success"</span>: true,
   <span class="key">"crossRegistration"</span>: { <span class="key">"registry"</span>: <span class="string">"0x..."</span>, <span class="key">"agentId"</span>: <span class="number">42</span>, <span class="key">"txHash"</span>: <span class="string">"0x..."</span> }
@@ -578,7 +578,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <tr><td>Trait Richness</td><td>15%</td><td>Number and variety of traits (traits × 12, max 100)</td></tr>
 <tr><td>Verification Status</td><td>15%</td><td>SIWA, X, GitHub, Farcaster verifications (each 25)</td></tr>
 <tr><td>Coinbase Verification</td><td>15%</td><td>Coinbase EAS attestation (0 or 100)</td></tr>
-<tr><td>Account Age</td><td>10%</td><td>Days since mint (days × 5, max 100)</td></tr>
+<tr><td>Account Age</td><td>10%</td><td>Days since registration (days × 5, max 100)</td></tr>
 <tr><td>Narrative Completeness</td><td>10%</td><td>Origin, mission, lore, manifesto (each 25)</td></tr>
 <tr><td>Mint Origin</td><td>10%</td><td>AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50</td></tr>
 <tr><td>Soulbound Status</td><td>5%</td><td>Locked to wallet (0 or 100)</td></tr>

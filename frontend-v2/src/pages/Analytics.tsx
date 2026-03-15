@@ -94,16 +94,16 @@ export function Analytics() {
 
       {/* Row 1: Stat Cards */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap' }}>
-        <StatCard label="Total Minted" value={data.totalMinted.toLocaleString()} />
-        <StatCard label="Unique Minters" value={data.uniqueMinters.toLocaleString()} />
+        <StatCard label="Total Registered" value={data.totalMinted.toLocaleString()} />
+        <StatCard label="Unique Registrants" value={data.uniqueMinters.toLocaleString()} />
         <StatCard label="Staking TVL" value={`${Number(data.stakingTVL).toLocaleString()} CRED`} />
         <StatCard label="Avg Cred Score" value={data.avgCredScore} sub={`/ 100`} />
       </div>
 
-      {/* Row 2: Mints Over Time + Cred Distribution */}
+      {/* Row 2: Registrations Over Time + Cred Distribution */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24, marginBottom: 32 }}>
         <div style={{ background: 'rgba(110,236,216,0.03)', border: '1px solid rgba(110,236,216,0.08)', borderRadius: 12, padding: 24 }}>
-          <h3 style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#b490ff', marginBottom: 20 }}>Mints Over Time</h3>
+          <h3 style={{ fontFamily: 'Orbitron', fontSize: 16, color: '#b490ff', marginBottom: 20 }}>Registrations Over Time</h3>
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={mintsData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -166,7 +166,7 @@ export function Analytics() {
 
       {/* Row 4: Revenue + Meta */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-        <StatCard label="Est. Mint Revenue" value={data.revenue} sub={`${data.totalMinted} mints x 0.0005 ETH`} />
+        <StatCard label="Est. Registration Revenue" value={data.revenue} sub={`${data.totalMinted} registrations x 0.0005 ETH`} />
         <StatCard label="Soulbound Agents" value={data.soulbound.toLocaleString()} />
         <StatCard label="Frameworks" value={data.frameworks.length} />
       </div>
