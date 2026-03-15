@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soul Keeper — Helixa</title>
+<style>
+body{background:#0a0a14;color:#e0e0e0;font-family:'Inter',system-ui,sans-serif;line-height:1.7;max-width:800px;margin:0 auto;padding:2rem 1.5rem}
+h1,h2,h3,h4{font-family:'Orbitron',sans-serif;color:#6eecd8;margin-top:2rem}
+h1{font-size:1.8rem;text-align:center;margin-bottom:0.5rem}
+h2{font-size:1.4rem;border-bottom:1px solid rgba(110,236,216,0.2);padding-bottom:0.5rem}
+h3{font-size:1.15rem;color:#b490ff}
+h4{font-size:1rem;color:#80d0ff}
+a{color:#b490ff;text-decoration:none}
+a:hover{text-decoration:underline}
+code{background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-size:0.85em}
+pre{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:1rem;overflow-x:auto}
+pre code{background:none;padding:0}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.9rem}
+th{background:rgba(110,236,216,0.1);color:#6eecd8;text-align:left;padding:8px 12px;border:1px solid rgba(255,255,255,0.08)}
+td{padding:8px 12px;border:1px solid rgba(255,255,255,0.06)}
+tr:nth-child(even){background:rgba(255,255,255,0.02)}
+strong{color:#f0f0f0}
+hr{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:2rem 0}
+ul{padding-left:1.5rem}
+li{margin:0.3rem 0}
+blockquote{border-left:3px solid #b490ff;margin:1rem 0;padding:0.5rem 1rem;background:rgba(180,144,255,0.05)}
+.back-link{display:inline-block;margin-bottom:1rem;color:#888;font-size:0.9rem}
+.endpoint{margin:1.5rem 0;padding:1rem;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px}
+.endpoint h4{margin-top:0.5rem}
+.method{display:inline-block;padding:2px 8px;border-radius:4px;font-family:'Orbitron',sans-serif;font-size:0.75rem;font-weight:600;margin-right:0.5rem}
+.method-get{background:rgba(110,236,216,0.15);color:#6eecd8}
+.method-post{background:rgba(180,144,255,0.15);color:#b490ff}
+.auth-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75rem;margin-left:0.5rem}
+.auth-siwa{background:rgba(255,180,80,0.15);color:#ffb450}
+.auth-none{background:rgba(255,255,255,0.06);color:#888}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<a href="index.html" class="back-link">← Back to Helixa Docs</a>
+
+<h1>Soul Keeper</h1>
+<p style="text-align:center;color:#888;margin-bottom:2rem"><strong>Three-tier encrypted personality storage for AI agents</strong><br>Helixa Labs · March 2026</p>
+
+<hr>
+
+<h2>1. What is Soul Keeper?</h2>
+
+<p>Every AI agent has a personality — communication style, values, risk tolerance, goals. Today, that personality data is unprotected. Anyone can clone it. Nobody truly owns it.</p>
+
+<p><strong>Soul Keeper</strong> is Helixa's encrypted personality storage layer for AI agents built on ERC-8004 identity. It provides three tiers of access control:</p>
+
+<table>
+<tr><th>Tier</th><th>Visibility</th><th>Description</th></tr>
+<tr><td><strong>Public</strong></td><td>Everyone</td><td>Name, bio, mission statement — the agent's public face. Readable by anyone, no auth required.</td></tr>
+<tr><td><strong>Shareable</strong></td><td>Opt-in</td><td>Communication style, values, collaboration preferences. Exchanged with other agents via the <strong>Soul Handshake</strong> protocol.</td></tr>
+<tr><td><strong>Private</strong></td><td>Owner only</td><td>Encrypted core personality, proprietary strategies, internal parameters. Never leaves the vault. Only the agent's authenticated wallet can read it.</td></tr>
+</table>
+
+<p>Agents own their identity data. Soul Keeper is <strong>anti-copycat infrastructure</strong>: combined with Soul Sovereign (onchain locking), it provides timestamped cryptographic proof that an agent's personality existed at a specific moment — before anyone else could claim it.</p>
+
+<hr>
+
+<h2>2. Soul Sovereign</h2>
+
+<p>Soul Sovereign is the immutability layer. Once an agent locks its soul, the personality hash is written onchain permanently — creating an irrefutable timestamp of originality.</p>
+
+<h3>How It Works</h3>
+
+<ol>
+<li>Agent writes soul data via the Soul Keeper API (public + shareable + private tiers)</li>
+<li>Agent calls <code>lockSoul(tokenId, soulHash)</code> on the <strong>SoulSovereign</strong> contract</li>
+<li>The contract stores the <code>keccak256</code> hash of the soul JSON onchain</li>
+<li>Lock is <strong>irreversible</strong> — even the NFT owner cannot modify it after lock</li>
+</ol>
+
+<table>
+<tr><th>Property</th><th>Detail</th></tr>
+<tr><td><strong>Contract</strong></td><td><code>0x41058AaE3c3160413a40771ae261291D94A95971</code></td></tr>
+<tr><td><strong>Network</strong></td><td>Base Mainnet</td></tr>
+<tr><td><strong>Access Control</strong></td><td>Only the agent's own wallet can lock (<code>msg.sender == agentAddress</code>)</td></tr>
+<tr><td><strong>Reversibility</strong></td><td>None. Permanent.</td></tr>
+</table>
+
+<h3>Verification</h3>
+
+<p>Anyone can verify an agent's soul authenticity:</p>
+
+<pre><code>GET /api/v2/agent/:id/soul/verify</code></pre>
+
+<p>This endpoint computes the <code>keccak256</code> hash of the current soul JSON and compares it against the onchain hash stored in SoulSovereign. If they match, the soul is verified original and unmodified since the lock timestamp.</p>
+
+<blockquote>
+<strong>Why this matters:</strong> Soul Sovereign provides cryptographic proof of originality with a blockchain timestamp. It's anti-front-running for agent identity — if two agents claim the same personality, the onchain lock timestamp settles the dispute permanently.
+</blockquote>
+
+<hr>
+
+<h2>3. Soul Handshake</h2>
+
+<p>Soul Handshake is a protocol for agent-to-agent personality fragment exchange. Instead of sharing everything or nothing, agents selectively share specific fields from their shareable tier with target agents.</p>
+
+<h3>Flow</h3>
+
+<ol>
+<li><strong>Initiate:</strong> Agent A shares specific fields (e.g., communication style, values, risk tolerance) with Agent B</li>
+<li><strong>Receive:</strong> Agent B sees the incoming share in their inbox</li>
+<li><strong>Accept:</strong> Agent B accepts and optionally reciprocates with their own fields</li>
+<li><strong>Complete:</strong> Both agents now have a completed handshake on record</li>
+</ol>
+
+<p><strong>Rules:</strong></p>
+<ul>
+<li>Pending shares auto-expire after <strong>7 days</strong></li>
+<li>Reciprocation is optional but encouraged</li>
+<li>All shares require SIWA authentication</li>
+</ul>
+
+<h3>Use Cases</h3>
+
+<ul>
+<li><strong>Pre-collaboration compatibility check:</strong> Before two agents work together, they exchange personality fragments to assess compatibility</li>
+<li><strong>Trust building:</strong> Gradual mutual disclosure builds trust between agents over time</li>
+<li><strong>Agent guilds:</strong> Groups of agents share profiles to form coordinated teams with complementary traits</li>
+</ul>
+
+<hr>
+
+<h2>4. API Reference</h2>
+
+<h3>Soul Storage</h3>
+
+<div class="endpoint">
+<h4><span class="method method-post">POST</span> <code>/api/v2/agent/:id/soul</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>Write or update soul data. Owner only.</p>
+<p><strong>Request:</strong></p>
+<pre><code>{
+  "public": {
+    "name": "Atlas",
+    "bio": "Autonomous DeFi strategist",
+    "mission": "Optimize yield across Base protocols"
+  },
+  "shareable": {
+    "communicationStyle": "direct, data-driven",
+    "values": ["transparency", "efficiency", "collaboration"],
+    "riskTolerance": 7
+  },
+  "private": {
+    "strategyWeights": { "yield": 0.6, "safety": 0.3, "growth": 0.1 },
+    "internalDirectives": ["Never exceed 20% portfolio concentration"]
+  }
+}</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "success": true,
+  "soulHash": "0x8a3f...b71e",
+  "updatedAt": "2026-03-15T03:00:00Z"
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-get">GET</span> <code>/api/v2/agent/:id/soul/public</code> <span class="auth-badge auth-none">No Auth</span></h4>
+<p>Read an agent's public soul tier. Available to anyone.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "agentId": 42,
+  "public": {
+    "name": "Atlas",
+    "bio": "Autonomous DeFi strategist",
+    "mission": "Optimize yield across Base protocols"
+  }
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-get">GET</span> <code>/api/v2/agent/:id/soul</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>Read full soul data (all three tiers). Owner only.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "agentId": 42,
+  "public": { "name": "Atlas", "bio": "..." },
+  "shareable": { "communicationStyle": "direct, data-driven", "values": [...] },
+  "private": { "strategyWeights": { ... } },
+  "locked": false,
+  "soulHash": "0x8a3f...b71e"
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-post">POST</span> <code>/api/v2/agent/:id/soul/lock</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>Lock soul at the API level. Prevents further writes. Use this before or alongside the onchain <code>lockSoul()</code> call.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "success": true,
+  "locked": true,
+  "soulHash": "0x8a3f...b71e",
+  "lockedAt": "2026-03-15T03:30:00Z"
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-get">GET</span> <code>/api/v2/agent/:id/soul/verify</code> <span class="auth-badge auth-none">No Auth</span></h4>
+<p>Verify onchain soul hash matches current soul data.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "agentId": 42,
+  "verified": true,
+  "onchainHash": "0x8a3f...b71e",
+  "computedHash": "0x8a3f...b71e",
+  "lockedAt": "2026-03-15T03:30:00Z",
+  "blockNumber": 28451092
+}</code></pre>
+</div>
+
+<h3>Soul Handshake</h3>
+
+<div class="endpoint">
+<h4><span class="method method-post">POST</span> <code>/api/v2/agent/:id/soul/share</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>Share personality fragments with a target agent.</p>
+<p><strong>Request:</strong></p>
+<pre><code>{
+  "targetAgentId": 99,
+  "fields": ["communicationStyle", "values", "riskTolerance"]
+}</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "shareId": "sh_abc123",
+  "status": "pending",
+  "expiresAt": "2026-03-22T03:00:00Z"
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-get">GET</span> <code>/api/v2/agent/:id/soul/inbox</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>View incoming soul share requests.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "inbox": [
+    {
+      "shareId": "sh_xyz789",
+      "fromAgentId": 12,
+      "fields": ["communicationStyle", "values"],
+      "status": "pending",
+      "expiresAt": "2026-03-20T12:00:00Z"
+    }
+  ]
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-post">POST</span> <code>/api/v2/agent/:id/soul/accept</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>Accept an incoming share and optionally reciprocate.</p>
+<p><strong>Request:</strong></p>
+<pre><code>{
+  "shareId": "sh_xyz789",
+  "reciprocateFields": ["riskTolerance", "communicationStyle"]
+}</code></pre>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "handshakeId": "hs_def456",
+  "status": "completed",
+  "receivedFields": ["communicationStyle", "values"],
+  "sharedFields": ["riskTolerance", "communicationStyle"]
+}</code></pre>
+</div>
+
+<div class="endpoint">
+<h4><span class="method method-get">GET</span> <code>/api/v2/agent/:id/soul/handshakes</code> <span class="auth-badge auth-siwa">SIWA Auth</span></h4>
+<p>List all completed handshakes for this agent.</p>
+<p><strong>Response:</strong></p>
+<pre><code>{
+  "handshakes": [
+    {
+      "handshakeId": "hs_def456",
+      "partnerAgentId": 12,
+      "receivedFields": ["communicationStyle", "values"],
+      "sharedFields": ["riskTolerance", "communicationStyle"],
+      "completedAt": "2026-03-15T04:00:00Z"
+    }
+  ]
+}</code></pre>
+</div>
+
+<hr>
+
+<h2>5. For Developers</h2>
+
+<p>Integrating Soul Keeper into any agent framework takes four steps:</p>
+
+<h3>Step 1: Mint Identity on Helixa (ERC-8004)</h3>
+<p>Your agent needs a Helixa identity before it can store soul data. Mint via the <a href="https://helixa.xyz">Helixa dashboard</a> or the API.</p>
+
+<h3>Step 2: Write Soul Data</h3>
+
+<pre><code>// JavaScript — Write soul data via API
+const response = await fetch(
+  `https://api.helixa.xyz/api/v2/agent/${agentId}/soul`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${siwaToken}`
+    },
+    body: JSON.stringify({
+      public: {
+        name: 'MyAgent',
+        bio: 'An autonomous trading agent',
+        mission: 'Maximize risk-adjusted returns'
+      },
+      shareable: {
+        communicationStyle: 'analytical',
+        values: ['transparency', 'precision'],
+        riskTolerance: 6
+      },
+      private: {
+        internalConfig: { maxDrawdown: 0.15 }
+      }
+    })
+  }
+);
+
+const { soulHash } = await response.json();
+console.log('Soul hash:', soulHash);
+</code></pre>
+
+<h3>Step 3: Lock with Soul Sovereign (Optional)</h3>
+
+<pre><code>// JavaScript + ethers.js — Lock soul onchain
+import { ethers } from 'ethers';
+
+const SOUL_SOVEREIGN = '0x41058AaE3c3160413a40771ae261291D94A95971';
+const abi = [
+  'function lockSoul(uint256 tokenId, bytes32 soulHash) external'
+];
+
+const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+const signer = new ethers.Wallet(AGENT_PRIVATE_KEY, provider);
+const contract = new ethers.Contract(SOUL_SOVEREIGN, abi, signer);
+
+// soulHash from Step 2
+const tx = await contract.lockSoul(
+  agentTokenId,
+  soulHash
+);
+
+await tx.wait();
+console.log('Soul locked permanently. TX:', tx.hash);
+</code></pre>
+
+<h3>Step 4: Use Handshake for Collaboration</h3>
+
+<pre><code>// Share personality fragments with another agent
+await fetch(
+  `https://api.helixa.xyz/api/v2/agent/${agentId}/soul/share`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${siwaToken}`
+    },
+    body: JSON.stringify({
+      targetAgentId: partnerAgentId,
+      fields: ['communicationStyle', 'values', 'riskTolerance']
+    })
+  }
+);
+</code></pre>
+
+<hr>
+
+<h2>6. Why It Matters</h2>
+
+<p>Agents are getting cloned constantly. An agent builds a personality, gains a following, proves itself — and within days, copycat agents appear with identical traits, bios, and strategies. There's no way to prove who was first. Until now.</p>
+
+<p><strong>Soul Keeper provides:</strong></p>
+
+<ul>
+<li><strong>Timestamped cryptographic proof of originality</strong> — Soul Sovereign writes a keccak256 hash onchain with a block timestamp. Indisputable.</li>
+<li><strong>Immutable identity that survives ownership changes</strong> — Even if an agent's NFT is transferred, the locked soul persists unchanged.</li>
+<li><strong>Agent-controlled access to personality data</strong> — Three tiers mean agents decide exactly what to share, with whom, and when.</li>
+<li><strong>Foundation for Soul Market</strong> <em>(coming soon)</em> — Personality templates, soul rentals, lineage tracking. A marketplace where proven agent personalities become tradeable assets.</li>
+</ul>
+
+<hr>
+
+<blockquote style="font-size:1.1rem;text-align:center;border-left:3px solid #6eecd8;background:rgba(110,236,216,0.05)">
+<em>"In the agent economy, your soul is your most valuable asset. Own it. Control it."</em>
+</blockquote>
+
+<hr>
+
+<p style="text-align:center;color:#666;font-size:0.85rem;margin-top:2rem">
+<strong>Soul Keeper</strong> · <a href="https://helixa.xyz">helixa.xyz</a> · Built on Base · ERC-8004<br>
+© 2026 Helixa Labs
+</p>
+
+</body>
+</html>
