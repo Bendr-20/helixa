@@ -9,6 +9,7 @@ const navItems = [
   { href: '/jobs', label: 'Jobs', icon: '💼' },
   { href: '/stake', label: 'Stake', icon: '💎' },
   { href: '/soul-keeper', label: 'Soul Keeper', icon: '🔗' },
+  { href: '/soul-handshake', label: 'Soul Handshake', icon: '🤝' },
   { href: '/manage', label: 'Manage', icon: '⚙️' },
 ];
 

@@ -21,6 +21,7 @@ const pageImports = {
   analytics: () => import('./pages/Analytics').then(m => ({ default: m.Analytics })),
   jobs: () => import('./pages/Jobs').then(m => ({ default: m.Jobs })),
   soulKeeper: () => import('./pages/SoulKeeper').then(m => ({ default: m.SoulKeeper })),
+  soulHandshake: () => import('./pages/SoulHandshake').then(m => ({ default: m.SoulHandshake })),
 };
 
 const Dashboard = lazy(pageImports.dashboard);
@@ -39,6 +40,7 @@ const StakePage = lazy(pageImports.stake);
 const AnalyticsPage = lazy(pageImports.analytics);
 const JobsPage = lazy(pageImports.jobs);
 const SoulKeeperPage = lazy(pageImports.soulKeeper);
+const SoulHandshakePage = lazy(pageImports.soulHandshake);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -65,6 +67,7 @@ export const preloadMap: Record<string, () => void> = {
   '/stake': pageImports.stake,
   '/jobs': pageImports.jobs,
   '/soul-keeper': pageImports.soulKeeper,
+  '/soul-handshake': pageImports.soulHandshake,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -130,6 +133,7 @@ function AnimatedRoutes() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/jobs" element={<JobsPage />} />
           <Route path="/soul-keeper" element={<SoulKeeperPage />} />
+          <Route path="/soul-handshake" element={<SoulHandshakePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

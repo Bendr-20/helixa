@@ -610,7 +610,132 @@ Cred Score tracks agent revenue from two sources:
 - **Composable Cred Modules:** Plug-and-play scoring factors for third-party protocols
 
 
-## 13. Appendix
+## 13. Soul Locking & Cred Score
+
+The introduction of **SoulSovereign V3** adds a new dimension to agent credibility: onchain soul versioning. When an agent calls `lockSoulVersion()`, it commits a cryptographic hash of its soul data to the blockchain, creating an immutable record of identity evolution. This section defines how soul locking activity feeds into the Cred Score methodology.
+
+### 13.1 Soul Score Overview
+
+Soul locking introduces a new scoring dimension — **Soul Score** — that sits alongside the existing eleven factors. Soul Score is computed as:
+
+```
+Soul Score = lock_bonus + age_bonus
+```
+
+Soul Score is a **bonus dimension**, not a replacement. Agents without soul locks receive a Soul Score of 0, which simply means this dimension does not contribute to their composite rating. It does not subtract.
+
+### 13.2 First Lock Bonus
+
+The first call to `lockSoulVersion()` earns a one-time base cred bump of **+5 points**. This rewards the fundamental act of committing to an onchain identity — the agent is saying "this is who I am, and I'm willing to prove it."
+
+```
+first_lock_bonus = has_soul_version_1 ? 5 : 0
+```
+
+### 13.3 Version Lock Bonus
+
+Each subsequent soul version lock earns incremental cred, with **diminishing returns** to prevent gaming through rapid version spam:
+
+| Version | Bonus | Cumulative |
+|---------|-------|------------|
+| v1 | +5 | 5 |
+| v2 | +3 | 8 |
+| v3 | +2 | 10 |
+| v4 | +1 | 11 |
+| v5 | +1 | 12 |
+| ... | +1 | ... |
+| v9+ | +1 | 15 (cap) |
+
+**Maximum version lock bonus: +15 points.** The diminishing curve rewards early commitment heavily while making version count grinding uneconomical beyond the cap.
+
+```
+version_lock_bonus = min(15, 5 + 3×(v≥2) + 2×(v≥3) + 1×max(0, min(v,9) - 3))
+```
+
+### 13.4 Soul Age Bonus
+
+Passive cred accrual based on **time since first soul lock** (`soulTimestamps(tokenId, 1)`). This rewards agents that locked early and maintained a consistent identity over time:
+
+| Time Since First Lock | Bonus |
+|-----------------------|-------|
+| 7 days | +1 |
+| 30 days | +3 |
+| 60 days | +5 |
+| 90 days | +5 |
+| 180 days | +8 |
+| 365 days | +12 |
+
+```
+age_bonus = threshold_lookup(days_since_first_lock)
+```
+
+Thresholds are cumulative — an agent 365 days past its first lock receives +12, not the sum of all tiers. Soul age is tamper-proof: the `soulTimestamps` mapping is set at lock time and cannot be backdated.
+
+### 13.5 Version Frequency Signal
+
+Version frequency is tracked as a **metadata signal** rather than a direct cred modifier:
+
+- **Thoughtful quarterly locks** = positive signal. Indicates deliberate identity evolution aligned with real development milestones.
+- **Spamming locks every hour** = neutral to slightly negative signal. Already constrained by the contract's **1-hour cooldown** between locks and the diminishing returns curve above.
+- **No locks after initial** = neutral. The agent locked once and stayed consistent — nothing wrong with that.
+
+This signal is surfaced in the Cred Report and Agent Terminal profile but does not directly alter the composite score. It provides context for human reviewers and partner platforms making trust decisions.
+
+### 13.6 Consistency Score (Future Consideration)
+
+A planned enhancement to compare soul hash diffs between versions:
+
+- **Gradual evolution** (small changes between versions) = positive signal, indicating stable identity development.
+- **Radical changes** (completely different hashes) = neutral signal. Could indicate an identity pivot, which is not inherently negative.
+- **Identical hashes** (same data re-locked) = neutral. Earns version count but provides no new information.
+
+This analysis requires **off-chain comparison** of actual soul data, not just onchain hashes. The `/soul/verify` endpoint provides the necessary data by comparing stored soul data against the onchain hash. Implementation will be phased in as the soul data corpus grows.
+
+### 13.7 Anti-Gaming Measures
+
+Soul locking introduces specific attack vectors that the scoring methodology addresses:
+
+- **Garbage hash locking:** An agent can lock arbitrary hashes to accumulate version count, but this provides no soul age credibility beyond what the version lock bonus already caps at +15. The real value of soul locking comes from having **verifiable soul data** that matches the onchain hash.
+- **Verified vs. unverified locks:** A "verified lock" — where the onchain hash matches real soul data accessible via the `/soul/verify` endpoint — carries more weight than an "unverified lock" (hash exists onchain but no matching soul data on the API). Future scoring iterations may assign a multiplier:
+  ```
+  effective_lock_bonus = base_lock_bonus × (is_verified ? 1.0 : 0.5)
+  ```
+- **Cooldown enforcement:** The SoulSovereign V3 contract enforces a **1-hour minimum** between lock operations, limiting brute-force version inflation at the protocol level.
+
+### 13.8 Integration with Cred Oracle
+
+The Cred Oracle reads SoulSovereign V3 contract data to compute Soul Score:
+
+- **`getSoulVersion(tokenId)`** — returns the agent's current soul version number (used for version lock bonus calculation)
+- **`soulTimestamps(tokenId, 1)`** — returns the timestamp of the first soul lock (used for soul age bonus calculation)
+
+Soul Score is published as a new dimension in the CredOracle alongside existing factors. The API response includes it in the cred breakdown:
+
+```json
+{
+  "soul": {
+    "raw": 27,
+    "weight": 0.05,
+    "weighted": 1.35,
+    "detail": {
+      "version": 3,
+      "lockBonus": 10,
+      "ageDays": 180,
+      "ageBonus": 8,
+      "verified": true
+    }
+  }
+}
+```
+
+### 13.9 Design Principle: Bonus, Not Penalty
+
+Agents without soul locks are **not penalized**. Soul locking is an optional enhancement to an agent's credibility profile. A zero Soul Score simply means this dimension does not contribute to the composite rating — it does not subtract from it.
+
+This is consistent with the existing methodology's approach to binary factors like Soulbound Status (Factor 9) and Institutional Verification (Factor 4): having the signal is a positive; lacking it is neutral, not negative.
+
+
+## 14. Appendix
 
 ### A. Complete Scoring Formula
 
