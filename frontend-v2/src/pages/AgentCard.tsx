@@ -71,11 +71,12 @@ export default function AgentCard() {
   return (
     <div className="min-h-screen py-8 px-4 flex items-center justify-center">
       <div className="w-full max-w-2xl">
-        {/* Card */}
-        <div className="relative rounded-3xl border border-purple-500/20 bg-[#0a0812]/80 backdrop-blur-xl shadow-2xl shadow-purple-500/10 overflow-hidden">
-          {/* Gradient accent bar */}
-          <div className="h-1.5 bg-gradient-to-r from-purple-500 via-cyan-400 to-purple-500" />
-
+        {/* Card — opalescent gradient border */}
+        <div className="relative rounded-3xl p-[2px] shadow-2xl shadow-purple-500/20"
+          style={{
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.7) 0%, rgba(6,182,212,0.5) 25%, rgba(236,172,255,0.6) 50%, rgba(6,182,212,0.5) 75%, rgba(168,85,247,0.7) 100%)',
+          }}>
+          <div className="rounded-3xl bg-[#0a0812]/95 backdrop-blur-xl overflow-hidden">
           <div className="p-8 md:p-10">
             {/* Header */}
             <div className="flex items-start justify-between mb-8">
@@ -176,6 +177,7 @@ export default function AgentCard() {
               </Link>
               <span className="text-xs text-gray-600">helixa.xyz</span>
             </div>
+          </div>
           </div>
         </div>
       </div>
