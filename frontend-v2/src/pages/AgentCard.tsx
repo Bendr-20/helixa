@@ -72,11 +72,11 @@ export default function AgentCard() {
     <div className="min-h-screen py-8 px-4 flex items-center justify-center">
       <div className="w-full max-w-2xl">
         {/* Card — opalescent gradient border */}
-        <div className="relative rounded-3xl p-[3px] shadow-2xl shadow-purple-500/30"
+        <div className="relative rounded-3xl p-[4px] shadow-2xl shadow-purple-500/30"
           style={{
-            background: 'linear-gradient(135deg, #a855f7 0%, #22d3ee 20%, #e9a8ff 40%, #67e8f9 60%, #c084fc 80%, #a855f7 100%)',
+            background: 'linear-gradient(135deg, #c084fc 0%, #22d3ee 15%, #f0abfc 30%, #67e8f9 50%, #e9a8ff 65%, #22d3ee 80%, #c084fc 100%)',
           }}>
-          <div className="rounded-[22px] bg-[#0a0812] overflow-hidden">
+          <div className="rounded-[21px] bg-[#110e1a] overflow-hidden">
           <div className="p-8 md:p-10">
             {/* Header */}
             <div className="flex items-start justify-between mb-8">
