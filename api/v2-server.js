@@ -4348,6 +4348,172 @@ app.get('/api/v2/trust-graph', (req, res) => {
     }
 });
 
+// ─── Agent Cards ────────────────────────────────────────────────
+
+// Init agent_socials table
+(() => {
+    try {
+        const sdb = getSoulDb();
+        sdb.exec(`CREATE TABLE IF NOT EXISTS agent_socials (
+            tokenId INTEGER PRIMARY KEY,
+            x TEXT,
+            github TEXT,
+            website TEXT,
+            telegram TEXT,
+            email TEXT,
+            updatedAt INTEGER
+        )`);
+        sdb.close();
+    } catch (e) {
+        console.error('[AGENT CARDS] Failed to init agent_socials table:', e.message);
+    }
+})();
+
+// GET /api/v2/agent/:id/card — Public agent card data
+app.get('/api/v2/agent/:id/card', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+
+        // Soul lock status
+        let soulLocked = false, soulVersion = 0;
+        try {
+            const sdb = getSoulDb();
+            const vault = sdb.prepare('SELECT soulHash, soulSovereign FROM soul_vault WHERE tokenId = ?').get(tokenId);
+            sdb.close();
+            if (vault && vault.soulHash) {
+                soulLocked = true;
+                soulVersion = vault.soulSovereign || 1;
+            }
+        } catch {}
+
+        // Handshake count
+        let handshakeCount = 0;
+        try {
+            const sdb = getSoulDb();
+            const row = sdb.prepare("SELECT COUNT(*) as cnt FROM soul_handshakes WHERE (fromTokenId = ? OR toTokenId = ?) AND status = 'accepted'").get(tokenId, tokenId);
+            sdb.close();
+            handshakeCount = row?.cnt || 0;
+        } catch {}
+
+        // Socials
+        let socials = {};
+        try {
+            const sdb = getSoulDb();
+            const row = sdb.prepare('SELECT x, github, website, telegram, email FROM agent_socials WHERE tokenId = ?').get(tokenId);
+            sdb.close();
+            if (row) {
+                socials = {};
+                if (row.x) socials.x = row.x;
+                if (row.github) socials.github = row.github;
+                if (row.website) socials.website = row.website;
+                if (row.telegram) socials.telegram = row.telegram;
+                if (row.email) socials.email = row.email;
+            }
+        } catch {}
+
+        // Capabilities from traits
+        const capabilities = (agent.traits || [])
+            .map(t => typeof t === 'string' ? t : t.name)
+            .filter(n => !n.startsWith('linked-token') && !n.startsWith('social-'))
+            .slice(0, 10);
+
+        res.json({
+            tokenId: agent.tokenId,
+            name: agent.name,
+            framework: agent.framework,
+            credScore: agent.credScore,
+            soulLocked,
+            soulVersion,
+            handshakeCount,
+            socials,
+            capabilities,
+            registeredAt: agent.registeredAt,
+            cardUrl: `https://helixa.xyz/card/${agent.tokenId}`,
+        });
+    } catch (e) {
+        res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
+// PUT /api/v2/agent/:id/card/socials — Update social links (authenticated)
+app.put('/api/v2/agent/:id/card/socials', requireSIWA, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const caller = req.agent.address;
+        if (caller.toLowerCase() !== agent.owner.toLowerCase()) {
+            return res.status(403).json({ error: 'Not the owner of this agent' });
+        }
+
+        const { x, github, website, telegram, email } = req.body;
+        const sdb = getSoulDb();
+        sdb.prepare(`INSERT OR REPLACE INTO agent_socials (tokenId, x, github, website, telegram, email, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`).run(tokenId, x || null, github || null, website || null, telegram || null, email || null, Date.now());
+        sdb.close();
+
+        res.json({ success: true, socials: { x, github, website, telegram, email } });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/v2/agent/:id/card/image — SVG card image
+app.get('/api/v2/agent/:id/card/image', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+
+        let soulLocked = false, handshakeCount = 0;
+        try {
+            const sdb = getSoulDb();
+            const vault = sdb.prepare('SELECT soulHash FROM soul_vault WHERE tokenId = ?').get(tokenId);
+            const hc = sdb.prepare("SELECT COUNT(*) as cnt FROM soul_handshakes WHERE (fromTokenId = ? OR toTokenId = ?) AND status = 'accepted'").get(tokenId, tokenId);
+            sdb.close();
+            soulLocked = !!(vault && vault.soulHash);
+            handshakeCount = hc?.cnt || 0;
+        } catch {}
+
+        const tier = agent.credScore >= 91 ? 'Legendary' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Unrated';
+        const tierColor = agent.credScore >= 91 ? '#f59e0b' : agent.credScore >= 76 ? '#a855f7' : agent.credScore >= 51 ? '#06b6d4' : agent.credScore >= 26 ? '#6b7280' : '#374151';
+        const soulStatus = soulLocked ? '🔒 Soul Locked' : '🔓 Unlocked';
+        const escapedName = (agent.name || `Agent #${tokenId}`).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0812"/>
+      <stop offset="100%" style="stop-color:#1a0a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#a855f7"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="40" y="40" width="1120" height="550" rx="24" fill="rgba(255,255,255,0.03)" stroke="url(#accent)" stroke-width="2"/>
+  <text x="100" y="140" font-family="system-ui,sans-serif" font-size="56" font-weight="bold" fill="white">${escapedName}</text>
+  <text x="100" y="190" font-family="system-ui,sans-serif" font-size="24" fill="#a78bfa">${agent.framework || 'unknown'} · #${tokenId}</text>
+  <rect x="100" y="230" width="200" height="80" rx="16" fill="rgba(168,85,247,0.15)" stroke="${tierColor}" stroke-width="2"/>
+  <text x="200" y="265" font-family="system-ui,sans-serif" font-size="16" fill="${tierColor}" text-anchor="middle">CRED SCORE</text>
+  <text x="200" y="298" font-family="system-ui,sans-serif" font-size="36" font-weight="bold" fill="${tierColor}" text-anchor="middle">${agent.credScore}</text>
+  <rect x="340" y="230" width="200" height="80" rx="16" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="2"/>
+  <text x="440" y="265" font-family="system-ui,sans-serif" font-size="16" fill="#06b6d4" text-anchor="middle">HANDSHAKES</text>
+  <text x="440" y="298" font-family="system-ui,sans-serif" font-size="36" font-weight="bold" fill="#06b6d4" text-anchor="middle">${handshakeCount}</text>
+  <text x="100" y="370" font-family="system-ui,sans-serif" font-size="22" fill="#94a3b8">${soulStatus}</text>
+  <text x="100" y="410" font-family="system-ui,sans-serif" font-size="18" fill="#64748b">${tier} Tier</text>
+  <text x="100" y="540" font-family="system-ui,sans-serif" font-size="20" fill="#475569">helixa.xyz/card/${tokenId}</text>
+  <text x="1060" y="540" font-family="system-ui,sans-serif" font-size="28" font-weight="bold" fill="url(#accent)" text-anchor="end">HELIXA</text>
+</svg>`;
+
+        res.set('Content-Type', 'image/svg+xml');
+        res.set('Cache-Control', 'public, max-age=300');
+        res.send(svg);
+    } catch (e) {
+        res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list or GET /docs for documentation' });

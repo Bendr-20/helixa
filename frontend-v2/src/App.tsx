@@ -24,6 +24,7 @@ const pageImports = {
   soulHandshake: () => import('./pages/SoulHandshake').then(m => ({ default: m.SoulHandshake })),
   soul: () => import('./pages/Soul').then(m => ({ default: m.Soul })),
   trustGraph: () => import('./pages/TrustGraph'),
+  agentCard: () => import('./pages/AgentCard'),
 };
 
 const Dashboard = lazy(pageImports.dashboard);
@@ -45,6 +46,7 @@ const SoulKeeperPage = lazy(pageImports.soulKeeper);
 const SoulHandshakePage = lazy(pageImports.soulHandshake);
 const SoulPage = lazy(pageImports.soul);
 const TrustGraph = lazy(pageImports.trustGraph);
+const AgentCard = lazy(pageImports.agentCard);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -142,6 +144,7 @@ function AnimatedRoutes() {
           <Route path="/soul-keeper" element={<SoulKeeperPage />} />
           <Route path="/soul-handshake" element={<SoulHandshakePage />} />
           <Route path="/trust-graph" element={<TrustGraph />} />
+          <Route path="/card/:id" element={<AgentCard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

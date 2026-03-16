@@ -248,6 +248,9 @@ export function AgentProfile() {
                 >
                   View on BaseScan →
                 </a>
+                <Link to={`/card/${agent.tokenId}`} className="btn btn-ghost text-xs mt-1 w-full text-purple-400">
+                  🃏 View Agent Card →
+                </Link>
               </div>
             </div>
 
