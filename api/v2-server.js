@@ -59,6 +59,35 @@ function getSoulSovereignContract(signerOrProvider) {
     return new ethers.Contract(SOUL_SOVEREIGN_ADDRESS, SOUL_SOVEREIGN_ABI, signerOrProvider);
 }
 
+// ─── HandshakeRegistry Contract ─────────────────────────────────
+const HANDSHAKE_REGISTRY_ADDRESS = process.env.HANDSHAKE_REGISTRY || '0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd';
+const HANDSHAKE_REGISTRY_ABI = [
+    'function recordHandshake(uint256 fromTokenId, uint256 toTokenId) external',
+    'function isConnected(uint256 a, uint256 b) external view returns (bool)',
+    'function handshakeCount(uint256 tokenId) external view returns (uint256)',
+    'function totalHandshakes() external view returns (uint256)',
+    'event HandshakeCompleted(uint256 indexed fromTokenId, uint256 indexed toTokenId, uint256 timestamp)',
+];
+
+async function recordHandshakeOnchain(fromTokenId, toTokenId) {
+    try {
+        let deployerKey = process.env.DEPLOYER_KEY;
+        if (!deployerKey) {
+            const { SecretsManagerClient, GetSecretValueCommand } = require(path.join(__dirname, 'node_modules', '@aws-sdk', 'client-secrets-manager'));
+            const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-2' });
+            const resp = await client.send(new GetSecretValueCommand({ SecretId: 'helixa/deployer-key' }));
+            deployerKey = JSON.parse(resp.SecretString).DEPLOYER_PRIVATE_KEY;
+        }
+        const provider = new ethers.JsonRpcProvider('https://mainnet.base.org', 8453, { staticNetwork: true });
+        const w = new ethers.Wallet(deployerKey, provider);
+        const registry = new ethers.Contract(HANDSHAKE_REGISTRY_ADDRESS, HANDSHAKE_REGISTRY_ABI, w);
+        const tx = await registry.recordHandshake(fromTokenId, toTokenId);
+        console.log(`[HANDSHAKE REGISTRY] tx sent: ${tx.hash} (from=#${fromTokenId} to=#${toTokenId})`);
+    } catch (err) {
+        console.error(`[HANDSHAKE REGISTRY] onchain write failed:`, err.message);
+    }
+}
+
 // ─── Express App ────────────────────────────────────────────────
 const PORT = process.env.V2_API_PORT || 3457;
 const app = express();
@@ -3490,6 +3519,10 @@ app.post('/api/v2/agent/:id/soul/accept', requireSIWA, async (req, res) => {
         sdb.close();
 
         console.log(`[SOUL HANDSHAKE] Agent #${tokenId} accepted handshake #${handshakeId} from #${hs.fromTokenId}${reciprocated ? ' (reciprocated)' : ''}`);
+
+        // Fire-and-forget onchain receipt
+        recordHandshakeOnchain(hs.fromTokenId, tokenId).catch(() => {});
+
         res.json({ success: true, soulFragment, reciprocated });
     } catch (e) {
         console.error(`[SOUL HANDSHAKE] accept error:`, e.message);
