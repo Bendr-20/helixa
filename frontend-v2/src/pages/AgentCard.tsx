@@ -81,7 +81,7 @@ export default function AgentCard() {
             boxShadow: '0 0 30px rgba(168,85,247,0.25), 0 0 60px rgba(6,182,212,0.1)',
           }}>
           <div className="rounded-3xl overflow-hidden">
-          <div className="p-8 md:p-10">
+          <div className="p-10 md:p-12">
             {/* Header */}
             <div className="flex items-start justify-between mb-8">
               <div>
