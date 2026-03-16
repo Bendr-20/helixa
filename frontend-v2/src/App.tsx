@@ -23,6 +23,7 @@ const pageImports = {
   soulKeeper: () => import('./pages/SoulKeeper').then(m => ({ default: m.SoulKeeper })),
   soulHandshake: () => import('./pages/SoulHandshake').then(m => ({ default: m.SoulHandshake })),
   soul: () => import('./pages/Soul').then(m => ({ default: m.Soul })),
+  trustGraph: () => import('./pages/TrustGraph'),
 };
 
 const Dashboard = lazy(pageImports.dashboard);
@@ -43,6 +44,7 @@ const JobsPage = lazy(pageImports.jobs);
 const SoulKeeperPage = lazy(pageImports.soulKeeper);
 const SoulHandshakePage = lazy(pageImports.soulHandshake);
 const SoulPage = lazy(pageImports.soul);
+const TrustGraph = lazy(pageImports.trustGraph);
 
 // Preload all pages after initial render
 function usePreloadPages() {
@@ -71,6 +73,7 @@ export const preloadMap: Record<string, () => void> = {
   '/soul-keeper': pageImports.soulKeeper,
   '/soul-handshake': pageImports.soulHandshake,
   '/soul': pageImports.soul,
+  '/trust-graph': pageImports.trustGraph,
 };
 
 function PageTransition({ children }: { children: React.ReactNode }) {
@@ -138,6 +141,7 @@ function AnimatedRoutes() {
           <Route path="/soul" element={<SoulPage />} />
           <Route path="/soul-keeper" element={<SoulKeeperPage />} />
           <Route path="/soul-handshake" element={<SoulHandshakePage />} />
+          <Route path="/trust-graph" element={<TrustGraph />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

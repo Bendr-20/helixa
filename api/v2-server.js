@@ -4303,6 +4303,51 @@ app.get('/docs', (req, res) => {
     res.send(getDocsHTML());
 });
 
+// ─── Trust Graph ────────────────────────────────────────────────
+app.get('/api/v2/trust-graph', (req, res) => {
+    try {
+        const sdb = getSoulDb();
+        const rows = sdb.prepare("SELECT fromTokenId, toTokenId, reciprocated, createdAt FROM soul_handshakes WHERE status = 'accepted'").all();
+        sdb.close();
+
+        // Build deduplicated edges
+        const edgeMap = new Map();
+        for (const r of rows) {
+            const key = [Math.min(r.fromTokenId, r.toTokenId), Math.max(r.fromTokenId, r.toTokenId)].join('-');
+            const existing = edgeMap.get(key);
+            if (existing) {
+                existing.reciprocated = true;
+            } else {
+                edgeMap.set(key, {
+                    from: r.fromTokenId,
+                    to: r.toTokenId,
+                    reciprocated: !!r.reciprocated,
+                    createdAt: r.createdAt
+                });
+            }
+        }
+        const edges = [...edgeMap.values()];
+
+        // Collect unique node IDs
+        const nodeIds = new Set();
+        for (const e of edges) { nodeIds.add(e.from); nodeIds.add(e.to); }
+
+        // Get names from indexer
+        const allAgents = indexer.getAllAgents();
+        const nameMap = new Map(allAgents.map(a => [a.tokenId, a.name]));
+
+        const nodes = [...nodeIds].map(id => ({
+            id,
+            name: nameMap.get(id) || `Agent #${id}`
+        }));
+
+        res.json({ nodes, edges });
+    } catch (e) {
+        console.error('[TRUST GRAPH]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Not found', hint: 'Try GET /api/v2 for endpoint list or GET /docs for documentation' });

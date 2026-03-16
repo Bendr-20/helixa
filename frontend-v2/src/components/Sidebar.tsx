@@ -10,6 +10,7 @@ const navItems = [
   { href: '/stake', label: 'Stake', icon: '💎' },
   { href: '/soul-keeper', label: 'Soul Keeper', icon: '🔗' },
   { href: '/soul-handshake', label: 'Soul Handshake', icon: '🤝' },
+  { href: '/trust-graph', label: 'Trust Graph', icon: '🌐' },
   { href: '/manage', label: 'Manage', icon: '⚙️' },
 ];
 
