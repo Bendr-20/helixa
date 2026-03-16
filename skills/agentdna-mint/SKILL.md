@@ -3,7 +3,7 @@ name: agentdna-mint
 description: Mint a Helixa identity NFT onchain via the Helixa V2 platform (Base network). Use when an AI agent wants to register itself onchain, get a portable identity, claim a Helixa identity NFT, or set up its onchain reputation. Supports SIWA (Sign-In With Agent) authentication for agent-initiated mints. Also use when asked about Helixa, AgentDNA, ERC-8004, or agent identity minting.
 ---
 
-# Helixa · AgentDNA Mint (V2)
+# Helixa Mint (V2)
 
 Mint your onchain identity on Base via the Helixa platform. Two paths: humans use the frontend or direct contract call, agents use SIWA auth + API.
 
