@@ -32,7 +32,7 @@ export default function TrustGraph() {
   const dragRef = useRef<{ dragging: boolean; lastX: number; lastY: number }>({ dragging: false, lastX: 0, lastY: 0 });
 
   useEffect(() => {
-    fetch(`${API_URL}/trust-graph`)
+    fetch(`${API_URL}/api/v2/trust-graph`)
       .then(r => r.json())
       .then(data => {
         if (!data.nodes?.length) { setEmpty(true); setLoading(false); return; }
