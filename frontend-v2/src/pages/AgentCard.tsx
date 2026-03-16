@@ -175,7 +175,7 @@ export default function AgentCard() {
             </div>
 
             {/* Footer */}
-            <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
+            <div className="mt-6 pt-4 pb-2 border-t border-white/5 flex items-center justify-between">
               <Link to={`/agent/${card.tokenId}`} className="text-sm text-gray-500 hover:text-purple-400 flex items-center gap-1">
                 <ExternalLink className="w-3 h-3" /> Full Profile
               </Link>
