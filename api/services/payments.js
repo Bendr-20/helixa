@@ -151,6 +151,8 @@ const PRICING = {
     update: 1,
     verify: 0,
     credReport: 1,
+    soulLock: 1,
+    soulHandshake: 1,
 };
 
 module.exports = {

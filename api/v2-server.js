@@ -100,6 +100,18 @@ if (PRICING.credReport > 0) {
         description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
     };
 }
+if (PRICING.soulLock > 0) {
+    x402Routes['POST /api/v2/agent/:id/soul/lock'] = {
+        accepts: [{ scheme: 'exact', price: `$${PRICING.soulLock}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
+        description: 'Lock your agent soul onchain (Chain of Identity)', mimeType: 'application/json',
+    };
+}
+if (PRICING.soulHandshake > 0) {
+    x402Routes['POST /api/v2/agent/:id/soul/share'] = {
+        accepts: [{ scheme: 'exact', price: `$${PRICING.soulHandshake}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
+        description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
+    };
+}
 // ─── USDC TX Hash Payment Verification ─────────────────────────
 // USDC_ADDRESS imported from contract.js
 const USDC_DECIMALS = 6;
@@ -1836,6 +1848,8 @@ app.get('/.well-known/agent-registry', (req, res) => {
         pricing: {
             mint: PRICING.agentMint === 0 ? 'free' : `${PRICING.agentMint} USDC`,
             update: PRICING.update === 0 ? 'free' : `${PRICING.update} USDC`,
+            soulLock: PRICING.soulLock === 0 ? 'free' : `${PRICING.soulLock} USDC`,
+            soulHandshake: PRICING.soulHandshake === 0 ? 'free' : `${PRICING.soulHandshake} USDC`,
             protocol: 'x402',
         },
         auth: {
