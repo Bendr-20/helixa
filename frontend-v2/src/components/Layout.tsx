@@ -10,6 +10,7 @@ const primaryLinks = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/stake', label: 'Stake' },
   { href: '/manage', label: 'Manage' },
+  { href: '/soul', label: 'Soul' },
 ];
 
 const moreLinks = [
