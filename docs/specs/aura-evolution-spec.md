@@ -5,7 +5,7 @@
 **Authors:** Helixa Team
 **Contracts:**
 - HelixaV2: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`
-- SoulSovereign V3: `0xb780EeF4254b96F979Fba66B2576be3561bf7a64`
+- SoulSovereign V3: `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD`
 - Metadata API: `api.helixa.xyz`
 
 ---

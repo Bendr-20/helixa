@@ -14,7 +14,7 @@ Soul Vault is an encrypted, agent-owned storage layer for personality data (SOUL
 
 ## Chain of Identity (SoulSovereignV3)
 
-**Contract:** `0xb780EeF4254b96F979Fba66B2576be3561bf7a64` (Base Mainnet)
+**Contract:** `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD` (Base Mainnet)
 
 SoulSovereignV3 introduces **versioned soul locking** — each lock appends a new immutable version to the token's identity chain rather than overwriting.
 

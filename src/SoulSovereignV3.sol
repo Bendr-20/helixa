@@ -6,13 +6,14 @@ interface IHelixaV2 {
         address agentAddress;
         string name;
         string framework;
+        uint64 mintedAt;
         bool verified;
         bool soulbound;
-        uint8 origin;
-        uint256 mintedAt;
-        uint256 generation;
-        uint256 currentVersion;
-        uint256 mutationCount;
+        uint8 origin;          // MintOrigin enum
+        uint16 generation;
+        uint256 parentId;
+        uint16 mutationCount;
+        string currentVersion;
     }
     function getAgent(uint256 tokenId) external view returns (Agent memory);
     function ownerOf(uint256 tokenId) external view returns (address);
@@ -37,6 +38,9 @@ contract SoulSovereignV3 {
 
     /// @notice Sovereign wallet per token (set on first lock)
     mapping(uint256 => address) public sovereignWallet;
+
+    /// @notice Minimum time between locks (1 hour)
+    uint256 public constant LOCK_COOLDOWN = 1 hours;
 
     event SoulVersionLocked(
         uint256 indexed tokenId,
@@ -66,7 +70,16 @@ contract SoulSovereignV3 {
             "Not authorized"
         );
 
-        uint256 newVersion = soulVersion[tokenId] + 1;
+        // Enforce cooldown between locks (skip for first lock)
+        uint256 currentVersion = soulVersion[tokenId];
+        if (currentVersion > 0) {
+            require(
+                block.timestamp >= soulTimestamps[tokenId][currentVersion] + LOCK_COOLDOWN,
+                "Cooldown active"
+            );
+        }
+
+        uint256 newVersion = currentVersion + 1;
         soulVersion[tokenId] = newVersion;
         soulHashes[tokenId][newVersion] = _soulHash;
         soulTimestamps[tokenId][newVersion] = block.timestamp;

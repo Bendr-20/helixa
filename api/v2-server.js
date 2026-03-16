@@ -39,7 +39,7 @@ const {
 } = require('./services/referrals');
 
 // ─── SoulSovereign Contract ─────────────────────────────────────
-const SOUL_SOVEREIGN_ADDRESS = process.env.SOUL_SOVEREIGN_V3 || '0xb780EeF4254b96F979Fba66B2576be3561bf7a64';
+const SOUL_SOVEREIGN_ADDRESS = process.env.SOUL_SOVEREIGN_V3 || '0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD';
 const SOUL_SOVEREIGN_ABI = [
     // V3 versioned functions
     'function lockSoulVersion(uint256 tokenId, bytes32 _soulHash) external',

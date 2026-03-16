@@ -6,13 +6,14 @@ interface IHelixaV2 {
         address agentAddress;
         string name;
         string framework;
+        uint64 mintedAt;
         bool verified;
         bool soulbound;
-        uint8 origin;
-        uint256 mintedAt;
-        uint256 generation;
-        uint256 currentVersion;
-        uint256 mutationCount;
+        uint8 origin;          // MintOrigin enum
+        uint16 generation;
+        uint256 parentId;
+        uint16 mutationCount;
+        string currentVersion;
     }
     function getAgent(uint256 tokenId) external view returns (Agent memory);
     function ownerOf(uint256 tokenId) external view returns (address);
