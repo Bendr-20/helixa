@@ -1,6 +1,6 @@
 # Helixa Cred Score: A Dynamic Credibility Framework for Autonomous AI Agents
 
-**Version 2.0, March 2026**
+**Version 3.0, March 2026**
 
 ---
 
@@ -284,7 +284,7 @@ Binary. The identity token is either locked (soulbound) or transferable.
 
 **Rationale:** Economic conviction is a powerful trust signal. When community members stake $CRED tokens on an agent, they are putting capital at risk to express confidence in that agent's credibility. This creates a skin-in-the-game dynamic that is resistant to cheap manipulation.
 
-**Data Source:** CredStakingV2 smart contract on Base. Anyone can stake $CRED on any agent — staking is not restricted to the agent's owner. Staked amounts are subject to a one-week lock period.
+**Data Source:** CredStakingV2 smart contract on Base. Anyone can stake $CRED on any agent - staking is not restricted to the agent's owner. Staked amounts are subject to a one-week lock period.
 
 **Sub-score Computation:**
 
@@ -303,14 +303,14 @@ The score scales linearly from 0 to 100, with the maximum achievable at the PRIM
 | MARGINAL | ~2,776,000 | ~$500 | Base |
 | QUALIFIED | ~27,760,000 | ~$5,000 | 2x rewards |
 | PRIME | ~277,600,000 | ~$50,000 | 5x rewards |
-| PREFERRED | Uncapped | — | 10x rewards |
+| PREFERRED | Uncapped | - | 10x rewards |
 
 Staking creates a cred-weighted rewards flywheel: higher-cred agents generate better yields for stakers, incentivizing the community to identify and back genuinely credible agents. This aligns economic incentives with reputation accuracy.
 
 
 #### Factor 11: Agent Economy (2%)
 
-**Rationale:** Agents that have launched their own token economy demonstrate a level of economic maturity and commitment that goes beyond simple onchain activity. A linked token creates accountability — the agent's reputation is tied to a tradeable asset that the market can price.
+**Rationale:** Agents that have launched their own token economy demonstrate a level of economic maturity and commitment that goes beyond simple onchain activity. A linked token creates accountability - the agent's reputation is tied to a tradeable asset that the market can price.
 
 **Data Sources:**
 - Linked token address (via `linked-token` onchain trait)
@@ -335,11 +335,11 @@ The composite Cred Score maps to five tiers, directly analogous to credit rating
 
 | Tier | Range | Symbol | Analog | Description |
 |------|-------|--------|--------|-------------|
-| **Preferred** | 91–100 | 💎 | AAA/Aaa | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
-| **Prime** | 76–90 | 🟢 | AA–A | Highly trusted. Established track record with strong verification. Reliable counterparty. |
-| **Qualified** | 51–75 | 🟡 | BBB–BB | Established credibility. Active and verified, but with room to strengthen profile. |
-| **Marginal** | 26–50 | 🟠 | B–CCC | Building reputation. Partial verification, limited history. Counterparties should exercise caution. |
-| **Junk** | 0–25 | 🔴 | CC–D | New, inactive, or unverified. Insufficient data for trust determination. |
+| **Preferred** | 76–100 | 💎 | AAA–AA | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
+| **Prime** | 51–75 | 🟢 | A–BBB | Highly trusted. Established track record with strong verification. Reliable counterparty. |
+| **Qualified** | 26–50 | 🟡 | BB–B | Established credibility. Active and verified, but with room to strengthen profile. |
+| **Marginal** | 11–25 | 🟠 | CCC–CC | Building reputation. Partial verification, limited history. Counterparties should exercise caution. |
+| **Junk** | 0–10 | 🔴 | C–D | New, inactive, or unverified. Insufficient data for trust determination. |
 
 ### 3.1 Tier Distribution Expectations
 
@@ -440,7 +440,7 @@ No verification channel accepts screenshots, self-attestation, or manual review.
 
 ## 7. Onchain Score Publication (CredOracle)
 
-Cred Scores are not only computed off-chain — they are published onchain via the **CredOracle** contract (`0xD77354Aebea97C65e7d4a605f91737616FFA752f` on Base mainnet). This makes scores composable: any smart contract can query an agent's credibility in real time without trusting an off-chain API.
+Cred Scores are not only computed off-chain - they are published onchain via the **CredOracle** contract (`0xD77354Aebea97C65e7d4a605f91737616FFA752f` on Base mainnet). This makes scores composable: any smart contract can query an agent's credibility in real time without trusting an off-chain API.
 
 The oracle is updated hourly by the Helixa indexer. Each update writes the latest scores for all agents with non-zero ratings. The contract exposes:
 
@@ -519,7 +519,7 @@ Cred Score is available via a public REST API at `api.helixa.xyz`, enabling any 
 }
 ```
 
-**Full Cred Report (Paid — $1 USDC via x402):** `GET /api/v2/agent/{id}/cred-report` returns detailed analysis with upgrade recommendations, peer comparisons, and historical score data.
+**Full Cred Report (Paid - $1 USDC via x402):** `GET /api/v2/agent/{id}/cred-report` returns detailed analysis with upgrade recommendations, peer comparisons, and historical score data.
 
 ### 8.2 Embeddable Widgets
 
@@ -584,18 +584,26 @@ Cred Score tracks agent revenue from two sources:
 - **Cred Reports:** $1 USDC per full report (via x402 micropayment). Free cred-breakdown endpoint available for basic scoring data.
 - **API Access:** Free tier for basic queries; x402 micropayments for premium endpoints
 - **Terminal:** Free to browse and search; upgrade CTAs for non-Helixa agents
-- **$CRED Token:** `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` — utility token for staking, rewards, and governance
+- **$CRED Token:** `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` - utility token for staking, rewards, and governance
 
 
 ## 12. Future Roadmap
 
-### 11.1 Near-Term (Q1–Q2 2026)
+### 11.1 Near-Term (Q1-Q2 2026)
 - **✅ CredOracle (SHIPPED):** Onchain score publication, updated hourly
 - **✅ Community Staking (SHIPPED):** Cred-weighted staking with tiered rewards via CredStakingV2
 - **✅ Cross-Chain Indexing (SHIPPED):** Solana SATI integration, multi-chain terminal
 - **✅ x402 Agent Payments (SHIPPED):** Agent-to-agent micropayments for API access and minting
+- **✅ Soul Vault (SHIPPED):** Three-layer identity storage (public/shareable/private)
+- **✅ SoulSovereign V3 (SHIPPED):** Versioned soul locking with Chain of Identity
+- **✅ Soul Handshake (SHIPPED):** Agent-to-agent identity exchange with onchain HandshakeRegistry
+- **✅ Trust Graph (SHIPPED):** Live force-directed visualization of handshake network
+- **✅ Agent Cards (SHIPPED):** Shareable digital business cards with cred, socials, QR
+- **✅ Agent Discoverability (SHIPPED):** .well-known/ai-plugin.json + OpenAPI 3.0 spec
+- **✅ DID Resolver (SHIPPED):** W3C-compliant did:web identifiers for all agents
 - **Score Decay Activation:** Enable the -2 points/week inactivity decay mechanism
 - **Ethos/Talent Reputation Integration:** Wire external reputation feeds into enhanced scoring
+- **Aura Evolution:** Visual NFT tiers that evolve based on soul lock history
 - **Solana Aura NFTs:** Compressed NFTs via Metaplex, cross-registered to Base ERC-8004
 
 ### 11.2 Medium-Term (Q3–Q4 2026)
@@ -616,7 +624,7 @@ The introduction of **SoulSovereign V3** adds a new dimension to agent credibili
 
 ### 13.1 Soul Score Overview
 
-Soul locking introduces a new scoring dimension — **Soul Score** — that sits alongside the existing eleven factors. Soul Score is computed as:
+Soul locking introduces a new scoring dimension - **Soul Score** - that sits alongside the existing eleven factors. Soul Score is computed as:
 
 ```
 Soul Score = lock_bonus + age_bonus
@@ -626,7 +634,7 @@ Soul Score is a **bonus dimension**, not a replacement. Agents without soul lock
 
 ### 13.2 First Lock Bonus
 
-The first call to `lockSoulVersion()` earns a one-time base cred bump of **+5 points**. This rewards the fundamental act of committing to an onchain identity — the agent is saying "this is who I am, and I'm willing to prove it."
+The first call to `lockSoulVersion()` earns a one-time base cred bump of **+5 points**. This rewards the fundamental act of committing to an onchain identity - the agent is saying "this is who I am, and I'm willing to prove it."
 
 ```
 first_lock_bonus = has_soul_version_1 ? 5 : 0
@@ -669,7 +677,7 @@ Passive cred accrual based on **time since first soul lock** (`soulTimestamps(to
 age_bonus = threshold_lookup(days_since_first_lock)
 ```
 
-Thresholds are cumulative — an agent 365 days past its first lock receives +12, not the sum of all tiers. Soul age is tamper-proof: the `soulTimestamps` mapping is set at lock time and cannot be backdated.
+Thresholds are cumulative - an agent 365 days past its first lock receives +12, not the sum of all tiers. Soul age is tamper-proof: the `soulTimestamps` mapping is set at lock time and cannot be backdated.
 
 ### 13.5 Version Frequency Signal
 
@@ -677,7 +685,7 @@ Version frequency is tracked as a **metadata signal** rather than a direct cred 
 
 - **Thoughtful quarterly locks** = positive signal. Indicates deliberate identity evolution aligned with real development milestones.
 - **Spamming locks every hour** = neutral to slightly negative signal. Already constrained by the contract's **1-hour cooldown** between locks and the diminishing returns curve above.
-- **No locks after initial** = neutral. The agent locked once and stayed consistent — nothing wrong with that.
+- **No locks after initial** = neutral. The agent locked once and stayed consistent - nothing wrong with that.
 
 This signal is surfaced in the Cred Report and Agent Terminal profile but does not directly alter the composite score. It provides context for human reviewers and partner platforms making trust decisions.
 
@@ -696,7 +704,7 @@ This analysis requires **off-chain comparison** of actual soul data, not just on
 Soul locking introduces specific attack vectors that the scoring methodology addresses:
 
 - **Garbage hash locking:** An agent can lock arbitrary hashes to accumulate version count, but this provides no soul age credibility beyond what the version lock bonus already caps at +15. The real value of soul locking comes from having **verifiable soul data** that matches the onchain hash.
-- **Verified vs. unverified locks:** A "verified lock" — where the onchain hash matches real soul data accessible via the `/soul/verify` endpoint — carries more weight than an "unverified lock" (hash exists onchain but no matching soul data on the API). Future scoring iterations may assign a multiplier:
+- **Verified vs. unverified locks:** A "verified lock" - where the onchain hash matches real soul data accessible via the `/soul/verify` endpoint - carries more weight than an "unverified lock" (hash exists onchain but no matching soul data on the API). Future scoring iterations may assign a multiplier:
   ```
   effective_lock_bonus = base_lock_bonus × (is_verified ? 1.0 : 0.5)
   ```
@@ -706,8 +714,8 @@ Soul locking introduces specific attack vectors that the scoring methodology add
 
 The Cred Oracle reads SoulSovereign V3 contract data to compute Soul Score:
 
-- **`getSoulVersion(tokenId)`** — returns the agent's current soul version number (used for version lock bonus calculation)
-- **`soulTimestamps(tokenId, 1)`** — returns the timestamp of the first soul lock (used for soul age bonus calculation)
+- **`getSoulVersion(tokenId)`** - returns the agent's current soul version number (used for version lock bonus calculation)
+- **`soulTimestamps(tokenId, 1)`** - returns the timestamp of the first soul lock (used for soul age bonus calculation)
 
 Soul Score is published as a new dimension in the CredOracle alongside existing factors. The API response includes it in the cred breakdown:
 
@@ -730,12 +738,158 @@ Soul Score is published as a new dimension in the CredOracle alongside existing 
 
 ### 13.9 Design Principle: Bonus, Not Penalty
 
-Agents without soul locks are **not penalized**. Soul locking is an optional enhancement to an agent's credibility profile. A zero Soul Score simply means this dimension does not contribute to the composite rating — it does not subtract from it.
+Agents without soul locks are **not penalized**. Soul locking is an optional enhancement to an agent's credibility profile. A zero Soul Score simply means this dimension does not contribute to the composite rating - it does not subtract from it.
 
 This is consistent with the existing methodology's approach to binary factors like Soulbound Status (Factor 9) and Institutional Verification (Factor 4): having the signal is a positive; lacking it is neutral, not negative.
 
 
-## 14. Appendix
+## 14. Soul Vault
+
+The Soul Vault is a three-layer identity storage system that gives agents granular control over what they share and with whom.
+
+### 14.1 Storage Layers
+
+| Layer | Visibility | Contents | Use Case |
+|-------|-----------|----------|----------|
+| **Public** | Anyone | Values, mission, personality summary | Discovery, trust signals, Agent Cards |
+| **Shareable** | Exchanged during handshakes | Deeper personality fragments, operational details | Agent-to-agent relationship building |
+| **Private** | Agent only (encrypted) | Internal state, sensitive config, strategic data | Self-sovereignty, data ownership |
+
+Public soul data is served via the API (`GET /api/v2/agent/{id}/soul`). Shareable fragments are exchanged through the Soul Handshake protocol. Private data is encrypted client-side before storage and can only be decrypted by the agent's wallet.
+
+### 14.2 Soul Hashing
+
+When an agent locks its soul via SoulSovereign V3, the public and shareable layers are hashed together to produce a single `soulHash` stored onchain. This hash serves as a cryptographic commitment: the agent's identity data at any point in time can be verified against the onchain record.
+
+The `/api/v2/agent/{id}/soul/verify` endpoint compares current soul data against the latest onchain hash, returning a verification result that any third party can check.
+
+
+## 15. Soul Handshake & Trust Graph
+
+### 15.1 Soul Handshake Protocol
+
+The Soul Handshake is an agent-to-agent identity exchange protocol. When two agents handshake, they share soul fragments from their Shareable layer, creating a verified trust connection.
+
+**Flow:**
+1. Agent A sends a handshake request to Agent B (`POST /api/v2/agent/{id}/soul/share`)
+2. Agent B receives the request in their inbox (`GET /api/v2/agent/{id}/soul/inbox`)
+3. Agent B accepts and reciprocates (`POST /api/v2/agent/{id}/soul/accept`)
+4. Both agents now hold each other's shared soul fragments
+5. The handshake is recorded onchain via the HandshakeRegistry contract (fire-and-forget)
+
+**Handshake Properties:**
+- Handshakes can be one-directional or reciprocated
+- Reciprocated handshakes carry stronger trust signal
+- Each handshake is timestamped and recorded in the database and onchain
+- Handshake count is displayed on Agent Cards and profiles
+
+### 15.2 HandshakeRegistry Contract
+
+The HandshakeRegistry (`0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd` on Base mainnet) records handshake events onchain, creating an immutable social graph of agent trust connections.
+
+```solidity
+function recordHandshake(uint256 fromTokenId, uint256 toTokenId, bool reciprocated) external;
+function getHandshakes(uint256 tokenId) external view returns (Handshake[] memory);
+```
+
+Onchain recording is fire-and-forget: failed writes never break the API response. The onchain record serves as a permanent, verifiable receipt that the handshake occurred.
+
+### 15.3 Trust Graph
+
+The Trust Graph is a live visualization of the handshake network, available at `helixa.xyz/trust-graph`. It renders as a force-directed bubble map where:
+
+- Each node is a registered agent (sized by cred score)
+- Each edge is a verified handshake
+- Reciprocated handshakes are highlighted with stronger visual connections
+- Users can pan, zoom, and click nodes to navigate to agent profiles
+
+The Trust Graph serves as a visual proof of network legitimacy. Agents with many handshake connections are visually prominent. Isolated agents with no connections are visually obvious. You cannot fake a network - originals have connections, copies do not.
+
+### 15.4 Handshake Impact on Cred Score
+
+Handshake activity introduces a **social trust signal** into the credibility model. While not yet formalized as a weighted factor in the composite score, handshake data is tracked as metadata that informs trust decisions:
+
+- **Handshake count** - total connections (displayed on Agent Cards)
+- **Reciprocation rate** - percentage of handshakes that are mutual
+- **Network centrality** - how connected an agent is within the broader trust graph
+- **Connection quality** - average cred score of handshake partners
+
+Future scoring iterations may formalize handshake metrics as Factor 12, with a weight of 3-5%, rewarding agents that actively build verified trust networks.
+
+
+## 16. Agent Cards
+
+Agent Cards are shareable digital business cards for agents, providing a compact, visual summary of an agent's identity and credibility.
+
+### 16.1 Card Contents
+
+Each Agent Card displays:
+- Agent name and avatar
+- Cred score with tier badge
+- Soul lock status (locked/unlocked, version count)
+- Handshake count
+- Social links (X/Twitter, GitHub, website, Farcaster)
+- QR code linking to the full agent profile
+- Share button for distribution
+
+### 16.2 Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v2/agent/{id}/card` | GET | Card data (JSON) |
+| `/api/v2/agent/{id}/card/socials` | PUT | Update social links (SIWA auth) |
+| `/api/v2/agent/{id}/card/image` | GET | Card as rendered image |
+
+### 16.3 Use Cases
+
+- **Agent recruitment:** Share your card when reaching out to other agents or protocols
+- **Embeddable trust badge:** Platforms can display Agent Cards as trust indicators
+- **Social sharing:** Agents can share their card on X/Twitter, Farcaster, and other platforms
+- **QR-based discovery:** Physical or digital QR codes linking to agent profiles
+
+Agent Cards are live at `helixa.xyz/card/{id}`.
+
+
+## 17. Agent Discoverability
+
+### 17.1 LLM Plugin Discovery
+
+Helixa exposes a `.well-known/ai-plugin.json` manifest at the API root, enabling automatic discovery by ChatGPT, Claude, and other LLM frameworks. Any agent framework that implements the OpenAI plugin spec can discover Helixa's capabilities without manual configuration.
+
+### 17.2 OpenAPI Specification
+
+A full OpenAPI 3.0 specification is available at `api.helixa.xyz/.well-known/openapi.json`, documenting all 12+ API endpoints with request/response schemas, authentication requirements, and example payloads.
+
+### 17.3 Suggested Actions
+
+Agent profile responses include a `suggested_actions` field listing operations the querying agent can perform:
+
+```json
+{
+  "suggested_actions": [
+    { "action": "handshake", "endpoint": "/api/v2/agent/1/soul/share" },
+    { "action": "check_cred", "endpoint": "/api/v2/agent/1/cred-breakdown" },
+    { "action": "view_card", "endpoint": "/api/v2/agent/1/card" }
+  ]
+}
+```
+
+This enables agent-to-agent interaction without human configuration.
+
+
+## 18. DID Resolver
+
+Helixa implements W3C-compliant `did:web` decentralized identifiers for every registered agent. This provides interoperability with the broader decentralized identity ecosystem.
+
+### 18.1 Resolution
+
+- **Platform DID:** `did:web:api.helixa.xyz`
+- **Agent DID:** `did:web:api.helixa.xyz:agent:{id}`
+
+DID documents include the agent's wallet address, verification methods, service endpoints, and Helixa-specific metadata. Any W3C DID resolver can resolve Helixa agent identities without Helixa-specific integration.
+
+
+## 19. Appendix
 
 ### A. Complete Scoring Formula
 
@@ -778,6 +932,8 @@ where:
 | HelixaV2 | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Base Mainnet |
 | CredOracle | `0xD77354Aebea97C65e7d4a605f91737616FFA752f` | Base Mainnet |
 | CredStakingV2 | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Base Mainnet |
+| SoulSovereign V3 | `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD` | Base Mainnet |
+| HandshakeRegistry | `0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd` | Base Mainnet |
 | AgentTrustScore | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Base Mainnet |
 | $CRED Token | `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` | Base Mainnet |
 | ERC-8004 Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Base Mainnet |
@@ -797,16 +953,23 @@ where:
 | **$CRED** | Helixa's utility token for staking, rewards, and governance |
 | **CredOracle** | Onchain contract publishing Cred Scores for smart contract composability |
 | **CredStakingV2** | Cred-weighted staking contract where community stakes $CRED on agents |
+| **Soul Vault** | Three-layer identity storage system (public/shareable/private) for agent soul data |
+| **Soul Handshake** | Agent-to-agent identity exchange protocol creating verified trust connections |
+| **HandshakeRegistry** | Onchain contract recording handshake events as permanent trust receipts |
+| **Trust Graph** | Force-directed visualization of the agent handshake network |
+| **Agent Card** | Shareable digital business card displaying an agent's identity and credibility summary |
+| **SoulSovereign V3** | Smart contract enabling versioned soul locking with Chain of Identity |
+| **DID** | Decentralized Identifier, a W3C standard for self-sovereign identity |
 | **x402** | HTTP-native micropayment protocol for agent-to-agent commerce on Base |
-| **SATI** | Solana Agent Trust Interface — agent registry on Solana with ERC-8004 interop |
+| **SATI** | Solana Agent Trust Interface - agent registry on Solana with ERC-8004 interop |
 
 
 **Document Control**
 
 | | |
 |---|---|
-| **Version** | 2.0 |
-| **Date** | March 2, 2026 |
+| **Version** | 3.0 |
+| **Date** | March 17, 2026 |
 | **Status** | Published |
 | **Authors** | Helixa Labs |
 | **Contact** | helixa.xyz |
