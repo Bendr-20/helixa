@@ -258,9 +258,19 @@ export function Stake() {
       window.focus();
       document.getElementById('stake-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e: any) {
-      setError(e.reason || e.shortMessage || e.message || 'Transaction failed');
+      setError(friendlyError(e.reason || e.shortMessage || e.message || 'Transaction failed'));
     }
     setTxPending('');
+  }
+
+  function friendlyError(msg: string): string {
+    if (msg.includes('not staker')) return 'This agent already has a different wallet staking on it. Try a different agent, or switch to the wallet you originally staked from.';
+    if (msg.includes('cred too low')) return 'This agent\'s cred score is too low to stake on (Junk tier). Pick an agent with higher cred.';
+    if (msg.includes('exceeds tier limit')) return 'Stake amount exceeds the maximum for this agent\'s cred tier. Try a smaller amount.';
+    if (msg.includes('zero amount')) return 'Enter an amount to stake.';
+    if (msg.includes('bad amount')) return 'Invalid amount. Make sure you\'re not trying to unstake more than you have staked.';
+    if (msg.includes('user rejected') || msg.includes('ACTION_REJECTED')) return 'Transaction cancelled.';
+    return msg;
   }
 
   async function handleApprove() {
@@ -273,7 +283,7 @@ export function Stake() {
       await tx.wait();
       setAllowance(ethers.MaxUint256);
     } catch (e: any) {
-      setError(e.reason || e.shortMessage || e.message || 'Approval failed');
+      setError(friendlyError(e.reason || e.shortMessage || e.message || 'Approval failed'));
       setTxPending(''); throw e;
     }
     setTxPending('');

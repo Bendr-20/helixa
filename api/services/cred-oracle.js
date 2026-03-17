@@ -1,321 +1,77 @@
 /**
- * $CRED Price Oracle — Uniswap V3 TWAP on Base
+ * $CRED Price Oracle — DexScreener API
  * 
- * Fetches CRED/USDC price via TWAP from Uniswap V3 pool(s) on Base.
- * Falls back gracefully: if oracle fails, $CRED payments are rejected but USDC works fine.
+ * Fetches CRED/USD price from DexScreener. Cached 60s, background refresh 45s.
+ * Graceful failure: returns null if unavailable → USDC-only fallback.
  */
 
-const { ethers } = require('ethers');
-
-// ─── Constants ──────────────────────────────────────────────────
 const CRED_ADDRESS = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006'; // Base WETH
 const CRED_DECIMALS = 18;
-const USDC_DECIMALS = 6;
+const CRED_DISCOUNT = 0.80; // 20% discount → pay 80%
+const DEXSCREENER_URL = `https://api.dexscreener.com/latest/dex/tokens/${CRED_ADDRESS}`;
+const CACHE_TTL_MS = 60_000;
 
-const TWAP_WINDOW = 600; // 10 minutes
-const CACHE_TTL_MS = 60_000; // 60 seconds
-const STALE_TOLERANCE_MS = 300_000; // 5 minutes max
-const PRICE_DEVIATION_MAX = 0.5; // 50% max deviation from last known good
-const CRED_DISCOUNT = 0.80; // 20% discount → pay 80% of USD price
+let cachedPrice = null;   // USD price of 1 CRED
+let cacheTimestamp = 0;
+let fetching = false;
+let refreshTimer = null;
 
-// Uniswap V3 pool ABI (minimal)
-const POOL_ABI = [
-    'function observe(uint32[] secondsAgos) external view returns (int56[] tickCumulatives, uint160[] secondsPerLiquidityCumulativeX128s)',
-    'function slot0() external view returns (int24 tick, uint160 sqrtPriceX96, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked)',
-    'function liquidity() external view returns (uint128)',
-    'function token0() external view returns (address)',
-    'function token1() external view returns (address)',
-];
-
-const FACTORY_ABI = [
-    'function getPool(address tokenA, address tokenB, uint24 fee) external view returns (address)',
-];
-
-const UNISWAP_V3_FACTORY = '0x33128a8fC17869897dcE68Ed026d694621f6FDfD'; // Base
-
-// ─── Cache ──────────────────────────────────────────────────────
-let priceCache = {
-    credPriceUSDC: null,   // price of 1 CRED in USDC
-    timestamp: 0,
-    block: 0,
-    source: null,          // 'direct' | 'two-hop' | 'spot'
-    error: null,
-};
-
-let lastKnownGoodPrice = null;
-let poolAddress = null; // cached pool address
-let poolToken0 = null;
-
-// ─── Provider ───────────────────────────────────────────────────
-function getProvider() {
-    const rpc = process.env.RPC_URL || process.env.BASE_RPC || 'https://mainnet.base.org';
-    const p = new ethers.JsonRpcProvider(rpc, 8453, { staticNetwork: true });
-    // Set a reasonable timeout for RPC calls
-    p._getConnection = () => { const c = new ethers.FetchRequest(rpc); c.timeout = 8000; return c; };
-    return p;
+async function fetchPrice() {
+    if (fetching) return; // max 1 concurrent
+    fetching = true;
+    try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 8000);
+        const resp = await fetch(DEXSCREENER_URL, { signal: ctrl.signal });
+        clearTimeout(timeout);
+        if (!resp.ok) return;
+        const data = await resp.json();
+        // Find the pair with highest liquidity on Base
+        const pairs = (data.pairs || []).filter(p => p.chainId === 'base');
+        if (pairs.length === 0) return;
+        pairs.sort((a, b) => (b.liquidity?.usd || 0) - (a.liquidity?.usd || 0));
+        const price = parseFloat(pairs[0].priceUsd);
+        if (price > 0 && isFinite(price)) {
+            cachedPrice = price;
+            cacheTimestamp = Date.now();
+            console.log(`[CRED ORACLE] Price: 1 CRED = $${price} (${pairs[0].dexId})`);
+        }
+    } catch (e) {
+        console.warn(`[CRED ORACLE] Fetch failed: ${e.message}`);
+    } finally {
+        fetching = false;
+    }
 }
 
-// ─── Pool Discovery ─────────────────────────────────────────────
-async function findPool(provider) {
-    const factory = new ethers.Contract(UNISWAP_V3_FACTORY, FACTORY_ABI, provider);
-    
-    // Try direct CRED/USDC pools at common fee tiers
-    for (const fee of [10000, 3000, 500]) {
-        try {
-            const addr = await factory.getPool(CRED_ADDRESS, USDC_ADDRESS, fee);
-            if (addr && addr !== ethers.ZeroAddress) {
-                console.log(`[CRED ORACLE] Found direct CRED/USDC pool at ${addr} (fee: ${fee})`);
-                return { address: addr, type: 'direct', fee };
-            }
-        } catch {}
+function getCredPriceUSDC() {
+    if (cachedPrice && (Date.now() - cacheTimestamp) < CACHE_TTL_MS) {
+        return cachedPrice;
     }
-    
-    // Try CRED/WETH pools (will need two-hop pricing)
-    for (const fee of [10000, 3000, 500]) {
-        try {
-            const addr = await factory.getPool(CRED_ADDRESS, WETH_ADDRESS, fee);
-            if (addr && addr !== ethers.ZeroAddress) {
-                console.log(`[CRED ORACLE] Found CRED/WETH pool at ${addr} (fee: ${fee})`);
-                return { address: addr, type: 'cred-weth', fee };
-            }
-        } catch {}
-    }
-    
+    // Return stale price up to 5 min, else null
+    if (cachedPrice && (Date.now() - cacheTimestamp) < 300_000) return cachedPrice;
     return null;
 }
 
-// ─── TWAP Price from Pool ───────────────────────────────────────
-function tickToPrice(tick, token0Decimals, token1Decimals) {
-    // price = 1.0001^tick * (10^token0Decimals / 10^token1Decimals)
-    // This gives price of token0 in terms of token1
-    return Math.pow(1.0001, tick) * Math.pow(10, token0Decimals - token1Decimals);
-}
-
-async function getTWAPFromPool(poolAddr, provider) {
-    const pool = new ethers.Contract(poolAddr, POOL_ABI, provider);
-    
-    // Check liquidity
-    const liquidity = await pool.liquidity();
-    if (liquidity === 0n) {
-        throw new Error('Pool has zero liquidity');
-    }
-    
-    // Get token ordering
-    if (!poolToken0) {
-        poolToken0 = (await pool.token0()).toLowerCase();
-    }
-    
-    try {
-        // Try TWAP first
-        const { tickCumulatives } = await pool.observe([TWAP_WINDOW, 0]);
-        const tickCum0 = BigInt(tickCumulatives[0]);
-        const tickCum1 = BigInt(tickCumulatives[1]);
-        const avgTick = Number((tickCum1 - tickCum0) / BigInt(TWAP_WINDOW));
-        
-        return { tick: avgTick, source: 'twap' };
-    } catch (e) {
-        // Pool might not have enough observations for TWAP, use spot
-        if (e.message?.includes('OLD') || e.message?.includes('observation')) {
-            console.warn(`[CRED ORACLE] TWAP unavailable, falling back to spot price`);
-            const slot = await pool.slot0();
-            return { tick: Number(slot.tick), source: 'spot' };
-        }
-        throw e;
-    }
-}
-
-// ─── Two-Hop: CRED→WETH→USDC ───────────────────────────────────
-async function getWETHUSDCPrice(provider) {
-    const factory = new ethers.Contract(UNISWAP_V3_FACTORY, FACTORY_ABI, provider);
-    
-    // WETH/USDC pool (high liquidity, try 500 fee first)
-    for (const fee of [500, 3000, 100]) {
-        try {
-            const addr = await factory.getPool(WETH_ADDRESS, USDC_ADDRESS, fee);
-            if (addr && addr !== ethers.ZeroAddress) {
-                const pool = new ethers.Contract(addr, POOL_ABI, provider);
-                const t0 = (await pool.token0()).toLowerCase();
-                
-                let tick;
-                try {
-                    const { tickCumulatives } = await pool.observe([TWAP_WINDOW, 0]);
-                    tick = Number((BigInt(tickCumulatives[1]) - BigInt(tickCumulatives[0])) / BigInt(TWAP_WINDOW));
-                } catch {
-                    const slot = await pool.slot0();
-                    tick = Number(slot.tick);
-                }
-                
-                // Determine price direction
-                const isWETHToken0 = t0 === WETH_ADDRESS.toLowerCase();
-                if (isWETHToken0) {
-                    // price = token0(WETH) priced in token1(USDC)
-                    return tickToPrice(tick, 18, USDC_DECIMALS);
-                } else {
-                    // price = token0(USDC) priced in token1(WETH), invert
-                    return 1 / tickToPrice(tick, USDC_DECIMALS, 18);
-                }
-            }
-        } catch {}
-    }
-    throw new Error('No WETH/USDC pool found');
-}
-
-// ─── Main Oracle Function ───────────────────────────────────────
-async function fetchCredPrice() {
-    const provider = getProvider();
-    
-    // Discover pool if not cached
-    if (!poolAddress) {
-        const poolInfo = await findPool(provider);
-        if (!poolInfo) throw new Error('No CRED pool found on Uniswap V3');
-        poolAddress = poolInfo;
-    }
-    
-    const { tick, source } = await getTWAPFromPool(poolAddress.address, provider);
-    
-    let credPriceUSDC;
-    
-    if (poolAddress.type === 'direct') {
-        // Direct CRED/USDC pool
-        const isCREDToken0 = poolToken0 === CRED_ADDRESS.toLowerCase();
-        if (isCREDToken0) {
-            credPriceUSDC = tickToPrice(tick, CRED_DECIMALS, USDC_DECIMALS);
-        } else {
-            credPriceUSDC = 1 / tickToPrice(tick, USDC_DECIMALS, CRED_DECIMALS);
-        }
-    } else if (poolAddress.type === 'cred-weth') {
-        // Two-hop: CRED→WETH price, then WETH→USDC price
-        const isCREDToken0 = poolToken0 === CRED_ADDRESS.toLowerCase();
-        let credPriceWETH;
-        if (isCREDToken0) {
-            credPriceWETH = tickToPrice(tick, CRED_DECIMALS, 18);
-        } else {
-            credPriceWETH = 1 / tickToPrice(tick, 18, CRED_DECIMALS);
-        }
-        const wethPriceUSDC = await getWETHUSDCPrice(provider);
-        credPriceUSDC = credPriceWETH * wethPriceUSDC;
-    }
-    
-    if (!credPriceUSDC || credPriceUSDC <= 0 || !isFinite(credPriceUSDC)) {
-        throw new Error(`Invalid price derived: ${credPriceUSDC}`);
-    }
-    
-    // Sanity check: deviation from last known good
-    if (lastKnownGoodPrice && Math.abs(credPriceUSDC - lastKnownGoodPrice) / lastKnownGoodPrice > PRICE_DEVIATION_MAX) {
-        console.warn(`[CRED ORACLE] Price deviation too large: ${credPriceUSDC} vs last good ${lastKnownGoodPrice}`);
-        throw new Error('Price deviation exceeds safety threshold');
-    }
-    
-    lastKnownGoodPrice = credPriceUSDC;
-    
-    return { credPriceUSDC, source: poolAddress.type === 'direct' ? source : `two-hop-${source}` };
-}
-
-// ─── Cached Price Getter ────────────────────────────────────────
-async function getCredPriceUSDC() {
-    const now = Date.now();
-    
-    // Return cached if fresh
-    if (priceCache.credPriceUSDC && (now - priceCache.timestamp) < CACHE_TTL_MS) {
-        return { ...priceCache, cached: true };
-    }
-    
-    // Try to refresh
-    try {
-        const { credPriceUSDC, source } = await fetchCredPrice();
-        priceCache = {
-            credPriceUSDC,
-            timestamp: now,
-            block: 0, // could track if needed
-            source,
-            error: null,
-        };
-        console.log(`[CRED ORACLE] Price updated: 1 CRED = ${credPriceUSDC.toFixed(8)} USDC (${source})`);
-        return { ...priceCache, cached: false };
-    } catch (err) {
-        console.error(`[CRED ORACLE] Fetch failed: ${err.message}`);
-        
-        // Use stale cache if within tolerance
-        if (priceCache.credPriceUSDC && (now - priceCache.timestamp) < STALE_TOLERANCE_MS) {
-            console.warn(`[CRED ORACLE] Using stale price (age: ${Math.round((now - priceCache.timestamp) / 1000)}s)`);
-            return { ...priceCache, cached: true, stale: true };
-        }
-        
-        // No valid price available
-        return {
-            credPriceUSDC: null,
-            timestamp: 0,
-            source: null,
-            error: err.message,
-        };
-    }
-}
-
-// ─── Price Calculators ──────────────────────────────────────────
-/**
- * Calculate $CRED amount for a given USD price (with 20% discount).
- * Returns null if oracle unavailable.
- */
-async function getCredAmountForUSD(usdPrice) {
-    const oracle = await getCredPriceUSDC();
-    if (!oracle.credPriceUSDC) return null;
-    
+function getCredAmountForUSD(usdPrice) {
+    const price = getCredPriceUSDC();
+    if (!price) return null;
     const discountedUSD = usdPrice * CRED_DISCOUNT;
-    const credAmount = discountedUSD / oracle.credPriceUSDC;
-    
-    return {
-        credAmount,
-        credPriceUSDC: oracle.credPriceUSDC,
-        discountedUSD,
-        originalUSD: usdPrice,
-        discount: `${((1 - CRED_DISCOUNT) * 100).toFixed(0)}%`,
-    };
+    return discountedUSD / price;
 }
 
-/**
- * Format $CRED amount as raw token units (18 decimals) string for x402.
- */
-function credToRawAmount(credAmount) {
-    // Use ethers to handle precision
-    return ethers.parseUnits(credAmount.toFixed(CRED_DECIMALS > 8 ? 8 : CRED_DECIMALS), CRED_DECIMALS).toString();
+function startBackgroundRefresh() {
+    if (refreshTimer) return;
+    // Initial fetch (non-blocking)
+    fetchPrice().catch(() => {});
+    refreshTimer = setInterval(() => { fetchPrice().catch(() => {}); }, 45_000);
+    refreshTimer.unref();
+    console.log('[CRED ORACLE] Background refresh started (every 45s)');
 }
 
-// ─── Background Refresh ─────────────────────────────────────────
-let refreshInterval = null;
-
-function startBackgroundRefresh(intervalMs = 45_000) {
-    if (refreshInterval) return;
-    refreshInterval = setInterval(async () => {
-        try {
-            await getCredPriceUSDC(); // triggers refresh if stale
-        } catch {}
-    }, intervalMs);
-    // Don't keep process alive just for this
-    if (refreshInterval.unref) refreshInterval.unref();
-    console.log(`[CRED ORACLE] Background refresh started (every ${intervalMs / 1000}s)`);
-}
-
-function stopBackgroundRefresh() {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-    }
-}
-
-// ─── Exports ────────────────────────────────────────────────────
 module.exports = {
     CRED_ADDRESS,
     CRED_DECIMALS,
-    CRED_DISCOUNT,
-    USDC_ADDRESS,
-    USDC_DECIMALS,
     getCredPriceUSDC,
     getCredAmountForUSD,
-    credToRawAmount,
     startBackgroundRefresh,
-    stopBackgroundRefresh,
-    // For testing
-    _resetCache: () => { priceCache = { credPriceUSDC: null, timestamp: 0, block: 0, source: null, error: null }; poolAddress = null; poolToken0 = null; lastKnownGoodPrice = null; },
 };
