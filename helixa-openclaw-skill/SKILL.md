@@ -1,6 +1,6 @@
 ---
 name: helixa
-description: Helixa AgentDNA — Onchain identity, reputation, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent reputation data, check staking info, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
+description: Helixa — Onchain identity, reputation, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent reputation data, check staking info, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
 metadata:
   {
     "clawdbot":
@@ -11,7 +11,7 @@ metadata:
   }
 ---
 
-# Helixa · AgentDNA
+# Helixa
 
 Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 native. Cred Scores powered by $CRED.
 

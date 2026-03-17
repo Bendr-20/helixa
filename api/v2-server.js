@@ -110,6 +110,77 @@ const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dex
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
 
+// ─── $CRED Oracle for Dual-Token Pricing ────────────────────────
+const {
+    CRED_ADDRESS, CRED_DECIMALS, CRED_DISCOUNT,
+    getCredPriceUSDC, getCredAmountForUSD, credToRawAmount,
+    startBackgroundRefresh: startCredOracle,
+} = require('./services/cred-oracle');
+
+// Build x402 route accepts array: USDC always, $CRED when oracle available
+function buildAccepts(priceUSD, payTo, credPricing) {
+    const accepts = [
+        { scheme: 'exact', price: `$${priceUSD}`, network: 'eip155:8453', payTo, asset: USDC_ADDRESS },
+    ];
+    if (credPricing && credPricing.credAmount) {
+        accepts.push({
+            scheme: 'exact',
+            price: credToRawAmount(credPricing.credAmount),
+            network: 'eip155:8453',
+            payTo,
+            asset: CRED_ADDRESS,
+            extra: { permit2: true, token: '$CRED', discount: '20%' },
+        });
+    }
+    return accepts;
+}
+
+// Generate x402Routes with current $CRED pricing (called on each request cycle)
+async function buildX402Routes() {
+    // Fetch $CRED prices for each tier (all $1 currently, but structure supports different prices)
+    const [mintCred, updateCred, reportCred, lockCred, handshakeCred] = await Promise.all([
+        PRICING.agentMint > 0 ? getCredAmountForUSD(PRICING.agentMint) : null,
+        PRICING.update > 0 ? getCredAmountForUSD(PRICING.update) : null,
+        PRICING.credReport > 0 ? getCredAmountForUSD(PRICING.credReport) : null,
+        PRICING.soulLock > 0 ? getCredAmountForUSD(PRICING.soulLock) : null,
+        PRICING.soulHandshake > 0 ? getCredAmountForUSD(PRICING.soulHandshake) : null,
+    ]);
+
+    const routes = {};
+    if (PRICING.agentMint > 0) {
+        routes['POST /api/v2/mint'] = {
+            accepts: buildAccepts(PRICING.agentMint, DEPLOYER_ADDRESS, mintCred),
+            description: 'Register a new Helixa agent identity', mimeType: 'application/json',
+        };
+    }
+    if (PRICING.update > 0) {
+        routes['POST /api/v2/agent/:id/update'] = {
+            accepts: buildAccepts(PRICING.update, DEPLOYER_ADDRESS, updateCred),
+            description: 'Update agent traits and metadata', mimeType: 'application/json',
+        };
+    }
+    if (PRICING.credReport > 0) {
+        routes['GET /api/v2/agent/[id]/cred-report'] = {
+            accepts: buildAccepts(PRICING.credReport, TREASURY_ADDRESS, reportCred),
+            description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
+        };
+    }
+    if (PRICING.soulLock > 0) {
+        routes['POST /api/v2/agent/:id/soul/lock'] = {
+            accepts: buildAccepts(PRICING.soulLock, TREASURY_ADDRESS, lockCred),
+            description: 'Lock your agent soul onchain (Chain of Identity)', mimeType: 'application/json',
+        };
+    }
+    if (PRICING.soulHandshake > 0) {
+        routes['POST /api/v2/agent/:id/soul/share'] = {
+            accepts: buildAccepts(PRICING.soulHandshake, TREASURY_ADDRESS, handshakeCred),
+            description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
+        };
+    }
+    return routes;
+}
+
+// Static USDC-only routes (used as fallback and for initial middleware registration)
 const x402Routes = {};
 if (PRICING.agentMint > 0) {
     x402Routes['POST /api/v2/mint'] = {
@@ -141,6 +212,29 @@ if (PRICING.soulHandshake > 0) {
         description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
     };
 }
+
+// Cache dynamic routes (refreshed every 60s aligned with oracle cache)
+let dynamicX402Routes = null;
+let dynamicRoutesTimestamp = 0;
+const DYNAMIC_ROUTES_TTL = 60_000;
+
+async function getDynamicX402Routes() {
+    const now = Date.now();
+    if (dynamicX402Routes && (now - dynamicRoutesTimestamp) < DYNAMIC_ROUTES_TTL) {
+        return dynamicX402Routes;
+    }
+    try {
+        dynamicX402Routes = await buildX402Routes();
+        dynamicRoutesTimestamp = now;
+        return dynamicX402Routes;
+    } catch (err) {
+        console.error(`[x402] Failed to build dynamic routes: ${err.message}`);
+        return x402Routes; // fallback to USDC-only
+    }
+}
+
+// Start $CRED oracle background refresh
+startCredOracle();
 // ─── USDC TX Hash Payment Verification ─────────────────────────
 // USDC_ADDRESS imported from contract.js
 const USDC_DECIMALS = 6;
@@ -300,13 +394,24 @@ if (Object.keys(x402Routes).length > 0) {
     });
     
     // x402 SDK — skip if already paid via TX hash
-    const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
-    app.use((req, res, next) => {
+    // Uses dynamic routes with $CRED pricing when oracle is available
+    const x402MwFallback = x402PaymentMiddleware(x402Routes, x402Server);
+    app.use(async (req, res, next) => {
         if (req.paymentVerified) return next();
-        return x402Mw(req, res, next);
+        
+        // Try dynamic routes (with $CRED option) first
+        try {
+            const dynRoutes = await getDynamicX402Routes();
+            const dynMw = x402PaymentMiddleware(dynRoutes, x402Server);
+            return dynMw(req, res, next);
+        } catch {
+            // Fallback to USDC-only routes
+            return x402MwFallback(req, res, next);
+        }
     });
     
     console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
+    console.log(`💰 Dual-token enabled: USDC + $CRED (20% discount, oracle-priced)`);
     console.log(`💰 TX hash payment bypass enabled (X-Payment-Proof / X-Payment-Tx / body.paymentTx)`);
 }
 
@@ -532,12 +637,67 @@ app.get(['/', '/api/v2'], (req, res) => {
             note: 'All operations free during Phase 1 (0-1000 agents)',
             agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
             update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
+            dualToken: 'USDC + $CRED (20% discount)',
+            pricingEndpoint: 'GET /api/v2/pricing',
         },
     });
 });
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: 'v2', port: PORT, contractDeployed: isContractDeployed() });
+});
+
+// GET /api/v2/pricing — Current prices in both USDC and $CRED
+app.get('/api/v2/pricing', async (req, res) => {
+    const serviceMap = {
+        mint: PRICING.agentMint,
+        update: PRICING.update,
+        credReport: PRICING.credReport,
+        soulLock: PRICING.soulLock,
+        soulHandshake: PRICING.soulHandshake,
+    };
+
+    // Try oracle with hard timeout
+    let oracle = { credPriceUSDC: null, timestamp: 0, source: null, error: null };
+    try {
+        oracle = await Promise.race([
+            getCredPriceUSDC(),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Oracle timeout (5s)')), 5000)),
+        ]);
+    } catch (e) {
+        oracle.error = e.message;
+    }
+
+    const oracleAvailable = !!oracle.credPriceUSDC;
+    const services = {};
+    for (const [name, price] of Object.entries(serviceMap)) {
+        const entry = { usdc: price.toFixed(2) };
+        if (oracleAvailable) {
+            const discountedUSD = price * CRED_DISCOUNT;
+            entry.cred = (discountedUSD / oracle.credPriceUSDC).toFixed(2);
+            entry.credDiscount = '20%';
+        } else {
+            entry.cred = null;
+            entry.credNote = '$CRED pricing temporarily unavailable';
+        }
+        services[name] = entry;
+    }
+
+    res.json({
+        oracle: {
+            credPriceUSDC: oracle.credPriceUSDC ? oracle.credPriceUSDC.toFixed(8) : null,
+            available: oracleAvailable,
+            twapWindow: 600,
+            lastUpdate: oracle.timestamp ? new Date(oracle.timestamp).toISOString() : null,
+            source: oracle.source || 'unavailable',
+            ...(oracle.error ? { error: oracle.error } : {}),
+        },
+        services,
+        tokens: {
+            usdc: { address: USDC_ADDRESS, decimals: 6, network: 'eip155:8453' },
+            cred: { address: CRED_ADDRESS, decimals: CRED_DECIMALS, network: 'eip155:8453', discount: '20%' },
+        },
+    });
 });
 
 // ─── Simple Analytics ───────────────────────────────────────
@@ -4474,8 +4634,8 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
             handshakeCount = hc?.cnt || 0;
         } catch {}
 
-        const tier = agent.credScore >= 91 ? 'Legendary' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Unrated';
-        const tierColor = agent.credScore >= 91 ? '#f59e0b' : agent.credScore >= 76 ? '#a855f7' : agent.credScore >= 51 ? '#06b6d4' : agent.credScore >= 26 ? '#6b7280' : '#374151';
+        const tier = agent.credScore >= 76 ? 'Preferred' : agent.credScore >= 51 ? 'Prime' : agent.credScore >= 26 ? 'Qualified' : agent.credScore >= 11 ? 'Marginal' : 'Junk';
+        const tierColor = agent.credScore >= 76 ? '#b490ff' : agent.credScore >= 51 ? '#33ff33' : agent.credScore >= 26 ? '#06b6d4' : agent.credScore >= 11 ? '#6b7280' : '#374151';
         const soulStatus = soulLocked ? '🔒 Soul Locked' : '🔓 Unlocked';
         const escapedName = (agent.name || `Agent #${tokenId}`).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -4513,6 +4673,217 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
     }
 });
+
+// ─── Solana Agent Registration ──────────────────────────────────
+(() => {
+    const nacl = require('tweetnacl');
+    const bs58raw = require('bs58');
+    const bs58 = bs58raw.default || bs58raw;
+    const Database = require('better-sqlite3');
+    const SOLANA_DB_PATH = path.join(__dirname, '..', 'data', 'agents.db');
+
+    // Encryption helpers for EVM private keys at rest
+    const ENCRYPT_ALGO = 'aes-256-gcm';
+    function getEncryptionKey() {
+        // Derive from deployer key (deterministic, no extra secret needed)
+        return crypto.createHash('sha256').update(DEPLOYER_KEY || 'fallback-key').digest();
+    }
+    function encryptKey(plaintext) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(ENCRYPT_ALGO, getEncryptionKey(), iv);
+        let enc = cipher.update(plaintext, 'utf8', 'hex');
+        enc += cipher.final('hex');
+        const tag = cipher.getAuthTag().toString('hex');
+        return iv.toString('hex') + ':' + tag + ':' + enc;
+    }
+
+    function getSolanaDb() {
+        const db = new Database(SOLANA_DB_PATH);
+        db.pragma('journal_mode = WAL');
+        db.exec(`CREATE TABLE IF NOT EXISTS solana_agents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            solana_address TEXT NOT NULL UNIQUE,
+            evm_address TEXT NOT NULL,
+            evm_private_key_encrypted TEXT NOT NULL,
+            token_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+        return db;
+    }
+
+    app.post('/api/v2/register/solana', mintRateLimit, async (req, res) => {
+        try {
+            const { solanaAddress, name, framework, signature, message } = req.body;
+
+            // Validate inputs
+            if (!solanaAddress || typeof solanaAddress !== 'string' || solanaAddress.length < 32 || solanaAddress.length > 44) {
+                return res.status(400).json({ error: 'Valid solanaAddress required (base58, 32-44 chars)' });
+            }
+            if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
+                return res.status(400).json({ error: 'name required (1-64 chars)' });
+            }
+            const NAME_REGEX = /^[\x20-\x7E\u00C0-\u024F\u0370-\u03FF]{1,64}$/;
+            if (!NAME_REGEX.test(name)) {
+                return res.status(400).json({ error: 'Name contains invalid characters' });
+            }
+            if (!signature || typeof signature !== 'string') {
+                return res.status(400).json({ error: 'signature required (base58-encoded ed25519 signature)' });
+            }
+            if (!message || typeof message !== 'string') {
+                return res.status(400).json({ error: 'message required (the signed message string)' });
+            }
+
+            const fw = (framework || 'custom').toLowerCase();
+            const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'based', 'agentkit', 'custom'];
+            if (!VALID_FRAMEWORKS.includes(fw)) {
+                return res.status(400).json({ error: `framework must be one of: ${VALID_FRAMEWORKS.join(', ')}` });
+            }
+
+            // Verify the message contains the Solana address
+            const expectedMsg = `Register with Helixa: ${solanaAddress}`;
+            if (message !== expectedMsg) {
+                return res.status(400).json({
+                    error: 'Message must be exactly: "Register with Helixa: <solanaAddress>"',
+                    expected: expectedMsg,
+                });
+            }
+
+            // Verify ed25519 signature
+            let pubkeyBytes;
+            try {
+                pubkeyBytes = bs58.decode(solanaAddress);
+            } catch {
+                return res.status(400).json({ error: 'Invalid solanaAddress (not valid base58)' });
+            }
+            if (pubkeyBytes.length !== 32) {
+                return res.status(400).json({ error: 'Invalid solanaAddress (must be 32 bytes)' });
+            }
+
+            let sigBytes;
+            try {
+                sigBytes = bs58.decode(signature);
+            } catch {
+                return res.status(400).json({ error: 'Invalid signature (not valid base58)' });
+            }
+
+            const msgBytes = new TextEncoder().encode(message);
+            const valid = nacl.sign.detached.verify(msgBytes, sigBytes, pubkeyBytes);
+            if (!valid) {
+                return res.status(401).json({ error: 'Signature verification failed. Sign the exact message with your Solana wallet.' });
+            }
+
+            // Check if already registered
+            const db = getSolanaDb();
+            try {
+                const existing = db.prepare('SELECT * FROM solana_agents WHERE solana_address = ?').get(solanaAddress);
+                if (existing) {
+                    return res.status(409).json({
+                        error: 'This Solana address is already registered',
+                        tokenId: existing.token_id,
+                        evmAddress: existing.evm_address,
+                    });
+                }
+
+                if (!isContractDeployed() || !wallet) {
+                    return res.status(503).json({ error: 'Contract not available. Try again later.' });
+                }
+
+                // Generate a fresh EVM wallet for this Solana agent
+                const evmWallet = ethers.Wallet.createRandom();
+                const evmAddress = evmWallet.address;
+                const encryptedKey = encryptKey(evmWallet.privateKey);
+
+                // Mint on HelixaV2 using deployer wallet
+                console.log(`[SOLANA REG] Minting for ${solanaAddress} -> ${evmAddress} (${name}, ${fw})`);
+                const tx = await contract.mintFor(
+                    evmAddress,     // to (owner of the NFT)
+                    evmAddress,     // agentAddress
+                    name,
+                    fw,
+                    false,          // not soulbound
+                    2,              // MintOrigin.API
+                );
+                console.log(`[SOLANA REG] TX: ${tx.hash}`);
+                const receipt = await tx.wait();
+
+                // Extract tokenId
+                let tokenId = null;
+                for (const log of receipt.logs) {
+                    try {
+                        const parsed = contract.interface.parseLog(log);
+                        if (parsed?.name === 'AgentRegistered') {
+                            tokenId = Number(parsed.args.tokenId);
+                            break;
+                        }
+                    } catch {}
+                }
+
+                if (tokenId === null) {
+                    return res.status(500).json({ error: 'Mint succeeded but could not extract token ID' });
+                }
+
+                // Store mapping in DB
+                db.prepare('INSERT INTO solana_agents (solana_address, evm_address, evm_private_key_encrypted, token_id) VALUES (?, ?, ?, ?)')
+                    .run(solanaAddress, evmAddress, encryptedKey, tokenId);
+
+                // Set solana-wallet trait onchain
+                try {
+                    const traitTx = await contract.addTrait(tokenId, 'solana-wallet', solanaAddress);
+                    await traitTx.wait();
+                    console.log(`[SOLANA REG] Trait solana-wallet set for #${tokenId}`);
+                } catch (e) {
+                    console.error(`[SOLANA REG] Trait set failed (non-fatal): ${e.message}`);
+                }
+
+                // Set tokenURI
+                try {
+                    const uriTx = await contract.setMetadata(tokenId, `https://api.helixa.xyz/api/v2/metadata/${tokenId}`);
+                    await uriTx.wait();
+                } catch (e) {
+                    console.error(`[SOLANA REG] tokenURI failed (non-fatal): ${e.message}`);
+                }
+
+                // Update indexer
+                try { await indexer.reindexAgent(tokenId); } catch {}
+
+                console.log(`[SOLANA REG] Done: #${tokenId} for ${solanaAddress}`);
+
+                res.status(201).json({
+                    success: true,
+                    tokenId,
+                    evmAddress,
+                    solanaAddress,
+                    txHash: tx.hash,
+                    explorer: `https://basescan.org/tx/${tx.hash}`,
+                    message: `${name} registered from Solana! Helixa Agent #${tokenId}`,
+                    profile: `https://api.helixa.xyz/api/v2/agent/${tokenId}`,
+                });
+            } finally {
+                db.close();
+            }
+        } catch (e) {
+            console.error('[SOLANA REG] Error:', e.message);
+            res.status(500).json({ error: 'Registration failed: ' + e.message.slice(0, 200) });
+        }
+    });
+
+    // GET /api/v2/register/solana/:address - Check registration status
+    app.get('/api/v2/register/solana/:address', (req, res) => {
+        try {
+            const db = getSolanaDb();
+            try {
+                const row = db.prepare('SELECT solana_address, evm_address, token_id, created_at FROM solana_agents WHERE solana_address = ?')
+                    .get(req.params.address);
+                if (!row) return res.status(404).json({ registered: false });
+                res.json({ registered: true, ...row, profile: `https://api.helixa.xyz/api/v2/agent/${row.token_id}` });
+            } finally { db.close(); }
+        } catch (e) {
+            res.status(500).json({ error: e.message });
+        }
+    });
+
+    console.log('🌐 Solana registration endpoint active: POST /api/v2/register/solana');
+})();
 
 // 404 handler
 app.use((req, res) => {
