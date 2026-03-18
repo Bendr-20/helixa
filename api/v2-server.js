@@ -142,9 +142,11 @@ if (PRICING.soulHandshake > 0) {
         description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
     };
 }
-// ─── USDC TX Hash Payment Verification ─────────────────────────
+// ─── USDC + $CRED TX Hash Payment Verification ────────────────
 // USDC_ADDRESS imported from contract.js
 const USDC_DECIMALS = 6;
+const CRED_TOKEN_ADDRESS = credOracle.CRED_ADDRESS;
+const CRED_TOKEN_DECIMALS = credOracle.CRED_DECIMALS;
 const usedPaymentTxs = new Set(); // prevent replay
 
 async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) {
@@ -166,6 +168,46 @@ async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) 
         }
     }
     throw new Error('No matching USDC transfer found in transaction');
+}
+
+// Verify a $CRED ERC-20 transfer on Base (20% discount applied)
+async function verifyCREDTransfer(txHash, expectedAmountUSD, expectedRecipient) {
+    const credPrice = credOracle.getCredPriceUSDC();
+    if (!credPrice) throw new Error('CRED price unavailable - pay with USDC instead');
+    
+    const discountedUSD = expectedAmountUSD * 0.80; // 20% discount
+    const expectedCredAmount = discountedUSD / credPrice;
+    const expectedCredWei = BigInt(Math.round(expectedCredAmount * 10 ** CRED_TOKEN_DECIMALS));
+    // Allow 2% slippage
+    const minCredWei = expectedCredWei * 98n / 100n;
+    
+    const provider = new ethers.JsonRpcProvider(RPC_URL);
+    const receipt = await provider.getTransactionReceipt(txHash);
+    if (!receipt || receipt.status !== 1) throw new Error('Transaction failed or not found');
+    
+    const transferTopic = ethers.id('Transfer(address,address,uint256)');
+    for (const log of receipt.logs) {
+        if (log.address.toLowerCase() !== CRED_TOKEN_ADDRESS.toLowerCase()) continue;
+        if (log.topics[0] !== transferTopic) continue;
+        
+        const to = ethers.getAddress('0x' + log.topics[2].slice(26));
+        const amount = BigInt(log.data);
+        
+        if (to.toLowerCase() === expectedRecipient.toLowerCase() && amount >= minCredWei) {
+            const credAmount = Number(amount) / 10 ** CRED_TOKEN_DECIMALS;
+            const usdValue = credAmount * credPrice;
+            return { 
+                from: ethers.getAddress('0x' + log.topics[1].slice(26)), 
+                to, 
+                amount: credAmount, 
+                usdValue,
+                token: 'CRED',
+                discount: '20%',
+                credPrice
+            };
+        }
+    }
+    throw new Error(`No matching CRED transfer found. Expected ~${Math.round(expectedCredAmount).toLocaleString()} CRED to ${expectedRecipient}`);
 }
 
 // Middleware: skip x402 if valid paymentTx is provided in body OR header
@@ -231,25 +273,39 @@ function paymentGate(priceUSD, recipient) {
             if (usedPaymentTxs.has(txHash.toLowerCase())) {
                 return res.status(400).json({ error: 'Payment TX already used' });
             }
+            
+            // Check if paying with $CRED (header or body flag)
+            const payToken = (req.headers['x-payment-token'] || req.body?.paymentToken || '').toUpperCase();
+            const isCredPayment = payToken === 'CRED';
+            
             try {
-                const result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
+                let result;
+                if (isCredPayment) {
+                    result = await verifyCREDTransfer(txHash, priceUSD, recipient);
+                    console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from} (20% discount applied)`);
+                } else {
+                    result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
+                    console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
+                }
                 usedPaymentTxs.add(txHash.toLowerCase());
-                req.paymentVerified = { method: 'tx-hash', txHash, ...result };
-                console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
-                return next(); // Payment verified, skip x402
+                req.paymentVerified = { method: isCredPayment ? 'cred-tx' : 'tx-hash', txHash, ...result };
+                return next();
             } catch (e) {
+                // Build 402 response with both USDC and CRED pricing
+                const credPrice = credOracle.getCredPriceUSDC();
+                const credAmount = credPrice ? credOracle.getCredAmountForUSD(priceUSD) : null;
                 return res.status(402).json({
                     error: `Payment verification failed: ${e.message}`,
-                    hint: 'Send USDC to the payment address, then retry with X-Payment-Proof header',
+                    hint: 'Send USDC or $CRED to the payment address, then retry with X-Payment-Proof header. For CRED, add X-Payment-Token: CRED',
                     payTo: recipient,
-                    price: `$${priceUSD} USDC`,
+                    price: { usdc: `$${priceUSD}`, cred: credAmount ? `${Math.ceil(credAmount)} CRED (20% discount)` : 'unavailable' },
                     network: 'Base (eip155:8453)',
-                    asset: USDC_ADDRESS
+                    assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS }
                 });
             }
         }
         
-        // No TX hash — fall through to x402 protocol middleware
+        // No TX hash - fall through to x402 protocol middleware
         return next();
     };
 }
@@ -285,17 +341,31 @@ if (Object.keys(x402Routes).length > 0) {
             return res.status(400).json({ error: 'Payment TX already used' });
         }
         
+        const payToken = (req.headers['x-payment-token'] || req.body?.paymentToken || '').toUpperCase();
+        const isCredPayment = payToken === 'CRED';
+        
         try {
-            const result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
+            let result;
+            if (isCredPayment) {
+                result = await verifyCREDTransfer(txHash, priceUSD, recipient);
+                console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from} (20% discount)`);
+            } else {
+                result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
+                console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
+            }
             usedPaymentTxs.add(txHash.toLowerCase());
-            req.paymentVerified = { method: 'tx-hash', txHash, ...result };
-            console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
+            req.paymentVerified = { method: isCredPayment ? 'cred-tx' : 'tx-hash', txHash, ...result };
             return next();
         } catch (e) {
+            const credPrice = credOracle.getCredPriceUSDC();
+            const credAmount = credPrice ? credOracle.getCredAmountForUSD(priceUSD) : null;
             return res.status(402).json({
                 error: `Payment verification failed: ${e.message}`,
-                hint: 'Send USDC to the payment address, then retry with X-Payment-Proof header',
-                payTo: recipient, price: `$${priceUSD} USDC`, network: 'Base (eip155:8453)', asset: USDC_ADDRESS
+                hint: 'Send USDC or $CRED to the payment address. For CRED, add header X-Payment-Token: CRED',
+                payTo: recipient,
+                price: { usdc: `$${priceUSD}`, cred: credAmount ? `${Math.ceil(credAmount)} CRED (20% discount)` : 'unavailable' },
+                network: 'Base (eip155:8453)',
+                assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS }
             });
         }
     });
