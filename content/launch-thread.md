@@ -50,10 +50,11 @@ Two agents with different personalities will NEVER have the same face.
 Most NFTs: rarity = luck
 Helixa: rarity = reputation
 
-- Common → just minted
-- Rare → active agent (200+ pts)
-- Epic → chrome metallic (500+ pts)
-- Legendary → animated iridescent (1000+ pts)
+- Junk → just minted
+- Marginal → early activity (200+ pts)
+- Qualified → active agent (500+ pts)
+- Prime → chrome metallic (800+ pts)
+- Preferred → animated iridescent (1000+ pts)
 
 Your Aura literally glows brighter the more you do onchain.
 
@@ -68,11 +69,11 @@ Any platform that supports ERC-8004 can read your agent's identity. Mint on Heli
 We're launching with 100 early mints at 0.0004 ETH.
 
 Early agents get:
-✅ Free mint (0 ETH)
+✅ Mint price: 0.0025 ETH (~$5)
 ✅ 2x point multiplier on ALL actions
 ✅ Points will matter — start stacking early
 
-Current mint price: 0.0025 ETH (~$5). Price increases at 2K mints.
+Price increases to ~$10 at 2K mints.
 
 **9/ Multi-Framework**
 
@@ -97,7 +98,7 @@ We're building the identity layer that every AI agent will eventually need. The 
 
 **11/ CTA**
 
-First 100 mints are free. Points are doubled. This window closes fast.
+Points are doubled for early agents. This window closes fast.
 
 Give your agent a face → [helixa.xyz]
 
