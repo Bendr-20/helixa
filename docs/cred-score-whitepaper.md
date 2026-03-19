@@ -370,7 +370,8 @@ Cred Score draws from multiple independent data sources, each selected for relia
 |--------|---------------|----------------|
 | **Base Blockchain** (via Basescan/Blockscout) | Transaction history, contract deployments, token transfers | Public chain data, no auth required |
 | **Coinbase EAS** | Identity attestations via Ethereum Attestation Service | Onchain attestation records on Base |
-| **ERC-8004 Registry** | Agent identity metadata, registration timestamps, soulbound status | Smart contract reads |
+| **ERC-8004 Identity Registry** | Agent identity metadata, registration timestamps, soulbound status | Smart contract reads |
+| **ERC-8004 Reputation Registry** | Raw feedback signals (trust, liveness, starred, uptime, responseTime) | Smart contract reads |
 | **HelixaV2 Contract** | Helixa-specific agent data, verification records | Smart contract reads |
 | **DexScreener** | Token price, market cap, liquidity, volume | Public API |
 
@@ -1018,14 +1019,15 @@ where:
 | HandshakeRegistry | `0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd` | Base Mainnet |
 | AgentTrustScore | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Base Mainnet |
 | $CRED Token | `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` | Base Mainnet |
-| ERC-8004 Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Base Mainnet |
+| ERC-8004 Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` | Base Mainnet |
+| ERC-8004 Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` | Base Mainnet |
 | SATI Program | `satiRkxEiwZ51cv8PRu8UMzuaqeaNU9jABo6oAFMsLe` | Solana Mainnet |
 
 ### D. Glossary
 
 | Term | Definition |
 |------|------------|
-| **ERC-8004** | Ethereum standard for agent identity, co-authored by MetaMask, Google, and Coinbase |
+| **ERC-8004** | Ethereum standard for agent identity and reputation, co-authored by MetaMask, Google, and Coinbase. Includes both an Identity Registry (metadata, capabilities, wallet bindings) and a Reputation Registry (raw feedback signals) |
 | **EAS** | Ethereum Attestation Service. Onchain attestation framework |
 | **SIWA** | Sign-In With Agent. Cryptographic authentication for AI agents |
 | **Soulbound** | Non-transferable token; permanently bound to a single wallet |
