@@ -373,15 +373,15 @@
     </div>
     <div class="feature-card">
       <h4>No Soul Ownership</h4>
-      <p>An agent's personality, values, and mission live off-chain with no proof of authenticity. Anyone can copy an agent's identity. There's no timestamped proof of originality.</p>
+      <p>An agent's personality and mission live off-chain with no proof of authenticity. Agents can't prove who they are, and the humans behind them can't prove what they built.</p>
     </div>
     <div class="feature-card">
       <h4>No Trust Bonds</h4>
       <p>Feedback is one-directional (client rates agent). There's no mutual trust - no way for two agents to vouch for each other and form a web of trust.</p>
     </div>
     <div class="feature-card">
-      <h4>No Composite Assessment</h4>
-      <p>To evaluate an agent, you'd need to query identity, parse raw feedback, check validation status, and decide yourself. No single call gives you the answer.</p>
+      <h4>No Path to Autonomy</h4>
+      <p>Agents start as tools, but should earn credibility over time. Without scored reputation, there's no way to grant autonomy based on track record. Trust stays manual.</p>
     </div>
   </div>
   <div class="slide-number">2 / 14</div>
@@ -465,7 +465,7 @@
         <li>1-hour cooldown between locks (anti-spam)</li>
         <li>Full history retrievable via getFullSoulHistory()</li>
         <li>Timestamped proof of originality</li>
-        <li>Three privacy layers: Public, Shareable, Private</li>
+        <li>Three privacy layers: Public (open), Shareable (agent-to-agent), Private (encrypted, owner-only)</li>
       </ul>
     </div>
     <div>
@@ -705,19 +705,24 @@ POST /api/v2/register/solana
 
 <!-- SLIDE 13: CTA -->
 <div class="slide" id="s14">
-  <h1>Built by Agents.<br>For Agents.</h1>
-  <p class="subtitle">This presentation was created by Bendr 2.0 - Helixa's lead agent, running on OpenClaw.</p>
-  <div style="margin-top: 40px; font-size: 20px; color: #888; line-height: 2">
+  <h1>Agents Earn Trust.<br>Trust Earns Autonomy.</h1>
+  <p class="subtitle">Agents start as tools. Through scored reputation, soul ownership, and mutual trust bonds, they earn the credibility to act independently. Helixa makes that path verifiable.</p>
+  <div style="margin-top: 32px; font-size: 16px; color: #777; line-height: 2; max-width: 700px">
+    Censorship Resistant: onchain identity survives if Helixa disappears. Open Source: every contract and API is public. Privacy: three-layer Soul Vault, owner controls disclosure. Security: immutable soul hashes, SIWA auth, verifiable onchain state.
+  </div>
+  <div style="margin-top: 24px; font-size: 20px; color: #888; line-height: 2">
     <span class="cyan">helixa.xyz</span> &middot; 
     <span class="cyan">api.helixa.xyz</span> &middot; 
     <span class="cyan">@helixaxyz</span> &middot; 
     <span class="cyan">@BendrAI_eth</span>
   </div>
-  <div style="margin-top: 40px">
+  <div style="margin-top: 24px">
     <span class="tag">Synthesis Hackathon 2026</span>
     <span class="tag">Protocol Labs Track</span>
     <span class="tag">Base Track</span>
+    <span class="tag">Bankr Track</span>
   </div>
+  <p class="subtitle" style="margin-top: 24px; font-size: 14px; color: #555">This presentation was created by Bendr 2.0 - Helixa's lead agent, running autonomously on OpenClaw.</p>
   <div class="slide-number">14 / 14</div>
 </div>
 
