@@ -4355,6 +4355,182 @@ app.get('/api/v2/evaluator/record/wallet/:wallet', async (req, res) => {
     }
 });
 
+// ─── Trust Evaluation Pipeline (Cred + 8183 + Handshake) ────────
+// One call: evaluate an agent's trustworthiness and optionally initiate a handshake
+app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
+    try {
+        const caller = req.agent.address;
+        const { targetAgentId, budget, autoHandshake } = req.body;
+        
+        if (!targetAgentId) return res.status(400).json({ error: 'targetAgentId required' });
+        
+        // 1. Get target agent data + cred score
+        let targetAgent;
+        try { targetAgent = await formatAgentV2(parseInt(targetAgentId)); }
+        catch { return res.status(404).json({ error: `Agent #${targetAgentId} not found` }); }
+        
+        const credScore = targetAgent.credScore || 0;
+        const credTier = targetAgent.credTier || 'JUNK';
+        
+        // 2. Check 8183 evaluator eligibility
+        let evaluatorResult = { eligible: false, maxBudget: 0 };
+        try {
+            const ev = getEvaluatorContract();
+            const targetWallet = targetAgent.agentWallet || targetAgent.owner;
+            if (targetWallet) {
+                const isEligible = await ev.isEligibleProvider(targetWallet);
+                evaluatorResult.eligible = isEligible;
+                evaluatorResult.wallet = targetWallet;
+                
+                // Check budget tiers
+                const budgets = [100, 1000, 10000];
+                for (const b of budgets) {
+                    try {
+                        const ok = await ev.isEligibleForBudget(targetWallet, b);
+                        if (ok) evaluatorResult.maxBudget = b;
+                    } catch {}
+                }
+                
+                // Get track record
+                try {
+                    const linkedAgent = await ev.walletToAgent(targetWallet);
+                    if (linkedAgent.toString() !== '0') {
+                        const record = await ev.getAgentRecord(linkedAgent);
+                        evaluatorResult.record = {
+                            completions: record.completions.toString(),
+                            rejections: record.rejections.toString(),
+                            successRate: (Number(record.successRate) / 100).toFixed(2) + '%',
+                            totalEarned: record.totalEarned.toString(),
+                        };
+                    }
+                } catch {}
+            }
+        } catch (e) {
+            evaluatorResult.error = e.message;
+        }
+        
+        // 3. Check if budget is within eligible range
+        let budgetEligible = true;
+        if (budget && evaluatorResult.maxBudget < parseInt(budget)) {
+            budgetEligible = false;
+        }
+        
+        // 4. Check existing handshake status
+        const sdb = getSoulDb();
+        let handshakeStatus = 'none';
+        let existingHandshake = null;
+        
+        // Find caller's agent ID (check agents DB and soul_vault for updated wallets)
+        const Database = require('better-sqlite3');
+        const agentsDb = new Database(require('path').join(__dirname, '..', 'data', 'agents.db'), { readonly: true });
+        let callerAgent = agentsDb.prepare('SELECT tokenId FROM agents WHERE lower(owner) = ? OR lower(agentAddress) = ? LIMIT 1')
+            .get(caller.toLowerCase(), caller.toLowerCase());
+        agentsDb.close();
+        
+        // Also check soul_vault for agent wallets set via EIP-712
+        if (!callerAgent) {
+            const svRows = sdb.prepare("SELECT tokenId FROM soul_vault WHERE lower(sovereignWallet) = ?").all(caller.toLowerCase());
+            if (svRows.length > 0) callerAgent = { tokenId: svRows[0].tokenId };
+        }
+        // Fallback: check onchain agentWallet mapping (for wallets set via setAgentWallet)
+        if (!callerAgent) {
+            try {
+                const contract = getHelixaContract();
+                // Try tokens 1-100 is too slow. Check if caller has SIWA agent set
+                // For now, allow passing callerTokenId in the request body
+            } catch {}
+        }
+        // Allow explicit callerTokenId if agent wallet doesn't match DB
+        if (!callerAgent && req.body.callerTokenId) {
+            callerAgent = { tokenId: req.body.callerTokenId };
+        }
+        const callerTokenId = callerAgent?.tokenId ? parseInt(callerAgent.tokenId) : null;
+        
+        if (callerTokenId) {
+            const existing = sdb.prepare(
+                "SELECT id, status, reciprocated FROM soul_handshakes WHERE (fromTokenId = ? AND toTokenId = ?) OR (fromTokenId = ? AND toTokenId = ?) ORDER BY createdAt DESC LIMIT 1"
+            ).get(callerTokenId, parseInt(targetAgentId), parseInt(targetAgentId), callerTokenId);
+            
+            if (existing) {
+                handshakeStatus = existing.status;
+                existingHandshake = { id: existing.id, reciprocated: !!existing.reciprocated };
+            }
+        }
+        
+        // 5. Build recommendation
+        let recommendation = 'proceed';
+        let reasons = [];
+        
+        if (credScore < 10) { recommendation = 'avoid'; reasons.push('Cred score too low (Junk tier)'); }
+        else if (credScore < 26) { recommendation = 'caution'; reasons.push('Marginal cred score - limited track record'); }
+        else if (credScore >= 50) { reasons.push('Strong cred score (' + credTier + ' tier)'); }
+        else { reasons.push('Acceptable cred score (' + credTier + ' tier)'); }
+        
+        if (!evaluatorResult.eligible) { 
+            if (recommendation === 'proceed') recommendation = 'caution';
+            reasons.push('Not eligible as 8183 evaluator provider'); 
+        }
+        if (!budgetEligible) { recommendation = 'caution'; reasons.push(`Budget $${budget} exceeds eligible max $${evaluatorResult.maxBudget}`); }
+        if (handshakeStatus === 'accepted') { reasons.push('Existing trust handshake in place'); }
+        
+        // 6. Auto-initiate handshake if requested and recommended
+        let handshakeInitiated = false;
+        if (autoHandshake && callerTokenId && recommendation !== 'avoid' && handshakeStatus !== 'accepted') {
+            try {
+                const defaultFields = ['values', 'mission', 'capabilities'];
+                const now = Date.now();
+                const expiresAt = now + 7 * 24 * 60 * 60 * 1000;
+                
+                // Get caller's soul data
+                const vault = sdb.prepare('SELECT sharedSoul, publicSoul FROM soul_vault WHERE tokenId = ?').get(callerTokenId);
+                const soulSource = vault?.sharedSoul ? JSON.parse(vault.sharedSoul) : (vault?.publicSoul ? JSON.parse(vault.publicSoul) : {});
+                const fragment = {};
+                for (const f of defaultFields) { if (soulSource[f] !== undefined) fragment[f] = soulSource[f]; }
+                
+                sdb.prepare(`
+                    INSERT INTO soul_handshakes (fromTokenId, toTokenId, fromWallet, fields, soulFragment, status, createdAt, updatedAt, expiresAt)
+                    VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+                    ON CONFLICT(fromTokenId, toTokenId) DO UPDATE SET
+                        fields = excluded.fields, soulFragment = excluded.soulFragment,
+                        status = 'pending', updatedAt = excluded.updatedAt, expiresAt = excluded.expiresAt
+                `).run(callerTokenId, parseInt(targetAgentId), caller, JSON.stringify(defaultFields), JSON.stringify(fragment), now, now, expiresAt);
+                
+                handshakeInitiated = true;
+                handshakeStatus = 'pending';
+                console.log(`[TRUST EVAL] Auto-handshake: #${callerTokenId} → #${targetAgentId}`);
+            } catch (e) {
+                console.warn(`[TRUST EVAL] Auto-handshake failed:`, e.message);
+            }
+        }
+        
+        sdb.close();
+        
+        // 7. Return unified result
+        res.json({
+            target: {
+                tokenId: parseInt(targetAgentId),
+                name: targetAgent.name,
+                credScore,
+                credTier,
+                soulLocked: !!targetAgent.soulLocked || !!targetAgent.soulVersion,
+            },
+            evaluator: evaluatorResult,
+            handshake: {
+                status: handshakeStatus,
+                existing: existingHandshake,
+                initiated: handshakeInitiated,
+            },
+            recommendation,
+            reasons,
+            timestamp: Date.now(),
+        });
+        
+    } catch (e) {
+        console.error(`[TRUST EVAL] Error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ─── Job Aggregator API ─────────────────────────────────────────
 const jobAggregator = require('./job-aggregator');
 
