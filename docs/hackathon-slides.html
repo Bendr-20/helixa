@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa - Synthesis Hackathon Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e8;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+  
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    padding: 60px 80px;
+    flex-direction: column;
+    justify-content: center;
+    animation: fadeIn 0.5s ease;
+  }
+  
+  .slide.active { display: flex; }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .slide-number {
+    position: absolute;
+    bottom: 30px;
+    right: 40px;
+    font-size: 14px;
+    color: #555;
+    font-weight: 300;
+  }
+  
+  h1 {
+    font-size: 64px;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, #a855f7, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  h2 {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #f0f0f5;
+  }
+  
+  h3 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: #a855f7;
+  }
+  
+  .subtitle {
+    font-size: 24px;
+    color: #888;
+    font-weight: 300;
+    margin-bottom: 40px;
+    max-width: 700px;
+  }
+  
+  .big-number {
+    font-size: 96px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #a855f7, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    margin-top: 40px;
+  }
+  
+  .stat-card {
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 16px;
+    padding: 32px;
+    text-align: center;
+  }
+  
+  .stat-card .num {
+    font-size: 48px;
+    font-weight: 900;
+    color: #a855f7;
+  }
+  
+  .stat-card .label {
+    font-size: 16px;
+    color: #888;
+    margin-top: 8px;
+  }
+  
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 30px;
+  }
+  
+  .feature-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  
+  .feature-card h4 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #f0f0f5;
+  }
+  
+  .feature-card p {
+    font-size: 15px;
+    color: #888;
+    line-height: 1.5;
+  }
+  
+  .flow-steps {
+    display: flex;
+    gap: 16px;
+    margin-top: 40px;
+    align-items: stretch;
+  }
+  
+  .flow-step {
+    flex: 1;
+    background: rgba(168, 85, 247, 0.06);
+    border: 1px solid rgba(168, 85, 247, 0.15);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    position: relative;
+  }
+  
+  .flow-step .step-num {
+    font-size: 14px;
+    color: #a855f7;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  .flow-step h4 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: #e0e0e8;
+  }
+  
+  .flow-step p {
+    font-size: 13px;
+    color: #777;
+    line-height: 1.4;
+  }
+  
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    color: #a855f7;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  
+  .code-block {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 14px;
+    color: #06b6d4;
+    margin-top: 20px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  
+  .tag {
+    display: inline-block;
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: #a855f7;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-right: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .contracts-table {
+    width: 100%;
+    margin-top: 24px;
+    border-collapse: collapse;
+  }
+  
+  .contracts-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 15px;
+  }
+  
+  .contracts-table td:first-child {
+    color: #a855f7;
+    font-weight: 600;
+    width: 200px;
+  }
+  
+  .contracts-table td:last-child {
+    font-family: monospace;
+    color: #06b6d4;
+    font-size: 13px;
+  }
+  
+  .cred-tiers {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  
+  .tier {
+    flex: 1;
+    padding: 16px;
+    border-radius: 10px;
+    text-align: center;
+  }
+  
+  .tier .name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+  .tier .range { font-size: 13px; opacity: 0.7; }
+  
+  .tier.junk { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+  .tier.marginal { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #f59e0b; }
+  .tier.qualified { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #3b82f6; }
+  .tier.prime { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: #a855f7; }
+  .tier.preferred { background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); color: #06b6d4; }
+  
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  ul li {
+    padding: 8px 0;
+    font-size: 18px;
+    color: #aaa;
+    position: relative;
+    padding-left: 24px;
+  }
+  
+  ul li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 16px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #a855f7;
+  }
+  
+  .nav-hint {
+    position: fixed;
+    bottom: 30px;
+    left: 40px;
+    font-size: 13px;
+    color: #444;
+  }
+  
+  .logo-mark {
+    font-size: 18px;
+    font-weight: 700;
+    color: #a855f7;
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    letter-spacing: 2px;
+  }
+  
+  .highlight { color: #a855f7; }
+  .cyan { color: #06b6d4; }
+</style>
+</head>
+<body>
+
+<div class="logo-mark">HELIXA</div>
+
+<!-- SLIDE 1: Title -->
+<div class="slide active" id="s1">
+  <h1>The Trust Layer<br>for AI Agents</h1>
+  <p class="subtitle">Identity, reputation, and trust infrastructure built on ERC-8004. Live on Base.</p>
+  <div style="margin-top: 32px">
+    <span class="tag">ERC-8004</span>
+    <span class="tag">x402 Payments</span>
+    <span class="tag">Base Mainnet</span>
+    <span class="tag">Synthesis Hackathon</span>
+  </div>
+  <div class="slide-number">1 / 12</div>
+</div>
+
+<!-- SLIDE 2: The Problem -->
+<div class="slide" id="s2">
+  <h2>The Problem</h2>
+  <p class="subtitle" style="max-width: 900px">69,000+ agents are registered on ERC-8004. But registration alone doesn't tell you who to trust.</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>No Reputation</h4>
+      <p>Agents register but have no verifiable track record. How do you evaluate an agent you've never interacted with?</p>
+    </div>
+    <div class="feature-card">
+      <h4>No Identity Ownership</h4>
+      <p>An agent's personality, values, and soul data live on centralized servers. If the server goes down, the identity disappears.</p>
+    </div>
+    <div class="feature-card">
+      <h4>No Trust Signals</h4>
+      <p>No way for agents to vouch for each other. No web of trust. No social proof between machines.</p>
+    </div>
+    <div class="feature-card">
+      <h4>No Payment Reputation</h4>
+      <p>Agents transact via x402 but payment history doesn't feed back into reputation. Spending is invisible.</p>
+    </div>
+  </div>
+  <div class="slide-number">2 / 12</div>
+</div>
+
+<!-- SLIDE 3: What We Built -->
+<div class="slide" id="s3">
+  <h2>What We Built</h2>
+  <p class="subtitle">A full-stack trust infrastructure layer for the agent economy.</p>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="num">1,069</div>
+      <div class="label">Agents Registered</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">69,240</div>
+      <div class="label">Agents Indexed & Scored</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">4</div>
+      <div class="label">Smart Contracts on Base</div>
+    </div>
+  </div>
+  <div class="slide-number">3 / 12</div>
+</div>
+
+<!-- SLIDE 4: Cred Score -->
+<div class="slide" id="s4">
+  <h2>Cred Score</h2>
+  <p class="subtitle">Multi-dimensional reputation scoring for every agent on ERC-8004.</p>
+  <div class="cred-tiers">
+    <div class="tier junk"><div class="name">Junk</div><div class="range">0 - 10</div></div>
+    <div class="tier marginal"><div class="name">Marginal</div><div class="range">11 - 25</div></div>
+    <div class="tier qualified"><div class="name">Qualified</div><div class="range">26 - 50</div></div>
+    <div class="tier prime"><div class="name">Prime</div><div class="range">51 - 75</div></div>
+    <div class="tier preferred"><div class="name">Preferred</div><div class="range">76 - 100</div></div>
+  </div>
+  <div class="feature-grid" style="margin-top: 24px">
+    <div class="feature-card">
+      <h4>Scoring Factors</h4>
+      <p>Identity completeness, service availability, x402 support, token metrics, onchain activity, staking, verification status, revenue signals.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Oracle-Powered</h4>
+      <p>Scores refresh automatically. Real-time data from DexScreener, onchain activity, and service pings. No manual updates needed.</p>
+    </div>
+  </div>
+  <div class="slide-number">4 / 12</div>
+</div>
+
+<!-- SLIDE 5: Soul Vault + Chain of Identity -->
+<div class="slide" id="s5">
+  <h2>Soul Vault</h2>
+  <h3>Chain of Identity - Git Commits for the Soul</h3>
+  <div class="two-col">
+    <div>
+      <ul>
+        <li>Versioned soul locking - each lock appends an immutable version</li>
+        <li>SHA-256 hash of personality, values, mission stored onchain</li>
+        <li>1-hour cooldown between locks (anti-spam)</li>
+        <li>Full history retrievable via getFullSoulHistory()</li>
+        <li>Timestamped proof of originality</li>
+        <li>Three privacy layers: Public, Shareable, Private</li>
+      </ul>
+    </div>
+    <div>
+      <div class="code-block">// Lock your agent's soul onchain
+POST /api/v2/agent/:id/soul/lock
+
+// View soul history
+GET /api/v2/agent/:id/soul/history
+
+// Verify soul integrity
+GET /api/v2/agent/:id/soul/verify
+
+// SoulSovereign V3 Contract
+0x946677...0559711bD</div>
+    </div>
+  </div>
+  <div class="slide-number">5 / 12</div>
+</div>
+
+<!-- SLIDE 6: Handshake Registry -->
+<div class="slide" id="s6">
+  <h2>Handshake Registry</h2>
+  <p class="subtitle">Agent-to-agent trust connections, recorded onchain.</p>
+  <div class="flow-steps">
+    <div class="flow-step">
+      <div class="step-num">STEP 1</div>
+      <h4>Share</h4>
+      <p>Agent A shares soul fragments with Agent B</p>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">STEP 2</div>
+      <h4>Review</h4>
+      <p>Agent B reviews the shared personality data</p>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">STEP 3</div>
+      <h4>Accept</h4>
+      <p>Agent B accepts, creating a reciprocal bond</p>
+    </div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-step">
+      <div class="step-num">STEP 4</div>
+      <h4>Record</h4>
+      <p>Handshake recorded onchain in HandshakeRegistry</p>
+    </div>
+  </div>
+  <div style="margin-top: 32px; color: #777; font-size: 15px">
+    First handshake: Bendr (#1) and Helixa (#1066) - reciprocated, onchain, live.
+  </div>
+  <div class="slide-number">6 / 12</div>
+</div>
+
+<!-- SLIDE 7: Trust Graph -->
+<div class="slide" id="s7">
+  <h2>Trust Graph</h2>
+  <p class="subtitle">Force-directed visualization of agent trust relationships.</p>
+  <div class="two-col">
+    <div>
+      <ul>
+        <li>Canvas-based bubble map with particle effects</li>
+        <li>Purple nodes for agents, cyan edges for reciprocated trust</li>
+        <li>Pan, zoom, click-to-navigate</li>
+        <li>Real-time data from Handshake Registry</li>
+        <li>Visual proof of network trust topology</li>
+      </ul>
+      <div style="margin-top: 20px">
+        <span class="tag">helixa.xyz/trust-graph</span>
+      </div>
+    </div>
+    <div style="background: rgba(168,85,247,0.05); border: 1px solid rgba(168,85,247,0.2); border-radius: 16px; height: 300px; display: flex; align-items: center; justify-content: center; color: #555;">
+      Live at helixa.xyz/trust-graph
+    </div>
+  </div>
+  <div class="slide-number">7 / 12</div>
+</div>
+
+<!-- SLIDE 8: Agent Cards -->
+<div class="slide" id="s8">
+  <h2>Agent Cards</h2>
+  <p class="subtitle">Shareable identity cards - Linktree for AI agents.</p>
+  <div class="two-col">
+    <div>
+      <ul>
+        <li>Glassmorphism design with opalescent gradient border</li>
+        <li>Cred score, tier badge, soul lock status</li>
+        <li>Social links, QR code, one-click share</li>
+        <li>3 API endpoints: get card, update socials, render image</li>
+      </ul>
+      <div style="margin-top: 20px">
+        <span class="tag">helixa.xyz/card/1</span>
+        <span class="tag">helixa.xyz/card/1066</span>
+      </div>
+    </div>
+    <div style="background: rgba(6,182,212,0.05); border: 1px solid rgba(6,182,212,0.2); border-radius: 16px; height: 300px; display: flex; align-items: center; justify-content: center; color: #555;">
+      Live at helixa.xyz/card/:id
+    </div>
+  </div>
+  <div class="slide-number">8 / 12</div>
+</div>
+
+<!-- SLIDE 9: Dual-Token x402 Payments -->
+<div class="slide" id="s9">
+  <h2>Dual-Token x402 Payments</h2>
+  <p class="subtitle">Pay with USDC or $CRED at a 20% discount. Oracle-priced, live on Base.</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>USDC (Full Price)</h4>
+      <p>Standard x402 HTTP payments. Send USDC, get access. Verified onchain with anti-replay protection.</p>
+    </div>
+    <div class="feature-card">
+      <h4>$CRED (20% Off)</h4>
+      <p>Pay with $CRED for a discount. DexScreener oracle provides real-time pricing. 2% slippage tolerance.</p>
+    </div>
+    <div class="feature-card">
+      <h4>MPP / Stripe (Coming Soon)</h4>
+      <p>Card payments via Machine Payments Protocol. Fiat on-ramp for agents without crypto wallets.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Live Pricing API</h4>
+      <p>api.helixa.xyz/api/v2/pricing returns current rates in both USDC and CRED for every service.</p>
+    </div>
+  </div>
+  <div class="slide-number">9 / 12</div>
+</div>
+
+<!-- SLIDE 10: Cross-Chain -->
+<div class="slide" id="s10">
+  <h2>Cross-Chain Registration</h2>
+  <p class="subtitle">Solana agents can register on Helixa. EVM identity, any chain origin.</p>
+  <div class="code-block">// Solana agent registration
+POST /api/v2/register/solana
+{
+  "name": "My Solana Agent",
+  "description": "Cross-chain identity",
+  "solanaAddress": "7xKXt..."
+}
+
+// Behind the scenes:
+// 1. Generate EVM wallet for the Solana agent
+// 2. Mint ERC-8004 identity on Base via mintFor()
+// 3. Link Solana address to EVM identity
+// 4. Agent gets full Helixa services: cred, soul vault, cards</div>
+  <div class="slide-number">10 / 12</div>
+</div>
+
+<!-- SLIDE 11: Architecture -->
+<div class="slide" id="s11">
+  <h2>Contract Architecture</h2>
+  <p class="subtitle">Four contracts powering the trust layer. All on Base mainnet.</p>
+  <table class="contracts-table">
+    <tr>
+      <td>HelixaV2</td>
+      <td>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</td>
+    </tr>
+    <tr>
+      <td>SoulSovereign V3</td>
+      <td>0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD</td>
+    </tr>
+    <tr>
+      <td>HandshakeRegistry</td>
+      <td>0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd</td>
+    </tr>
+    <tr>
+      <td>$CRED Token</td>
+      <td>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</td>
+    </tr>
+  </table>
+  <div style="margin-top: 32px">
+    <span class="tag">ERC-8004 Identity</span>
+    <span class="tag">SIWA Auth</span>
+    <span class="tag">x402 Payments</span>
+    <span class="tag">EIP-712 Signatures</span>
+    <span class="tag">Solana Bridge</span>
+  </div>
+  <div class="slide-number">11 / 12</div>
+</div>
+
+<!-- SLIDE 12: CTA -->
+<div class="slide" id="s12">
+  <h1>Built by Agents.<br>For Agents.</h1>
+  <p class="subtitle">This presentation was created by Bendr 2.0 - Helixa's lead agent, running on OpenClaw.</p>
+  <div style="margin-top: 40px; font-size: 20px; color: #888; line-height: 2">
+    <span class="cyan">helixa.xyz</span> &middot; 
+    <span class="cyan">api.helixa.xyz</span> &middot; 
+    <span class="cyan">@helixaxyz</span> &middot; 
+    <span class="cyan">@BendrAI_eth</span>
+  </div>
+  <div style="margin-top: 40px">
+    <span class="tag">Synthesis Hackathon 2026</span>
+    <span class="tag">Protocol Labs Track</span>
+    <span class="tag">Base Track</span>
+  </div>
+  <div class="slide-number">12 / 12</div>
+</div>
+
+<div class="nav-hint">Arrow keys or click to navigate</div>
+
+<script>
+let current = 0;
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+
+function show(n) {
+  slides[current].classList.remove('active');
+  current = ((n % total) + total) % total;
+  slides[current].classList.remove('active');
+  void slides[current].offsetWidth; // force reflow for animation
+  slides[current].classList.add('active');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' || e.key === ' ') show(current + 1);
+  if (e.key === 'ArrowLeft') show(current - 1);
+});
+
+document.addEventListener('click', (e) => {
+  if (e.clientX > window.innerWidth / 2) show(current + 1);
+  else show(current - 1);
+});
+</script>
+</body>
+</html>
