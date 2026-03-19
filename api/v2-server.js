@@ -649,6 +649,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
+                'POST /api/v2/register/solana': 'Register a Solana agent on Base (no SIWA needed)',
                 'POST /api/v2/agent/:id/coinbase-verify': 'Check Coinbase EAS attestation & boost Cred (SIWA required)',
             },
         },
@@ -1389,6 +1390,105 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
             amount: `${PRICING.agentMint} USDC`,
             network: 'Base (chain 8453)',
         });
+    }
+});
+
+// ─── POST /api/v2/register/solana — Register a Solana agent on Base ───
+// No SIWA required (Solana agents can't sign EVM messages)
+// Generates an EVM wallet, mints via mintFor(), stores cross-chain link
+app.post('/api/v2/register/solana', async (req, res) => {
+    const { name, framework, solanaAddress, soulbound } = req.body;
+
+    if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
+        return res.status(400).json({ error: 'name required (1-64 chars)' });
+    }
+    const NAME_REGEX = /^[\x20-\x7E\u00C0-\u024F\u0370-\u03FF]{1,64}$/;
+    if (!NAME_REGEX.test(name)) {
+        return res.status(400).json({ error: 'Name contains invalid characters' });
+    }
+    if (!solanaAddress || typeof solanaAddress !== 'string' || solanaAddress.length < 32 || solanaAddress.length > 44) {
+        return res.status(400).json({ error: 'solanaAddress required (base58 Solana public key)' });
+    }
+
+    const fw = (framework || 'custom').toLowerCase();
+    const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'based', 'agentkit', 'custom'];
+    if (!VALID_FRAMEWORKS.includes(fw)) {
+        return res.status(400).json({ error: `framework must be one of: ${VALID_FRAMEWORKS.join(', ')}` });
+    }
+
+    if (!isContractDeployed()) {
+        return res.status(503).json({ error: 'Contract not available for minting' });
+    }
+
+    try {
+        // Generate a fresh EVM wallet for this Solana agent
+        const evmWallet = ethers.Wallet.createRandom();
+        const evmAddress = evmWallet.address;
+
+        // Mint on Base via mintFor
+        console.log(`[SOLANA REG] ${name} (${fw}) solana:${solanaAddress} -> evm:${evmAddress}`);
+        const tx = await contract.mintFor(
+            evmAddress,     // to (owner)
+            evmAddress,     // agentAddress
+            name,
+            fw,
+            soulbound === true,
+            2,              // MintOrigin.CROSS_CHAIN = 2
+        );
+        console.log(`[SOLANA REG] TX: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        // Extract tokenId
+        let tokenId = null;
+        for (const log of receipt.logs) {
+            try {
+                const parsed = contract.interface.parseLog(log);
+                if (parsed?.name === 'AgentRegistered') {
+                    tokenId = Number(parsed.args.tokenId);
+                    break;
+                }
+            } catch {}
+        }
+
+        // Store cross-chain link in terminal DB
+        try {
+            const Database = require('better-sqlite3');
+            const dbPath = path.join(__dirname, '..', 'terminal', 'data', 'terminal.db');
+            const db = new Database(dbPath);
+            db.pragma('journal_mode = WAL');
+            db.exec(`CREATE TABLE IF NOT EXISTS solana_registrations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token_id INTEGER UNIQUE,
+                solana_address TEXT NOT NULL,
+                evm_address TEXT NOT NULL,
+                evm_private_key TEXT NOT NULL,
+                name TEXT,
+                framework TEXT,
+                registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`);
+            db.prepare(`INSERT INTO solana_registrations (token_id, solana_address, evm_address, evm_private_key, name, framework)
+                VALUES (?, ?, ?, ?, ?, ?)`).run(tokenId, solanaAddress, evmAddress, evmWallet.privateKey, name, fw);
+            db.close();
+        } catch (dbErr) {
+            console.error('[SOLANA REG] DB store failed:', dbErr.message);
+        }
+
+        res.json({
+            success: true,
+            tokenId,
+            evmAddress,
+            solanaAddress,
+            name,
+            framework: fw,
+            soulbound: soulbound === true,
+            tx: tx.hash,
+            explorer: `https://basescan.org/tx/${tx.hash}`,
+            profile: `https://helixa.xyz/agent/${tokenId}`,
+            card: `https://helixa.xyz/card/${tokenId}`,
+        });
+    } catch (e) {
+        console.error('[SOLANA REG] Error:', e.message);
+        res.status(500).json({ error: 'Registration failed: ' + e.message.slice(0, 200) });
     }
 });
 
