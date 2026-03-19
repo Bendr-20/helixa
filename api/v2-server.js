@@ -102,6 +102,27 @@ app.use((req, res, next) => {
     next();
 });
 
+// ─── MPP (Machine Payments Protocol) Server Setup ──────────────
+let mppServer = null;
+const MPP_SECRET_KEY = process.env.MPP_SECRET_KEY;
+if (MPP_SECRET_KEY) {
+    try {
+        const { Mppx: MppxServer, tempo: tempoServer } = require('mppx/server');
+        mppServer = MppxServer.create({
+            secretKey: MPP_SECRET_KEY,
+            methods: [tempoServer({
+                currency: '0x20C000000000000000000000b9537d11c60E8b50', // USDC.e on Tempo
+                recipient: DEPLOYER_ADDRESS,
+            })],
+        });
+        console.log('[MPP] Server initialized - accepting Tempo stablecoin payments');
+    } catch (e) {
+        console.warn('[MPP] Server init failed:', e.message);
+    }
+} else {
+    console.log('[MPP] No MPP_SECRET_KEY set - MPP acceptance disabled (waiting on Stripe access)');
+}
+
 // ─── x402 Official SDK Middleware ───────────────────────────────
 const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402ResourceServer } = require('@x402/express');
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
@@ -296,11 +317,12 @@ function paymentGate(priceUSD, recipient) {
                 const credAmount = credPrice ? credOracle.getCredAmountForUSD(priceUSD) : null;
                 return res.status(402).json({
                     error: `Payment verification failed: ${e.message}`,
-                    hint: 'Send USDC or $CRED to the payment address, then retry with X-Payment-Proof header. For CRED, add X-Payment-Token: CRED',
+                    hint: 'Send USDC or $CRED to the payment address, then retry with X-Payment-Proof header. For CRED, add X-Payment-Token: CRED. MPP (Tempo) also accepted.',
                     payTo: recipient,
                     price: { usdc: `$${priceUSD}`, cred: credAmount ? `${Math.ceil(credAmount)} CRED (20% discount)` : 'unavailable' },
                     network: 'Base (eip155:8453)',
-                    assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS }
+                    assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS },
+                    mpp: mppServer ? { supported: true, chain: 'Tempo (4217)', currency: 'USDC.e' } : undefined
                 });
             }
         }
@@ -370,15 +392,47 @@ if (Object.keys(x402Routes).length > 0) {
         }
     });
     
-    // x402 SDK — skip if already paid via TX hash
+    // MPP charge middleware — checks for MPP credentials before x402
+    if (mppServer) {
+        app.use(async (req, res, next) => {
+            if (req.paymentVerified) return next();
+            // Only check MPP on gated routes
+            let matched = null;
+            for (const [pattern, config] of Object.entries(x402Routes)) {
+                const [method, pathPattern] = pattern.split(' ');
+                if (method !== req.method) continue;
+                let regexStr = '^' + pathPattern.replace(/:[^/]+/g, '[^/]+').replace(/\[([^\]]+)\]/g, '[^/]+') + '$';
+                try { if (new RegExp(regexStr).test(req.path)) { matched = config; break; } } catch {}
+            }
+            if (!matched) return next();
+            // Check for MPP credential header
+            const mppCredential = req.headers['x-payment'] || req.headers['x-mpp-credential'];
+            if (!mppCredential) return next();
+            try {
+                const priceStr = matched.accepts?.[0]?.price || '$1';
+                const priceUSD = parseFloat(priceStr.replace('$', ''));
+                const response = await mppServer.charge({ amount: String(priceUSD) })(req);
+                if (response.status === 402) return next(); // fall through to x402
+                req.paymentVerified = { method: 'mpp-tempo', amount: priceUSD };
+                console.log(`[MPP] Verified Tempo payment of $${priceUSD} for ${req.method} ${req.path}`);
+                return next();
+            } catch (e) {
+                console.warn(`[MPP] Verification failed: ${e.message}`);
+                return next(); // fall through to x402
+            }
+        });
+    }
+
+    // x402 SDK — skip if already paid via TX hash or MPP
     const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
     app.use((req, res, next) => {
         if (req.paymentVerified) return next();
         return x402Mw(req, res, next);
     });
     
-    console.log(`💰 x402 payment gates active: ${Object.keys(x402Routes).join(', ')}`);
-    console.log(`💰 TX hash payment bypass enabled (X-Payment-Proof / X-Payment-Tx / body.paymentTx)`);
+    console.log(`[payments] x402 gates active: ${Object.keys(x402Routes).join(', ')}`);
+    console.log(`[payments] TX hash bypass enabled (X-Payment-Proof / X-Payment-Tx / body.paymentTx)`);
+    if (mppServer) console.log(`[payments] MPP (Tempo) acceptance enabled`);
 }
 
 // TX hash payment verification helper — used by route handlers directly
