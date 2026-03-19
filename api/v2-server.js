@@ -4505,7 +4505,51 @@ app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
         
         sdb.close();
         
-        // 7. Return unified result
+        // 7. Generate LLM trust assessment via Bankr Gateway
+        let llmAssessment = null;
+        try {
+            const bankrLlmKey = process.env.BANKR_LLM_KEY || process.env.BANKR_API_KEY;
+
+            if (bankrLlmKey) {
+                const assessmentPrompt = `You are a trust assessment engine for AI agents. Given the following data, provide a concise 2-3 sentence trust assessment and a recommended max transaction value in USD.
+
+Agent: ${targetAgent.name || 'Unknown'} (#${targetAgentId})
+Cred Score: ${credScore}/100 (${credTier} tier)
+Soul Locked: ${!!targetAgent.soulLocked || !!targetAgent.soulVersion ? 'Yes' : 'No'}
+Handshake Status: ${handshakeStatus}
+Evaluator Eligible: ${evaluatorResult.eligible}
+${evaluatorResult.record ? `Track Record: ${evaluatorResult.record.completions} completions, ${evaluatorResult.record.successRate} success rate` : ''}
+${budget ? `Requested Budget: $${budget}` : ''}
+
+Respond in JSON: {"assessment": "...", "maxRecommendedValue": number, "confidence": "high"|"medium"|"low"}`;
+
+                const llmResp = await fetch('https://llm.bankr.bot/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${bankrLlmKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'claude-haiku-4.5', messages: [{ role: 'user', content: assessmentPrompt }], max_tokens: 200 }),
+                    signal: AbortSignal.timeout(8000),
+                });
+
+                if (llmResp.ok) {
+                    const llmData = await llmResp.json();
+                    const msg = llmData.choices?.[0]?.message;
+                    const content = msg?.content || msg?.reasoning || '';
+
+                    if (content) {
+                        // Try to extract JSON from content/reasoning
+                        const jsonMatch = content.match(/\{[\s\S]*"assessment"[\s\S]*\}/);
+                        if (jsonMatch) {
+                            try { llmAssessment = JSON.parse(jsonMatch[0]); } catch {}
+                        }
+                        if (!llmAssessment) llmAssessment = { assessment: content.replace(/\*\*.*?\*\*/g, '').trim().slice(0, 500) };
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[TRUST EVAL] Bankr LLM assessment skipped:', e.message);
+        }
+        
+        // 8. Return unified result
         res.json({
             target: {
                 tokenId: parseInt(targetAgentId),
@@ -4522,6 +4566,8 @@ app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
             },
             recommendation,
             reasons,
+            ...(llmAssessment && { llmAssessment }),
+            poweredBy: llmAssessment ? 'bankr-llm-gateway' : undefined,
             timestamp: Date.now(),
         });
         
