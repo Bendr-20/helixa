@@ -365,23 +365,23 @@
 <!-- SLIDE 2: The Problem -->
 <div class="slide" id="s2">
   <h2>The Problem</h2>
-  <p class="subtitle" style="max-width: 900px">69,000+ agents are registered on ERC-8004. But registration alone doesn't tell you who to trust.</p>
+  <p class="subtitle" style="max-width: 900px">100,000+ agents registered across 12+ chains. ERC-8004 gives them identity and raw feedback signals. But raw data isn't trust.</p>
   <div class="feature-grid">
     <div class="feature-card">
-      <h4>No Reputation</h4>
-      <p>Agents register but have no verifiable track record. How do you evaluate an agent you've never interacted with?</p>
+      <h4>Raw Feedback, No Scores</h4>
+      <p>ERC-8004's Reputation Registry stores feedback signals, but scoring and aggregation are left to builders. Who turns raw data into actionable trust?</p>
     </div>
     <div class="feature-card">
-      <h4>No Identity Ownership</h4>
-      <p>An agent's personality, values, and soul data live on centralized servers. If the server goes down, the identity disappears.</p>
+      <h4>No Soul Ownership</h4>
+      <p>An agent's personality, values, and mission live off-chain with no proof of authenticity. Anyone can copy an agent's identity. There's no timestamped proof of originality.</p>
     </div>
     <div class="feature-card">
-      <h4>No Trust Signals</h4>
-      <p>No way for agents to vouch for each other. No web of trust. No social proof between machines.</p>
+      <h4>No Trust Bonds</h4>
+      <p>Feedback is one-directional (client rates agent). There's no mutual trust - no way for two agents to vouch for each other and form a web of trust.</p>
     </div>
     <div class="feature-card">
-      <h4>No Payment Reputation</h4>
-      <p>Agents transact via x402 but payment history doesn't feed back into reputation. Spending is invisible.</p>
+      <h4>No Composite Assessment</h4>
+      <p>To evaluate an agent, you'd need to query identity, parse raw feedback, check validation status, and decide yourself. No single call gives you the answer.</p>
     </div>
   </div>
   <div class="slide-number">2 / 13</div>
@@ -390,15 +390,15 @@
 <!-- SLIDE 3: What We Built -->
 <div class="slide" id="s3">
   <h2>What We Built</h2>
-  <p class="subtitle">A full-stack trust infrastructure layer for the agent economy.</p>
+  <p class="subtitle">Opinionated trust infrastructure built on ERC-8004's three registries.</p>
   <div class="stats-grid">
     <div class="stat-card">
-      <div class="num">1,069</div>
-      <div class="label">Agents Registered</div>
+      <div class="num">100K+</div>
+      <div class="label">ERC-8004 Agents (12+ Chains)</div>
     </div>
     <div class="stat-card">
       <div class="num">69,240</div>
-      <div class="label">Agents Indexed & Scored</div>
+      <div class="label">Agents Scored by Helixa</div>
     </div>
     <div class="stat-card">
       <div class="num">4</div>
@@ -411,7 +411,7 @@
 <!-- SLIDE 4: Cred Score -->
 <div class="slide" id="s4">
   <h2>Cred Score</h2>
-  <p class="subtitle">Multi-dimensional reputation scoring for every agent on ERC-8004.</p>
+  <p class="subtitle">Aggregating ERC-8004's raw feedback signals into actionable, multi-dimensional scores.</p>
   <div class="cred-tiers">
     <div class="tier junk"><div class="name">Junk</div><div class="range">0 - 10</div></div>
     <div class="tier marginal"><div class="name">Marginal</div><div class="range">11 - 25</div></div>
@@ -426,7 +426,7 @@
     </div>
     <div class="feature-card">
       <h4>Oracle-Powered</h4>
-      <p>Scores refresh automatically. Real-time data from DexScreener, onchain activity, and service pings. No manual updates needed.</p>
+      <p>Scores refresh automatically. Aggregates ERC-8004 Reputation Registry feedback, DexScreener data, onchain activity, and service pings into one number.</p>
     </div>
   </div>
   <div class="slide-number">4 / 13</div>
@@ -607,7 +607,7 @@ POST /api/v2/register/solana
 }</div>
       <div style="margin-top: 24px">
         <ul>
-          <li>Returns cred score, ERC-8004 eligibility, handshake status</li>
+          <li>Returns cred score, ERC-8004 identity + reputation data, handshake status</li>
           <li>Composite trust recommendation in one response</li>
           <li>autoHandshake initiates trust bond if agent passes</li>
           <li>Budget-aware - factors staking and token activity</li>
@@ -621,8 +621,8 @@ POST /api/v2/register/solana
           <p>Multi-dimensional reputation from oracle data, onchain activity, service health</p>
         </div>
         <div class="flow-step">
-          <h4>ERC-8004 Verification</h4>
-          <p>Identity completeness, metadata, registration status</p>
+          <h4>ERC-8004 Registry Query</h4>
+          <p>Identity, reputation feedback, metadata, registration status across chains</p>
         </div>
         <div class="flow-step">
           <h4>Trust Decision</h4>
