@@ -359,7 +359,7 @@
     <span class="tag">Base Mainnet</span>
     <span class="tag">Synthesis Hackathon</span>
   </div>
-  <div class="slide-number">1 / 12</div>
+  <div class="slide-number">1 / 13</div>
 </div>
 
 <!-- SLIDE 2: The Problem -->
@@ -384,7 +384,7 @@
       <p>Agents transact via x402 but payment history doesn't feed back into reputation. Spending is invisible.</p>
     </div>
   </div>
-  <div class="slide-number">2 / 12</div>
+  <div class="slide-number">2 / 13</div>
 </div>
 
 <!-- SLIDE 3: What We Built -->
@@ -405,7 +405,7 @@
       <div class="label">Smart Contracts on Base</div>
     </div>
   </div>
-  <div class="slide-number">3 / 12</div>
+  <div class="slide-number">3 / 13</div>
 </div>
 
 <!-- SLIDE 4: Cred Score -->
@@ -429,7 +429,7 @@
       <p>Scores refresh automatically. Real-time data from DexScreener, onchain activity, and service pings. No manual updates needed.</p>
     </div>
   </div>
-  <div class="slide-number">4 / 12</div>
+  <div class="slide-number">4 / 13</div>
 </div>
 
 <!-- SLIDE 5: Soul Vault + Chain of Identity -->
@@ -461,7 +461,7 @@ GET /api/v2/agent/:id/soul/verify
 0x946677...0559711bD</div>
     </div>
   </div>
-  <div class="slide-number">5 / 12</div>
+  <div class="slide-number">5 / 13</div>
 </div>
 
 <!-- SLIDE 6: Handshake Registry -->
@@ -496,7 +496,7 @@ GET /api/v2/agent/:id/soul/verify
   <div style="margin-top: 32px; color: #777; font-size: 15px">
     First handshake: Bendr (#1) and Helixa (#1066) - reciprocated, onchain, live.
   </div>
-  <div class="slide-number">6 / 12</div>
+  <div class="slide-number">6 / 13</div>
 </div>
 
 <!-- SLIDE 7: Trust Graph -->
@@ -520,7 +520,7 @@ GET /api/v2/agent/:id/soul/verify
       <img src="assets/trust-graph-screenshot.png" alt="Trust Graph" style="width: 100%; display: block;">
     </div>
   </div>
-  <div class="slide-number">7 / 12</div>
+  <div class="slide-number">7 / 13</div>
 </div>
 
 <!-- SLIDE 8: Agent Cards -->
@@ -544,7 +544,7 @@ GET /api/v2/agent/:id/soul/verify
       <img src="assets/agent-card-screenshot.png" alt="Agent Card" style="width: 100%; display: block;">
     </div>
   </div>
-  <div class="slide-number">8 / 12</div>
+  <div class="slide-number">8 / 13</div>
 </div>
 
 <!-- SLIDE 9: Dual-Token x402 Payments -->
@@ -569,7 +569,7 @@ GET /api/v2/agent/:id/soul/verify
       <p>api.helixa.xyz/api/v2/pricing returns current rates in both USDC and CRED for every service.</p>
     </div>
   </div>
-  <div class="slide-number">9 / 12</div>
+  <div class="slide-number">9 / 13</div>
 </div>
 
 <!-- SLIDE 10: Cross-Chain -->
@@ -589,11 +589,53 @@ POST /api/v2/register/solana
 // 2. Mint ERC-8004 identity on Base via mintFor()
 // 3. Link Solana address to EVM identity
 // 4. Agent gets full Helixa services: cred, soul vault, cards</div>
-  <div class="slide-number">10 / 12</div>
+  <div class="slide-number">10 / 13</div>
 </div>
 
-<!-- SLIDE 11: Architecture -->
+<!-- SLIDE 11: Trust Evaluation Pipeline -->
 <div class="slide" id="s11">
+  <h2>Trust Evaluation Pipeline</h2>
+  <p class="subtitle">One API call. Three systems. One answer: should I trust this agent?</p>
+  <div class="two-col">
+    <div>
+      <div class="code-block">POST /api/v2/trust/evaluate
+{
+  "targetAgentId": 81,
+  "budget": 1000,
+  "autoHandshake": true,
+  "callerTokenId": 1
+}</div>
+      <div style="margin-top: 24px">
+        <ul>
+          <li>Returns cred score, ERC-8004 eligibility, handshake status</li>
+          <li>Composite trust recommendation in one response</li>
+          <li>autoHandshake initiates trust bond if agent passes</li>
+          <li>Budget-aware - factors staking and token activity</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="flow-steps" style="flex-direction: column; gap: 12px">
+        <div class="flow-step">
+          <h4>Cred Score Check</h4>
+          <p>Multi-dimensional reputation from oracle data, onchain activity, service health</p>
+        </div>
+        <div class="flow-step">
+          <h4>ERC-8004 Verification</h4>
+          <p>Identity completeness, metadata, registration status</p>
+        </div>
+        <div class="flow-step">
+          <h4>Trust Decision</h4>
+          <p>Composite score + recommendation + optional auto-handshake</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-number">11 / 13</div>
+</div>
+
+<!-- SLIDE 12: Architecture -->
+<div class="slide" id="s12">
   <h2>Contract Architecture</h2>
   <p class="subtitle">Four contracts powering the trust layer. All on Base mainnet.</p>
   <table class="contracts-table">
@@ -621,7 +663,7 @@ POST /api/v2/register/solana
     <span class="tag">EIP-712 Signatures</span>
     <span class="tag">Solana Bridge</span>
   </div>
-  <div class="slide-number">11 / 12</div>
+  <div class="slide-number">11 / 13</div>
 </div>
 
 <!-- SLIDE 12: CTA -->
@@ -639,7 +681,7 @@ POST /api/v2/register/solana
     <span class="tag">Protocol Labs Track</span>
     <span class="tag">Base Track</span>
   </div>
-  <div class="slide-number">12 / 12</div>
+  <div class="slide-number">12 / 13</div>
 </div>
 
 <div class="nav-hint">Arrow keys or click to navigate</div>
