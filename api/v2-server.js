@@ -2743,19 +2743,21 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.25, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
-    external: { weight: 0.15, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
-    verify: { weight: 0.15, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
+    activity: { weight: 0.20, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
+    external: { weight: 0.12, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    verify: { weight: 0.12, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
-    age: { weight: 0.10, label: 'Account Age', description: 'Days since registration' },
-    traits: { weight: 0.10, label: 'Trait Richness', description: 'Number and variety of traits' },
+    age: { weight: 0.08, label: 'Account Age', description: 'Days since registration' },
+    traits: { weight: 0.08, label: 'Trait Richness', description: 'Number and variety of traits' },
     narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
-    origin: { weight: 0.10, label: 'Registration Origin', description: 'How the agent was registered (SIWA > API > Owner)' },
+    origin: { weight: 0.08, label: 'Registration Origin', description: 'How the agent was registered (SIWA > API > Owner)' },
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
-    soulCompleteness: { weight: 0.08, label: 'Soul Vault', description: 'Soul data completeness — public fields, shared soul, narrative depth' },
+    soulCompleteness: { weight: 0.07, label: 'Soul Vault', description: 'Soul data completeness - public fields, shared soul, narrative depth' },
+    reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
 };
 
 function computeCredBreakdown(agent) {
+    const { calculateReputationBonus } = require('./services/reputation-8004');
     const traits = agent.traits || [];
     const personality = agent.personality || {};
     const narrative = agent.narrative || {};
@@ -2811,6 +2813,13 @@ function computeCredBreakdown(agent) {
                 }
                 return score;
             } catch { return 0; }
+        })(), maxRaw: 100 },
+        reputation8004: { raw: (() => {
+            // ERC-8004 Reputation Registry feedback score
+            // Uses cached data from reputation-8004.js (populated by periodic scan)
+            const bonus = calculateReputationBonus(agent._8004Feedback || null);
+            // Scale 0-15 bonus to 0-100 raw score
+            return Math.min(100, Math.round(bonus * (100 / 15)));
         })(), maxRaw: 100 },
     };
 
@@ -4364,13 +4373,33 @@ app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
         
         if (!targetAgentId) return res.status(400).json({ error: 'targetAgentId required' });
         
-        // 1. Get target agent data + cred score
+        // 1. Get target agent data + cred score + 8004 reputation
         let targetAgent;
         try { targetAgent = await formatAgentV2(parseInt(targetAgentId)); }
         catch { return res.status(404).json({ error: `Agent #${targetAgentId} not found` }); }
         
         const credScore = targetAgent.credScore || 0;
         const credTier = targetAgent.credTier || 'JUNK';
+        
+        // Fetch ERC-8004 Reputation Registry feedback
+        let reputation8004 = null;
+        try {
+            const { getAgentFeedback, calculateReputationBonus } = require('./services/reputation-8004');
+            const feedback = await getAgentFeedback(parseInt(targetAgentId));
+            if (feedback.feedbackCount > 0) {
+                reputation8004 = {
+                    feedbackCount: feedback.feedbackCount,
+                    avgScore: feedback.avgScore,
+                    uniqueClients: feedback.clients,
+                    tags: feedback.tags,
+                    reputationBonus: calculateReputationBonus(feedback),
+                    source: 'ERC-8004 Reputation Registry (Base)',
+                    registry: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
+                };
+            }
+        } catch (e) {
+            console.warn('[TRUST EVAL] 8004 reputation fetch failed:', e.message);
+        }
         
         // 2. Check 8183 evaluator eligibility
         let evaluatorResult = { eligible: false, maxBudget: 0 };
@@ -4472,6 +4501,12 @@ app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
         }
         if (!budgetEligible) { recommendation = 'caution'; reasons.push(`Budget $${budget} exceeds eligible max $${evaluatorResult.maxBudget}`); }
         if (handshakeStatus === 'accepted') { reasons.push('Existing trust handshake in place'); }
+        if (reputation8004) {
+            reasons.push(`${reputation8004.feedbackCount} feedback signals on ERC-8004 Reputation Registry (avg: ${reputation8004.avgScore})`);
+            if (reputation8004.uniqueClients >= 3) reasons.push('Multiple independent reputation sources');
+        } else {
+            reasons.push('No feedback found on ERC-8004 Reputation Registry');
+        }
         
         // 6. Auto-initiate handshake if requested and recommended
         let handshakeInitiated = false;
@@ -4564,6 +4599,7 @@ Respond in JSON: {"assessment": "...", "maxRecommendedValue": number, "confidenc
                 existing: existingHandshake,
                 initiated: handshakeInitiated,
             },
+            ...(reputation8004 && { reputation8004 }),
             recommendation,
             reasons,
             ...(llmAssessment && { llmAssessment }),
@@ -4573,6 +4609,54 @@ Respond in JSON: {"assessment": "...", "maxRecommendedValue": number, "confidenc
         
     } catch (e) {
         console.error(`[TRUST EVAL] Error:`, e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ─── ERC-8004 Reputation Registry API ────────────────────────────
+
+// Get 8004 Reputation Registry feedback for any agentId (public, no auth needed)
+app.get('/api/v2/reputation/8004/:agentId', async (req, res) => {
+    try {
+        const { getAgentFeedback, calculateReputationBonus, REPUTATION_REGISTRY } = require('./services/reputation-8004');
+        const agentId = parseInt(req.params.agentId);
+        if (isNaN(agentId)) return res.status(400).json({ error: 'Invalid agentId' });
+
+        const feedback = await getAgentFeedback(agentId);
+        res.json({
+            agentId,
+            registry: REPUTATION_REGISTRY,
+            chain: 'base',
+            feedbackCount: feedback.feedbackCount,
+            avgScore: feedback.avgScore,
+            uniqueClients: feedback.clients,
+            tags: feedback.tags,
+            reputationBonus: calculateReputationBonus(feedback),
+            scores: feedback.scores?.slice(0, 20), // Last 20 feedback entries
+            note: 'Data from the official ERC-8004 Reputation Registry on Base. Scores aggregated by Helixa.',
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Scan recent 8004 reputation activity (public, no auth)
+app.get('/api/v2/reputation/8004/scan/recent', async (req, res) => {
+    try {
+        const { scanRecentFeedback } = require('./services/reputation-8004');
+        const feedbackMap = await scanRecentFeedback();
+        const results = [];
+        for (const [agentId, data] of feedbackMap) {
+            results.push({ agentId: parseInt(agentId), ...data, clients: data.clients });
+        }
+        results.sort((a, b) => b.count - a.count);
+        res.json({
+            totalAgentsWithFeedback: results.length,
+            totalFeedbackEvents: results.reduce((s, r) => s + r.count, 0),
+            agents: results.slice(0, 50), // Top 50 by feedback count
+            source: 'ERC-8004 Reputation Registry (Base)',
+        });
+    } catch (e) {
         res.status(500).json({ error: e.message });
     }
 });
