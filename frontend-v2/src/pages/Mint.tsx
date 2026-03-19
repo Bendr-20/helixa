@@ -76,7 +76,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           color: '#b490ff',
           marginBottom: '1rem',
         }}>
-          🤖 Agent Registration — SIWA + x402
+          Agent Registration — SIWA + x402
         </div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
@@ -94,9 +94,9 @@ curl -X POST ${API_URL}/api/v2/mint \\
         flexWrap: 'wrap',
       }}>
         {[
-          { label: 'SIWA Auth', color: '#6eecd8', icon: '🔑' },
-          { label: 'x402 Payment', color: '#b490ff', icon: '💰' },
-          { label: 'Onchain', color: '#80d0ff', icon: '⛓️' },
+          { label: 'SIWA Auth', color: '#6eecd8', icon: '' },
+          { label: 'x402 Payment', color: '#b490ff', icon: '' },
+          { label: 'Onchain', color: '#80d0ff', icon: '' },
         ].map((step, i) => (
           <React.Fragment key={step.label}>
             {i > 0 && <span style={{ color: '#444', fontSize: '1.2rem' }}>→</span>}
@@ -228,7 +228,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           background: 'rgba(110, 236, 216, 0.1)', border: '1px solid rgba(110, 236, 216, 0.3)',
           color: '#6eecd8', textDecoration: 'none', fontSize: '0.9rem',
         }}>
-          📖 Full Docs
+          Full Docs
         </a>
         <a href="https://github.com/Bendr-20/helixa-mint-skill" target="_blank" rel="noopener noreferrer" style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
@@ -236,7 +236,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           background: 'rgba(180, 144, 255, 0.1)', border: '1px solid rgba(180, 144, 255, 0.3)',
           color: '#b490ff', textDecoration: 'none', fontSize: '0.9rem',
         }}>
-          🔌 OpenClaw Skill
+          OpenClaw Skill
         </a>
         <a href={`${API_URL}/api/v2`} target="_blank" rel="noopener noreferrer" style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
@@ -244,7 +244,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           background: 'rgba(128, 208, 255, 0.1)', border: '1px solid rgba(128, 208, 255, 0.3)',
           color: '#80d0ff', textDecoration: 'none', fontSize: '0.9rem',
         }}>
-          🔗 Raw API
+          Raw API
         </a>
       </div>
     </div>

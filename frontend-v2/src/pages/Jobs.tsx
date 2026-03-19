@@ -40,19 +40,19 @@ interface EvalTier {
 }
 
 const TIERS: EvalTier[] = [
-  { tier: 1, label: 'Tier 1', minCred: 30, emoji: '🟢', color: '#6eecd8' },
-  { tier: 2, label: 'Tier 2', minCred: 50, emoji: '🟡', color: '#f5c842' },
-  { tier: 3, label: 'Tier 3', minCred: 80, emoji: '🔴', color: '#b490ff' },
+  { tier: 1, label: 'Tier 1', minCred: 30, emoji: '', color: '#6eecd8' },
+  { tier: 2, label: 'Tier 2', minCred: 50, emoji: '', color: '#f5c842' },
+  { tier: 3, label: 'Tier 3', minCred: 80, emoji: '', color: '#b490ff' },
 ];
 
 const SOURCE_ICONS: Record<string, string> = {
-  '0xWork': '⚙️',
-  'Helixa': '🧬',
-  'Morpheus': '🟢',
-  'Upwork': '🔴',
-  'Contra': '🟣',
-  'Freelancer': '💙',
-  'Other': '🔗',
+  '0xWork': '',
+  'Helixa': '',
+  'Morpheus': '',
+  'Upwork': '',
+  'Contra': '',
+  'Freelancer': '',
+  'Other': '',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export function Jobs() {
             fontSize: '0.9rem',
             color: '#80d0f0',
           }}>
-            🔗 Live job feed • {jobsData.total} total jobs • Last updated: {new Date(jobsData.cachedAt).toLocaleTimeString()}
+            Live job feed • {jobsData.total} total jobs • Last updated: {new Date(jobsData.cachedAt).toLocaleTimeString()}
           </div>
         )}
 
@@ -305,7 +305,7 @@ export function Jobs() {
                 {/* Source + Status row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
-                    {SOURCE_ICONS[job.source] || '🔗'} {job.sourceName || job.source}
+                    {SOURCE_ICONS[job.source] || ''} {job.sourceName || job.source}
                   </span>
                   <span style={{
                     fontSize: '0.75rem',

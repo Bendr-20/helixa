@@ -613,7 +613,7 @@ export function Stake() {
                       )}
                       {txHash && !error && (
                         <div className="mt-4 p-3 rounded-lg bg-mint/10 border border-mint/30 text-sm">
-                          ✅ <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noopener" className="text-mint underline">
+                          <a href={`https://basescan.org/tx/${txHash}`} target="_blank" rel="noopener" className="text-mint underline">
                             View on Basescan
                           </a>
                         </div>
@@ -655,11 +655,11 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function EarlyUnstakeWarning({ stakedAt, lockDays, penaltyPct }: { stakedAt: number; lockDays: number; penaltyPct: number }) {
   const now = Math.floor(Date.now() / 1000);
   const unlockAt = stakedAt + lockDays * 86400;
-  if (now >= unlockAt) return <p className="text-xs text-green-400 mb-4">✅ Lock period complete — no penalty.</p>;
+  if (now >= unlockAt) return <p className="text-xs text-green-400 mb-4">Lock period complete — no penalty.</p>;
   const daysLeft = Math.ceil((unlockAt - now) / 86400);
   return (
     <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm mb-4">
-      ⚠️ {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in lock. Early unstake costs {penaltyPct}%.
+      Warning: {daysLeft} day{daysLeft !== 1 ? 's' : ''} left in lock. Early unstake costs {penaltyPct}%.
     </div>
   );
 }

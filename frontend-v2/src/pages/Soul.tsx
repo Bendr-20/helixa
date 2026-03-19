@@ -21,14 +21,14 @@ export function Soul() {
           className={`btn ${activeTab === 'keeper' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ minWidth: 150 }}
         >
-          🔒 Soul Keeper
+          Soul Keeper
         </button>
         <button
           onClick={() => setActiveTab('handshake')}
           className={`btn ${activeTab === 'handshake' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ minWidth: 150 }}
         >
-          🤝 Handshake
+          Handshake
         </button>
       </div>
 

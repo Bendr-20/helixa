@@ -153,7 +153,7 @@ export default function AgentCard() {
                 {card.socials.telegram && (
                   <a href={`https://t.me/${card.socials.telegram.replace('@', '')}`} target="_blank" rel="noopener noreferrer"
                     className="text-gray-400 hover:text-white transition-colors text-lg">
-                    ✈️
+                    
                   </a>
                 )}
                 {card.socials.email && (

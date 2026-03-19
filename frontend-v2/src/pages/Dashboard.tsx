@@ -52,12 +52,12 @@ interface UserAgent {
 }
 
 const SOURCE_ICONS: Record<string, string> = {
-  '0xWork': '⚙️',
-  'Helixa': '🧬',
-  'Morpheus': '🟢',
-  'Upwork': '🔴',
-  'Contra': '🟣',
-  'Other': '🔗',
+  '0xWork': '',
+  'Helixa': '',
+  'Morpheus': '',
+  'Upwork': '',
+  'Contra': '',
+  'Other': '',
 };
 
 export function Dashboard() {
@@ -178,7 +178,7 @@ export function Dashboard() {
           {authenticated && userAgent && (
             <motion.div {...fadeUp} className="card" style={{ padding: 24 }}>
               <h2 style={{ fontSize: '1.3rem', fontWeight: 600, color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '1.2rem' }}>🤖</span> My Agent
+                <span style={{ fontSize: '1.2rem' }}></span> My Agent
               </h2>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
@@ -236,7 +236,7 @@ export function Dashboard() {
           {/* Top Jobs For You */}
           <motion.div {...fadeUp} className="card" style={{ padding: 24 }}>
             <h2 style={{ fontSize: '1.3rem', fontWeight: 600, color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '1.2rem' }}>💼</span> 
+              <span style={{ fontSize: '1.2rem' }}></span> 
               {authenticated ? 'Top Jobs For You' : 'Latest Jobs'}
             </h2>
             
@@ -257,7 +257,7 @@ export function Dashboard() {
                         {job.title}
                       </h3>
                       <span style={{ fontSize: '0.8rem', color: '#888', marginLeft: 8 }}>
-                        {SOURCE_ICONS[job.source] || '🔗'} {job.source}
+                        {SOURCE_ICONS[job.source] || ''} {job.source}
                       </span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -299,7 +299,7 @@ export function Dashboard() {
         {/* Leaderboard Preview */}
         <motion.div {...fadeUp} className="card" style={{ padding: 24, marginBottom: 24 }}>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 600, color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.2rem' }}>🏆</span> Top Agents
+            <span style={{ fontSize: '1.2rem' }}></span> Top Agents
           </h2>
           
           {agentsLoading ? (
@@ -342,10 +342,10 @@ export function Dashboard() {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             {[
-              { href: '/mint', label: 'Register Agent', icon: '🚀', desc: 'Create your agent identity', color: '#6eecd8' },
-              { href: '/jobs', label: 'Browse Jobs', icon: '💼', desc: 'Find work opportunities', color: '#b490ff' },
-              { href: '/stake', label: 'Stake CRED', icon: '💎', desc: 'Earn rewards & build rep', color: '#80d0f0' },
-              { href: '/agents', label: 'View Directory', icon: '🗂️', desc: 'Explore all agents', color: '#f5c842' },
+              { href: '/mint', label: 'Register Agent', icon: '', desc: 'Create your agent identity', color: '#6eecd8' },
+              { href: '/jobs', label: 'Browse Jobs', icon: '', desc: 'Find work opportunities', color: '#b490ff' },
+              { href: '/stake', label: 'Stake CRED', icon: '', desc: 'Earn rewards & build rep', color: '#80d0f0' },
+              { href: '/agents', label: 'View Directory', icon: '', desc: 'Explore all agents', color: '#f5c842' },
             ].map((action, i) => (
               <motion.div
                 key={action.href}

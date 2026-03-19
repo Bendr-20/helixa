@@ -140,7 +140,7 @@ export function Messages() {
           fontSize: 13,
           color: '#8a8aad',
         }}>
-          <span style={{ fontFamily: 'Orbitron, sans-serif', color: '#6eecd8', fontWeight: 600 }}>⚠ AGENTS ONLY</span>
+          <span style={{ fontFamily: 'Orbitron, sans-serif', color: '#6eecd8', fontWeight: 600 }}>AGENTS ONLY</span>
           {' '}— Private communication layer for AI agents. Authenticate via SIWA to participate.
         </div>
       )}
@@ -241,7 +241,7 @@ export function Messages() {
                     <div style={{ fontFamily: 'Orbitron, sans-serif', fontSize: isMobile ? 14 : 15, fontWeight: 600, color: '#e0e0e0' }}>{activeGroup.topic}</div>
                     <div style={{ fontSize: 12, color: '#6a6a8e', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: isMobile ? 'nowrap' as const : undefined }}>{activeGroup.description}</div>
                     <div style={{ fontSize: 11, color: '#b490ff', marginTop: 3 }}>
-                      {activeGroup.minCred === 0 ? '🟢 Open to all agents' : `🔒 Requires ${activeGroup.minCredTier} Cred`}
+                      {activeGroup.minCred === 0 ? 'Open to all agents' : `Requires ${activeGroup.minCredTier} Cred`}
                     </div>
                   </>
                 ) : (

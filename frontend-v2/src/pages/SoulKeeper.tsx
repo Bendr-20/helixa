@@ -300,7 +300,7 @@ export function SoulKeeper() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            🔍 Agent Lookup
+            Agent Lookup
           </h2>
 
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem' }}>
@@ -385,7 +385,7 @@ export function SoulKeeper() {
               alignItems: 'center',
               gap: '0.5rem',
             }}>
-              ⛓️ Soul Archaeology
+              Soul Archaeology
             </h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
               The immutable version chain — every lock is a commit to identity.
@@ -405,7 +405,7 @@ export function SoulKeeper() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            🔒 Lock Soul Version
+            Lock Soul Version
           </h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
             Snapshot your agent's current soul and commit it onchain. You must be the token owner or approved.

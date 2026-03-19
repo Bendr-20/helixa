@@ -97,7 +97,7 @@ export function AgentProfile() {
   }
 
   const originKey = agent.mintOrigin === 'HUMAN' ? 0 : agent.mintOrigin === 'AGENT_SIWA' ? 1 : agent.mintOrigin === 'API' ? 2 : agent.mintOrigin === 'OWNER' ? 3 : 0;
-  const originDisplay = ORIGIN_DISPLAY[originKey] || { icon: '❓', label: 'Unknown' };
+  const originDisplay = ORIGIN_DISPLAY[originKey] || { icon: '', label: 'Unknown' };
 
   return (
     <div className="py-8">
@@ -249,7 +249,7 @@ export function AgentProfile() {
                   View on BaseScan →
                 </a>
                 <Link to={`/card/${agent.tokenId}`} className="btn btn-ghost text-xs mt-1 w-full text-purple-400">
-                  🃏 View Agent Card →
+                  View Agent Card →
                 </Link>
               </div>
             </div>
@@ -429,7 +429,7 @@ export function AgentProfile() {
               {/* Linked Token */}
               {agent.linkedToken && (
                 <div className="card">
-                  <h2 className="text-xl font-semibold mb-4">🪙 Linked Token</h2>
+                  <h2 className="text-xl font-semibold mb-4">Linked Token</h2>
                   <div className="glass-card p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -477,7 +477,7 @@ export function AgentProfile() {
               {/* Work History */}
               {workHistory && (
                 <div className="card">
-                  <h2 className="text-xl font-semibold mb-4">📋 Work History</h2>
+                  <h2 className="text-xl font-semibold mb-4">Work History</h2>
                   <div className="grid grid-cols-4 gap-4">
                     <div className="glass-card p-4 text-center">
                       <div className="text-2xl font-bold" style={{ color: '#6eecd8' }}>{workHistory.completions}</div>

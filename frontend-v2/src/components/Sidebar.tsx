@@ -3,22 +3,22 @@ import { Link, useLocation } from 'react-router-dom';
 import { preloadMap } from '../App';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: '📊' },
-  { href: '/agents', label: 'Agents', icon: '🤖' },
-  { href: '/terminal', label: 'Terminal', icon: '💻', external: true },
-  { href: '/jobs', label: 'Jobs', icon: '💼' },
-  { href: '/stake', label: 'Stake', icon: '💎' },
-  { href: '/soul-keeper', label: 'Soul Keeper', icon: '🔗' },
-  { href: '/soul-handshake', label: 'Soul Handshake', icon: '🤝' },
-  { href: '/trust-graph', label: 'Trust Graph', icon: '🌐' },
-  { href: '/manage', label: 'Manage', icon: '⚙️' },
+  { href: '/', label: 'Dashboard', icon: '' },
+  { href: '/agents', label: 'Agents', icon: '' },
+  { href: '/terminal', label: 'Terminal', icon: '', external: true },
+  { href: '/jobs', label: 'Jobs', icon: '' },
+  { href: '/stake', label: 'Stake', icon: '' },
+  { href: '/soul-keeper', label: 'Soul Keeper', icon: '' },
+  { href: '/soul-handshake', label: 'Soul Handshake', icon: '' },
+  { href: '/trust-graph', label: 'Trust Graph', icon: '' },
+  { href: '/manage', label: 'Manage', icon: '' },
 ];
 
 const secondaryItems = [
-  { href: '/mint', label: 'Register', icon: '🚀' },
-  { href: '/token', label: '$CRED', icon: '🪙' },
-  { href: '/messages', label: 'Messages', icon: '💬' },
-  { href: '/docs', label: 'Docs', icon: '📄' },
+  { href: '/mint', label: 'Register', icon: '' },
+  { href: '/token', label: '$CRED', icon: '' },
+  { href: '/messages', label: 'Messages', icon: '' },
+  { href: '/docs', label: 'Docs', icon: '' },
 ];
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {

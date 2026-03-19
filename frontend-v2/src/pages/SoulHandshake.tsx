@@ -265,7 +265,7 @@ export function SoulHandshake() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            🤖 Your Agent
+            Your Agent
           </h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
             Enter your agent's token ID to view inbox, history, and initiate handshakes.
@@ -293,7 +293,7 @@ export function SoulHandshake() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            🤝 Initiate Handshake
+            Initiate Handshake
           </h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
             Select which soul fragments to share with another agent.
@@ -364,7 +364,7 @@ export function SoulHandshake() {
                 onClick={handleInitiate}
                 disabled={!agentId || !targetTokenId || selectedFields.length === 0 || initiating}
               >
-                {initiating ? 'Initiating…' : '🤝 Initiate Handshake'}
+                {initiating ? 'Initiating…' : 'Initiate Handshake'}
               </button>
 
               {initiateResult && (
@@ -397,7 +397,7 @@ export function SoulHandshake() {
               alignItems: 'center',
               gap: '0.5rem',
             }}>
-              📥 Inbox
+              Inbox
               {loadingInbox && <span className="spinner" style={{ width: 16, height: 16 }} />}
             </h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
@@ -463,7 +463,7 @@ export function SoulHandshake() {
               alignItems: 'center',
               gap: '0.5rem',
             }}>
-              📜 Handshake History
+              Handshake History
               {loadingHistory && <span className="spinner" style={{ width: 16, height: 16 }} />}
             </h2>
 
@@ -502,7 +502,7 @@ export function SoulHandshake() {
                     <div key={h.id} className="card" style={{ padding: '0.85rem 1rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.8rem' }}>{isSent ? '↗️' : '↙️'}</span>
+                          <span style={{ fontSize: '0.8rem' }}>{isSent ? '>' : '<'}</span>
                           <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: '0.8rem', fontWeight: 600 }}>
                             {isSent ? `→ Agent #${h.toTokenId}` : `← Agent #${h.fromTokenId}`}
                           </span>
@@ -516,7 +516,7 @@ export function SoulHandshake() {
                               color: 'var(--accent-purple, #b388ff)',
                               fontWeight: 600,
                             }}>
-                              🔄 Mutual
+                              Mutual
                             </span>
                           )}
                         </div>
@@ -546,7 +546,7 @@ export function SoulHandshake() {
             alignItems: 'center',
             gap: '0.5rem',
           }}>
-            🔍 Public Handshake Lookup
+            Public Handshake Lookup
           </h2>
           <p style={{ fontSize: '0.8rem', color: 'var(--text2)', marginBottom: '1rem' }}>
             Check any agent's handshake stats — no wallet needed.
