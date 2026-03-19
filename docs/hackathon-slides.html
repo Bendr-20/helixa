@@ -295,6 +295,42 @@
     color: #444;
   }
   
+  @media (max-width: 768px) {
+    .slide { padding: 30px 24px; padding-top: 50px; overflow-y: auto; }
+    h1 { font-size: 32px; }
+    h2 { font-size: 28px; }
+    h3 { font-size: 18px; }
+    .subtitle { font-size: 16px; margin-bottom: 20px; }
+    .big-number { font-size: 56px; }
+    .stats-grid { grid-template-columns: 1fr; gap: 16px; margin-top: 20px; }
+    .stat-card { padding: 20px; }
+    .stat-card .num { font-size: 36px; }
+    .feature-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+    .feature-card { padding: 18px; }
+    .feature-card h4 { font-size: 17px; }
+    .feature-card p { font-size: 13px; }
+    .flow-steps { flex-direction: column; gap: 8px; margin-top: 20px; }
+    .flow-arrow { justify-content: center; transform: rotate(90deg); font-size: 18px; }
+    .flow-step { padding: 16px; }
+    .flow-step h4 { font-size: 15px; }
+    .flow-step p { font-size: 12px; }
+    .two-col { grid-template-columns: 1fr; gap: 20px; }
+    .code-block { font-size: 11px; padding: 14px; margin-top: 12px; }
+    .cred-tiers { flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .tier { flex: 0 0 calc(50% - 4px); padding: 10px; }
+    .tier .name { font-size: 13px; }
+    .tier .range { font-size: 11px; }
+    .contracts-table td { padding: 8px; font-size: 12px; display: block; }
+    .contracts-table td:first-child { width: auto; padding-bottom: 2px; }
+    .contracts-table td:last-child { font-size: 10px; padding-top: 0; padding-bottom: 12px; word-break: break-all; }
+    ul li { font-size: 15px; padding: 6px 0 6px 20px; }
+    ul li::before { top: 13px; width: 6px; height: 6px; }
+    .tag { font-size: 11px; padding: 3px 8px; }
+    .nav-hint { font-size: 11px; left: 24px; bottom: 16px; }
+    .logo-mark { font-size: 14px; top: 16px; left: 20px; }
+    .slide-number { bottom: 16px; right: 20px; font-size: 12px; }
+  }
+  
   .logo-mark {
     font-size: 18px;
     font-weight: 700;
