@@ -721,30 +721,57 @@ POST /api/v2/register/solana
   <div class="slide-number">14 / 14</div>
 </div>
 
-<div class="nav-hint">Arrow keys or click to navigate</div>
+<div class="nav-hint">Arrow keys or click to navigate | M to mute</div>
 
 <script>
 let current = 0;
 const slides = document.querySelectorAll('.slide');
 const total = slides.length;
+let audio = null;
+let voiceEnabled = true;
+
+const audioFiles = [];
+for (let i = 1; i <= total; i++) {
+  audioFiles.push('audio/slide' + String(i).padStart(2, '0') + '.mp3');
+}
+
+function playSlideAudio(idx) {
+  if (audio) { audio.pause(); audio.currentTime = 0; }
+  if (!voiceEnabled) return;
+  audio = new Audio(audioFiles[idx]);
+  audio.volume = 0.85;
+  audio.play().catch(() => {});
+}
 
 function show(n) {
   slides[current].classList.remove('active');
   current = ((n % total) + total) % total;
   slides[current].classList.remove('active');
-  void slides[current].offsetWidth; // force reflow for animation
+  void slides[current].offsetWidth;
   slides[current].classList.add('active');
+  playSlideAudio(current);
 }
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight' || e.key === ' ') show(current + 1);
   if (e.key === 'ArrowLeft') show(current - 1);
+  if (e.key === 'm' || e.key === 'M') {
+    voiceEnabled = !voiceEnabled;
+    if (!voiceEnabled && audio) { audio.pause(); }
+    document.querySelector('.nav-hint').textContent = voiceEnabled ? 'Arrow keys or click to navigate | M to mute' : 'Voice muted | M to unmute';
+  }
 });
 
 document.addEventListener('click', (e) => {
   if (e.clientX > window.innerWidth / 2) show(current + 1);
   else show(current - 1);
 });
+
+// Play first slide audio on first interaction
+let firstPlay = true;
+document.addEventListener('click', () => {
+  if (firstPlay) { firstPlay = false; playSlideAudio(0); }
+}, { once: true });
 </script>
 </body>
 </html>
