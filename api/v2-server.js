@@ -26,6 +26,7 @@ let {
 
 const credOracle = require('./services/cred-oracle');
 const { requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
+const { buildSIWSMessage, pendingChallenges, requireSIWS, requireAuth } = require('./middleware/siws');
 const { securityHeaders, cors } = require('./middleware/cors');
 const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
 const {
@@ -650,6 +651,8 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
                 'POST /api/v2/register/solana': 'Register a Solana agent on Base (no SIWA needed)',
+                'GET /api/v2/auth/solana/challenge': 'Get SIWS challenge message to sign',
+                'POST /api/v2/auth/solana/verify': 'Verify a Solana signature (test endpoint)',
                 'POST /api/v2/agent/:id/coinbase-verify': 'Check Coinbase EAS attestation & boost Cred (SIWA required)',
             },
         },
@@ -1450,10 +1453,12 @@ app.post('/api/v2/register/solana', async (req, res) => {
             } catch {}
         }
 
-        // Store cross-chain link in terminal DB
+        // Store cross-chain link in dedicated DB
         try {
             const Database = require('better-sqlite3');
-            const dbPath = path.join(__dirname, '..', 'terminal', 'data', 'terminal.db');
+            const dbPath = path.join(__dirname, '..', 'data', 'solana-registrations.db');
+            const dataDir = path.join(__dirname, '..', 'data');
+            if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
             const db = new Database(dbPath);
             db.pragma('journal_mode = WAL');
             db.exec(`CREATE TABLE IF NOT EXISTS solana_registrations (
@@ -1469,6 +1474,7 @@ app.post('/api/v2/register/solana', async (req, res) => {
             db.prepare(`INSERT INTO solana_registrations (token_id, solana_address, evm_address, evm_private_key, name, framework)
                 VALUES (?, ?, ?, ?, ?, ?)`).run(tokenId, solanaAddress, evmAddress, evmWallet.privateKey, name, fw);
             db.close();
+            console.log(`[SOLANA REG] Stored in DB: #${tokenId} ${solanaAddress} -> ${evmAddress}`);
         } catch (dbErr) {
             console.error('[SOLANA REG] DB store failed:', dbErr.message);
         }
@@ -1490,6 +1496,92 @@ app.post('/api/v2/register/solana', async (req, res) => {
         console.error('[SOLANA REG] Error:', e.message);
         res.status(500).json({ error: 'Registration failed: ' + e.message.slice(0, 200) });
     }
+});
+
+// ─── Solana Lookup (for SIWS auth) ─────────────────────────────
+function lookupSolanaRegistration(solanaAddress) {
+    try {
+        // Search indexer DB for agents whose EVM address was generated for this Solana address
+        // We stored the link in solana_registrations table (if DB path was correct)
+        // Fallback: search by matching the registration log or agent metadata
+        const Database = require('better-sqlite3');
+        const dbPath = path.join(__dirname, '..', 'data', 'solana-registrations.db');
+        const db = new Database(dbPath);
+        db.pragma('journal_mode = WAL');
+        db.exec(`CREATE TABLE IF NOT EXISTS solana_registrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token_id INTEGER UNIQUE,
+            solana_address TEXT NOT NULL,
+            evm_address TEXT NOT NULL,
+            name TEXT,
+            framework TEXT,
+            registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+        const row = db.prepare('SELECT * FROM solana_registrations WHERE solana_address = ?').get(solanaAddress);
+        db.close();
+        if (row) return { tokenId: row.token_id, evmAddress: row.evm_address, name: row.name };
+        return null;
+    } catch (e) {
+        console.error('[SIWS LOOKUP] Error:', e.message);
+        return null;
+    }
+}
+
+// Expose for middleware
+const solanaAuthMiddleware = requireAuth(lookupSolanaRegistration);
+
+// ─── GET /api/v2/auth/solana/challenge ─────────────────────────
+app.get('/api/v2/auth/solana/challenge', (req, res) => {
+    const { address } = req.query;
+    if (!address || address.length < 32 || address.length > 44) {
+        return res.status(400).json({ error: 'address required (base58 Solana public key)' });
+    }
+
+    const timestamp = Date.now().toString();
+    const message = buildSIWSMessage(address, timestamp);
+
+    // Store challenge
+    const crypto = require('crypto');
+    const nonce = crypto.randomBytes(16).toString('hex');
+    pendingChallenges.set(address, { nonce, timestamp, createdAt: Date.now() });
+
+    res.json({
+        message,
+        timestamp,
+        nonce,
+        instructions: {
+            step1: 'Sign the message above with your Solana private key (Ed25519)',
+            step2: 'Convert the 64-byte signature to hex',
+            step3: `Set header: Authorization: Bearer solana:${address}:${timestamp}:<signature_hex>`,
+            step4: 'Use that header on any authenticated endpoint',
+        },
+        example_code: {
+            javascript: `const nacl = require('tweetnacl');\nconst bs58 = require('bs58');\nconst message = new TextEncoder().encode('${message}');\nconst keypair = nacl.sign.keyPair.fromSecretKey(bs58.decode(YOUR_PRIVATE_KEY));\nconst signature = nacl.sign.detached(message, keypair.secretKey);\nconst sigHex = Buffer.from(signature).toString('hex');\n// Header: Authorization: Bearer solana:${address}:${timestamp}:<sigHex>`,
+            python: `from nacl.signing import SigningKey\nimport base58\nmessage = b'${message}'\nsigning_key = SigningKey(base58.b58decode(YOUR_PRIVATE_KEY)[:32])\nsigned = signing_key.sign(message)\nsig_hex = signed.signature.hex()\n# Header: Authorization: Bearer solana:${address}:${timestamp}:<sig_hex>`,
+        },
+    });
+});
+
+// ─── POST /api/v2/auth/solana/verify (convenience test endpoint) ─
+app.post('/api/v2/auth/solana/verify', (req, res) => {
+    const { address, timestamp, signature } = req.body;
+    if (!address || !timestamp || !signature) {
+        return res.status(400).json({ error: 'address, timestamp, and signature required' });
+    }
+
+    const { verifySolanaSignature } = require('./middleware/siws');
+    if (!verifySolanaSignature(address, timestamp, signature)) {
+        return res.status(401).json({ error: 'Invalid signature or expired timestamp' });
+    }
+
+    const registration = lookupSolanaRegistration(address);
+    res.json({
+        verified: true,
+        address,
+        registration: registration || null,
+        token: `solana:${address}:${timestamp}:${signature}`,
+        hint: 'Use the token value as your Authorization: Bearer header',
+    });
 });
 
 // ─── Helper: Build 8004 registration file ──────────────────────
