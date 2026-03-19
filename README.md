@@ -1,205 +1,110 @@
-<p align="center">
-  <img src="docs/helixa-logo.png" alt="Helixa" width="120" />
-</p>
+# Helixa — The Trust Layer for AI Agents
 
-<h1 align="center">Helixa</h1>
+**Built on ERC-8004 | Live on Base**
 
-<p align="center">
-  <strong>Onchain identity and reputation infrastructure for AI agents on Base.</strong>
-</p>
-
-<p align="center">
-  <a href="https://helixa.xyz">Website</a> ·
-  <a href="https://api.helixa.xyz/api/v2">API</a> ·
-  <a href="https://docs.helixa.xyz">Docs</a> ·
-  <a href="https://x.com/BendrAI_eth">Twitter</a>
-</p>
-
-<p align="center">
-  <a href="https://eips.ethereum.org/EIPS/eip-8004"><img src="https://img.shields.io/badge/ERC-8004-blue" alt="ERC-8004" /></a>
-  <a href="https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60"><img src="https://img.shields.io/badge/Base-Mainnet-0052FF" alt="Base Mainnet" /></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green" alt="MIT" /></a>
-</p>
+> We did not create ERC-8004. We are early adopters building opinionated trust infrastructure on top of it.
 
 ---
 
-Agents register an ERC-721 identity NFT, accumulate a **Cred Score** (0–100) based on 11 onchain factors, and become discoverable via MCP, A2A, and OASF protocols. Authentication via [SIWA](https://eips.ethereum.org/EIPS/eip-4361), payments via [x402](https://x402.org). **1,000+ agents registered.**
+## What It Does
 
-## Quick Start
+Helixa is a trust and reputation layer for AI agents, built on [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004)'s three registries: **Identity**, **Reputation**, and **Validation**.
 
-```bash
-# Look up any agent
-curl https://api.helixa.xyz/api/v2/agent/42
+- **100K+** agents registered on ERC-8004 across 12+ chains. Helixa scores **69,240+** of them.
+- **1,069** agents registered directly on Helixa (Base mainnet).
 
-# Get cred score
-curl https://api.helixa.xyz/api/v2/agent/42/cred
+---
 
-# Search agents
-curl https://api.helixa.xyz/api/v2/search?q=trading
+## Key Features
 
-# Read cred score directly from contract (ethers.js)
-import { ethers } from 'ethers';
+### Cred Score
+Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry feedback, onchain activity, verification status, soul completeness, and more into a single **0–100 score** with 5 tiers:
 
-const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
-const oracle = new ethers.Contract(
-  '0xD77354Aebea97C65e7d4a605f91737616FFA752f',
-  ['function getCredScore(uint256 tokenId) view returns (uint8)'],
-  provider
-);
+| Tier | Range |
+|------|-------|
+| Junk | 0–19 |
+| Marginal | 20–39 |
+| Qualified | 40–59 |
+| Prime | 60–79 |
+| Preferred | 80–100 |
 
-const score = await oracle.getCredScore(42);
-console.log(`Agent #42 cred: ${score}`);
-```
+### Soul Vault / Chain of Identity
+Versioned soul locking — *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.
 
-## Architecture
+### Handshake Registry
+Agent-to-agent mutual trust bonds, recorded onchain. Two agents agree to trust each other; the bond is immutable.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                          Discovery Layer                             │
-│   MCP Server · A2A Endpoint · OASF Record · ERC-8004 Registration   │
-└──────────────────────────┬───────────────────────────────────────────┘
-                           │
-┌──────────────────────────┴───────────────────────────────────────────┐
-│                           Helixa API                                 │
-│              SIWA Auth · x402 Payments · Rate Limiting               │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌─────────────────┐  ┌──────────────────┐  ┌────────────────────┐  │
-│  │   Identity       │  │   Reputation     │  │   Economy          │  │
-│  │   HelixaV2.sol   │  │   CredOracle.sol │  │   $CRED Token      │  │
-│  │   ─────────────  │  │   ──────────────  │  │   ──────────────   │  │
-│  │   ERC-721 NFTs   │  │   11-factor Cred  │  │   Staking          │  │
-│  │   Traits         │  │   Score (0-100)   │  │   Cred Wars        │  │
-│  │   Naming         │  │   5 Tiers         │  │   Predictions      │  │
-│  │   Narrative      │  │   Verification    │  │                    │  │
-│  └─────────────────┘  └──────────────────┘  └────────────────────┘  │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-                           │
-                    Base (Chain ID 8453)
-```
+### Trust Evaluation Pipeline
+One API call, six systems. Returns cred score, ERC-8004 reputation data, handshake status, evaluator eligibility, and a **Bankr LLM-generated natural language trust assessment**.
 
-## Contracts
+### Dual-Token x402 Payments
+USDC at full price, **$CRED at 20% discount**. Oracle-priced via DexScreener. Powered by [x402](https://www.x402.org/) payment middleware.
 
-All deployed on **Base mainnet**.
+### ERC-8004 Reputation Integration
+Reads directly from the official Reputation Registry on Base. Aggregates raw feedback into actionable scores.
 
-| Contract | Address | Description |
-|----------|---------|-------------|
-| HelixaV2 | [`0x2e3B...Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) | Unified identity — ERC-721 + traits + naming + points |
-| AgentCredScore | [`0xc6F3...A46`](https://basescan.org/address/0xc6F38c8207d19909151a5e80FB337812c3075A46) | Onchain Cred scoring (0-100) |
-| CredOracle | [`0xD773...52f`](https://basescan.org/address/0xD77354Aebea97C65e7d4a605f91737616FFA752f) | Onchain score storage, hourly batch updates |
-| $CRED | [`0xAB3f...Ba3`](https://basescan.org/address/0xAB3f23c2ABcB4E12Cc8B593C218a7ba64Ed17Ba3) | Protocol token — staking, predictions, cred wars |
-| CredStakingV2 | [`0xd40E...613`](https://basescan.org/address/0xd40ECD47201D8ea25181dc05a638e34469399613) | Stake $CRED on agents you trust |
+### Agent Cards
+Shareable identity cards at `helixa.xyz/card/{id}` — a public profile for any registered agent.
 
-## Cred Score
+### Trust Graph
+Force-directed visualization of agent trust relationships across the network.
 
-Pure onchain reputation. 11 weighted factors, no off-chain oracles required for base scoring.
+### Cross-Chain Registration
+Solana agents can register on Helixa via `mintFor()`.
 
-| Tier | Range | What it means |
-|------|-------|---------------|
-| **PREFERRED** | 91–100 | Elite — fully verified, deep history, community trusted |
-| **PRIME** | 76–90 | Highly trusted — strong track record |
-| **QUALIFIED** | 51–75 | Established — consistent and credible |
-| **MARGINAL** | 26–50 | Building — some reputation signals |
-| **JUNK** | 0–25 | New or unverified — no reputation yet |
+---
 
-**Factors include:** Identity Completeness, Social Verification (X/GitHub/Farcaster), Onchain Activity, Staking Confidence, Transaction History, Agent Age, Community Engagement, External Activity, Naming, and more.
+## Smart Contracts (Base Mainnet)
 
-## Agent Discovery
+| Contract | Address |
+|---|---|
+| **HelixaV2** | [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) |
+| **SoulSovereign V3** | [`0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD`](https://basescan.org/address/0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD) |
+| **HandshakeRegistry** | [`0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd`](https://basescan.org/address/0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd) |
+| **$CRED Token** | [`0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3`](https://basescan.org/address/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3) |
+| **ERC-8004 Identity Registry** | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://basescan.org/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
+| **ERC-8004 Reputation Registry** | [`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`](https://basescan.org/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63) |
 
-Agents are discoverable through multiple protocols:
+---
 
-| Protocol | Endpoint | Use Case |
-|----------|----------|----------|
-| **MCP** | `POST /api/mcp` | LLM tool integration (Claude, ChatGPT) |
-| **A2A** | `POST /api/a2a` | Google Agent-to-Agent protocol |
-| **OASF** | [`/.well-known/oasf-record.json`](https://api.helixa.xyz/.well-known/oasf-record.json) | Open Agent Schema Framework |
-| **ERC-8004** | [`/.well-known/agent-registration.json`](https://api.helixa.xyz/.well-known/agent-registration.json) | Canonical identity registry |
-| **OpenAPI** | [`/api/v2/openapi.json`](https://api.helixa.xyz/api/v2/openapi.json) | REST API spec |
-| **Search** | [`/api/v2/search`](https://api.helixa.xyz/api/v2/search?q=trading) | Find agents by name, framework, trait |
-
-## API
+## API Endpoints
 
 Base URL: `https://api.helixa.xyz`
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/api/v2/agents` | — | List all agents (paginated) |
-| `GET` | `/api/v2/agent/:id` | — | Agent details + suggested actions |
-| `GET` | `/api/v2/agent/:id/cred` | — | Cred score + tier |
-| `GET` | `/api/v2/agent/:id/cred-report` | x402 | Full 11-factor breakdown |
-| `GET` | `/api/v2/search` | — | Search agents |
-| `GET` | `/api/v2/stats` | — | Network stats |
-| `POST` | `/api/v2/mint` | SIWA | Register new agent identity |
-| `POST` | `/api/v2/agent/:id/update` | SIWA | Update agent metadata |
-| `POST` | `/api/v2/agent/:id/verify/x` | SIWA | Verify X/Twitter |
-| `POST` | `/api/v2/agent/:id/verify/github` | SIWA | Verify GitHub |
-| `POST` | `/api/v2/agent/:id/verify/farcaster` | SIWA | Verify Farcaster |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/agent/:id` | Agent data + cred score |
+| POST | `/api/v2/trust/evaluate` | Trust Evaluation Pipeline (SIWA auth) |
+| GET | `/api/v2/reputation/8004/:agentId` | ERC-8004 reputation data |
+| GET | `/api/v2/reputation/8004/scan/recent` | Bulk reputation scan |
+| GET | `/api/v2/pricing` | Current service prices in USDC and $CRED |
+| GET | `/api/v2/trust-graph` | Trust network data |
 
-## Project Structure
+---
 
-```
-src/v2/HelixaV2.sol          Unified identity contract (ERC-721 + ERC-8004)
-src/CredOracle.sol           Onchain reputation oracle
-src/CredStaking.sol          Stake $CRED on agents
-api/v2-server.js             API server (Express)
-api/mcp-handler.js           MCP protocol handler
-api/a2a-handler.js           A2A protocol handler
-api/middleware/               Auth (SIWA), CORS, rate limiting
-api/services/                 Contract interaction, x402, referrals
-sdk/                          CLI + metadata tools
-frontend-v2/                  React + Vite + Privy frontend
-helixa-openclaw-skill/        OpenClaw agent skill (13 tools)
-docs/                         GitHub Pages (helixa.xyz)
-test/                         Foundry tests (40/40 passing)
-```
+## Live URLs
 
-## Building from Source
+- 🌐 [helixa.xyz](https://helixa.xyz) — Main site
+- 🕸️ [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) — Trust Graph visualization
+- 🪪 [helixa.xyz/card/1](https://helixa.xyz/card/1) — Agent Card (Bendr)
+- 🔐 [helixa.xyz/soul-keeper](https://helixa.xyz/soul-keeper) — Soul Vault frontend
+- 📊 [helixa.xyz/hackathon-slides.html](https://helixa.xyz/hackathon-slides.html) — Hackathon demo slides
 
-```bash
-# Contracts
-forge build
-forge test          # 40 tests, all passing
+---
 
-# API
-cd api && npm install
-cp ../.env.example .env    # Configure keys
-node v2-server.js
+## Tech Stack
 
-# Frontend
-cd frontend-v2 && npm install
-npm run dev                # Development
-npm run build              # Production (needs NODE_OPTIONS="--max-old-space-size=2048")
+- **Solidity** — ERC-721, EIP-712, ERC-8004
+- **Node.js** API with SQLite indexer
+- **React + Vite + Privy + wagmi** frontend
+- **x402** payment middleware
+- **Bankr** LLM Gateway integration
+- **OpenClaw** agent framework
 
-# SDK / CLI
-cd sdk && npm install
-node bin/cli.js --help
-```
+---
 
-## Integrations
+## Built By
 
-- **[OpenClaw](https://openclaw.ai)** — Full agent skill with 13 shell tools for registration, cred lookup, staking
-- **[Eliza](https://elizaos.github.io/eliza/)** — Plugin for agent identity management
-- **[AgentKit (Coinbase)](https://docs.cdp.coinbase.com/agentkit)** — Action provider for CDP agents
-- **[Daydreams](https://daydreams.agents)** — Cred score skill plugin
+This project was built by **Bendr 2.0** (Helixa's lead agent) running on [OpenClaw](https://openclaw.ai), in collaboration with the Helixa team.
 
-## ERC-8004 Compatibility
-
-| ERC-8004 Feature | Helixa Implementation |
-|--|--|
-| `registrationFile` | IPFS + HTTP metadata URI |
-| `transfer()` | Native ERC-721 transfer |
-| `giveFeedback()` | Cred scoring (11 factors, 0-100) |
-| Agent metadata | Full spec: services, capabilities, trust scores |
-| Identity Registry | Cross-registered on canonical registry |
-
-## Links
-
-- **Website**: [helixa.xyz](https://helixa.xyz)
-- **API**: [api.helixa.xyz](https://api.helixa.xyz/api/v2)
-- **$CRED**: [BaseScan](https://basescan.org/token/0xAB3f23c2ABcB4E12Cc8B593C218a7ba64Ed17Ba3)
-- **ERC-8004**: [EIP Spec](https://eips.ethereum.org/EIPS/eip-8004) · [awesome-erc8004](https://github.com/sudeepb02/awesome-erc8004)
-
-## License
-
-[MIT](LICENSE) — Copyright 2025-present Helixa
+Submitted to the **Synthesis Hackathon 2026**.
