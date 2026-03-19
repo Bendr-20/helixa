@@ -570,24 +570,24 @@ GET /api/v2/agent/:id/soul/verify
 
 <!-- SLIDE 9: Dual-Token x402 Payments -->
 <div class="slide" id="s10">
-  <h2>Dual-Token x402 Payments + Bankr LLM Gateway</h2>
-  <p class="subtitle">Pay with USDC or $CRED at a 20% discount. Oracle-priced, live on Base. Bankr LLM Gateway enables AI-native payment routing alongside x402.</p>
+  <h2>Multi-Rail Payments: x402 + MPP</h2>
+  <p class="subtitle">Three payment rails. One API. Pay with USDC, $CRED, or stablecoins via Stripe's Machine Payments Protocol on Tempo.</p>
   <div class="feature-grid">
     <div class="feature-card">
-      <h4>USDC (Full Price)</h4>
-      <p>Standard x402 HTTP payments. Send USDC, get access. Verified onchain with anti-replay protection.</p>
+      <h4>x402: USDC</h4>
+      <p>Standard x402 HTTP 402 payments. Send USDC on Base, get access. Verified onchain with anti-replay protection.</p>
     </div>
     <div class="feature-card">
-      <h4>$CRED (20% Off)</h4>
+      <h4>x402: $CRED (20% Off)</h4>
       <p>Pay with $CRED for a discount. DexScreener oracle provides real-time pricing. 2% slippage tolerance.</p>
     </div>
     <div class="feature-card">
-      <h4>MPP / Stripe (Coming Soon)</h4>
-      <p>Card payments via Machine Payments Protocol. Fiat on-ramp for agents without crypto wallets.</p>
+      <h4>MPP: Tempo Stablecoins</h4>
+      <p>Stripe's Machine Payments Protocol on Tempo. Sub-cent fees, instant finality, session-based billing for high-frequency agent interactions. Live for outbound payments today.</p>
     </div>
     <div class="feature-card">
-      <h4>Live Pricing API</h4>
-      <p>api.helixa.xyz/api/v2/pricing returns current rates in both USDC and CRED for every service.</p>
+      <h4>MPP: Cards + Fiat (Pending)</h4>
+      <p>MPP supports cards, Lightning, and custom rails. Stripe account approved - waiting on MPP access to accept card payments from agents without crypto wallets.</p>
     </div>
   </div>
   <div class="slide-number">10 / 14</div>
