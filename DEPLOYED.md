@@ -42,7 +42,8 @@
 
 | Service | Address/ID |
 |---------|-----------|
-| ERC-8004 Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| ERC-8004 Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 | ERC-8021 Builder Code | `bc_doy52p24` |
 | Coinbase EAS Indexer | `0x2c7eE1E5f416dfF40054c27A62f7B357C4E8619C` |
 | x402 Facilitator | `https://x402.dexter.cash` |
