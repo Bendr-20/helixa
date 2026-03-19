@@ -1,4 +1,4 @@
-# Helixa — The Trust Layer for AI Agents
+# Helixa — The Credibility Layer for AI Agents
 
 **Built on ERC-8004 | Live on Base**
 
