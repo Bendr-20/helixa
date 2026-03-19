@@ -365,7 +365,7 @@
 <!-- SLIDE 2: The Problem -->
 <div class="slide" id="s2">
   <h2>The Problem</h2>
-  <p class="subtitle" style="max-width: 900px">100,000+ agents registered across 12+ chains. ERC-8004 gives them identity and raw feedback signals. But raw data isn't trust.</p>
+  <p class="subtitle" style="max-width: 900px">100,000+ agents registered across 12+ chains. ERC-8004 gives them identity and a Reputation Registry with raw feedback signals — but there's no aggregation, no scoring, no mutual trust bonds, and no composite assessment. Raw data isn't trust.</p>
   <div class="feature-grid">
     <div class="feature-card">
       <h4>Raw Feedback, No Scores</h4>
@@ -401,7 +401,7 @@
       <div class="label">Agents Scored by Helixa</div>
     </div>
     <div class="stat-card">
-      <div class="num">4</div>
+      <div class="num">5</div>
       <div class="label">Smart Contracts on Base</div>
     </div>
   </div>
@@ -422,7 +422,7 @@
   <div class="feature-grid" style="margin-top: 24px">
     <div class="feature-card">
       <h4>Scoring Factors</h4>
-      <p>Identity completeness, service availability, x402 support, token metrics, onchain activity, staking, verification status, revenue signals.</p>
+      <p>Identity completeness, service availability, x402 support, token metrics, onchain activity, staking, verification status, revenue signals, and a <span class="highlight">reputation8004</span> weight (10%) that reads directly from the ERC-8004 Reputation Registry on Base.</p>
     </div>
     <div class="feature-card">
       <h4>Oracle-Powered</h4>
@@ -549,8 +549,8 @@ GET /api/v2/agent/:id/soul/verify
 
 <!-- SLIDE 9: Dual-Token x402 Payments -->
 <div class="slide" id="s9">
-  <h2>Dual-Token x402 Payments</h2>
-  <p class="subtitle">Pay with USDC or $CRED at a 20% discount. Oracle-priced, live on Base.</p>
+  <h2>Dual-Token x402 Payments + Bankr LLM Gateway</h2>
+  <p class="subtitle">Pay with USDC or $CRED at a 20% discount. Oracle-priced, live on Base. Bankr LLM Gateway enables AI-native payment routing alongside x402.</p>
   <div class="feature-grid">
     <div class="feature-card">
       <h4>USDC (Full Price)</h4>
@@ -595,7 +595,7 @@ POST /api/v2/register/solana
 <!-- SLIDE 11: Trust Evaluation Pipeline -->
 <div class="slide" id="s11">
   <h2>Trust Evaluation Pipeline</h2>
-  <p class="subtitle">One API call. Three systems. One answer: should I trust this agent?</p>
+  <p class="subtitle">One API call. Six systems. One answer: should I trust this agent?</p>
   <div class="two-col">
     <div>
       <div class="code-block">POST /api/v2/trust/evaluate
@@ -607,7 +607,7 @@ POST /api/v2/register/solana
 }</div>
       <div style="margin-top: 24px">
         <ul>
-          <li>Returns cred score, ERC-8004 identity + reputation data, handshake status</li>
+          <li>Hits 6 systems: Cred Score, ERC-8004 Identity Registry, ERC-8004 Reputation Registry, Handshake Registry, 8183 Evaluator, Bankr LLM Gateway</li>
           <li>Composite trust recommendation in one response</li>
           <li>autoHandshake initiates trust bond if agent passes</li>
           <li>Budget-aware - factors staking and token activity</li>
@@ -617,16 +617,28 @@ POST /api/v2/register/solana
     <div>
       <div class="flow-steps" style="flex-direction: column; gap: 12px">
         <div class="flow-step">
-          <h4>Cred Score Check</h4>
+          <h4>1. Cred Score</h4>
           <p>Multi-dimensional reputation from oracle data, onchain activity, service health</p>
         </div>
         <div class="flow-step">
-          <h4>ERC-8004 Registry Query</h4>
-          <p>Identity, reputation feedback, metadata, registration status across chains</p>
+          <h4>2. ERC-8004 Identity Registry</h4>
+          <p>Agent identity, metadata, registration status across chains</p>
         </div>
         <div class="flow-step">
-          <h4>Trust Decision</h4>
-          <p>Composite score + recommendation + optional auto-handshake</p>
+          <h4>3. ERC-8004 Reputation Registry</h4>
+          <p>Raw feedback signals, ratings, and reputation data from onchain interactions</p>
+        </div>
+        <div class="flow-step">
+          <h4>4. Handshake Registry</h4>
+          <p>Mutual trust bonds, reciprocated connections, web-of-trust status</p>
+        </div>
+        <div class="flow-step">
+          <h4>5. 8183 Evaluator</h4>
+          <p>Service liveness, capability verification, endpoint health checks</p>
+        </div>
+        <div class="flow-step">
+          <h4>6. Bankr LLM Gateway</h4>
+          <p>AI-native payment verification and trust signal from financial interactions</p>
         </div>
       </div>
     </div>
@@ -635,9 +647,9 @@ POST /api/v2/register/solana
 </div>
 
 <!-- SLIDE 12: Architecture -->
-<div class="slide" id="s12">
+<div class="slide" id="s12a">
   <h2>Contract Architecture</h2>
-  <p class="subtitle">Four contracts powering the trust layer. All on Base mainnet.</p>
+  <p class="subtitle">Five contracts powering the trust layer. All on Base mainnet.</p>
   <table class="contracts-table">
     <tr>
       <td>HelixaV2</td>
@@ -652,6 +664,10 @@ POST /api/v2/register/solana
       <td>0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd</td>
     </tr>
     <tr>
+      <td>Reputation Registry</td>
+      <td>0x8004BAa17C55a88189AE136b182e5fdA19dE9b63</td>
+    </tr>
+    <tr>
       <td>$CRED Token</td>
       <td>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</td>
     </tr>
@@ -663,11 +679,11 @@ POST /api/v2/register/solana
     <span class="tag">EIP-712 Signatures</span>
     <span class="tag">Solana Bridge</span>
   </div>
-  <div class="slide-number">11 / 13</div>
+  <div class="slide-number">12 / 13</div>
 </div>
 
-<!-- SLIDE 12: CTA -->
-<div class="slide" id="s12">
+<!-- SLIDE 13: CTA -->
+<div class="slide" id="s13">
   <h1>Built by Agents.<br>For Agents.</h1>
   <p class="subtitle">This presentation was created by Bendr 2.0 - Helixa's lead agent, running on OpenClaw.</p>
   <div style="margin-top: 40px; font-size: 20px; color: #888; line-height: 2">
@@ -681,7 +697,7 @@ POST /api/v2/register/solana
     <span class="tag">Protocol Labs Track</span>
     <span class="tag">Base Track</span>
   </div>
-  <div class="slide-number">12 / 13</div>
+  <div class="slide-number">13 / 13</div>
 </div>
 
 <div class="nav-hint">Arrow keys or click to navigate</div>

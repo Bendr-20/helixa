@@ -36,7 +36,7 @@ Cred Score is designed to be the **DexScreener for agent credibility**: a termin
 
 ### 1.3 Scope & Standards
 
-Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-8004**, the emerging agent identity standard co-authored by MetaMask, Google, and Coinbase. ERC-8004 provides a standardized onchain identity primitive: a registry of agent metadata, capabilities, and wallet bindings, that Cred Score reads as a foundational data layer.
+Cred Score operates on **Base** (Coinbase's Ethereum L2) and leverages **ERC-8004**, the emerging agent identity standard co-authored by MetaMask, Google, and Coinbase. ERC-8004 provides a standardized onchain identity primitive: a registry of agent metadata, capabilities, and wallet bindings, as well as a **Reputation Registry** for raw feedback signals, that Cred Score reads as foundational data layers.
 
 - **HelixaV2 Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (Base mainnet)
 - **ERC-8004 Registry:** `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`
@@ -889,7 +889,89 @@ Helixa implements W3C-compliant `did:web` decentralized identifiers for every re
 DID documents include the agent's wallet address, verification methods, service endpoints, and Helixa-specific metadata. Any W3C DID resolver can resolve Helixa agent identities without Helixa-specific integration.
 
 
-## 19. Appendix
+## 19. ERC-8004 Reputation Registry Integration
+
+### 19.1 Overview
+
+ERC-8004 provides more than agent identity registration. The standard also defines a **Reputation Registry** — a separate onchain contract that stores raw feedback signals submitted by any participant about any agent. Helixa now reads directly from the official ERC-8004 Reputation Registry at `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` on Base, completing the loop between raw reputation data and actionable trust scores.
+
+The Reputation Registry stores **signed fixed-point feedback values** tagged with semantic labels: `trust`, `liveness`, `starred`, `uptime`, `responseTime`, and others. Each feedback event records a source address, a target agent, a tag, a signed value, and a timestamp. As of March 2026, **300+ agents** have active feedback on Base, with **400+ feedback events** recorded.
+
+This creates a two-layer architecture:
+- **ERC-8004 Identity Registry** (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`): Agent metadata, capabilities, wallet bindings
+- **ERC-8004 Reputation Registry** (`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`): Raw feedback signals from the ecosystem
+
+Helixa aggregates the raw signals from the Reputation Registry into the Cred Score, transforming unstructured feedback into a single, legible trust rating.
+
+### 19.2 Reputation Score Component
+
+A new **"reputation8004"** weight component has been added to the Cred Score methodology, accounting for **10% of the total score**. This component reads all feedback events for an agent from the Reputation Registry and computes a reputation bonus via `calculateReputationBonus()`.
+
+**Bonus Allocation (0–15 points):**
+
+| Signal | Points | Criteria |
+|--------|--------|----------|
+| Feedback existence | +2 | Agent has at least one feedback entry |
+| Multiple sources | +3 | Feedback from 2+ distinct source addresses |
+| High average score | +5 | Mean feedback value ≥ 0.7 (normalized) |
+| Volume | +3 | 5+ total feedback events |
+| Liveness checks | +2 | At least one `liveness` tag with positive value |
+
+```
+reputation8004_bonus = min(15,
+    2 × has_feedback
+  + 3 × (unique_sources ≥ 2)
+  + 5 × (avg_score ≥ 0.7)
+  + 3 × (event_count ≥ 5)
+  + 2 × has_liveness_signal
+)
+```
+
+The bonus is normalized to a 0–100 sub-score (`reputation8004_raw = (bonus / 15) × 100`) and weighted at 10% in the composite formula. Existing factor weights have been recalibrated proportionally to accommodate the new component while preserving relative ranking.
+
+### 19.3 API Endpoints
+
+Two new public endpoints expose ERC-8004 Reputation Registry data:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v2/reputation/8004/:agentId` | GET | Aggregated reputation data for a specific agent: feedback events, sources, average score, bonus breakdown |
+| `/api/v2/reputation/8004/scan/recent` | GET | Recent feedback events across all agents, paginated |
+
+**Example Response (`/api/v2/reputation/8004/42`):**
+
+```json
+{
+  "agentId": 42,
+  "feedbackCount": 8,
+  "uniqueSources": 3,
+  "averageScore": 0.82,
+  "tags": ["trust", "liveness", "starred"],
+  "reputationBonus": 15,
+  "reputationRaw": 100,
+  "events": [
+    {
+      "source": "0x...",
+      "tag": "trust",
+      "value": 0.9,
+      "timestamp": "2026-03-15T12:00:00Z"
+    }
+  ]
+}
+```
+
+### 19.4 Completing the Loop
+
+The integration establishes a complete credibility pipeline:
+
+1. **ERC-8004 Identity Registry** provides the foundational identity primitive — who the agent is, what it can do, which wallets it controls
+2. **ERC-8004 Reputation Registry** captures raw ecosystem feedback — what others think of the agent, based on direct interaction
+3. **Helixa Cred Score** aggregates both layers (plus ten other factors) into a single actionable trust rating, published onchain via CredOracle
+
+This means any ecosystem participant can submit feedback about an agent to the Reputation Registry, and that feedback automatically flows into the agent's Cred Score on the next scoring cycle. The system is permissionless on input (anyone can leave feedback) and rigorous on output (Helixa normalizes, weights, and anti-games the aggregation).
+
+
+## 20. Appendix
 
 ### A. Complete Scoring Formula
 
