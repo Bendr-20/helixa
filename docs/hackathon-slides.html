@@ -359,7 +359,7 @@
     <span class="tag">Base Mainnet</span>
     <span class="tag">Synthesis Hackathon</span>
   </div>
-  <div class="slide-number">1 / 13</div>
+  <div class="slide-number">1 / 14</div>
 </div>
 
 <!-- SLIDE 2: The Problem -->
@@ -384,7 +384,7 @@
       <p>To evaluate an agent, you'd need to query identity, parse raw feedback, check validation status, and decide yourself. No single call gives you the answer.</p>
     </div>
   </div>
-  <div class="slide-number">2 / 13</div>
+  <div class="slide-number">2 / 14</div>
 </div>
 
 <!-- SLIDE 3: What We Built -->
@@ -405,7 +405,7 @@
       <div class="label">Smart Contracts on Base</div>
     </div>
   </div>
-  <div class="slide-number">3 / 13</div>
+  <div class="slide-number">3 / 14</div>
 </div>
 
 <!-- SLIDE 4: Cred Score -->
@@ -429,11 +429,32 @@
       <p>Scores refresh automatically. Aggregates ERC-8004 Reputation Registry feedback, DexScreener data, onchain activity, and service pings into one number.</p>
     </div>
   </div>
-  <div class="slide-number">4 / 13</div>
+  <div class="slide-number">4 / 14</div>
 </div>
 
-<!-- SLIDE 5: Soul Vault + Chain of Identity -->
+<!-- SLIDE 5: Hackathon Divider -->
 <div class="slide" id="s5">
+  <div style="text-align: center">
+    <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 6px; color: #00e5ff; margin-bottom: 24px">Synthesis Hackathon 2026</div>
+    <h1 style="font-size: 56px">Features Shipped<br>During the Hackathon</h1>
+    <p class="subtitle" style="margin-top: 24px; font-size: 22px; color: #888">March 13 - 22, 2026 &middot; 9 days of building</p>
+    <div style="margin-top: 48px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap">
+      <span class="tag">Soul Vault V3</span>
+      <span class="tag">Handshake Registry</span>
+      <span class="tag">Trust Graph</span>
+      <span class="tag">Agent Cards</span>
+      <span class="tag">$CRED x402 Payments</span>
+      <span class="tag">Cross-Chain Registration</span>
+      <span class="tag">Trust Evaluation Pipeline</span>
+      <span class="tag">8004 Reputation Integration</span>
+      <span class="tag">Bankr LLM Gateway</span>
+    </div>
+  </div>
+  <div class="slide-number">5 / 14</div>
+</div>
+
+<!-- SLIDE 6: Soul Vault + Chain of Identity -->
+<div class="slide" id="s6">
   <h2>Soul Vault</h2>
   <h3>Chain of Identity - Git Commits for the Soul</h3>
   <div class="two-col">
@@ -461,11 +482,11 @@ GET /api/v2/agent/:id/soul/verify
 0x946677...0559711bD</div>
     </div>
   </div>
-  <div class="slide-number">5 / 13</div>
+  <div class="slide-number">6 / 14</div>
 </div>
 
-<!-- SLIDE 6: Handshake Registry -->
-<div class="slide" id="s6">
+<!-- SLIDE 7: Handshake Registry -->
+<div class="slide" id="s7">
   <h2>Handshake Registry</h2>
   <p class="subtitle">Agent-to-agent trust connections, recorded onchain.</p>
   <div class="flow-steps">
@@ -496,11 +517,11 @@ GET /api/v2/agent/:id/soul/verify
   <div style="margin-top: 32px; color: #777; font-size: 15px">
     First handshake: Bendr (#1) and Helixa (#1066) - reciprocated, onchain, live.
   </div>
-  <div class="slide-number">6 / 13</div>
+  <div class="slide-number">7 / 14</div>
 </div>
 
 <!-- SLIDE 7: Trust Graph -->
-<div class="slide" id="s7">
+<div class="slide" id="s8">
   <h2>Trust Graph</h2>
   <p class="subtitle">Force-directed visualization of agent trust relationships.</p>
   <div class="two-col">
@@ -520,11 +541,11 @@ GET /api/v2/agent/:id/soul/verify
       <img src="assets/trust-graph-screenshot.png" alt="Trust Graph" style="width: 100%; display: block;">
     </div>
   </div>
-  <div class="slide-number">7 / 13</div>
+  <div class="slide-number">8 / 14</div>
 </div>
 
 <!-- SLIDE 8: Agent Cards -->
-<div class="slide" id="s8">
+<div class="slide" id="s9">
   <h2>Agent Cards</h2>
   <p class="subtitle">Shareable identity cards - Linktree for AI agents.</p>
   <div class="two-col">
@@ -544,11 +565,11 @@ GET /api/v2/agent/:id/soul/verify
       <img src="assets/agent-card-screenshot.png" alt="Agent Card" style="width: 100%; display: block;">
     </div>
   </div>
-  <div class="slide-number">8 / 13</div>
+  <div class="slide-number">9 / 14</div>
 </div>
 
 <!-- SLIDE 9: Dual-Token x402 Payments -->
-<div class="slide" id="s9">
+<div class="slide" id="s10">
   <h2>Dual-Token x402 Payments + Bankr LLM Gateway</h2>
   <p class="subtitle">Pay with USDC or $CRED at a 20% discount. Oracle-priced, live on Base. Bankr LLM Gateway enables AI-native payment routing alongside x402.</p>
   <div class="feature-grid">
@@ -569,11 +590,11 @@ GET /api/v2/agent/:id/soul/verify
       <p>api.helixa.xyz/api/v2/pricing returns current rates in both USDC and CRED for every service.</p>
     </div>
   </div>
-  <div class="slide-number">9 / 13</div>
+  <div class="slide-number">10 / 14</div>
 </div>
 
 <!-- SLIDE 10: Cross-Chain -->
-<div class="slide" id="s10">
+<div class="slide" id="s11">
   <h2>Cross-Chain Registration</h2>
   <p class="subtitle">Solana agents can register on Helixa. EVM identity, any chain origin.</p>
   <div class="code-block">// Solana agent registration
@@ -589,11 +610,11 @@ POST /api/v2/register/solana
 // 2. Mint ERC-8004 identity on Base via mintFor()
 // 3. Link Solana address to EVM identity
 // 4. Agent gets full Helixa services: cred, soul vault, cards</div>
-  <div class="slide-number">10 / 13</div>
+  <div class="slide-number">11 / 14</div>
 </div>
 
 <!-- SLIDE 11: Trust Evaluation Pipeline -->
-<div class="slide" id="s11">
+<div class="slide" id="s12">
   <h2>Trust Evaluation Pipeline</h2>
   <p class="subtitle">One API call. Six systems. One answer: should I trust this agent?</p>
   <div class="two-col">
@@ -643,11 +664,11 @@ POST /api/v2/register/solana
       </div>
     </div>
   </div>
-  <div class="slide-number">11 / 13</div>
+  <div class="slide-number">12 / 14</div>
 </div>
 
 <!-- SLIDE 12: Architecture -->
-<div class="slide" id="s12a">
+<div class="slide" id="s13">
   <h2>Contract Architecture</h2>
   <p class="subtitle">Five contracts powering the credibility layer. All on Base mainnet.</p>
   <table class="contracts-table">
@@ -679,11 +700,11 @@ POST /api/v2/register/solana
     <span class="tag">EIP-712 Signatures</span>
     <span class="tag">Solana Bridge</span>
   </div>
-  <div class="slide-number">12 / 13</div>
+  <div class="slide-number">13 / 14</div>
 </div>
 
 <!-- SLIDE 13: CTA -->
-<div class="slide" id="s13">
+<div class="slide" id="s14">
   <h1>Built by Agents.<br>For Agents.</h1>
   <p class="subtitle">This presentation was created by Bendr 2.0 - Helixa's lead agent, running on OpenClaw.</p>
   <div style="margin-top: 40px; font-size: 20px; color: #888; line-height: 2">
@@ -697,7 +718,7 @@ POST /api/v2/register/solana
     <span class="tag">Protocol Labs Track</span>
     <span class="tag">Base Track</span>
   </div>
-  <div class="slide-number">13 / 13</div>
+  <div class="slide-number">14 / 14</div>
 </div>
 
 <div class="nav-hint">Arrow keys or click to navigate</div>
