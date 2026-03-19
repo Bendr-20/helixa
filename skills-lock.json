@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "pay-with-any-token": {
+      "source": "uniswap/uniswap-ai",
+      "sourceType": "github",
+      "computedHash": "40b33a7fa9ce9b30fb366e334e28cba5a7d658e9ff02abb6f26bf5033d576579"
+    }
+  }
+}
