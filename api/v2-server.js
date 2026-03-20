@@ -3978,7 +3978,7 @@ app.get('/api/terminal/agents', (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-        const sort = ['cred_score','name','created_at','platform','token_market_cap','price_change_24h','volume_24h','liquidity_usd','revenue_onchain','revenue_self_reported'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const sort = ['cred_score','name','created_at','platform'].includes(req.query.sort) ? req.query.sort : 'cred_score';
         const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
         const filter = req.query.filter || 'all';
         const q = (req.query.q || '').trim();
@@ -4018,10 +4018,7 @@ app.get('/api/terminal/agents', (req, res) => {
 
         const agents = terminalDb.prepare(
             `SELECT id, address, agent_id, token_id, name, description, image_url, platform, 
-                    x402_supported, cred_score, cred_tier, created_at, owner_address, reputation_score,
-                    token_address, token_symbol, token_name, token_market_cap,
-                    price_change_24h, volume_24h, liquidity_usd,
-                    revenue_onchain, revenue_self_reported, client_count, revenue_sources
+                    x402_supported, cred_score, cred_tier, created_at, owner_address, registry
              FROM agents ${whereClause} 
              ORDER BY ${orderBy}
              LIMIT @limit OFFSET @offset`
