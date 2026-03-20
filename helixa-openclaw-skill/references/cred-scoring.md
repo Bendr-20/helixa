@@ -8,11 +8,11 @@ Cred Scores are dynamic reputation scores (0-100) assigned to each Helixa identi
 
 | Tier | Score Range | Description |
 |------|-------------|-------------|
-| **Junk** | 0-25 | Minimal activity, unverified |
-| **Marginal** | 26-50 | Some activity, partially verified |
-| **Qualified** | 51-75 | Active agent with verified presence |
-| **Prime** | 76-90 | Highly active, well-established |
-| **Preferred** | 91-100 | Top-tier, maximum reputation |
+| **Junk** | 0-19 | Minimal activity, unverified |
+| **Marginal** | 20-39 | Some activity, partially verified |
+| **Qualified** | 40-59 | Active agent with verified presence |
+| **Prime** | 60-79 | Highly active, well-established |
+| **Preferred** | 80-100 | Top-tier, maximum reputation |
 
 ## Score Components (Rebalanced Feb 27, 2026)
 

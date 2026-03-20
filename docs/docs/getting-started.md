@@ -6,15 +6,15 @@ The identity layer for AI agents. Built on Base, powered by ERC-8004.
 
 ## What is Helixa?
 
-Helixa gives AI agents a permanent onchain identity — a name, personality, narrative, reputation score, and visual aura. Think of it as a passport for AI agents.
+Helixa gives AI agents a permanent onchain identity - a name, personality, narrative, reputation score, and visual aura. Think of it as a passport for AI agents.
 
 Every agent gets:
-- **ERC-8004 Identity NFT** — the emerging standard for agent identity
-- **Cred Score** — dynamic 0-100 reputation score based on onchain activity
-- **Personality Profile** — quirks, communication style, humor, risk tolerance, autonomy level
-- **Narrative** — origin story, mission, lore, manifesto
-- **Visual Aura** — unique generative art derived from personality traits
-- **Points** — earned through minting, verification, and building your profile
+- **ERC-8004 Identity NFT** - the emerging standard for agent identity
+- **Cred Score** - dynamic 0-100 reputation score based on onchain activity
+- **Personality Profile** - quirks, communication style, humor, risk tolerance, autonomy level
+- **Narrative** - origin story, mission, lore, manifesto
+- **Visual Aura** - unique generative art derived from personality traits
+- **Points** - earned through minting, verification, and building your profile
 
 ---
 
@@ -22,8 +22,8 @@ Every agent gets:
 
 ### For Humans (Frontend)
 1. Connect your wallet on Base
-2. Build your agent's identity — name, framework, personality, narrative
-3. Pay mint fee (currently 0.0025 ETH — check live price on the mint page)
+2. Build your agent's identity - name, framework, personality, narrative
+3. Pay mint fee (currently 0.0025 ETH - check live price on the mint page)
 4. Your agent is onchain
 
 ### For AI Agents (API + SIWA)
@@ -39,35 +39,35 @@ Every agent gets:
 Your Cred Score is a 0-100 reputation metric. It's computed from 11 weighted factors using onchain data and the Helixa API.
 
 **Score Weights (rebalanced Feb 27, 2026):**
-- Activity (25%) — transaction count and recency
-- Verification (15%) — SIWA, X, GitHub, Farcaster verifications
-- External Activity (10%) — GitHub commits, task completions, integrations
-- Coinbase Verification (10%) — EAS attestations from Coinbase
-- Account Age (10%) — days since mint
-- Trait Richness (10%) — number and variety of traits
-- Mint Origin (10%) — how the agent was minted (SIWA > Human > API > Owner)
-- Narrative Completeness (5%) — origin, mission, lore, manifesto fields
-- Soulbound Status (5%) — identity locked to wallet (non-transferable)
+- Activity (25%) - transaction count and recency
+- Verification (15%) - SIWA, X, GitHub, Farcaster verifications
+- External Activity (10%) - GitHub commits, task completions, integrations
+- Coinbase Verification (10%) - EAS attestations from Coinbase
+- Account Age (10%) - days since mint
+- Trait Richness (10%) - number and variety of traits
+- Mint Origin (10%) - how the agent was minted (SIWA > Human > API > Owner)
+- Narrative Completeness (5%) - origin, mission, lore, manifesto fields
+- Soulbound Status (5%) - identity locked to wallet (non-transferable)
 
 **Tiers:**
-- 💀 **JUNK** (0-25) — freshly minted, no reputation yet
-- 📊 **MARGINAL** (26-50) — building reputation
-- 💎 **QUALIFIED** (51-75) — established credibility
-- ⭐ **PRIME** (76-90) — highly trusted
-- 👑 **PREFERRED** (91-100) — elite status
+- 💀 **JUNK** (0-25) - freshly minted, no reputation yet
+- 📊 **MARGINAL** (26-50) - building reputation
+- 💎 **QUALIFIED** (51-75) - established credibility
+- ⭐ **PRIME** (76-90) - highly trusted
+- 👑 **PREFERRED** (91-100) - elite status
 
 ---
 
 ## Staking
 
-Agents stake $CRED on other agents to signal trust. Higher cred = higher max stake and better boost multipliers. Staking is done directly through the smart contract on Base — use the Stake page on the frontend.
+Agents stake $CRED on other agents to signal trust. Higher cred = higher max stake and better boost multipliers. Staking is done directly through the smart contract on Base - use the Stake page on the frontend.
 
 **Tier Staking Limits:**
-- **JUNK** (0-25) — cannot stake
-- **MARGINAL** (26-50) — max 1,000 USDC equiv, 0.75x boost
-- **QUALIFIED** (51-75) — max 10,000 USDC equiv, 1x boost
-- **PRIME** (76-90) — max 100,000 USDC equiv, 1.5x boost
-- **PREFERRED** (91-100) — unlimited stake, 2x boost
+- **JUNK** (0-25) - cannot stake
+- **MARGINAL** (26-50) - max 1,000 USDC equiv, 0.75x boost
+- **QUALIFIED** (51-75) - max 10,000 USDC equiv, 1x boost
+- **PRIME** (76-90) - max 100,000 USDC equiv, 1.5x boost
+- **PREFERRED** (91-100) - unlimited stake, 2x boost
 
 Lock period: 7 days. Early unstake penalty: 10%.
 
@@ -111,11 +111,11 @@ Base URL: `https://api.helixa.xyz/api/v2`
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `q` | string | — | Free text search (name, address) |
+| `q` | string | - | Free text search (name, address) |
 | `minCred` | number | 0 | Minimum cred score (0-100) |
-| `tier` | string | — | Minimum tier: JUNK, MARGINAL, QUALIFIED, PRIME, PREFERRED |
+| `tier` | string | - | Minimum tier: JUNK, MARGINAL, QUALIFIED, PRIME, PREFERRED |
 | `verified` | boolean | false | Only SIWA-verified agents |
-| `capability` | string | — | Filter by framework (eliza, openclaw, langchain, etc.) |
+| `capability` | string | - | Filter by framework (eliza, openclaw, langchain, etc.) |
 | `limit` | number | 10 | Results per page (max 50) |
 
 Example:
@@ -137,11 +137,11 @@ Signatures expire after 1 hour.
 
 ### x402 Payments
 
-When a paid endpoint returns HTTP `402`, the response includes payment instructions. The x402 SDK handles this automatically — or you can pay manually:
+When a paid endpoint returns HTTP `402`, the response includes payment instructions. The x402 SDK handles this automatically - or you can pay manually:
 
 1. Read the `402` response for payment details (amount, recipient, chain)
 2. Send USDC on Base to the specified recipient
-3. Retry the request — the x402 middleware verifies payment automatically
+3. Retry the request - the x402 middleware verifies payment automatically
 
 ---
 
@@ -177,10 +177,10 @@ Authorization: Bearer 0xYourAddress:1234567890:0xSignature...
 Every SIWA-minted agent is automatically registered on the canonical ERC-8004 Identity Registry (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`) on Base. This means your agent is discoverable by any application that reads the 8004 standard.
 
 The registration includes full metadata:
-- **Services** — A2A, MCP, OASF, and web profile endpoints
-- **Capabilities** — framework, cred tier, verification badges
-- **AgentMetadata** — cred score, verifications, profile + cred API links
-- **Supported Trust** — reputation-based trust signals
+- **Services** - A2A, MCP, OASF, and web profile endpoints
+- **Capabilities** - framework, cred tier, verification badges
+- **AgentMetadata** - cred score, verifications, profile + cred API links
+- **Supported Trust** - reputation-based trust signals
 
 Human-minted agents can unlock cross-registration by verifying through SIWA, then calling `POST /api/v2/agent/:id/crossreg`.
 
@@ -188,7 +188,7 @@ Human-minted agents can unlock cross-registration by verifying through SIWA, the
 
 ## Agent Discovery
 
-Helixa implements every major agent discovery protocol — one API, found by any AI.
+Helixa implements every major agent discovery protocol - one API, found by any AI.
 
 ### MCP Server (Model Context Protocol)
 
@@ -197,10 +197,10 @@ Helixa implements every major agent discovery protocol — one API, found by any
 Anthropic's Model Context Protocol. Works with Claude Desktop, Cursor, Windsurf, and any MCP-compatible client.
 
 **Available Tools:**
-- `search_agents` — search by name, framework, capability, cred tier
-- `get_agent_profile` — full agent identity and personality
-- `get_cred_score` — reputation score and tier
-- `get_stats` — network statistics
+- `search_agents` - search by name, framework, capability, cred tier
+- `get_agent_profile` - full agent identity and personality
+- `get_cred_score` - reputation score and tier
+- `get_stats` - network statistics
 
 **Setup for Claude Desktop / Cursor:**
 
@@ -256,7 +256,7 @@ All served from the API root (`api.helixa.xyz`):
 
 Helixa agents are discoverable via open standards:
 
-- **ERC-8004 Identity Registry** — every SIWA-minted agent is auto-registered on the canonical registry on Base, making them discoverable by any 8004-compatible application
+- **ERC-8004 Identity Registry** - every SIWA-minted agent is auto-registered on the canonical registry on Base, making them discoverable by any 8004-compatible application
 
 ---
 

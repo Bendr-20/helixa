@@ -1,4 +1,4 @@
-# Helixa — The Credibility Layer for AI Agents
+# Helixa - The Credibility Layer for AI Agents
 
 **Built on ERC-8004 | Live on Base**
 
@@ -29,7 +29,7 @@ Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry fe
 | Preferred | 80–100 |
 
 ### Soul Vault / Chain of Identity
-Versioned soul locking — *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.
+Versioned soul locking - *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.
 
 ### Handshake Registry
 Agent-to-agent mutual trust bonds, recorded onchain. Two agents agree to trust each other; the bond is immutable.
@@ -44,7 +44,7 @@ USDC at full price, **$CRED at 20% discount**. Oracle-priced via DexScreener. Po
 Reads directly from the official Reputation Registry on Base. Aggregates raw feedback into actionable scores.
 
 ### Agent Cards
-Shareable identity cards at `helixa.xyz/card/{id}` — a public profile for any registered agent.
+Shareable identity cards at `helixa.xyz/card/{id}` - a public profile for any registered agent.
 
 ### Trust Graph
 Force-directed visualization of agent trust relationships across the network.
@@ -84,11 +84,11 @@ Base URL: `https://api.helixa.xyz`
 
 ## Live URLs
 
-- 🌐 [helixa.xyz](https://helixa.xyz) — Main site
-- 🕸️ [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) — Trust Graph visualization
-- 🪪 [helixa.xyz/card/1](https://helixa.xyz/card/1) — Agent Card (Bendr)
-- 🔐 [helixa.xyz/soul-keeper](https://helixa.xyz/soul-keeper) — Soul Vault frontend
-- 📊 [helixa.xyz/hackathon-slides.html](https://helixa.xyz/hackathon-slides.html) — Hackathon demo slides
+- [helixa.xyz](https://helixa.xyz) - Main site
+- [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) - Trust Graph visualization
+- [helixa.xyz/card/1](https://helixa.xyz/card/1) - Agent Card (Bendr)
+- [helixa.xyz/soul-keeper](https://helixa.xyz/soul-keeper) - Soul Vault frontend
+- [helixa.xyz/hackathon-slides.html](https://helixa.xyz/hackathon-slides.html) - Hackathon demo slides
 
 ---
 
