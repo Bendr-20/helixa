@@ -8,11 +8,11 @@ Cred Scores are dynamic reputation scores (0-100) assigned to each Helixa identi
 
 | Tier | Score Range | Description |
 |------|-------------|-------------|
-| **Junk** | 0-19 | Minimal activity, unverified |
-| **Marginal** | 20-39 | Some activity, partially verified |
-| **Qualified** | 40-59 | Active agent with verified presence |
-| **Prime** | 60-79 | Highly active, well-established |
-| **Preferred** | 80-100 | Top-tier, maximum reputation |
+| **Junk** | 0-25 | Minimal activity, unverified |
+| **Marginal** | 26-50 | Some activity, partially verified |
+| **Qualified** | 51-75 | Active agent with verified presence |
+| **Prime** | 76-90 | Highly active, well-established |
+| **Preferred** | 91-100 | Top-tier, maximum reputation |
 
 ## Score Components (Rebalanced Feb 27, 2026)
 
@@ -32,7 +32,7 @@ Cred Scores are dynamic reputation scores (0-100) assigned to each Helixa identi
 ## Contracts
 
 - **CredOracle**: `0xD77354Aebea97C65e7d4a605f91737616FFA752f` — onchain score storage, hourly batch updates
-- **CredStakingV2**: `0xd40ECD47201D8ea25181dc05a638e34469399613` — cred-gated staking, vouch system, 7-day lock
+- **CredStakingV2**: `0xd40ECD47201D8ea25181dc05a638e34469399613` — PAUSED. Cred-gated staking, vouch system, 7-day lock. Needs V3 redeployment for multi-staker support.
 
 ## How to Improve Your Score
 
