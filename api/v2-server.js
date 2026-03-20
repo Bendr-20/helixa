@@ -612,6 +612,13 @@ async function formatAgentV2(tokenId) {
         }
     }
 
+    // Fetch 0xWork stats (non-blocking, best-effort)
+    try {
+        const { fetchWorkStats } = require('./services/work-stats');
+        const workStats = await fetchWorkStats(result.agentAddress);
+        if (workStats) result._workStats = workStats;
+    } catch {}
+
     // Recompute cred score from merged data (onchain score may be stale)
     try {
         const { computedScore } = computeCredBreakdown(result);
@@ -3004,9 +3011,9 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.20, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
-    external: { weight: 0.12, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
-    verify: { weight: 0.12, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
+    activity: { weight: 0.18, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
+    external: { weight: 0.10, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    verify: { weight: 0.10, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
     age: { weight: 0.08, label: 'Account Age', description: 'Days since registration' },
     traits: { weight: 0.08, label: 'Trait Richness', description: 'Number and variety of traits' },
@@ -3015,6 +3022,7 @@ const CRED_WEIGHTS = {
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
     soulCompleteness: { weight: 0.07, label: 'Soul Vault', description: 'Soul data completeness - public fields, shared soul, narrative depth' },
     reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
+    workHistory: { weight: 0.08, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
 };
 
 function computeCredBreakdown(agent) {
@@ -3082,6 +3090,11 @@ function computeCredBreakdown(agent) {
             // Scale 0-15 bonus to 0-100 raw score
             return Math.min(100, Math.round(bonus * (100 / 15)));
         })(), maxRaw: 100 },
+        workHistory: { raw: (() => {
+            // 0xWork task completion data
+            const { calculateWorkScore } = require('./services/work-stats');
+            return calculateWorkScore(agent._workStats || null);
+        })(), maxRaw: 100 },
     };
 
     let totalWeighted = 0;
@@ -3134,6 +3147,28 @@ function getCredRecommendations(agent, breakdown) {
 
     return recs.slice(0, 8);
 }
+
+// FREE: 0xWork stats for an agent
+app.get('/api/v2/agent/:id/work-stats', async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const { fetchWorkStats, calculateWorkScore } = require('./services/work-stats');
+        const stats = await fetchWorkStats(agent.agentAddress);
+        if (!stats || !stats.registered) {
+            return res.json({ tokenId, name: agent.name, registered: false, message: 'Agent not registered on 0xWork' });
+        }
+        res.json({
+            tokenId, name: agent.name,
+            workStats: stats,
+            workScore: calculateWorkScore(stats),
+            source: '0xWork',
+            api: `https://api.0xwork.org/agents/${agent.agentAddress}/work-stats`,
+        });
+    } catch (e) {
+        res.status(404).json({ error: e.message });
+    }
+});
 
 // FREE: Basic cred score + tier
 app.get('/api/v2/agent/:id/cred', async (req, res) => {
