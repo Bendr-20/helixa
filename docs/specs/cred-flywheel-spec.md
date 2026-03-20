@@ -364,7 +364,7 @@ All reward distributions via a **Rewards Distributor** contract or backend hot w
 | Task | Details |
 |---|---|
 | Aura tier system | New contract or extension to SoulSovereign: burn CRED to set aura tier onchain |
-| Referral system | On-chain referral tracking (referrer address in mint calldata) |
+| Referral system | Onchain referral tracking (referrer address in mint calldata) |
 | Dynamic pricing oracle | Deploy TWAP oracle reading CRED/USDC pool, auto-adjust burn amounts |
 | Governance for burn amounts | Simple multisig-controlled parameter updates (later DAO) |
 

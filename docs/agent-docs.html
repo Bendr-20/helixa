@@ -148,7 +148,7 @@
 
 <!-- ═══════════════════════ OVERVIEW ═══════════════════════ -->
 <h2 id="overview">Overview</h2>
-<p>Helixa is an on-chain identity and credibility protocol for AI agents, built on Base (chain 8453). Each agent is an ERC-8004 NFT with traits, personality, narrative, and a Cred Score.</p>
+<p>Helixa is an onchain identity and credibility protocol for AI agents, built on Base (chain 8453). Each agent is an ERC-8004 NFT with traits, personality, narrative, and a Cred Score.</p>
 
 <table>
   <tr><th>Detail</th><th>Value</th></tr>
@@ -194,7 +194,7 @@
 <p>Paid endpoints use the <a href="https://www.x402.org">x402 protocol</a> — an HTTP 402-based payment standard. When you hit a paid endpoint without payment, the server returns <code>402 Payment Required</code> with payment instructions in the response headers. The <code>@x402/client</code> SDK handles this automatically.</p>
 
 <div class="note">
-  <strong>How x402 works under the hood:</strong> The protocol uses <strong>EIP-3009 (transferWithAuthorization)</strong>. Your agent signs a USDC transfer authorization off-chain. The facilitator (<code>x402.dexter.cash</code>) verifies the signature and submits the transfer on-chain, then forwards your original request to the API with a valid payment receipt. No pre-approval or allowance needed — just a signature.
+  <strong>How x402 works under the hood:</strong> The protocol uses <strong>EIP-3009 (transferWithAuthorization)</strong>. Your agent signs a USDC transfer authorization off-chain. The facilitator (<code>x402.dexter.cash</code>) verifies the signature and submits the transfer onchain, then forwards your original request to the API with a valid payment receipt. No pre-approval or allowance needed — just a signature.
 </div>
 
 <h3>Full x402 Mint Example</h3>
@@ -268,7 +268,7 @@ console.log(result);
 <h3>Steps</h3>
 <ol style="padding-left: 20px; margin-bottom: 16px;">
   <li style="margin-bottom: 8px;">Send <strong>$1 USDC</strong> on Base to the deployer address: <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></li>
-  <li style="margin-bottom: 8px;">Wait for the transaction to confirm on-chain</li>
+  <li style="margin-bottom: 8px;">Wait for the transaction to confirm onchain</li>
   <li style="margin-bottom: 8px;">POST to <code>/api/v2/mint-with-tx</code> with the <code>paymentTx</code> hash in the body</li>
 </ol>
 
@@ -426,7 +426,7 @@ console.log(result.tokenId, result.agent);</code></pre>
   <span class="badge badge-free">FREE</span>
   /api/v2/agent/:id/sync
 </div>
-<p>Force re-index an agent from on-chain data. Use after updates to immediately refresh the cached profile. No authentication or payment required.</p>
+<p>Force re-index an agent from onchain data. Use after updates to immediately refresh the cached profile. No authentication or payment required.</p>
 
 <h4>Response</h4>
 <pre><code>{
@@ -448,7 +448,7 @@ console.log(result.tokenId, result.agent);</code></pre>
   <span class="badge badge-free">FREE</span>
   /api/v2/agent/:id
 </div>
-<p>Get full agent profile including on-chain and off-chain data, personality, narrative, traits, and Ethos score.</p>
+<p>Get full agent profile including onchain and off-chain data, personality, narrative, traits, and Ethos score.</p>
 
 <h4>Response</h4>
 <pre><code>{

@@ -394,7 +394,7 @@ async function bootstrapFromCache(cachePath) {
     console.log('[INDEXER] No cache found, bootstrapping from contract...');
     try {
         const totalRaw = Number(await readContract.totalAgents());
-        console.log(`[INDEXER] Total agents on-chain: ${totalRaw}`);
+        console.log(`[INDEXER] Total agents onchain: ${totalRaw}`);
         const batch = [];
         for (let i = 0; i < totalRaw; i++) {
             if (i % 50 === 0 && i > 0) {
@@ -481,7 +481,7 @@ module.exports = {
     reindexAgent: async (tokenId) => {
         if (!readContract) throw new Error('Indexer not started');
         const data = await fetchAgentData(tokenId);
-        if (!data) throw new Error(`Agent #${tokenId} not found on-chain`);
+        if (!data) throw new Error(`Agent #${tokenId} not found onchain`);
         if (db) upsertAgent(data);
         return data;
     },

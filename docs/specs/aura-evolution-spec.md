@@ -273,7 +273,7 @@ Inspired by DeGods season model. Brief spec for future implementation.
 ### For Quigley (Product)
 5. **Tier thresholds** — Are v1/v3/v5 the right breakpoints? Should mutation count (beyond soul locks) also affect tier?
 6. **Season unlock model** — All holders, or Tier 1+ gated?
-7. **On-chain vs off-chain season toggle** — Gas cost vs decentralization tradeoff. Leaning off-chain for now?
+7. **Onchain vs off-chain season toggle** — Gas cost vs decentralization tradeoff. Leaning off-chain for now?
 
 ### For Engineering
 8. **HelixaV2 `incrementMutation` access** — Confirm deployer wallet is authorized. Do we need to add the backend relay wallet as an authorized caller?

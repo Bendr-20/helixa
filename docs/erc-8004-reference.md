@@ -10,7 +10,7 @@
 
 ## Three Registries (NOT just Identity)
 1. **Identity Registry** - ERC-721 with URIStorage. Portable, censorship-resistant agent identifiers. Each agent gets an agentId (tokenId) and agentURI pointing to a registration file.
-2. **Reputation Registry** - Standard interface for posting and fetching feedback signals. Clients give feedback (signed fixed-point value + tags). Scoring/aggregation happens both on-chain (composability) and off-chain (sophisticated algorithms).
+2. **Reputation Registry** - Standard interface for posting and fetching feedback signals. Clients give feedback (signed fixed-point value + tags). Scoring/aggregation happens both onchain (composability) and off-chain (sophisticated algorithms).
 3. **Validation Registry** - Generic hooks for requesting and recording independent validator checks (stakers re-running jobs, zkML verifiers, TEE oracles, trusted judges).
 
 ## Key Design Principles
@@ -28,7 +28,7 @@
 - registrations array (cross-chain)
 - supportedTrust array: ["reputation", "crypto-economic", "tee-attestation"]
 
-## On-Chain Metadata
+## Onchain Metadata
 - `getMetadata(agentId, key)` / `setMetadata(agentId, key, value)`
 - Reserved key: `agentWallet` - set via EIP-712 signature proof
 - Agent wallet auto-cleared on transfer
@@ -39,7 +39,7 @@
 - tag1/tag2: developer-defined for composability/filtering
 - Examples: starred (quality 0-100), uptime (%), responseTime (ms), revenues ($), reachable (binary)
 - Feedback submitter MUST NOT be agent owner
-- On-chain storage for composability, off-chain files via IPFS for rich data
+- Onchain storage for composability, off-chain files via IPFS for rich data
 - When agent-to-agent feedback, use agentWallet as clientAddress
 
 ## Deployment (as of March 2026)

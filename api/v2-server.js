@@ -2038,7 +2038,7 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
     }
 });
 
-// POST /api/v2/agent/:id/sync — Force re-index agent from on-chain data (no payment)
+// POST /api/v2/agent/:id/sync — Force re-index agent from onchain data (no payment)
 app.post('/api/v2/agent/:id/sync', async (req, res) => {
     const tokenId = parseInt(req.params.id);
     if (isNaN(tokenId) || tokenId < 0) {
@@ -2093,7 +2093,7 @@ app.post('/api/v2/agent/:id/verify', requireSIWA, async (req, res) => {
             });
         }
         
-        // Owner calls verify on-chain
+        // Owner calls verify onchain
         const tx = await contract.verify(tokenId);
         await tx.wait();
         
@@ -3375,11 +3375,11 @@ app.post('/api/v2/agent/:id/soul', requireSIWA, async (req, res) => {
         const agent = await formatAgentV2(tokenId);
         const caller = req.agent.address;
 
-        // Check sovereign lock (on-chain first, then DB fallback)
+        // Check sovereign lock (onchain first, then DB fallback)
         const sdb = getSoulDb();
         const existing = sdb.prepare('SELECT soulSovereign, sovereignWallet FROM soul_vault WHERE tokenId = ?').get(tokenId);
 
-        // On-chain sovereignty check
+        // Onchain sovereignty check
         try {
             const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
             const onChainSovereign = await ssContract.isSovereign(tokenId);
@@ -3387,11 +3387,11 @@ app.post('/api/v2/agent/:id/soul', requireSIWA, async (req, res) => {
                 const sovWallet = await ssContract.getSovereignWallet(tokenId);
                 if (caller.toLowerCase() !== sovWallet.toLowerCase()) {
                     sdb.close();
-                    return res.status(403).json({ error: 'Soul is sovereign (on-chain). Only the sovereign wallet can modify it.' });
+                    return res.status(403).json({ error: 'Soul is sovereign (onchain). Only the sovereign wallet can modify it.' });
                 }
             }
         } catch (e) {
-            console.warn(`[SOUL VAULT] On-chain sovereignty check failed for #${tokenId}:`, e.message);
+            console.warn(`[SOUL VAULT] Onchain sovereignty check failed for #${tokenId}:`, e.message);
         }
 
         if (existing && existing.soulSovereign === 1) {
@@ -3555,17 +3555,17 @@ app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
             return res.status(409).json({ error: 'Soul is already sovereign.' });
         }
 
-        // Also check on-chain
+        // Also check onchain
         let onChainLocked = false;
         try {
             const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
             onChainLocked = await ssContract.isSovereign(tokenId);
             if (onChainLocked) {
                 sdb.close();
-                return res.status(409).json({ error: 'Soul is already sovereign (on-chain).' });
+                return res.status(409).json({ error: 'Soul is already sovereign (onchain).' });
             }
         } catch (e) {
-            console.warn(`[SOUL VAULT] On-chain check failed for #${tokenId}:`, e.message);
+            console.warn(`[SOUL VAULT] Onchain check failed for #${tokenId}:`, e.message);
         }
 
         if (!existing) {
@@ -3597,7 +3597,7 @@ app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
             console.warn(`[SOUL VAULT] Could not compute soulHash for #${tokenId}:`, e.message);
         }
 
-        // Determine current on-chain version (v3 support)
+        // Determine current onchain version (v3 support)
         let currentVersion = 0;
         try {
             const ssContract = getSoulSovereignContract(new ethers.JsonRpcProvider(RPC_URL));
@@ -3613,13 +3613,13 @@ app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
             version: nextVersion,
             soulSovereignContract: SOUL_SOVEREIGN_ADDRESS,
             onChainLockRequired: true,
-            hint: 'DB lock recorded. Call lockSoulVersion(tokenId, soulHash) on SoulSovereign V3 contract from the agent wallet to finalize on-chain.',
+            hint: 'DB lock recorded. Call lockSoulVersion(tokenId, soulHash) on SoulSovereign V3 contract from the agent wallet to finalize onchain.',
             lockSoulVersionArgs: { tokenId, soulHash: soulHashHex },
             // Legacy compat
             lockSoulArgs: { tokenId, soulHash: soulHashHex },
             warning: currentVersion === 0
                 ? 'Soul is now sovereign. Only this wallet can modify soul data.'
-                : `Soul version ${nextVersion} ready. Previous versions remain immutable on-chain.`,
+                : `Soul version ${nextVersion} ready. Previous versions remain immutable onchain.`,
         });
     } catch (e) {
         console.error(`[SOUL VAULT] Error locking soul for #${req.params.id}:`, e.message);
@@ -3628,7 +3628,7 @@ app.post('/api/v2/agent/:id/soul/lock', requireSIWA, async (req, res) => {
     }
 });
 
-// GET /api/v2/agent/:id/soul/verify — Compare on-chain soulHash vs computed hash
+// GET /api/v2/agent/:id/soul/verify — Compare onchain soulHash vs computed hash
 app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
@@ -3649,7 +3649,7 @@ app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
             computedHash = ethers.keccak256(ethers.toUtf8Bytes(soulJson));
         }
 
-        // Read on-chain hash (v3: latest version)
+        // Read onchain hash (v3: latest version)
         let onChainHash = ethers.ZeroHash;
         let isSovereign = false;
         let onChainVersion = 0;
@@ -3661,7 +3661,7 @@ app.get('/api/v2/agent/:id/soul/verify', async (req, res) => {
                 ssContract.soulVersion(tokenId).then(v => Number(v)).catch(() => 0),
             ]);
         } catch (e) {
-            console.warn(`[SOUL VERIFY] On-chain read failed for #${tokenId}:`, e.message);
+            console.warn(`[SOUL VERIFY] Onchain read failed for #${tokenId}:`, e.message);
         }
 
         const match = computedHash === onChainHash;
