@@ -4097,6 +4097,48 @@ app.post('/api/terminal/agent/:id/revenue', express.json(), (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/terminal/summaries — Trust summary cards (LLM-generated)
+app.get('/api/terminal/summaries', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+        const tier = req.query.tier;
+        
+        let query = 'SELECT token_id, name, cred_score, cred_tier, trust_summary, summary_generated_at, summary_model, x402_endpoints, token_symbol, token_market_cap, platform FROM agents WHERE trust_summary IS NOT NULL';
+        const params = [];
+        if (tier) { query += ' AND cred_tier = ?'; params.push(tier.toUpperCase()); }
+        query += ' ORDER BY summary_generated_at DESC LIMIT ?';
+        params.push(limit);
+        
+        const agents = terminalDb.prepare(query).all(...params);
+        const total = terminalDb.prepare("SELECT COUNT(*) as c FROM agents WHERE trust_summary IS NOT NULL").get().c;
+        const pending = terminalDb.prepare("SELECT COUNT(*) as c FROM agents WHERE trust_summary IS NULL AND cred_score > 0").get().c;
+        
+        res.json({
+            summaries: agents.map(a => ({
+                tokenId: a.token_id, name: a.name, credScore: a.cred_score, credTier: a.cred_tier,
+                summary: a.trust_summary, generatedAt: a.summary_generated_at, model: a.summary_model,
+                x402Endpoints: a.x402_endpoints, tokenSymbol: a.token_symbol, marketCap: a.token_market_cap, platform: a.platform,
+            })),
+            total, pending,
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/terminal/agent/:id/summary — Single agent trust summary
+app.get('/api/terminal/agent/:id/summary', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const id = req.params.id;
+        const agent = terminalDb.prepare('SELECT token_id, name, cred_score, cred_tier, trust_summary, summary_generated_at, summary_model FROM agents WHERE address = ? OR agent_id = ? OR token_id = ? OR CAST(id AS TEXT) = ? OR LOWER(name) = LOWER(?)').get(id, id, id, id, id);
+        if (!agent) return res.status(404).json({ error: 'Agent not found' });
+        res.json({
+            tokenId: agent.token_id, name: agent.name, credScore: agent.cred_score, credTier: agent.cred_tier,
+            summary: agent.trust_summary || null, generatedAt: agent.summary_generated_at || null, model: agent.summary_model || null,
+        });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Bankr Token Launch ─────────────────────────────────────────
 let _bankrApiKey = null;
 async function initBankrApiKey() {
