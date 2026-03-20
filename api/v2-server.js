@@ -670,6 +670,21 @@ app.get('/health', (req, res) => {
 });
 
 // GET /api/v2/pricing — Current prices in USDC and $CRED
+// Bankr Router stats + dry-run
+app.get('/api/v2/llm/stats', (req, res) => {
+    try {
+        const bankrRouter = require('./services/bankr-router');
+        res.json(bankrRouter.getStats());
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/v2/llm/dry-run', express.json(), async (req, res) => {
+    try {
+        const bankrRouter = require('./services/bankr-router');
+        const result = await bankrRouter.route({ ...req.body, dryRun: true });
+        res.json(result);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/v2/pricing', (req, res) => {
     const credPrice = credOracle.getCredPriceUSDC();
     const services = {};
@@ -4786,7 +4801,7 @@ app.post('/api/v2/trust/evaluate', requireSIWA, async (req, res) => {
         
         sdb.close();
         
-        // 7. Generate LLM trust assessment via Bankr Gateway
+        // 7. Generate LLM trust assessment via Bankr Router (smart model selection)
         let llmAssessment = null;
         try {
             const bankrLlmKey = process.env.BANKR_LLM_KEY || process.env.BANKR_API_KEY;
@@ -4804,17 +4819,22 @@ ${budget ? `Requested Budget: $${budget}` : ''}
 
 Respond in JSON: {"assessment": "...", "maxRecommendedValue": number, "confidence": "high"|"medium"|"low"}`;
 
-                const llmResp = await fetch('https://llm.bankr.bot/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${bankrLlmKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: 'claude-haiku-4.5', messages: [{ role: 'user', content: assessmentPrompt }], max_tokens: 200 }),
-                    signal: AbortSignal.timeout(8000),
+                const bankrRouter = require('./services/bankr-router');
+                const llmResult = await bankrRouter.route({
+                    messages: [{ role: 'user', content: assessmentPrompt }],
+                    mode: 'auto',
+                    maxTokens: 200,
+                    apiKey: bankrLlmKey,
                 });
 
+                // Normalize response format (router handles both OpenAI and Anthropic formats)
+                const llmResp = { ok: true };
+                const llmData = llmResult;
+
                 if (llmResp.ok) {
-                    const llmData = await llmResp.json();
-                    const msg = llmData.choices?.[0]?.message;
-                    const content = msg?.content || msg?.reasoning || '';
+                    // Router returns parsed JSON directly; handle both OpenAI and Anthropic formats
+                    const msg = llmData.choices?.[0]?.message || llmData.content?.[0];
+                    const content = msg?.content || msg?.text || msg?.reasoning || '';
 
                     if (content) {
                         // Try to extract JSON from content/reasoning
