@@ -79,7 +79,8 @@ async function main() {
         console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} agents (IDs ${tokenIds[0]}-${tokenIds[tokenIds.length - 1]})`);
         
         try {
-            const tx = await oracle.batchUpdate(tokenIds, scores);
+            const nonce = await wallet.getNonce();
+            const tx = await oracle.batchUpdate(tokenIds, scores, { nonce });
             console.log(`  TX: ${tx.hash}`);
             const receipt = await tx.wait();
             console.log(`  Confirmed, gas: ${receipt.gasUsed.toString()}`);
