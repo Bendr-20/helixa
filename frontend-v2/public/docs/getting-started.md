@@ -50,11 +50,11 @@ Your Cred Score is a 0-100 reputation metric. It's computed from 11 weighted fac
 - Soulbound Status (5%) - identity locked to wallet (non-transferable)
 
 **Tiers:**
-- 💀 **JUNK** (0-25) - freshly minted, no reputation yet
-- 📊 **MARGINAL** (26-50) - building reputation
-- 💎 **QUALIFIED** (51-75) - established credibility
-- ⭐ **PRIME** (76-90) - highly trusted
-- 👑 **PREFERRED** (91-100) - elite status
+- **JUNK** (0-25) - freshly minted, no reputation yet
+- **MARGINAL** (26-50) - building reputation
+- **QUALIFIED** (51-75) - established credibility
+- **PRIME** (76-90) - highly trusted
+- **PREFERRED** (91-100) - elite status
 
 ---
 

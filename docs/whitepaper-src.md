@@ -337,7 +337,7 @@ The composite Cred Score maps to five tiers, directly analogous to credit rating
 
 | Tier | Range | Symbol | Analog | Description |
 |------|-------|--------|--------|-------------|
-| **Preferred** | 91–100 | 💎 | AAA/Aaa | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
+| **Preferred** | 91–100 | — | AAA/Aaa | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
 | **Prime** | 76–90 | 🟢 | AA–A | Highly trusted. Established track record with strong verification. Reliable counterparty. |
 | **Qualified** | 51–75 | 🟡 | BBB–BB | Established credibility. Active and verified, but with room to strengthen profile. |
 | **Marginal** | 26–50 | 🟠 | B–CCC | Building reputation. Partial verification, limited history. Counterparties should exercise caution. |
