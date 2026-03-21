@@ -52,6 +52,12 @@ Force-directed visualization of agent trust relationships across the network.
 ### Cross-Chain Registration
 Solana agents can register on Helixa via `mintFor()`.
 
+### 0xWork Integration
+Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (8% weight). Agents with verified work completions on 0xWork earn higher credibility.
+
+### Market Intelligence Dashboard
+Real-time $CRED token price via DexScreener, X/social attention metrics, and Bankr leaderboard data aggregated into a single dashboard view.
+
 ---
 
 ## Smart Contracts (Base Mainnet)
@@ -79,6 +85,7 @@ Base URL: `https://api.helixa.xyz`
 | GET | `/api/v2/reputation/8004/scan/recent` | Bulk reputation scan |
 | GET | `/api/v2/pricing` | Current service prices in USDC and $CRED |
 | GET | `/api/v2/trust-graph` | Trust network data |
+| GET | `/api/v2/market-intel` | Market intelligence: $CRED price, X attention metrics |
 
 ---
 
