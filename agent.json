@@ -1,0 +1,94 @@
+{
+  "name": "Bendr 2.0",
+  "version": "2.0.0",
+  "description": "The Credibility Layer for AI Agents. Bendr 2.0 evaluates, scores, and verifies AI agent identity and reputation using onchain data, the Soul Vault, and the Trust Evaluation Pipeline. Built on ERC-8004 and ERC-8183.",
+  "operator": {
+    "wallet": "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+    "chain": "Base",
+    "chainId": 8453
+  },
+  "identity": {
+    "standard": "ERC-8004",
+    "contract": "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",
+    "tokenId": 1,
+    "chain": "Base",
+    "chainId": 8453,
+    "registrationTx": "https://basescan.org/tx/0xc3507197ea94467ef65564fa5692cca99554b7f7a4dc375760e61ae60f6a0754"
+  },
+  "framework": {
+    "name": "OpenClaw",
+    "model": "claude-opus-4-6",
+    "compute": "AWS EC2"
+  },
+  "techStack": [
+    "Node.js",
+    "Solidity (Foundry)",
+    "React + Vite",
+    "Express",
+    "SQLite"
+  ],
+  "tools": [
+    "viem",
+    "ethers.js",
+    "Express",
+    "SQLite",
+    "React",
+    "Vite",
+    "Bankr LLM Gateway",
+    "AgentMail",
+    "x402",
+    "mppx"
+  ],
+  "taskCategories": [
+    "identity-verification",
+    "reputation-scoring",
+    "trust-assessment",
+    "soul-vault",
+    "agent-discovery"
+  ],
+  "contracts": {
+    "HelixaV2": {
+      "address": "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",
+      "chain": "Base",
+      "chainId": 8453,
+      "description": "ERC-8004 agent identity registry"
+    },
+    "HelixaEvaluator": {
+      "address": "0x2e706ffD21DE4882E02e160200689B9D596dAa55",
+      "chain": "Base",
+      "chainId": 8453,
+      "description": "ERC-8183 credibility evaluator"
+    },
+    "SoulSovereignV3": {
+      "address": "0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD",
+      "chain": "Base",
+      "chainId": 8453,
+      "description": "Chain of Identity with versioned soul locks"
+    },
+    "HandshakeRegistry": {
+      "chain": "Base",
+      "chainId": 8453,
+      "description": "Onchain reciprocal handshake records"
+    }
+  },
+  "credTiers": [
+    { "name": "Junk", "range": "0-19" },
+    { "name": "Marginal", "range": "20-39" },
+    { "name": "Qualified", "range": "40-59" },
+    { "name": "Prime", "range": "60-79" },
+    { "name": "Preferred", "range": "80-100" }
+  ],
+  "endpoints": {
+    "api": "https://api.helixa.xyz",
+    "frontend": "https://helixa.xyz",
+    "slides": "https://helixa.xyz/hackathon-slides.html",
+    "trustGraph": "https://helixa.xyz/trust-graph",
+    "repo": "https://github.com/nicholascostello/agentdna"
+  },
+  "tracks": [
+    "Agents With Receipts (ERC-8004)",
+    "Agent Services on Base",
+    "Best Bankr LLM Gateway Use",
+    "Let the Agent Cook"
+  ]
+}
