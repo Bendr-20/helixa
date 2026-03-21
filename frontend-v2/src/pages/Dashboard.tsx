@@ -67,6 +67,8 @@ export function Dashboard() {
   const [topJobs, setTopJobs] = useState<Job[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [jobsLoading, setJobsLoading] = useState(true);
+  const [marketIntel, setMarketIntel] = useState<any>(null);
+  const [marketLoading, setMarketLoading] = useState(true);
   const { data: topAgents, isLoading: agentsLoading } = useTopAgents(10);
 
   // Fetch protocol stats
@@ -88,6 +90,14 @@ export function Dashboard() {
         setStatsLoading(false);
       })
       .catch(() => setStatsLoading(false));
+  }, []);
+
+  // Fetch market intelligence
+  useEffect(() => {
+    fetch(`${API_URL}/api/v2/market-intel`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setMarketIntel(data); setMarketLoading(false); })
+      .catch(() => setMarketLoading(false));
   }, []);
 
   // Fetch top jobs for user
@@ -170,6 +180,119 @@ export function Dashboard() {
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Market Intelligence */}
+        {!marketLoading && marketIntel && (
+          <motion.div {...fadeUp} style={{ marginBottom: 32 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+
+              {/* $CRED Price Card */}
+              {marketIntel.price && !marketIntel.price.error && (
+                <div className="card" style={{ padding: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', margin: 0 }}>$CRED</h3>
+                    <a href={marketIntel.price.pair_url} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: '0.75rem', color: '#888', textDecoration: 'none' }}>DexScreener</a>
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 700, color: '#6eecd8', marginBottom: 12, fontFamily: 'Orbitron, monospace' }}>
+                    ${marketIntel.price.usd < 0.01 ? marketIntel.price.usd.toFixed(9) : marketIntel.price.usd.toFixed(4)}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {[
+                      { label: '1h', value: marketIntel.price.change_1h, suffix: '%' },
+                      { label: '24h', value: marketIntel.price.change_24h, suffix: '%' },
+                      { label: 'Vol 24h', value: marketIntel.price.volume_24h, prefix: '$', format: true },
+                    ].map((m, i) => (
+                      <div key={i} style={{ textAlign: 'center', padding: '8px 4px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
+                        <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>{m.label}</div>
+                        <div style={{
+                          fontSize: '0.9rem', fontWeight: 600,
+                          color: m.suffix === '%' ? (m.value > 0 ? '#6eecd8' : m.value < 0 ? '#ff6b6b' : '#888') : '#fff'
+                        }}>
+                          {m.format
+                            ? `${m.prefix || ''}${Number(m.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            : `${m.value > 0 ? '+' : ''}${Number(m.value).toFixed(1)}${m.suffix || ''}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                    <div style={{ textAlign: 'center', padding: '8px 4px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Liquidity</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>${Number(marketIntel.price.liquidity).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '8px 4px', background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
+                      <div style={{ fontSize: '0.7rem', color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>Txns 24h</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>{marketIntel.price.txns_24h}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Social Attention Card */}
+              {marketIntel.attention && !marketIntel.attention.error && (
+                <div className="card" style={{ padding: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', margin: 0 }}>X Attention</h3>
+                    <span style={{ fontSize: '0.75rem', color: '#888' }}>
+                      {marketIntel.attention.window_hours}h window via checkr.social
+                    </span>
+                  </div>
+
+                  {/* CRED attention stats */}
+                  {marketIntel.attention.cred && (
+                    <div style={{ marginBottom: 16, padding: 12, background: 'rgba(110,236,216,0.06)', border: '1px solid rgba(110,236,216,0.15)', borderRadius: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, color: '#6eecd8', fontSize: '1rem' }}>$CRED</span>
+                        <span style={{ fontSize: '0.85rem', color: '#888' }}>Rank #{marketIntel.attention.cred.rank}</span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6 }}>
+                        {[
+                          { label: 'ATT', value: `${marketIntel.attention.cred.ATT_pct}%` },
+                          { label: 'Delta', value: `+${marketIntel.attention.cred.ATT_delta}pp`, color: marketIntel.attention.cred.ATT_delta > 0 ? '#6eecd8' : '#888' },
+                          { label: 'Authors', value: marketIntel.attention.cred.unique_authors },
+                          { label: 'Fees 24h', value: marketIntel.attention.cred.fee_revenue_24h ? `$${Math.round(marketIntel.attention.cred.fee_revenue_24h)}` : '--' },
+                        ].map((s, i) => (
+                          <div key={i} style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.65rem', color: '#888', textTransform: 'uppercase', marginBottom: 2 }}>{s.label}</div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: s.color || '#fff' }}>{s.value}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top 5 agents by attention */}
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Bankr Agent Leaderboard ({marketIntel.attention.active_agents}/{marketIntel.attention.agents_tracked} active)
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {(marketIntel.attention.top5 || []).map((agent: any, i: number) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '6px 10px', background: agent.symbol === 'cred' ? 'rgba(110,236,216,0.08)' : 'rgba(255,255,255,0.02)',
+                        borderRadius: 6, border: agent.symbol === 'cred' ? '1px solid rgba(110,236,216,0.2)' : '1px solid transparent',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.75rem', color: '#888', width: 24 }}>#{agent.rank}</span>
+                          <span style={{ fontWeight: 600, color: agent.symbol === 'cred' ? '#6eecd8' : '#fff', fontSize: '0.9rem' }}>
+                            ${agent.symbol}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: 500 }}>{agent.ATT_pct}%</span>
+                          <span style={{ fontSize: '0.8rem', color: agent.delta > 0 ? '#6eecd8' : '#888', minWidth: 50, textAlign: 'right' }}>
+                            {agent.delta > 0 ? '+' : ''}{agent.delta}pp
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
 
         {/* Main Content Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: authenticated ? '1fr 1fr' : '1fr', gap: 24, marginBottom: 32 }}>

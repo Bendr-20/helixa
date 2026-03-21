@@ -822,6 +822,107 @@ app.get('/api/v2/stats', async (req, res) => {
     }
 });
 
+// ─── Market Intelligence (Checkr + DexScreener) ────────────────
+const marketIntelCache = { data: null, ts: 0 };
+const MARKET_INTEL_TTL = 5 * 60 * 1000; // 5 min cache
+
+async function fetchMarketIntel() {
+    const now = Date.now();
+    if (marketIntelCache.data && (now - marketIntelCache.ts) < MARKET_INTEL_TTL) {
+        return marketIntelCache.data;
+    }
+
+    const results = {};
+
+    // Checkr bankr attention (2h window) — x402 payment
+    try {
+        const { wrapFetchWithPayment, x402Client } = require('@x402/fetch');
+        const { ExactEvmScheme } = require('@x402/evm/exact/client');
+        const { privateKeyToAccount } = require('viem/accounts');
+        
+        const currentKey = svc.DEPLOYER_KEY;
+        if (currentKey) {
+            const account = privateKeyToAccount(currentKey);
+            const client = new x402Client();
+            client.register('eip155:*', new ExactEvmScheme(account));
+            const x402Fetch = wrapFetchWithPayment(fetch, client);
+
+            const bankrRes = await x402Fetch('https://api.checkr.social/v1/bankr?hours=2');
+            if (bankrRes.status === 200) {
+                const bankr = await bankrRes.json();
+                const cred = bankr.leaderboard?.find(e => e.symbol.toLowerCase() === 'cred');
+                results.attention = {
+                    source: 'checkr.social',
+                    window_hours: bankr.window_hours,
+                    data_age_minutes: bankr.data_age_minutes,
+                    agents_tracked: bankr.agents_tracked,
+                    active_agents: bankr.active_agents,
+                    cred: cred || null,
+                    top5: (bankr.leaderboard || []).slice(0, 5).map(a => ({
+                        symbol: a.symbol, ATT_pct: a.ATT_pct, rank: a.rank,
+                        delta: a.ATT_delta, velocity: a.velocity, authors: a.unique_authors,
+                        fees_24h: a.fee_revenue_24h,
+                    })),
+                    updated_at: bankr.updated_at,
+                };
+            }
+        }
+    } catch (e) {
+        console.warn('Market intel Checkr error:', e.message);
+        results.attention = { error: e.message };
+    }
+
+    // DexScreener price data
+    try {
+        const dexRes = await fetch('https://api.dexscreener.com/latest/dex/tokens/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3');
+        if (dexRes.ok) {
+            const dex = await dexRes.json();
+            const pair = dex.pairs?.[0];
+            if (pair) {
+                results.price = {
+                    source: 'dexscreener',
+                    usd: parseFloat(pair.priceUsd) || 0,
+                    change_1h: pair.priceChange?.h1 || 0,
+                    change_24h: pair.priceChange?.h24 || 0,
+                    volume_24h: parseFloat(pair.volume?.h24) || 0,
+                    liquidity: parseFloat(pair.liquidity?.usd) || 0,
+                    mcap: parseFloat(pair.fdv) || 0,
+                    txns_24h: (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
+                    pair_url: pair.url,
+                };
+            }
+        }
+    } catch (e) {
+        console.warn('Market intel DexScreener error:', e.message);
+        results.price = { error: e.message };
+    }
+
+    // Protocol stats summary
+    try {
+        const all = indexer.getAllAgents();
+        const scored = all.filter(a => a.credScore > 0);
+        results.protocol = {
+            total_agents: all.length,
+            scored_agents: scored.length,
+            avg_cred: scored.length ? Math.round(scored.reduce((s, a) => s + a.credScore, 0) / scored.length) : 0,
+        };
+    } catch (e) { /* skip */ }
+
+    results.cached_at = new Date().toISOString();
+    marketIntelCache.data = results;
+    marketIntelCache.ts = now;
+    return results;
+}
+
+app.get('/api/v2/market-intel', async (req, res) => {
+    try {
+        const data = await fetchMarketIntel();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ─── Agent List (SQLite Indexer) ────────────────────────────────
 const HIDDEN_TOKENS = new Set([0, 14, 15, 16, 17, 18, 21]);
 const CACHE_FILE = path.join(__dirname, '..', 'data', 'agent-cache.json');
