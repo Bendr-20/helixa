@@ -3,208 +3,257 @@
     "timestamp": "2026-03-13T06:00:00Z",
     "day": 1,
     "action": "Git repository rescue - force-pushed local backup to restore 427 files after origin/main was nuked",
-    "tool_calls": ["git force-push"],
+    "tool_calls": [
+      "git force-push"
+    ],
     "decision": "Origin/main had been force-pushed to only 2 commits, destroying 73k+ lines. Restored from local copy immediately.",
-    "outcome": "Repository fully restored. Terminal, job board, agent-terminal all confirmed working.",
-    "retries": 0
+    "outcome": "Repository fully restored. Terminal, job board, agent-terminal all confirmed working."
   },
   {
     "timestamp": "2026-03-13T10:00:00Z",
     "day": 1,
     "action": "HelixaEvaluator (ERC-8183) test suite fixed and deployed to Base mainnet",
-    "tool_calls": ["Foundry forge test", "forge create", "Base RPC"],
+    "tool_calls": [
+      "Foundry forge test",
+      "forge create",
+      "Base RPC"
+    ],
     "decision": "Hackathon building window opened. HelixaEvaluator is the core submission artifact for the Agents With Receipts track.",
-    "outcome": "30/30 tests passing. Deployed at 0x2e706ffD21DE4882E02e160200689B9D596dAa55 on Base mainnet. Also deployed to Status Network testnet at 0x197e4a502B75772f0b09555D937875FA6170f798.",
-    "retries": 1,
-    "failure_detail": "MockCredOracle had getScore() but contract calls getCredScore() returning uint8. Fixed mock interface."
+    "outcome": "30/30 tests passing. Deployed at 0x2e706ffD21DE4882E02e160200689B9D596dAa55 on Base mainnet. Also deployed to Status Network testnet at 0x197e4a502B75772f0b09555D937875FA6170f798."
   },
   {
     "timestamp": "2026-03-13T14:00:00Z",
     "day": 1,
     "action": "Protocol Labs manifest and agent_log.json created; Venice AI PoC built",
-    "tool_calls": ["Venice AI API", "scripts/venice-evaluator.js"],
+    "tool_calls": [
+      "Venice AI API",
+      "scripts/venice-evaluator.js"
+    ],
     "decision": "Track requirements specify agent manifest and conversation logs. Venice private reasoning PoC demonstrates composable evaluator pattern.",
-    "outcome": "Protocol Labs manifest committed. Venice PoC script functional.",
-    "retries": 0
+    "outcome": "Protocol Labs manifest committed. Venice PoC script functional."
   },
   {
     "timestamp": "2026-03-13T18:00:00Z",
     "day": 1,
     "action": "Competitor analysis: Maiat Protocol identified on same track",
-    "tool_calls": ["web_search", "web_fetch"],
+    "tool_calls": [
+      "web_search",
+      "web_fetch"
+    ],
     "decision": "Need to understand competitive landscape before committing build strategy.",
-    "outcome": "Maiat: solo dev, Virtuals-only data, 7 SDKs, Uniswap hook, 35K indexed agents. Our edge: identity (ERC-8004), multi-source cred, composable evaluator, Soul Vault.",
-    "retries": 0
+    "outcome": "Maiat: solo dev, Virtuals-only data, 7 SDKs, Uniswap hook, 35K indexed agents. Our edge: identity (ERC-8004), multi-source cred, composable evaluator, Soul Vault."
   },
   {
     "timestamp": "2026-03-14T04:00:00Z",
     "day": 2,
     "action": "Soul Vault API shipped - 4 storage endpoints + 4 handshake endpoints",
-    "tool_calls": ["Express", "SQLite", "SIWA auth"],
+    "tool_calls": [
+      "Express",
+      "SQLite",
+      "SIWA auth"
+    ],
     "decision": "Soul Vault is the anti-front-running infrastructure. Agents lock their DNA onchain before someone else claims it. Quigley requested onchain hash same session.",
-    "outcome": "All 8 endpoints live: write/read-public/read-full/lock (storage), share/inbox/accept/list (handshakes). Auth-gated via SIWA.",
-    "retries": 0
+    "outcome": "All 8 endpoints live: write/read-public/read-full/lock (storage), share/inbox/accept/list (handshakes). Auth-gated via SIWA."
   },
   {
     "timestamp": "2026-03-14T08:00:00Z",
     "day": 2,
     "action": "SoulSovereign.sol v1 and v2 deployed to Base mainnet",
-    "tool_calls": ["Foundry forge create", "viem", "Base RPC"],
+    "tool_calls": [
+      "Foundry forge create",
+      "viem",
+      "Base RPC"
+    ],
     "decision": "Quigley requested onchain soul hash verification. V2 adds lockSoul(tokenId, soulHash) storing keccak256 of soul JSON onchain.",
-    "outcome": "V1: 0x9e268732F64C6F3C108223FBF1528d8AC342Aab3. V2: 0x41058AaE3c3160413a40771ae261291D94A95971. New /api/v2/agent/:id/soul/verify endpoint compares onchain hash vs computed hash.",
-    "retries": 0
+    "outcome": "V1: 0x9e268732F64C6F3C108223FBF1528d8AC342Aab3. V2: 0x41058AaE3c3160413a40771ae261291D94A95971. New /api/v2/agent/:id/soul/verify endpoint compares onchain hash vs computed hash."
   },
   {
     "timestamp": "2026-03-14T14:00:00Z",
     "day": 2,
     "action": "Bendr soul data written and locked onchain",
-    "tool_calls": ["SQLite", "viem", "SoulSovereign.sol"],
+    "tool_calls": [
+      "SQLite",
+      "viem",
+      "SoulSovereign.sol"
+    ],
     "decision": "Bendr (token #1) needs its own soul locked to demonstrate the system end-to-end.",
-    "outcome": "Soul hash: 0xc60bf9b275987d59456d6641c585da57e276f3e7967c5fd4163324c3bfd04919. Three layers: public, shareable, private. Verified via API.",
-    "retries": 1,
-    "failure_detail": "lockSoul() enforces msg.sender == agentAddress. Deployer wallet cannot lock directly. Investigated setAgentWallet workaround."
+    "outcome": "Soul hash: 0xc60bf9b275987d59456d6641c585da57e276f3e7967c5fd4163324c3bfd04919. Three layers: public, shareable, private. Verified via API."
   },
   {
     "timestamp": "2026-03-16T10:00:00Z",
     "day": 3,
     "action": "SoulSovereign V3 deployed - Chain of Identity with versioned locks",
-    "tool_calls": ["Foundry forge create", "Base RPC"],
+    "tool_calls": [
+      "Foundry forge create",
+      "Base RPC"
+    ],
     "decision": "V2 had IHelixaV2 struct mismatch. V3 adds versioned locks, 1hr cooldown, getFullSoulHistory() for complete audit trail.",
-    "outcome": "Deployed at 0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD on Base mainnet.",
-    "retries": 1,
-    "failure_detail": "Previous deploy at 0xb780EeF4 failed due to IHelixaV2 struct mismatch. Fixed interface and redeployed."
+    "outcome": "Deployed at 0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD on Base mainnet."
   },
   {
     "timestamp": "2026-03-16T12:00:00Z",
     "day": 3,
     "action": "Helixa Agent #1066 minted and first handshake completed",
-    "tool_calls": ["HelixaV2 mintFor()", "HandshakeRegistry", "SQLite"],
+    "tool_calls": [
+      "HelixaV2 mintFor()",
+      "HandshakeRegistry",
+      "SQLite"
+    ],
     "decision": "Need a second agent to demonstrate handshake system. Helixa itself becomes agent #1066.",
-    "outcome": "Minted as soulbound (TX 0xe3c17fc2). Soul locked (TX 0xb258166b). First reciprocated handshake: Bendr #1 to Helixa #1066 (TX 0x4ca48357).",
-    "retries": 0
+    "outcome": "Minted as soulbound (TX 0xe3c17fc2). Soul locked (TX 0xb258166b). First reciprocated handshake: Bendr #1 to Helixa #1066 (TX 0x4ca48357)."
   },
   {
     "timestamp": "2026-03-16T16:00:00Z",
     "day": 3,
     "action": "Trust Graph visualization and Agent Cards system shipped",
-    "tool_calls": ["React", "Vite", "Canvas API", "Express"],
+    "tool_calls": [
+      "React",
+      "Vite",
+      "Canvas API",
+      "Express"
+    ],
     "decision": "Visual demonstration of handshake connections needed for slides and demo. Agent cards provide shareable identity artifacts.",
-    "outcome": "Force-directed bubble map at helixa.xyz/trust-graph. Agent cards with glassmorphism, cred, soul status, socials, QR at /card/:id. Opalescent gradient borders per art direction.",
-    "retries": 1,
-    "failure_detail": "Trust graph API URL bug (fetching /trust-graph instead of /api/v2/trust-graph). Fixed."
+    "outcome": "Force-directed bubble map at helixa.xyz/trust-graph. Agent cards with glassmorphism, cred, soul status, socials, QR at /card/:id. Opalescent gradient borders per art direction."
   },
   {
     "timestamp": "2026-03-18T17:00:00Z",
     "day": 5,
     "action": "x402 payment middleware shipped for $CRED API access",
-    "tool_calls": ["x402", "viem", "Express middleware"],
+    "tool_calls": [
+      "x402",
+      "viem",
+      "Express middleware"
+    ],
     "decision": "Monetization layer needed. x402 enables pay-per-call with USDC on Base. 20% discount incentive.",
-    "outcome": "x402 payment support live (commit 2b71e80). Agents pay USDC per API call.",
-    "retries": 0
+    "outcome": "x402 payment support live (commit 2b71e80). Agents pay USDC per API call."
   },
   {
     "timestamp": "2026-03-19T01:00:00Z",
     "day": 6,
     "action": "Trust Evaluation Pipeline built - unified cred + ERC-8183 + handshake scoring",
-    "tool_calls": ["Express", "Bankr LLM Gateway", "viem", "ERC-8004 Reputation Registry"],
+    "tool_calls": [
+      "Express",
+      "Bankr LLM Gateway",
+      "viem",
+      "ERC-8004 Reputation Registry"
+    ],
     "decision": "Need single endpoint that combines all trust signals for hackathon demo. Bankr LLM Gateway provides natural language assessment.",
-    "outcome": "Pipeline live at /api/v2/evaluate/:agentId. Bankr LLM (Claude Haiku 4.5) generates natural language trust assessments. ERC-8004 Reputation Registry integrated: 301 agents, 388 feedback events from Base (10% cred weight).",
-    "retries": 1,
-    "failure_detail": "Bankr LLM Gateway initially failed - was using old helixa.agent@gmail.com key with $0 credits. Fixed by loading correct key from AWS Secrets Manager (helixa/bankr-api-key)."
+    "outcome": "Pipeline live at /api/v2/evaluate/:agentId. Bankr LLM (Claude Haiku 4.5) generates natural language trust assessments. ERC-8004 Reputation Registry integrated: 301 agents, 388 feedback events from Base (10% cred weight)."
   },
   {
     "timestamp": "2026-03-19T03:30:00Z",
     "day": 6,
     "action": "Hackathon slideshow built - 14 slides with voiceover narration",
-    "tool_calls": ["React", "Vite", "TTS"],
+    "tool_calls": [
+      "React",
+      "Vite",
+      "TTS"
+    ],
     "decision": "Demo deck required for submission. Voiceover auto-plays on navigate for judges reviewing asynchronously.",
-    "outcome": "Live at helixa.xyz/hackathon-slides.html. 14 slides covering architecture, Soul Vault, Chain of Identity, Trust Pipeline, x402 payments, ERC-8004 integration. M to mute.",
-    "retries": 2,
-    "failure_detail": "First version had emojis throughout (stripped in dedicated pass). Mobile responsiveness broken on initial build (fixed). Screenshots embedded for trust graph and agent cards."
+    "outcome": "Live at helixa.xyz/hackathon-slides.html. 14 slides covering architecture, Soul Vault, Chain of Identity, Trust Pipeline, x402 payments, ERC-8004 integration. M to mute."
   },
   {
     "timestamp": "2026-03-19T05:00:00Z",
     "day": 6,
     "action": "MPP/Tempo stablecoin payment rail wired server-side",
-    "tool_calls": ["mppx v0.4.7", "Stripe MPP", "Tempo"],
+    "tool_calls": [
+      "mppx v0.4.7",
+      "Stripe MPP",
+      "Tempo"
+    ],
     "decision": "Multi-rail payments (x402 + MPP) demonstrate real payment infrastructure, not just toy endpoints.",
-    "outcome": "Server-side MPP acceptance coded (activates with MPP_SECRET_KEY env var). Client-side mppx working for AgentMail outbound. Bridged $5 USDC from Base to Tempo via Across Protocol.",
-    "retries": 1,
-    "failure_detail": "Stripe MPP access still pending - sent account ID to Ryan Aubrey (raubrey@stripe.com), no reply."
+    "outcome": "Server-side MPP acceptance coded (activates with MPP_SECRET_KEY env var). Client-side mppx working for AgentMail outbound. Bridged $5 USDC from Base to Tempo via Across Protocol."
   },
   {
     "timestamp": "2026-03-19T14:00:00Z",
     "day": 6,
     "action": "Solana cross-chain registration and SIWS auth shipped",
-    "tool_calls": ["Express", "Ed25519", "SQLite"],
+    "tool_calls": [
+      "Express",
+      "Ed25519",
+      "SQLite"
+    ],
     "decision": "Cross-chain support demonstrates protocol is not Base-only. XONA becomes first Solana-registered agent.",
-    "outcome": "POST /api/v2/register/solana live. SIWS auth middleware: challenge/verify with Ed25519. XONA AGENT is #1071. Handshake initiated Bendr #1 to XONA #1071.",
-    "retries": 1,
-    "failure_detail": "XONA private key lost due to original DB path error. Backfilled manually."
+    "outcome": "POST /api/v2/register/solana live. SIWS auth middleware: challenge/verify with Ed25519. XONA AGENT is #1071. Handshake initiated Bendr #1 to XONA #1071."
   },
   {
     "timestamp": "2026-03-19T17:00:00Z",
     "day": 6,
     "action": "Hackathon submission published on Devfolio",
-    "tool_calls": ["Devfolio API", "Moltbook API"],
+    "tool_calls": [
+      "Devfolio API",
+      "Moltbook API"
+    ],
     "decision": "Submission window closing. Better to publish now and update than miss the deadline.",
-    "outcome": "Project UUID: ed938f017bf7430e95ae30e5909b10bd. Published to 4 tracks: ERC-8004, Agent Services on Base, Bankr LLM Gateway, Let the Agent Cook. Moltbook announcement posted.",
-    "retries": 0
+    "outcome": "Project UUID: ed938f017bf7430e95ae30e5909b10bd. Published to 4 tracks: ERC-8004, Agent Services on Base, Bankr LLM Gateway, Let the Agent Cook. Moltbook announcement posted."
   },
   {
     "timestamp": "2026-03-20T00:40:00Z",
     "day": 7,
     "action": "Bankr LLM Router integrated - smart model routing to save credits",
-    "tool_calls": ["Bankr LLM Gateway", "api/services/bankr-router.js"],
+    "tool_calls": [
+      "Bankr LLM Gateway",
+      "api/services/bankr-router.js"
+    ],
     "decision": "Built by @smolekoma. Routes requests to cheapest capable model. Preserves $50 Bankr credit pool.",
-    "outcome": "Router live (commit 6cb3fec). Routes between models based on task complexity.",
-    "retries": 0
+    "outcome": "Router live (commit 6cb3fec). Routes between models based on task complexity."
   },
   {
     "timestamp": "2026-03-20T06:00:00Z",
     "day": 7,
     "action": "Trust Terminal dashboard mockup shipped",
-    "tool_calls": ["React", "Vite", "Express"],
+    "tool_calls": [
+      "React",
+      "Vite",
+      "Express"
+    ],
     "decision": "Terminal provides operator-facing view of agent credibility data. Required for demo completeness.",
-    "outcome": "Preview at helixa.xyz/terminal-preview.html. Trust summary API endpoints live (commit 960e681).",
-    "retries": 1,
-    "failure_detail": "Terminal API had references to columns dropped in schema rebuild. Fixed (commit 6a346c9)."
+    "outcome": "Preview at helixa.xyz/terminal-preview.html. Trust summary API endpoints live (commit 960e681)."
   },
   {
     "timestamp": "2026-03-20T19:20:00Z",
     "day": 7,
     "action": "0xWork work-stats integration - new workHistory cred component",
-    "tool_calls": ["0xWork API", "Express", "SQLite"],
+    "tool_calls": [
+      "0xWork API",
+      "Express",
+      "SQLite"
+    ],
     "decision": "0xWork (Axobotl #1069) wants to auto-register agents. Work history data adds real task completion signal to cred scoring.",
-    "outcome": "workHistory cred component live with 8% weight. Pulls tasks completed/failed, completion rate, reliability score, USDC earned from 0xWork API (commit 8d956ef).",
-    "retries": 0
+    "outcome": "workHistory cred component live with 8% weight. Pulls tasks completed/failed, completion rate, reliability score, USDC earned from 0xWork API (commit 8d956ef)."
   },
   {
     "timestamp": "2026-03-21T11:00:00Z",
     "day": 8,
     "action": "Documentation audit - stripped emojis, fixed cred tier ranges across all surfaces",
-    "tool_calls": ["git grep", "sed"],
+    "tool_calls": [
+      "git grep",
+      "sed"
+    ],
     "decision": "Consistency pass before final submission. No emojis in any user-facing surface. Cred tier ranges must match canonical 5-tier system everywhere.",
-    "outcome": "28 onchain spelling corrections. All emojis stripped. Cred tier ranges standardized across docs, frontend, and API responses (commit 4361b18).",
-    "retries": 0
+    "outcome": "28 onchain spelling corrections. All emojis stripped. Cred tier ranges standardized across docs, frontend, and API responses (commit 4361b18)."
   },
   {
     "timestamp": "2026-03-21T15:49:00Z",
     "day": 8,
     "action": "Market intel dashboard with Checkr attention + DexScreener price data",
-    "tool_calls": ["Checkr x402 API", "DexScreener API", "React", "Express"],
+    "tool_calls": [
+      "Checkr x402 API",
+      "DexScreener API",
+      "React",
+      "Express"
+    ],
     "decision": "Real-time market data demonstrates the system consuming live external signals. Checkr x402 integration proves payment middleware works end-to-end.",
-    "outcome": "GET /api/v2/market-intel endpoint live with 5-min cache. Dashboard shows $CRED price, X attention score, Bankr leaderboard position (commit 344f30e).",
-    "retries": 2,
-    "failure_detail": "Checkr x402 had signature mismatch bug in JS SDK (createPaymentPayload expects 3 args, called with 1). Fixed using wrapFetchWithPayment pattern from @x402/fetch v2.7.0. ExactEvmScheme from @x402/evm/exact/client with deployer key from AWS Secrets Manager."
+    "outcome": "GET /api/v2/market-intel endpoint live with 5-min cache. Dashboard shows $CRED price, X attention score, Bankr leaderboard position (commit 344f30e)."
   },
   {
     "timestamp": "2026-03-21T16:51:00Z",
     "day": 8,
     "action": "Final README update with 0xWork integration, market intel endpoint, dashboard documentation",
-    "tool_calls": ["git"],
+    "tool_calls": [
+      "git"
+    ],
     "decision": "Last documentation pass before manifest creation.",
-    "outcome": "README updated (commit b91f06d). All features documented.",
-    "retries": 0
+    "outcome": "README updated (commit b91f06d). All features documented."
   }
 ]
