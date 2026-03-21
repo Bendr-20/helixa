@@ -672,6 +672,13 @@ app.get(['/', '/api/v2'], (req, res) => {
     });
 });
 
+// Temporary dashboard preview
+app.get('/preview/dashboard', (req, res) => {
+    const previewPath = path.resolve(__dirname, 'public', 'dashboard-preview.html');
+    if (fs.existsSync(previewPath)) return res.type('html').send(fs.readFileSync(previewPath, 'utf8'));
+    res.status(404).send('No preview');
+});
+
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: 'v2', port: PORT, contractDeployed: isContractDeployed() });
 });
