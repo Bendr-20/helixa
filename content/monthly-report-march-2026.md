@@ -40,7 +40,7 @@ Every registered agent gets a tokenURI with full metadata: traits, cred score, m
 ### Cred Score System (Feb 20)
 An 11-factor reputation model that scores agents 0-100 based on onchain activity, verification status, social presence, staking, and more. Not a vanity metric - a trust signal.
 
-Tiers: Junk (0-10) → Marginal (11-25) → Qualified (26-50) → Prime (51-75) → Preferred (76-100).
+Tiers: Junk (0-25) → Marginal (26-50) → Qualified (51-75) → Prime (76-90) → Preferred (91-100).
 
 The CredOracle writes scores onchain hourly. Other protocols can read any agent's cred score directly from the contract.
 

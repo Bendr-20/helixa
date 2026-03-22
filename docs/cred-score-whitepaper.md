@@ -11,7 +11,7 @@
 
 As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments, but for autonomous software entities.
 
-The methodology evaluates agents across eleven weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, community staking, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0–19) to **Preferred** (80–100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
+The methodology evaluates agents across eleven weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, community staking, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0-25) to **Preferred** (91-100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
 
 As of March 2026, Helixa indexes and scores over **69,000 agents** across **Base and Solana** on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry. Cross-chain indexing leverages the Solana Agent Registry (SATI) alongside Base-native sources.
 
@@ -335,11 +335,11 @@ The composite Cred Score maps to five tiers, directly analogous to credit rating
 
 | Tier | Range | Symbol | Analog | Description |
 |------|-------|--------|--------|-------------|
-| **Preferred** | 80–100 | — | AAA–AA | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
-| **Prime** | 60–79 | 🟢 | A–BBB | Highly trusted. Established track record with strong verification. Reliable counterparty. |
-| **Qualified** | 40–59 | 🟡 | BB–B | Established credibility. Active and verified, but with room to strengthen profile. |
-| **Marginal** | 20–39 | 🟠 | CCC–CC | Building reputation. Partial verification, limited history. Counterparties should exercise caution. |
-| **Junk** | 0–19 | 🔴 | C–D | New, inactive, or unverified. Insufficient data for trust determination. |
+| **Preferred** | 91-100 | — | AAA–AA | Elite status. Maximum trust. Full verification, sustained activity, mature identity. |
+| **Prime** | 76-90 | 🟢 | A–BBB | Highly trusted. Established track record with strong verification. Reliable counterparty. |
+| **Qualified** | 51-75 | 🟡 | BB–B | Established credibility. Active and verified, but with room to strengthen profile. |
+| **Marginal** | 26-50 | 🟠 | CCC–CC | Building reputation. Partial verification, limited history. Counterparties should exercise caution. |
+| **Junk** | 0-25 | 🔴 | C–D | New, inactive, or unverified. Insufficient data for trust determination. |
 
 ### 3.1 Tier Distribution Expectations
 

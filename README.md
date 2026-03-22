@@ -22,11 +22,11 @@ Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry fe
 
 | Tier | Range |
 |------|-------|
-| Junk | 0–19 |
-| Marginal | 20–39 |
-| Qualified | 40–59 |
-| Prime | 60–79 |
-| Preferred | 80–100 |
+| Junk | 0-25 |
+| Marginal | 26-50 |
+| Qualified | 51-75 |
+| Prime | 76-90 |
+| Preferred | 91-100 |
 
 ### Soul Vault / Chain of Identity
 Versioned soul locking - *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.

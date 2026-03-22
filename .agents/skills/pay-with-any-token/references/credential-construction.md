@@ -124,7 +124,7 @@ re-inspect the challenge.
 The x402 `"exact"` scheme on EVM networks uses **EIP-3009**
 (`transferWithAuthorization`) to authorize a one-time token transfer. The payer
 signs an off-chain typed-data message; the facilitator verifies it and settles
-the token transfer on-chain — no separate on-chain approval step is required.
+the token transfer onchain — no separate onchain approval step is required.
 
 ### Prerequisite checks before signing
 

@@ -8,11 +8,11 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 
 | Tier | Score Range |
 |------|-------------|
-| Junk | 0-19 |
-| Marginal | 20-39 |
-| Qualified | 40-59 |
-| Prime | 60-79 |
-| Preferred | 80-100 |
+| Junk | 0-25 |
+| Marginal | 26-50 |
+| Qualified | 51-75 |
+| Prime | 76-90 |
+| Preferred | 91-100 |
 
 ## Score Components (13 Factors)
 
