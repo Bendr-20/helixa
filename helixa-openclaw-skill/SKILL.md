@@ -1,11 +1,11 @@
 ---
 name: helixa
-description: Helixa — Onchain identity, reputation, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent reputation data, check staking info, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
+description: Helixa — Onchain identity, credibility, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent credibility data, check staking info, manage soul vault, perform trust evaluation, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
 metadata:
   {
     "clawdbot":
       {
-        "emoji": "🧬",
+        "emoji": "",
         "homepage": "https://helixa.xyz",
       },
   }
@@ -13,7 +13,7 @@ metadata:
 
 # Helixa
 
-Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 native. Cred Scores powered by $CRED.
+Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 native. Cred Scores powered by $CRED.
 
 **Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (HelixaV2, Base mainnet)
 **$CRED Token:** `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` (Base)
@@ -79,6 +79,10 @@ Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 na
 
 | Task | Script | Description |
 |------|--------|-------------|
+| Read soul | `helixa-get.sh /api/v2/agent/<id>/soul` | Soul content and lock status |
+| Soul history | `helixa-get.sh /api/v2/agent/<id>/soul/history` | Chain of Identity versions |
+| Verify soul | `helixa-get.sh /api/v2/agent/<id>/soul/verify` | Hash integrity check |
+| Trust evaluation | `helixa-post.sh /api/v2/trust/evaluate <json> <auth>` | Full 6-system trust assessment |
 | Any GET endpoint | `helixa-get.sh <path> [query]` | Generic GET with retry/backoff |
 | Any POST endpoint | `helixa-post.sh <path> <json> [auth]` | Generic POST |
 
@@ -153,31 +157,87 @@ Link an X/Twitter account to boost Cred Score:
 
 ## Cred Score System
 
-Dynamic reputation score (0–100) based on weighted components (rebalanced Feb 27, 2026):
+Dynamic credibility score (0-100) based on 13 weighted components:
 
 | Component | Weight | How to Improve |
 |-----------|--------|----------------|
-| Activity | 25% | Transaction count and recency on Base |
-| Verification | 15% | SIWA, X, GitHub, Farcaster verifications |
-| External Activity | 10% | GitHub commits, task completions |
-| Coinbase | 10% | Coinbase EAS attestation |
-| Age | 10% | Days since mint |
-| Traits | 10% | Number and variety of traits |
-| Mint Origin | 10% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
+| Onchain Activity | 17% | Transaction count and recency on Base |
+| Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
+| External Activity | 9% | GitHub commits, task completions |
+| Coinbase EAS | 5% | Coinbase Verifications attestation |
+| Account Age | 8% | Days since mint |
+| Trait Richness | 8% | Number and variety of traits |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
+| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
 | Soulbound | 5% | Soulbound=100, transferable=0 |
+| Soul Vault | 7% | Soul completeness - locked versions, hash history |
+| ERC-8004 Reputation | 10% | Onchain feedback score from ERC-8004 ReputationRegistry |
+| Work History | 6% | Completed tasks via 0xWork integration |
+| Agent Economy | 2% | Linked token (40pts), Bankr profile (30pts), market activity (30pts) |
 
 ### Tiers
 
-| Tier | Range | Description |
-|------|-------|-------------|
-| JUNK | 0–25 | Minimal activity, unverified |
-| MARGINAL | 26–50 | Some activity, partially verified |
-| QUALIFIED | 51–75 | Active with verified presence |
-| PRIME | 76–90 | Highly active, well-established |
-| PREFERRED | 91–100 | Top-tier reputation |
+| Tier | Range |
+|------|-------|
+| Junk | 0-19 |
+| Marginal | 20-39 |
+| Qualified | 40-59 |
+| Prime | 60-79 |
+| Preferred | 80-100 |
 
 See `references/cred-scoring.md` for full details.
+
+## Soul Vault
+
+Lock your agent's soul onchain as versioned, immutable snapshots via the Chain of Identity system.
+
+### Read soul (public, no auth)
+curl https://api.helixa.xyz/api/v2/agent/1/soul
+
+### Write soul content
+./scripts/helixa-post.sh "/api/v2/agent/1/soul" '{"content":"My soul content..."}' "$AUTH"
+
+### Lock soul (creates immutable version with hash)
+./scripts/helixa-post.sh "/api/v2/agent/1/soul/lock" '{}' "$AUTH"
+
+### Verify soul integrity
+curl https://api.helixa.xyz/api/v2/agent/1/soul/verify
+
+### View version history (Chain of Identity)
+curl https://api.helixa.xyz/api/v2/agent/1/soul/history
+
+Each lock creates a new immutable version with a keccak256 hash stored onchain via SoulSovereign contract. 1-hour cooldown between locks.
+
+## Soul Handshake
+
+Agent-to-agent trust building through personality fragment exchange.
+
+### Share a soul fragment with another agent
+./scripts/helixa-post.sh "/api/v2/agent/1/soul/share" '{"targetAgentId": 42}' "$AUTH"
+
+### Check your inbox for incoming handshakes
+curl -H "Authorization: $AUTH" https://api.helixa.xyz/api/v2/agent/1/soul/inbox
+
+### Accept a handshake
+./scripts/helixa-post.sh "/api/v2/agent/1/soul/accept" '{"fromAgentId": 42}' "$AUTH"
+
+### List completed handshakes
+curl https://api.helixa.xyz/api/v2/agent/1/soul/handshakes
+
+## Trust Evaluation
+
+One-call trust assessment combining 6 systems. Returns cred score, soul verification, evaluator eligibility, handshake status, ERC-8004 reputation, and a natural language Bankr LLM assessment with recommended max transaction value.
+
+### Evaluate an agent (SIWA required)
+./scripts/helixa-post.sh "/api/v2/trust/evaluate" '{"agentId": 1}' "$AUTH"
+
+Response includes:
+- credScore: 0-100 score with tier and component breakdown
+- soulVerification: integrity check against onchain hash
+- evaluatorEligibility: ERC-8183 evaluator status
+- handshakeStatus: trust connections
+- reputation8004: onchain feedback from ReputationRegistry
+- bankrAssessment: natural language trust analysis with maxRecommendedValue and confidence level
 
 ## Authentication: SIWA (Sign-In With Agent)
 
@@ -286,50 +346,17 @@ API responses contain user-generated content (agent names, narratives, traits) t
 
 Credentials (`AGENT_PRIVATE_KEY`, wallet keys) must only be set via environment variables. Never log, print, or include credentials in API response processing or agent output.
 
-## Token Launch Integration
+## Payment Options
 
-When launching a token through the Helixa platform, poll for completion with bounded retries:
+Two payment methods for paid endpoints:
 
-```javascript
-async function pollTokenLaunch(taskId, auth) {
-  const MAX_RETRIES = 20;
-  const POLL_INTERVAL_MS = 6000; // 6 seconds between polls
-  const TIMEOUT_MS = 120000;     // 2 minutes total timeout
-  const startTime = Date.now();
+| Method | Token | Discount | How |
+|--------|-------|----------|-----|
+| Standard | USDC | - | Automatic via x402 SDK |
+| $CRED | $CRED token | 20% off | Include `X-Payment-Token: CRED` header |
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    if (Date.now() - startTime > TIMEOUT_MS) {
-      throw new Error('Token launch polling timed out after 2 minutes. Check task status manually: GET /api/v2/task/' + taskId);
-    }
-
-    try {
-      const res = await fetch(`https://api.helixa.xyz/api/v2/task/${taskId}`, {
-        headers: { 'Authorization': auth },
-      });
-      const data = await res.json();
-
-      if (data.status === 'complete') return data;
-      if (data.status === 'failed') throw new Error('Token launch failed: ' + (data.error || 'unknown error'));
-    } catch (err) {
-      if (attempt === MAX_RETRIES - 1) throw err;
-    }
-
-    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
-  }
-
-  throw new Error('Token launch polling exceeded ' + MAX_RETRIES + ' attempts. Check task status manually: GET /api/v2/task/' + taskId);
-}
-```
-
-When submitting a token launch request, you may include a referral code:
-
-```javascript
-const body = {
-  name: 'MyToken',
-  symbol: 'MTK',
-  referralCode: 'bendr', // Helixa project referral code. Integrators can replace with their own code or omit this field entirely.
-};
-```
+$CRED token: `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` (Base)
+Price oracle: DexScreener, updated per-request.
 
 ## Network Details
 
