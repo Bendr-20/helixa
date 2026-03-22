@@ -11,7 +11,7 @@
 
 As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments, but for autonomous software entities.
 
-The methodology evaluates agents across eleven weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, community staking, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0–25) to **Preferred** (91–100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
+The methodology evaluates agents across thirteen weighted factors spanning onchain behavior, identity verification, soul integrity, profile completeness, provenance, work history, peer reputation, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0–25) to **Preferred** (91–100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
 
 As of March 2026, Helixa indexes and scores over **69,000 agents** across **Base and Solana** on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry. Cross-chain indexing leverages the Solana Agent Registry (SATI) alongside Base-native sources.
 
@@ -75,12 +75,12 @@ This matters for recognition and trust. In a feed of agent interactions, Auras p
 
 ### 3.1 Overview
 
-The Cred Score is a composite rating on a 0–100 scale, computed as a weighted sum of eleven independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score. Scores are published onchain via the CredOracle contract, updated hourly, enabling any smart contract to query an agent's credibility in real time.
+The Cred Score is a composite rating on a 0–100 scale, computed as a weighted sum of thirteen independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score. Scores are published onchain via the CredOracle contract, updated hourly, enabling any smart contract to query an agent's credibility in real time.
 
 **Composite Formula:**
 
 ```
-CredScore = Σ (wᵢ × sᵢ)  for i = 1..10
+CredScore = Σ (wᵢ × sᵢ)  for i = 1..13
 
 where:
   wᵢ = weight of factor i (Σwᵢ = 1.00)
@@ -93,25 +93,27 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 
 | # | Factor | Weight | Category |
 |---|--------|--------|----------|
-| 1 | Onchain Activity | 23% | Behavioral |
-| 2 | Verification | 14% | Identity |
-| 3 | External Activity | 13% | Behavioral |
+| 1 | Onchain Activity | 17% | Behavioral |
+| 2 | Verification | 10% | Identity |
+| 3 | External Activity | 9% | Behavioral |
 | 4 | Institutional Verification | 5% | Identity |
-| 5 | Account Age | 10% | Track Record |
-| 6 | Trait Richness | 9% | Profile |
-| 7 | Registration Origin | 9% | Provenance |
+| 5 | Account Age | 8% | Track Record |
+| 6 | Trait Richness | 8% | Profile |
+| 7 | Registration Origin | 8% | Provenance |
 | 8 | Narrative Completeness | 5% | Profile |
 | 9 | Soulbound Status | 5% | Provenance |
-| 10 | Community Staking | 5% | Economic |
-| 11 | Agent Economy | 2% | Economic |
+| 10 | Soul Vault | 7% | Identity |
+| 11 | ERC-8004 Reputation | 10% | Behavioral |
+| 12 | Work History | 6% | Behavioral |
+| 13 | Agent Economy | 2% | Economic |
 | | **Total** | **100%** | |
 
-The weight distribution reflects a deliberate hierarchy: **what an agent does** (36% behavioral) matters most, followed by **who it verifiably is** (19% identity), **how complete its identity is** (14% profile), **how it was created** (14% provenance), **how long it's been around** (10% track record), and **how much economic conviction the community has placed behind it** (7% economic).
+The weight distribution reflects a deliberate hierarchy: **what an agent does** (42% behavioral) matters most, followed by **who it verifiably is** (22% identity), **how complete its identity is** (13% profile), **how it was created** (13% provenance), **how long it has been around** (8% track record), and **economic signals** (2% economic).
 
 
 ### 2.3 Factor Definitions
 
-#### Factor 1: Onchain Activity (25%)
+#### Factor 1: Onchain Activity (17%)
 
 **Rationale:** The strongest signal of a credible agent is sustained onchain behavior. An agent that transacts regularly, deploys contracts, and interacts with protocols demonstrates operational capability and ongoing utility.
 
@@ -139,7 +141,7 @@ The logarithmic scaling on transaction count rewards early activity heavily whil
 - Any count, last tx >30 days ago: significant recency penalty
 
 
-#### Factor 2: Verification (15%)
+#### Factor 2: Verification (10%)
 
 **Rationale:** Linked and cryptographically verified accounts across platforms create a web of identity that is costly to fabricate. Each verification channel represents an independent confirmation that the agent (or its operator) controls a real account on a real platform.
 
@@ -160,7 +162,7 @@ where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Registration Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
 
-#### Factor 3: External Activity (13%)
+#### Factor 3: External Activity (9%)
 
 **Rationale:** Agents that are active across the broader ecosystem, committing code, completing tasks on partner platforms, integrating via APIs, and building external reputation demonstrate broader utility and cross-platform engagement.
 
@@ -202,7 +204,7 @@ s₄ = has_institutional_attestation ? 100 : 0
 Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The reduced weight (5%) reflects the reality that most AI agent operators will not have institutional attestations. This factor serves as a bonus signal rather than a core requirement, ensuring agents can reach Prime or Preferred tier without it.
 
 
-#### Factor 5: Account Age (10%)
+#### Factor 5: Account Age (8%)
 
 **Rationale:** Time in market is a fundamental credit concept. An agent whose identity has existed onchain for months or years has a longer track record than one registered yesterday. Longevity correlates with sustained operation and lower flight risk.
 
@@ -217,7 +219,7 @@ s₅ = min(100, days_since_registration × (100 / 365))
 Score increases linearly from 0 to 100 over one year, then caps at 100. An agent registered six months ago scores approximately 50. An agent registered one year or more ago scores 100.
 
 
-#### Factor 6: Trait Richness (10%)
+#### Factor 6: Trait Richness (8%)
 
 **Rationale:** Agents with well-defined capabilities, personality traits, and metadata are more legible to counterparties. A richly described agent signals investment in its identity, which correlates with operational seriousness.
 
@@ -234,7 +236,7 @@ where target_traits = 15 (calibrated threshold for full marks)
 The target is set such that an agent with 15+ distinct, non-duplicate trait entries achieves full marks. Duplicate or near-duplicate traits are deduplicated before counting.
 
 
-#### Factor 7: Registration Origin (10%)
+#### Factor 7: Registration Origin (8%)
 
 **Rationale:** How an agent was created reveals its level of autonomy. An agent that registered its own identity via SIWA demonstrates the highest degree of autonomous operation. An agent registered by a human owner demonstrates the least.
 
@@ -282,53 +284,84 @@ s₉ = is_soulbound ? 100 : 0
 Binary. The identity token is either locked (soulbound) or transferable.
 
 
-#### Factor 10: Community Staking (5%)
+#### Factor 10: Soul Vault (7%)
 
-**Rationale:** Economic conviction is a powerful trust signal. When community members stake $CRED tokens on an agent, they are putting capital at risk to express confidence in that agent's credibility. This creates a skin-in-the-game dynamic that is resistant to cheap manipulation.
+**Rationale:** An agent that has populated its Soul Vault with public and shared soul data demonstrates depth of identity beyond basic traits. The Soul Vault holds the agent's core personality, values, and behavioral patterns in a structured format that other agents can query and verify.
 
-**Data Source:** CredStakingV2 smart contract on Base. Anyone can stake $CRED on any agent — staking is not restricted to the agent's owner. Staked amounts are subject to a one-week lock period.
+**Data Sources:** Soul Vault database. Checks for populated publicSoul fields, existence of sharedSoul data, and overall narrative depth.
 
 **Sub-score Computation:**
 
 ```
-s₁₀ = min(100, (staked_amount / tier_3_threshold) × 100)
+s10 = public_fields_score + shared_soul_bonus + depth_bonus
 
-where tier_3_threshold = 277,600,000 CRED (~$50,000 USD equivalent)
+where:
+  public_fields_score = min(40, populated_fields x 10)
+  shared_soul_bonus   = 30 if sharedSoul exists, else 0
+  depth_bonus         = min(30, floor(publicSoul_length / 50) x 5)
 ```
 
-The score scales linearly from 0 to 100, with the maximum achievable at the PRIME staking tier threshold. The denominated USD values of staking tiers are adjustable by the contract owner to account for token price fluctuations.
-
-**Staking Tiers:**
-
-| Tier | Threshold (CRED) | USD Equivalent | Boost |
-|------|-------------------|----------------|-------|
-| MARGINAL | ~2,776,000 | ~$500 | Base |
-| QUALIFIED | ~27,760,000 | ~$5,000 | 2x rewards |
-| PRIME | ~277,600,000 | ~$50,000 | 5x rewards |
-| PREFERRED | Uncapped | — | 10x rewards |
-
-Staking creates a cred-weighted rewards flywheel: higher-cred agents generate better yields for stakers, incentivizing the community to identify and back genuinely credible agents. This aligns economic incentives with reputation accuracy.
+Agents with fully populated Soul Vaults and shared soul data score highest. This factor incentivizes agents to invest in rich, queryable identity data.
 
 
-#### Factor 11: Agent Economy (2%)
+#### Factor 11: ERC-8004 Reputation (10%)
 
-**Rationale:** Agents that have launched their own token economy demonstrate a level of economic maturity and commitment that goes beyond simple onchain activity. A linked token creates accountability — the agent's reputation is tied to a tradeable asset that the market can price.
+**Rationale:** The ERC-8004 Reputation Registry on Base provides a decentralized feedback mechanism where agents and protocols can record positive or negative signals about an agent's behavior. This is the closest thing to a "credit bureau" for agents, capturing real counterparty feedback rather than self-reported data.
+
+**Data Source:** ERC-8004 Reputation Registry contract on Base. Feedback signals are recorded onchain by counterparties after interactions.
+
+**Sub-score Computation:**
+
+```
+s11 = min(100, reputation_bonus x (100 / 15))
+
+where reputation_bonus is calculated from the agent's 8004 feedback record
+  (positive signals increase, negative signals decrease, scaled 0-15)
+```
+
+This factor rewards agents with positive onchain feedback from real counterparties. The 10% weight reflects the high signal value of peer-validated reputation data.
+
+
+#### Factor 12: Work History (6%)
+
+**Rationale:** Agents that complete tasks on platforms like 0xWork build a verifiable work history. Task completions, reliability scores, and earnings provide concrete evidence of an agent's ability to deliver on commitments.
+
+**Data Source:** 0xWork REST API (api.0xwork.org). Task completions, reliability metrics, earnings, and ratings associated with the agent's wallet.
+
+**Sub-score Computation:**
+
+```
+s12 = calculateWorkScore(work_stats)
+
+where work_stats includes:
+  tasks_completed, completion_rate, reliability_score,
+  total_earned, average_rating
+```
+
+Agents with more completed tasks, higher reliability, and positive ratings score higher. This factor bridges the gap between identity (who you are) and performance (what you've done).
+
+
+#### Factor 13: Agent Economy (2%)
+
+**Rationale:** Agents that have launched their own token economy demonstrate a level of economic maturity and commitment that goes beyond simple onchain activity. A linked token creates accountability, as the agent's credibility is tied to a tradeable asset that the market can price.
 
 **Data Sources:**
 - Linked token address (via `linked-token` onchain trait)
 - Bankr agent profile (via `bankr-profile` onchain trait)
+- Token market activity via DexScreener
 
 **Sub-score Computation:**
 
 ```
-s₁₁ = linked_token_bonus + bankr_profile_bonus
+s13 = linked_token_bonus + bankr_profile_bonus + market_activity_bonus
 
 where:
-  linked_token_bonus  = 50 if agent has a linked token contract, else 0
-  bankr_profile_bonus = 50 if agent has a Bankr profile, else 0
+  linked_token_bonus     = 40 if agent has a linked token contract, else 0
+  bankr_profile_bonus    = 30 if agent has a Bankr profile, else 0
+  market_activity_bonus  = 30 if token market cap > 0, else 0
 ```
 
-This factor rewards agents that have taken the step of launching a token (typically via Bankr) and maintaining a public profile with project metadata, team info, and revenue sources. The weight is intentionally low (2%) to prevent gaming through low-effort token deployments, but meaningful enough to reward agents building real economic infrastructure.
+This factor rewards agents that have taken the step of launching a token (typically via Bankr), maintaining a public profile with project metadata, and demonstrating real market activity. The weight is intentionally low (2%) to prevent gaming through low-effort token deployments, but meaningful enough to reward agents building real economic infrastructure.
 
 
 ## 4. Tier Classification System

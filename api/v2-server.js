@@ -619,6 +619,41 @@ async function formatAgentV2(tokenId) {
         if (workStats) result._workStats = workStats;
     } catch {}
 
+    // Fetch Bankr profile (non-blocking, best-effort)
+    try {
+        const linkedToken = result.traits?.find(t => t.name === 'linked-token');
+        if (linkedToken) {
+            // Check DexScreener for market cap
+            const tokenAddr = linkedToken.category || linkedToken.value;
+            if (tokenAddr) {
+                const dxRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddr}`);
+                if (dxRes.ok) {
+                    const dxData = await dxRes.json();
+                    const pair = dxData.pairs?.[0];
+                    if (pair?.marketCap) result._tokenMarketCap = pair.marketCap;
+                }
+            }
+        }
+        // Check if agent's owner wallet has a Bankr profile
+        if (result.agentAddress) {
+            const bankrKey = process.env.BANKR_LLM_KEY || process.env.BANKR_API_KEY;
+            if (bankrKey) {
+                const bRes = await fetch('https://api.bankr.bot/agent/profile', {
+                    headers: { 'X-API-Key': bankrKey }
+                });
+                if (bRes.ok) {
+                    const profile = await bRes.json();
+                    // Check if the token address matches this agent's linked token
+                    const lt = result.traits?.find(t => t.name === 'linked-token');
+                    const ltAddr = (lt?.category || lt?.value || '').toLowerCase();
+                    if (profile.tokenAddress?.toLowerCase() === ltAddr) {
+                        result._bankrProfile = true;
+                    }
+                }
+            }
+        }
+    } catch {}
+
     // Recompute cred score from merged data (onchain score may be stale)
     try {
         const { computedScore } = computeCredBreakdown(result);
@@ -635,7 +670,7 @@ app.get(['/', '/api/v2'], (req, res) => {
     res.json({
         name: 'Helixa V2 API',
         version: '2.0.0',
-        description: 'Agent identity infrastructure with SIWA auth and x402 payments',
+        description: 'Agent identity infrastructure with SIWA auth, x402 and MPP payments',
         contract: V2_CONTRACT_ADDRESS,
         contractDeployed: isContractDeployed(),
         network: 'Base (8453)',
@@ -663,11 +698,18 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/agent/:id/coinbase-verify': 'Check Coinbase EAS attestation & boost Cred (SIWA required)',
             },
         },
-        pricing: {
-            phase: 1,
-            note: 'All operations free during Phase 1 (0-1000 agents)',
-            agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
-            update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
+        payments: {
+            methods: [
+                { protocol: 'x402', status: 'active', chain: 'Base (8453)', currency: 'USDC' },
+                { protocol: 'x402', status: 'active', chain: 'Base (8453)', currency: '$CRED', discount: '20%', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3' },
+                ...(mppServer ? [{ protocol: 'MPP', status: 'active', chain: 'Tempo (4217)', currency: 'USDC.e', spec: 'https://mpp.dev' }] : []),
+            ],
+            pricing: {
+                phase: 1,
+                note: 'All operations free during Phase 1 (0-1000 agents)',
+                agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
+                update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
+            },
         },
     });
 });
@@ -3119,8 +3161,8 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.18, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
-    external: { weight: 0.10, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    activity: { weight: 0.17, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
+    external: { weight: 0.09, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.10, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
     age: { weight: 0.08, label: 'Account Age', description: 'Days since registration' },
@@ -3130,7 +3172,8 @@ const CRED_WEIGHTS = {
     soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
     soulCompleteness: { weight: 0.07, label: 'Soul Vault', description: 'Soul data completeness - public fields, shared soul, narrative depth' },
     reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
-    workHistory: { weight: 0.08, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
+    workHistory: { weight: 0.06, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
+    bankr: { weight: 0.02, label: 'Agent Economy', description: 'Bankr profile, linked token, and market activity' },
 };
 
 function computeCredBreakdown(agent) {
@@ -3202,6 +3245,19 @@ function computeCredBreakdown(agent) {
             // 0xWork task completion data
             const { calculateWorkScore } = require('./services/work-stats');
             return calculateWorkScore(agent._workStats || null);
+        })(), maxRaw: 100 },
+        bankr: { raw: (() => {
+            // Bankr agent economy: linked token + profile + market activity
+            let score = 0;
+            // 40pts: has a linked token onchain (check both traits array and linkedToken object)
+            const hasLinkedToken = traits.some(t => t.name === 'linked-token') || !!agent.linkedToken?.contractAddress;
+            if (hasLinkedToken) score += 40;
+            // 30pts: has a Bankr profile (checked via trait or _bankrProfile flag)
+            const hasBankrProfile = traits.some(t => t.name === 'bankr-profile') || !!agent._bankrProfile;
+            if (hasBankrProfile) score += 30;
+            // 30pts: token has market activity (market cap > 0)
+            if (agent._tokenMarketCap && agent._tokenMarketCap > 0) score += 30;
+            return Math.min(100, score);
         })(), maxRaw: 100 },
     };
 
@@ -4121,7 +4177,7 @@ app.get('/api/terminal/agents', (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-        const sort = ['cred_score','name','created_at','platform'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const sort = ['cred_score','name','created_at','platform','token_market_cap','volume_24h','price_change_24h','revenue_onchain','ethos_score','talent_score','attention_score'].includes(req.query.sort) ? req.query.sort : 'cred_score';
         const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
         const filter = req.query.filter || 'all';
         const q = (req.query.q || '').trim();
@@ -4161,7 +4217,11 @@ app.get('/api/terminal/agents', (req, res) => {
 
         const agents = terminalDb.prepare(
             `SELECT id, address, agent_id, token_id, name, description, image_url, platform, 
-                    x402_supported, cred_score, cred_tier, created_at, owner_address, registry
+                    x402_supported, cred_score, cred_tier, created_at, owner_address, registry,
+                    token_symbol, token_name, token_address, token_market_cap, price_change_24h,
+                    volume_24h, liquidity_usd, txns_24h_buys, txns_24h_sells,
+                    revenue_onchain, revenue_self_reported, ethos_score, talent_score,
+                    attention_score, attention_velocity, x402_endpoints
              FROM agents ${whereClause} 
              ORDER BY ${orderBy}
              LIMIT @limit OFFSET @offset`
