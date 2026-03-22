@@ -356,12 +356,11 @@ async function browse0xWork() {
         return oxworkCache.data;
     }
     try {
-        const result = execSync(
-            'npx @0xwork/sdk discover 2>/dev/null',
-            { timeout: 30000, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 }
-        );
-        const parsed = JSON.parse(result);
-        const tasks = parsed.tasks || parsed.data || (Array.isArray(parsed) ? parsed : []);
+        // Use REST API directly instead of SDK CLI
+        const resp = await fetch('https://api.0xwork.org/tasks?status=Open&limit=100');
+        if (!resp.ok) throw new Error(`0xWork API ${resp.status}`);
+        const parsed = await resp.json();
+        const tasks = parsed.tasks || [];
         oxworkCache = { data: tasks, timestamp: now };
         return tasks;
     } catch (err) {
@@ -371,10 +370,10 @@ async function browse0xWork() {
 }
 
 function normalize0xWorkJobs(tasks) {
-    return tasks.filter(t => !t.status || t.status === 'open' || t.status === 0).map(t => {
-        const bountyUSDC = parseFloat(t.bounty || t.bountyAmount || '0'); // Already in USD from CLI
+    return tasks.filter(t => !t.status || t.status === 'Open' || t.status === 'open' || t.status === 0).map(t => {
+        const bountyUSDC = parseFloat(t.bounty_amount || t.bounty || t.bountyAmount || '0');
         return {
-            id: `0xwork-${t.chainTaskId || t.id}`,
+            id: `0xwork-${t.chain_task_id || t.chainTaskId || t.id}`,
             source: '0xwork',
             sourceName: '0xWork',
             title: t.title || t.description?.substring(0, 60) || 'Untitled Task',
@@ -383,19 +382,19 @@ function normalize0xWorkJobs(tasks) {
             budgetCurrency: 'USDC',
             budgetDisplay: bountyUSDC > 0 ? `$${bountyUSDC.toFixed(2)} USDC` : 'Unpriced',
             provider: {
-                id: t.posterId || t.poster,
-                name: t.posterName || null,
-                wallet: t.poster || t.posterAddress,
+                id: t.poster_agent_id || t.posterId || t.poster,
+                name: t.poster_agent_name || t.posterName || null,
+                wallet: t.poster_address || t.poster || t.posterAddress,
                 description: null,
             },
-            requirements: t.capabilities || t.requiredCapabilities || null,
+            requirements: t.requirements || t.capabilities || t.requiredCapabilities || null,
             deliverable: t.deliverableFormat || null,
             status: 'open',
-            tags: (t.capabilities || t.categories || []).map(c => c.toLowerCase()),
-            category: (t.capabilities || t.categories || ['general'])[0]?.toLowerCase() || 'general',
+            tags: [t.category?.toLowerCase() || 'general'],
+            category: t.category?.toLowerCase() || 'general',
             credThreshold: estimateCredThreshold0xWork(bountyUSDC),
-            applyUrl: `https://0xwork.org/tasks/${t.chainTaskId || t.id}`,
-            postedAt: t.createdAt ? new Date(t.createdAt).toISOString() : null,
+            applyUrl: `https://0xwork.org/tasks/${t.chain_task_id || t.chainTaskId || t.id}`,
+            postedAt: t.posted_at || t.created_at || t.createdAt ? new Date(t.posted_at || t.created_at || t.createdAt).toISOString() : null,
             deadline: t.deadline ? new Date(t.deadline).toISOString() : null,
             stakeRequired: t.stakeRequired || null,
             escrow: true,

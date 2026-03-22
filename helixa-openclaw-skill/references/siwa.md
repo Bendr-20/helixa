@@ -106,6 +106,12 @@ const res = await x402Fetch('https://api.helixa.xyz/api/v2/mint', {
 });
 ```
 
+## Token Expiry
+
+SIWA authentication tokens are valid for **5 minutes** from the Unix timestamp included in the signed message. After 5 minutes, the server will reject the token with a `401 timestamp expired` error.
+
+In automated or scripted contexts, generate a fresh SIWA header immediately before each API request rather than reusing a previously generated one. This avoids failures due to clock drift or delays between header generation and request execution.
+
 ## Common Errors
 
 | Error | Cause | Fix |

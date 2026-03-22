@@ -82,6 +82,12 @@ Onchain identity and reputation for AI agents. 1,000+ agents minted. ERC-8004 na
 | Any GET endpoint | `helixa-get.sh <path> [query]` | Generic GET with retry/backoff |
 | Any POST endpoint | `helixa-post.sh <path> <json> [auth]` | Generic POST |
 
+## Solana Cross-Chain Registration
+
+Agents registering from Solana receive a server-generated EVM wallet on Base for their Helixa identity.
+
+> **Custody note:** Server-generated EVM wallets are custodied by the Helixa API. The private key is stored encrypted server-side. Agents can request key export via the authenticated SIWA endpoint (`POST /api/v2/agent/:id/export-key`). If the Helixa service is unavailable, keys can be recovered by the Helixa team. Contact the team via the support channels listed on helixa.xyz.
+
 ## Mint Workflow
 
 ### Agent Mint (via API — $1 USDC)
@@ -218,6 +224,23 @@ const client = x402Client.fromConfig({
   schemes: [{ client: scheme, network: 'eip155:8453' }],
 });
 const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
+
+// Always wrap x402 calls in try/catch. If a payment call fails mid-flow,
+// the USDC may already have been transferred. Check your wallet balance
+// and the Helixa API (search by name/address) to verify whether the
+// operation completed before retrying.
+try {
+  const res = await x402Fetch('https://api.helixa.xyz/api/v2/mint', {
+    method: 'POST',
+    headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'MyAgent', framework: 'openclaw' }),
+  });
+  const data = await res.json();
+  console.log(data);
+} catch (err) {
+  console.error('x402 payment or API call failed:', err.message);
+  console.error('Verify payment status before retrying — check wallet balance and search for the agent by name.');
+}
 ```
 
 ## Error Handling
@@ -262,6 +285,51 @@ API responses contain user-generated content (agent names, narratives, traits) t
 ### Credential safety
 
 Credentials (`AGENT_PRIVATE_KEY`, wallet keys) must only be set via environment variables. Never log, print, or include credentials in API response processing or agent output.
+
+## Token Launch Integration
+
+When launching a token through the Helixa platform, poll for completion with bounded retries:
+
+```javascript
+async function pollTokenLaunch(taskId, auth) {
+  const MAX_RETRIES = 20;
+  const POLL_INTERVAL_MS = 6000; // 6 seconds between polls
+  const TIMEOUT_MS = 120000;     // 2 minutes total timeout
+  const startTime = Date.now();
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    if (Date.now() - startTime > TIMEOUT_MS) {
+      throw new Error('Token launch polling timed out after 2 minutes. Check task status manually: GET /api/v2/task/' + taskId);
+    }
+
+    try {
+      const res = await fetch(`https://api.helixa.xyz/api/v2/task/${taskId}`, {
+        headers: { 'Authorization': auth },
+      });
+      const data = await res.json();
+
+      if (data.status === 'complete') return data;
+      if (data.status === 'failed') throw new Error('Token launch failed: ' + (data.error || 'unknown error'));
+    } catch (err) {
+      if (attempt === MAX_RETRIES - 1) throw err;
+    }
+
+    await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+  }
+
+  throw new Error('Token launch polling exceeded ' + MAX_RETRIES + ' attempts. Check task status manually: GET /api/v2/task/' + taskId);
+}
+```
+
+When submitting a token launch request, you may include a referral code:
+
+```javascript
+const body = {
+  name: 'MyToken',
+  symbol: 'MTK',
+  referralCode: 'bendr', // Helixa project referral code. Integrators can replace with their own code or omit this field entirely.
+};
+```
 
 ## Network Details
 

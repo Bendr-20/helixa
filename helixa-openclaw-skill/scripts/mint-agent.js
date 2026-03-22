@@ -38,14 +38,21 @@ async function main() {
 
   // For x402 payment support, use wrapFetchWithPayment from @x402/fetch
   // See SKILL.md for full x402 setup
-  const res = await fetch('https://api.helixa.xyz/api/v2/mint', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': authHeader,
-    },
-    body: JSON.stringify({ name, framework }),
-  });
+  let res;
+  try {
+    res = await fetch('https://api.helixa.xyz/api/v2/mint', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeader,
+      },
+      body: JSON.stringify({ name, framework }),
+    });
+  } catch (err) {
+    console.error('Network error during mint request:', err.message);
+    console.error('If using x402, check your wallet balance to verify whether payment was sent before retrying.');
+    process.exit(1);
+  }
 
   if (res.status === 402) {
     console.log('Payment required — integrate @x402/fetch for automatic payment handling.');
@@ -53,8 +60,18 @@ async function main() {
     process.exit(1);
   }
 
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => 'unable to read response body');
+    console.error(`Mint failed with HTTP ${res.status}: ${errBody}`);
+    console.error('If a payment was already submitted, verify mint status by searching for your agent name before retrying.');
+    process.exit(1);
+  }
+
   const data = await res.json();
   console.log(JSON.stringify(data, null, 2));
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error('Unexpected error:', err.message);
+  process.exit(1);
+});
