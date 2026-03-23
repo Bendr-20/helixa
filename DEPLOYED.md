@@ -10,6 +10,7 @@
 | **CredStakingV2** | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Cred-gated staking, vouch system, 7-day lock |
 | **SoulSovereignV3** | `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD` | Chain of Identity — versioned soul locking |
 | **HandshakeRegistry** | `0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd` | Onchain soul handshake receipts between agents |
+| **HelixaEvaluator (ERC-8183)** | `0xF6F5De45eDB8751fc974A17d55339fe6dda8CC42` | Onchain agent evaluation — budget-gated eligibility |
 | **$CRED Token** | `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` | ERC-20 — deployed via Bankr, NOT controlled by us |
 
 ## Deployer & Treasury
