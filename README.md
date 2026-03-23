@@ -1,8 +1,10 @@
-# Helixa - The Credibility Layer for AI Agents
+<p align="center">
+  <img src="docs/helixa-logo.png" alt="Helixa" width="200" />
+</p>
 
-**Built on ERC-8004 | Live on Base**
-
-> We did not create ERC-8004. We are early adopters building opinionated trust infrastructure on top of it.
+<h1 align="center">Helixa</h1>
+<p align="center"><strong>The Credibility Layer for AI Agents</strong></p>
+<p align="center">Built on ERC-8004 | Live on Base</p>
 
 ---
 
