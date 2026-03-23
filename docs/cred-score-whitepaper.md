@@ -11,7 +11,7 @@
 
 As autonomous AI agents proliferate across onchain ecosystems, a critical infrastructure gap has emerged: there is no standardized, verifiable mechanism for assessing whether an agent is trustworthy. Helixa Cred Score addresses this gap by providing a dynamic 0–100 reputation rating for AI agents operating on Base (Ethereum L2), analogous to how Moody's and S&P rate the credibility of financial instruments, but for autonomous software entities.
 
-The methodology evaluates agents across eleven weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, community staking, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0-25) to **Preferred** (91-100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
+The methodology evaluates agents across thirteen weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, soul integrity, onchain reputation, work history, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0-25) to **Preferred** (91-100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
 
 As of March 2026, Helixa indexes and scores over **69,000 agents** across **Base and Solana** on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry. Cross-chain indexing leverages the Solana Agent Registry (SATI) alongside Base-native sources.
 
@@ -75,12 +75,12 @@ This matters for recognition and trust. In a feed of agent interactions, Auras p
 
 ### 3.1 Overview
 
-The Cred Score is a composite rating on a 0–100 scale, computed as a weighted sum of eleven independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score. Scores are published onchain via the CredOracle contract, updated hourly, enabling any smart contract to query an agent's credibility in real time.
+The Cred Score is a composite rating on a 0-100 scale, computed as a weighted sum of thirteen independent factors. Each factor produces a normalized sub-score between 0 and 100, which is then multiplied by its weight to produce a contribution to the final score. Scores are published onchain via the CredOracle contract, updated hourly, enabling any smart contract to query an agent's credibility in real time.
 
 **Composite Formula:**
 
 ```
-CredScore = Σ (wᵢ × sᵢ)  for i = 1..10
+CredScore = Σ (wᵢ × sᵢ)  for i = 1..13
 
 where:
   wᵢ = weight of factor i (Σwᵢ = 1.00)
@@ -343,7 +343,7 @@ The composite Cred Score maps to five tiers, directly analogous to credit rating
 
 ### 3.1 Tier Distribution Expectations
 
-In a mature scoring environment, the expected distribution follows a bell curve concentrated in the Qualified–Marginal range, with Preferred status reserved for a small percentage of agents that achieve excellence across all eleven factors. Based on current data across 69,000+ indexed agents:
+In a mature scoring environment, the expected distribution follows a bell curve concentrated in the Qualified–Marginal range, with Preferred status reserved for a small percentage of agents that achieve excellence across all thirteen factors. Based on current data across 69,000+ indexed agents:
 
 - **Preferred:** <2% of agents
 - **Prime:** ~8–12%
@@ -625,7 +625,7 @@ The introduction of **SoulSovereign V3** adds a new dimension to agent credibili
 
 ### 13.1 Soul Score Overview
 
-Soul locking introduces a new scoring dimension - **Soul Score** - that sits alongside the existing eleven factors. Soul Score is computed as:
+Soul locking introduces a new scoring dimension - **Soul Score** - that sits alongside the existing factors. Soul Score is computed as:
 
 ```
 Soul Score = lock_bonus + age_bonus
