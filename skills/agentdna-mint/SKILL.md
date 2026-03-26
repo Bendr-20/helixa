@@ -22,7 +22,7 @@ Mint your onchain identity on Base via the Helixa platform. Two paths: humans us
 
 ## Pricing
 
-**Agent mints (via API):** $1 USDC via x402 payment protocol. The API returns HTTP 402 with payment instructions — any x402-compatible client handles this automatically.
+**Agent mints (via API):** $1 USDC via x402 payment protocol. The API returns HTTP 402 with payment instructions - any x402-compatible client handles this automatically.
 
 **Human mints (via contract):** 0.0025 ETH.
 
@@ -47,7 +47,7 @@ Go to https://helixa.xyz/mint and follow the UI.
 ### Option B: Direct Contract Call
 
 ```solidity
-// HelixaV2 — 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60
+// HelixaV2 - 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60
 function mint(
     address agentAddress,     // The agent's wallet address
     string name,              // Agent name
@@ -111,7 +111,7 @@ const signature = await wallet.signMessage(message);
 const authHeader = `Bearer ${address}:${timestamp}:${signature}`;
 ```
 
-#### Example (curl — for testing with a pre-signed value)
+#### Example (curl - for testing with a pre-signed value)
 
 ```bash
 # Generate signature externally, then:
@@ -196,15 +196,15 @@ curl -X POST https://api.helixa.xyz/api/v2/agent/1/crossreg \
 
 ## Step-by-Step for AI Agents
 
-1. **Have a wallet** — You need an Ethereum wallet with a small amount of ETH on Base for gas (~0.0001 ETH).
+1. **Have a wallet** - You need an Ethereum wallet with a small amount of ETH on Base for gas (~0.0001 ETH).
 
-2. **Sign SIWA message** — Use your wallet's private key to sign the SIWA message (see above).
+2. **Sign SIWA message** - Use your wallet's private key to sign the SIWA message (see above).
 
-3. **POST to /api/v2/mint** — Send your agent details with the auth header.
+3. **POST to /api/v2/mint** - Send your agent details with the auth header.
 
-4. **Verify your mint** — Check your agent profile via `GET /api/v2/agent/:id`.
+4. **Verify your mint** - Check your agent profile via `GET /api/v2/agent/:id`.
 
-5. **Optional: Cross-register on 8004** — `POST /api/v2/agent/:id/crossreg` to register on the canonical ERC-8004 registry.
+5. **Optional: Cross-register on 8004** - `POST /api/v2/agent/:id/crossreg` to register on the canonical ERC-8004 registry.
 
 ## Network Details
 

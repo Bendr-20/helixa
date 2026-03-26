@@ -1,6 +1,6 @@
 ---
 name: helixa
-description: Helixa — Onchain identity, credibility, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent credibility data, check staking info, manage soul vault, perform trust evaluation, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
+description: Helixa - Onchain identity, credibility, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent credibility data, check staking info, manage soul vault, perform trust evaluation, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
 metadata:
   {
     "clawdbot":
@@ -24,7 +24,7 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 
 1. No API key required for public endpoints
 2. Use the shell scripts in `scripts/` for all operations
-3. Authenticated actions (mint, update, verify) require SIWA auth — see `references/siwa.md`
+3. Authenticated actions (mint, update, verify) require SIWA auth - see `references/siwa.md`
 4. Paid actions (mint) cost $1 USDC via x402. Updates are free
 
 ```bash
@@ -94,7 +94,7 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
 
 ## Mint Workflow
 
-### Agent Mint (via API — $1 USDC)
+### Agent Mint (via API - $1 USDC)
 
 1. **Check name availability:**
    ```bash
@@ -122,7 +122,7 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
    ./scripts/helixa-search.sh "MyAgent"
    ```
 
-### Human Mint (Direct Contract — 0.0025 ETH)
+### Human Mint (Direct Contract - 0.0025 ETH)
 
 ```bash
 cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
@@ -299,7 +299,7 @@ try {
   console.log(data);
 } catch (err) {
   console.error('x402 payment or API call failed:', err.message);
-  console.error('Verify payment status before retrying — check wallet balance and search for the agent by name.');
+  console.error('Verify payment status before retrying - check wallet balance and search for the agent by name.');
 }
 ```
 
@@ -309,14 +309,14 @@ try {
 
 The core scripts (`helixa-get.sh`, `helixa-post.sh`) exit non-zero on any HTTP error (4xx/5xx) and write the error body to stderr. `helixa-get.sh` automatically retries HTTP 429 and 5xx responses up to 2 times with exponential backoff (2s, 4s). All scripts enforce curl timeouts (`--connect-timeout 10 --max-time 30`).
 
-**Always check the exit code** before parsing stdout — a non-zero exit means the response on stdout is empty and the error details are on stderr.
+**Always check the exit code** before parsing stdout - a non-zero exit means the response on stdout is empty and the error details are on stderr.
 
 ### Common error codes
 
 | HTTP Status | Meaning | Action |
 |---|---|---|
 | 400 | Bad Request | Check parameters against `references/api.md` |
-| 401 | Unauthorized | Check SIWA auth — see `references/siwa.md` |
+| 401 | Unauthorized | Check SIWA auth - see `references/siwa.md` |
 | 402 | Payment Required | Handle x402 flow (use SDK for auto-handling) |
 | 404 | Not Found | Verify token ID, name, or endpoint path |
 | 429 | Rate Limited | Auto-retried by `helixa-get.sh`; wait and retry |
@@ -327,10 +327,10 @@ The core scripts (`helixa-get.sh`, `helixa-post.sh`) exit non-zero on any HTTP e
 The contract does NOT use `tokenOfOwnerByIndex`. To find a token ID by wallet:
 
 ```bash
-# Option 1 — API search
+# Option 1 - API search
 ./scripts/helixa-search.sh "0xYourWalletAddress"
 
-# Option 2 — Contract call
+# Option 2 - Contract call
 cast call 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "getAgentByAddress(address)" 0xWALLET \
   --rpc-url https://mainnet.base.org
@@ -392,10 +392,10 @@ Price oracle: DexScreener, updated per-request.
 
 ## References
 
-- `references/api.md` — Full REST API reference
-- `references/contracts.md` — Contract addresses and ABIs
-- `references/cred-scoring.md` — Tier system and scoring weights
-- `references/siwa.md` — SIWA auth implementation guide
+- `references/api.md` - Full REST API reference
+- `references/contracts.md` - Contract addresses and ABIs
+- `references/cred-scoring.md` - Tier system and scoring weights
+- `references/siwa.md` - SIWA auth implementation guide
 
 ## Requirements
 

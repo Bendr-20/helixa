@@ -36,7 +36,7 @@ $CRED is the native utility token of the Helixa protocol. This spec defines a ci
 | HelixaV2 | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Base |
 | SoulSovereign V3 | `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD` | Base |
 
-**Current state:** ~1,069 registered agents, mint price 0.0025 ETH, all x402 actions $1 USDC.
+**Current state:** ~1,104 registered agents, mint price 0.0025 ETH, all x402 actions $1 USDC.
 
 ---
 
