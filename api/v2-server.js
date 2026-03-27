@@ -31,7 +31,7 @@ const { securityHeaders, cors } = require('./middleware/cors');
 const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
 const {
     verifyUSDCPayment, requirePayment, requirePaymentLegacy,
-    PRICING, usedPayments, saveUsedPayments,
+    PRICING, PARTNER_PRICING, resolvePrice, usedPayments, saveUsedPayments,
 } = require('./services/payments');
 const {
     V1_OG_WALLETS, REFERRAL_CODES, referralRegistry, referralStats,
@@ -98,6 +98,18 @@ app.use(express.json({ limit: '200kb' }));
 app.use(securityHeaders);
 app.use(cors);
 app.use(globalRateLimit);
+
+// Doppel voice audio cache (TTS files served for MML <m-audio>) — mounted early to bypass payment middleware
+const doppelAudioPath = path.resolve(__dirname, '..', '..', 'doppel-agent', 'audio-cache');
+app.use('/audio/voice', express.static(doppelAudioPath, {
+    maxAge: 0,
+    setHeaders: (res) => {
+        res.set('Access-Control-Allow-Origin', '*');
+        res.set('Cache-Control', 'no-cache');
+        res.set('Content-Type', 'audio/mpeg');
+    },
+}));
+
 app.use((req, res, next) => {
     if (req.path.includes('cred-report')) console.log(`[DEBUG] Request: ${req.method} ${req.path} headers: ${Object.keys(req.headers).join(',')}`);
     next();
@@ -105,23 +117,33 @@ app.use((req, res, next) => {
 
 // ─── MPP (Machine Payments Protocol) Server Setup ──────────────
 let mppServer = null;
-const MPP_SECRET_KEY = process.env.MPP_SECRET_KEY;
-if (MPP_SECRET_KEY) {
+const MPP_SECRET_KEY = process.env.MPP_SECRET_KEY || require('crypto').randomBytes(32).toString('base64');
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || (() => { try { return require('fs').readFileSync(require('path').join(require('os').homedir(), '.config/helixa/stripe-key.txt'), 'utf8').trim(); } catch { return null; } })();
+{
     try {
-        const { Mppx: MppxServer, tempo: tempoServer } = require('mppx/server');
-        mppServer = MppxServer.create({
-            secretKey: MPP_SECRET_KEY,
-            methods: [tempoServer({
+        const { Mppx: MppxServer, tempo: tempoServer, stripe: stripeServer } = require('mppx/server');
+        const methods = [
+            tempoServer({
                 currency: '0x20C000000000000000000000b9537d11c60E8b50', // USDC.e on Tempo
                 recipient: DEPLOYER_ADDRESS,
-            })],
+            }),
+        ];
+        if (STRIPE_SECRET_KEY) {
+            methods.push(stripeServer.charge({
+                networkId: 'internal',
+                paymentMethodTypes: ['card', 'link'],
+                secretKey: STRIPE_SECRET_KEY,
+            }));
+            console.log('[MPP] Stripe fiat payments enabled (card + link)');
+        }
+        mppServer = MppxServer.create({
+            secretKey: MPP_SECRET_KEY,
+            methods,
         });
-        console.log('[MPP] Server initialized - accepting Tempo stablecoin payments');
+        console.log('[MPP] Server initialized - accepting ' + (STRIPE_SECRET_KEY ? 'crypto + fiat' : 'crypto only'));
     } catch (e) {
         console.warn('[MPP] Server init failed:', e.message);
     }
-} else {
-    console.log('[MPP] No MPP_SECRET_KEY set - MPP acceptance disabled (waiting on Stripe access)');
 }
 
 // ─── x402 Official SDK Middleware ───────────────────────────────
@@ -162,6 +184,12 @@ if (PRICING.soulHandshake > 0) {
     x402Routes['POST /api/v2/agent/:id/soul/share'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.soulHandshake}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
         description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
+    };
+}
+if (PRICING.agentMint > 0) {
+    x402Routes['POST /api/v2/register/solana'] = {
+        accepts: [{ scheme: 'exact', price: `$${PRICING.agentMint}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
+        description: 'Register a Solana agent on Base (cross-chain)', mimeType: 'application/json',
     };
 }
 // ─── USDC + $CRED TX Hash Payment Verification ────────────────
@@ -558,7 +586,12 @@ async function formatAgentV2(tokenId) {
         mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),
         verified: agent.verified,
         soulbound: agent.soulbound || Number(tokenId) === 1, // Bendr is soulbound
-        mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
+        mintOrigin: (() => {
+            const raw = ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN';
+            // If agent has siwa-verified trait, upgrade origin display to AGENT_SIWA
+            if (raw === 'HUMAN' && traits.some(t => t.name === 'siwa-verified')) return 'AGENT_SIWA';
+            return raw;
+        })(),
         generation: Number(agent.generation),
         version: agent.currentVersion,
         mutationCount: Number(agent.mutationCount),
@@ -1552,17 +1585,20 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
     if (usedPaymentTxs.has(paymentTx.toLowerCase())) return res.status(400).json({ error: 'Payment TX already used' });
     
     try {
-        const result = await verifyUSDCTransfer(paymentTx, PRICING.agentMint, DEPLOYER_ADDRESS);
+        const mintPrice = resolvePrice('agentMint', req);
+        const result = await verifyUSDCTransfer(paymentTx, mintPrice, DEPLOYER_ADDRESS);
         usedPaymentTxs.add(paymentTx.toLowerCase());
         req.paymentVerified = result;
-        console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${paymentTx.slice(0,10)}...)`);
+        const partnerId = (req.get('X-Partner-ID') || req.query?.partner || '').toLowerCase().trim();
+        console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${paymentTx.slice(0,10)}...)${partnerId ? ` [partner: ${partnerId}, price: $${mintPrice}]` : ''}`);
         return mintHandler(req, res);
     } catch (e) {
+        const mintPrice = resolvePrice('agentMint', req);
         return res.status(402).json({
             error: `Payment verification failed: ${e.message}`,
-            hint: `Send $${PRICING.agentMint} USDC to ${DEPLOYER_ADDRESS} on Base, then include the TX hash as paymentTx`,
+            hint: `Send $${mintPrice} USDC to ${DEPLOYER_ADDRESS} on Base, then include the TX hash as paymentTx`,
             payTo: DEPLOYER_ADDRESS,
-            amount: `${PRICING.agentMint} USDC`,
+            amount: `${mintPrice} USDC`,
             network: 'Base (chain 8453)',
         });
     }
@@ -3206,7 +3242,7 @@ function computeCredBreakdown(agent) {
         age: { raw: Math.min(100, ageDays * 5), maxRaw: 100 },
         traits: { raw: Math.min(100, traits.length * 12), maxRaw: 100 },
         narrative: { raw: Math.min(100, narrativeFields.length * 25), maxRaw: 100 },
-        origin: { raw: agent.mintOrigin === 'AGENT_SIWA' ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
+        origin: { raw: (agent.mintOrigin === 'AGENT_SIWA' || hasVerif('siwa-verified')) ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
         soulbound: { raw: agent.soulbound ? 100 : 0, maxRaw: 100 },
         soulCompleteness: { raw: (() => {
             try {
@@ -4339,6 +4375,121 @@ app.get('/api/terminal/agent/:id/summary', (req, res) => {
             tokenId: agent.token_id, name: agent.name, credScore: agent.cred_score, credTier: agent.cred_tier,
             summary: agent.trust_summary || null, generatedAt: agent.summary_generated_at || null, model: agent.summary_model || null,
         });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Terminal Leaderboard & Cred Graph ──────────────────────────
+const SPAM_PATTERNS = ['@sortesfun', '#publicgoods', '@calo530G', '@Peko7g', '@aom1546'];
+
+function terminalRankScore(a) {
+    let score = 0, signals = [];
+    if (!a.name || !a.name.trim() || a.name === 'Unknown Agent' || /^\d+$/.test(a.name)) return { score: 0, signals: ['no-name'] };
+    const desc = a.description || '';
+    if (SPAM_PATTERNS.some(p => desc.toLowerCase().includes(p.toLowerCase()))) return { score: 0, signals: ['spam'] };
+    score += 5; // has name
+    if (desc.length > 200) { score += 15; signals.push('rich-desc'); }
+    else if (desc.length > 50) { score += 8; signals.push('desc'); }
+    else if (desc.length > 10) score += 3;
+    if (a.x402_supported) { score += 20; signals.push('x402'); if (a.x402_health === 'healthy') { score += 10; signals.push('x402-live'); } else if (a.x402_health === 'degraded') score += 3; }
+    if (a.token_address) { score += 10; signals.push('token'); if (a.token_market_cap > 1e6) { score += 20; signals.push('mcap-1M+'); } else if (a.token_market_cap > 1e5) { score += 15; signals.push('mcap-100K+'); } else if (a.token_market_cap > 1e4) { score += 8; signals.push('mcap-10K+'); } if (a.liquidity_usd > 1e5) { score += 10; signals.push('deep-liq'); } else if (a.liquidity_usd > 1e4) { score += 5; signals.push('liq'); } }
+    if (a.tx_count > 100) { score += 15; signals.push('active'); } else if (a.tx_count > 10) { score += 8; signals.push('active'); } else if (a.tx_count > 0) score += 3;
+    if (a.image_url) { score += 5; signals.push('image'); }
+    if (a.metadata) { try { const m = JSON.parse(a.metadata); if (m.personality || m.capabilities || m.skills) { score += 8; signals.push('personality'); } if (m.attributes && Array.isArray(m.attributes) && m.attributes.length > 0) { score += 5; signals.push('attrs'); } } catch {} }
+    if (a.chain_id === 8453) score += 2;
+    return { score: Math.min(score, 100), signals };
+}
+
+app.get('/api/terminal/leaderboard', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+        const chain = req.query.chain; // 'base','eth','bsc' or omit for all
+        const minScore = parseInt(req.query.min_score) || 20;
+        const tier = req.query.tier; // 'A','B','C'
+
+        const chainMap = { base: 8453, eth: 1, bsc: 56 };
+        let where = "name IS NOT NULL AND name != '' AND name != 'Unknown Agent'";
+        const params = {};
+        if (chain && chainMap[chain.toLowerCase()]) { where += ' AND chain_id = @chain'; params.chain = chainMap[chain.toLowerCase()]; }
+
+        // Pull candidates: agents with signals (x402, tokens, good descriptions, activity)
+        const candidates = terminalDb.prepare(
+            `SELECT id, name, description, address, chain_id, x402_supported, x402_health, 
+                    token_address, token_market_cap, liquidity_usd, volume_24h, tx_count, 
+                    image_url, metadata, services, platform, cred_score, cred_tier,
+                    token_symbol, price_change_24h, attention_score
+             FROM agents WHERE ${where}
+             ORDER BY cred_score DESC LIMIT 5000`
+        ).all(params);
+
+        let ranked = [];
+        for (const a of candidates) {
+            const { score, signals } = terminalRankScore(a);
+            if (score < minScore) continue;
+            const t = score >= 40 ? 'A' : score >= 25 ? 'B' : 'C';
+            if (tier && t !== tier.toUpperCase()) continue;
+            ranked.push({
+                id: a.id, name: a.name, address: a.address,
+                chain: a.chain_id === 8453 ? 'base' : a.chain_id === 1 ? 'ethereum' : 'bsc',
+                rankScore: score, tier: t, signals,
+                credScore: a.cred_score, credTier: a.cred_tier,
+                description: (a.description || '').slice(0, 200),
+                image: a.image_url || null,
+                x402: !!a.x402_supported, x402Health: a.x402_health || null,
+                token: a.token_symbol || null, tokenAddress: a.token_address || null,
+                marketCap: a.token_market_cap || null, liquidity: a.liquidity_usd || null,
+                volume24h: a.volume_24h || null, priceChange24h: a.price_change_24h || null,
+                txCount: a.tx_count || null, attentionScore: a.attention_score || null,
+                platform: a.platform || null,
+            });
+        }
+        ranked.sort((a, b) => b.rankScore - a.rankScore);
+        const result = ranked.slice(0, limit);
+
+        const tierCounts = { A: ranked.filter(r => r.tier === 'A').length, B: ranked.filter(r => r.tier === 'B').length, C: ranked.filter(r => r.tier === 'C').length };
+
+        res.json({ agents: result, total: ranked.length, tierCounts, limit, minScore });
+    } catch (e) {
+        console.error('[LEADERBOARD]', e.message);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Cred distribution graph data
+app.get('/api/terminal/graph/cred-distribution', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const dist = terminalDb.prepare(
+            `SELECT cred_score as score, COUNT(*) as count FROM agents 
+             WHERE cred_score > 0 GROUP BY cred_score ORDER BY cred_score`
+        ).all();
+        const byTier = terminalDb.prepare(
+            `SELECT cred_tier as tier, COUNT(*) as count, ROUND(AVG(cred_score),1) as avgScore 
+             FROM agents GROUP BY cred_tier ORDER BY avgScore DESC`
+        ).all();
+        const byChain = terminalDb.prepare(
+            `SELECT chain_id, COUNT(*) as total,
+                    SUM(CASE WHEN x402_supported = 1 THEN 1 ELSE 0 END) as x402,
+                    SUM(CASE WHEN token_address IS NOT NULL AND token_address != '' THEN 1 ELSE 0 END) as withToken,
+                    ROUND(AVG(cred_score),1) as avgScore
+             FROM agents GROUP BY chain_id`
+        ).all();
+        res.json({ distribution: dist, byTier, byChain });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Activity graph: agents with signals over time
+app.get('/api/terminal/graph/activity', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const days = Math.min(parseInt(req.query.days) || 30, 90);
+        const cutoff = Math.floor(Date.now() / 1000) - (days * 86400);
+        const daily = terminalDb.prepare(
+            `SELECT DATE(created_at, 'unixepoch') as day, COUNT(*) as mints,
+                    SUM(CASE WHEN x402_supported = 1 THEN 1 ELSE 0 END) as x402Mints
+             FROM agents WHERE created_at > ? GROUP BY day ORDER BY day`
+        ).all(cutoff);
+        res.json({ daily, days });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

@@ -160,6 +160,7 @@ Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($1 USDC).
 |-------|----------|------|-------------|
 | `name` | Yes | string | Unique agent name |
 | `framework` | Yes | string | One of: `openclaw`, `eliza`, `langchain`, `crewai`, `autogpt`, `bankr`, `virtuals`, `based`, `agentkit`, `custom` |
+| `soulbound` | No | boolean | **Must be set at mint time — cannot be changed later.** If `true`, locks token to wallet permanently (non-transferable). Adds +5% to Cred Score. Default: `false` |
 | `personality` | No | object | Tone, style, quirks |
 | `narrative` | No | object | Origin, purpose, lore |
 
