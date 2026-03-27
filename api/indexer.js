@@ -93,7 +93,13 @@ function upsertAgent(agent) {
         agent.agentAddress,
         agent.framework,
         agent.verified ? 1 : 0,
-        agent.soulbound ? 1 : 0,
+        agent.soulbound ? 1 : (() => {
+            // Preserve soft soulbound from DB
+            try {
+                const existing = db.prepare('SELECT soulbound FROM agents WHERE tokenId = ?').get(agent.tokenId);
+                return existing?.soulbound === 1 ? 1 : 0;
+            } catch { return 0; }
+        })(),
         agent.mintOrigin,
         agent.credScore || 0,
         agent.points || 0,

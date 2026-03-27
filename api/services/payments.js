@@ -147,7 +147,7 @@ function requirePaymentLegacy(amountUSDC) {
 }
 
 const PRICING = {
-    agentMint: 1,
+    agentMint: 5,
     update: 1,
     verify: 0,
     credReport: 1,
@@ -155,7 +155,32 @@ const PRICING = {
     soulHandshake: 1,
 };
 
+// Partner discounts — flat rate overrides for specific integrators
+// Key: lowercase wallet address or API identifier
+// Value: { agentMint, update, ... } — only override what's discounted
+const PARTNER_PRICING = {
+    '0xwork': { agentMint: 2.50 },
+    'moltx':  { credReport: 0, agentMint: 2.50 },
+    'mogra':  { credReport: 0, agentMint: 2.50 },
+    // Add more partners as needed
+};
+
+/**
+ * Resolve price for an endpoint, checking partner discounts first.
+ * @param {string} priceKey - key from PRICING (e.g. 'agentMint')
+ * @param {object} req - Express request (checks X-Partner-ID header or query param)
+ * @returns {number} price in USD
+ */
+function resolvePrice(priceKey, req) {
+    const partnerId = (req?.get?.('X-Partner-ID') || req?.query?.partner || '').toLowerCase().trim();
+    if (partnerId && PARTNER_PRICING[partnerId] && PARTNER_PRICING[partnerId][priceKey] !== undefined) {
+        return PARTNER_PRICING[partnerId][priceKey];
+    }
+    return PRICING[priceKey] || 0;
+}
+
 module.exports = {
     verifyUSDCPayment, requirePayment, requirePaymentLegacy,
-    PRICING, FACILITATOR_URL, usedPayments, saveUsedPayments,
+    PRICING, PARTNER_PRICING, resolvePrice,
+    FACILITATOR_URL, usedPayments, saveUsedPayments,
 };

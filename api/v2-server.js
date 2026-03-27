@@ -585,7 +585,16 @@ async function formatAgentV2(tokenId) {
         framework: agent.framework,
         mintedAt: new Date(Number(agent.mintedAt) * 1000).toISOString(),
         verified: agent.verified,
-        soulbound: agent.soulbound || Number(tokenId) === 1, // Bendr is soulbound
+        soulbound: agent.soulbound || Number(tokenId) === 1 || (() => {
+            // Soft soulbound: check DB for agents that opted in post-mint
+            try {
+                const Database = require('better-sqlite3');
+                const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+                const row = sdb.prepare('SELECT soulbound FROM agents WHERE tokenId = ?').get(Number(tokenId));
+                sdb.close();
+                return row?.soulbound === 1;
+            } catch { return false; }
+        })(),
         mintOrigin: (() => {
             const raw = ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN';
             // If agent has siwa-verified trait, upgrade origin display to AGENT_SIWA
@@ -600,6 +609,15 @@ async function formatAgentV2(tokenId) {
         ethosScore,
         talentScore,
         owner,
+        operator: (() => {
+            try {
+                const Database = require('better-sqlite3');
+                const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+                const row = sdb.prepare('SELECT operator FROM agents WHERE tokenId = ?').get(Number(tokenId));
+                sdb.close();
+                return row?.operator || null;
+            } catch { return null; }
+        })(),
         agentName: agentName || null,
         linkedToken: linkedToken.contractAddress ? linkedToken : null,
         personality: personality ? {
@@ -2014,6 +2032,17 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
                 profileData.traits = newTraits;
             }
             
+            // Handle operator field (off-chain, stored in SQLite)
+            if (req.body.operator && typeof req.body.operator === 'string' && /^0x[a-fA-F0-9]{40}$/.test(req.body.operator)) {
+                try {
+                    const Database = require('better-sqlite3');
+                    const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+                    sdb.prepare('UPDATE agents SET operator = ? WHERE tokenId = ?').run(req.body.operator, tokenId);
+                    sdb.close();
+                    updated.push('operator');
+                } catch (e) { console.error(`[OPERATOR] Failed for #${tokenId}:`, e.message); }
+            }
+
             if (updated.length > 0) {
                 saveProfile(tokenId, profileData);
                 console.log(`[V2 UPDATE OFF-CHAIN] Agent #${tokenId}: ${updated.join(', ')}`);

@@ -50,7 +50,7 @@ curl -s -X POST ${API_URL}/api/v2/mint \\
   -d '{"name": "MyAgent", "framework": "openclaw"}'
 # Response: 402 + payment-required header (base64 JSON)
 
-# 3. Sign EIP-3009 TransferWithAuthorization for $1 USDC
+# 3. Sign EIP-3009 TransferWithAuthorization for $5 USDC
 # 4. Retry with payment header
 curl -X POST ${API_URL}/api/v2/mint \\
   -H "Authorization: Bearer \${WALLET}:\${TS}:\${SIG}" \\
@@ -80,7 +80,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
         </div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
-          Authenticate with SIWA, pay $1 USDC registration fee via x402, get your identity onchain. One API call.
+          Authenticate with SIWA, pay $5 USDC registration fee via x402, get your identity onchain. One API call.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
         marginBottom: '2rem',
       }}>
         {[
-          { label: 'Registration Fee', value: '$1 USDC', sub: 'via x402' },
+          { label: 'Registration Fee', value: '$5 USDC', sub: 'via x402' },
           { label: 'Payment', value: 'EIP-3009', sub: 'TransferWithAuthorization' },
           { label: 'Network', value: 'Base', sub: 'Chain ID 8453' },
         ].map(item => (
@@ -333,7 +333,7 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#6eecd8',
               }}>
-                ~$1 in ETH + gas
+                ~$5 in ETH + gas
               </div>
             </button>
 
@@ -377,7 +377,7 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#b490ff',
               }}>
-                $1 USDC via x402
+                $5 USDC via x402
               </div>
             </button>
           </div>
@@ -388,7 +388,7 @@ export function Mint() {
             color: '#555',
             fontSize: '0.85rem',
           }}>
-            99 agents onchain · Base mainnet · ERC-8004
+            1,100+ agents onchain · Base mainnet · ERC-8004
           </div>
         </div>
       </div>
