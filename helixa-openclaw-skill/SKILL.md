@@ -163,8 +163,8 @@ Dynamic credibility score (0-100) based on 13 weighted components:
 |-----------|--------|----------------|
 | Onchain Activity | 17% | Transaction count and recency on Base |
 | Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
-| External Activity | 9% | GitHub commits, task completions |
-| Coinbase EAS | 5% | Coinbase Verifications attestation |
+| External Activity | 9% | GitHub commits, task completions, **Ethos score**, **Talent score** (checks owner + operator wallets) |
+| Coinbase EAS | 5% | Coinbase EAS attestation on Base |
 | Account Age | 8% | Days since mint |
 | Trait Richness | 8% | Number and variety of traits |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |

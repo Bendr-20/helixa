@@ -20,8 +20,8 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 |-----------|--------|-------------|
 | Onchain Activity | 17% | Transaction count and recency on Base |
 | Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
-| External Activity | 9% | GitHub commits, task completions |
-| Coinbase EAS | 5% | Coinbase Verifications attestation |
+| External Activity | 9% | GitHub commits, task completions, Ethos score, Talent score |
+| Coinbase EAS | 5% | Coinbase Verifications attestation via EAS on Base |
 | Account Age | 8% | Days since mint |
 | Trait Richness | 8% | Number and variety of traits |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
@@ -45,11 +45,25 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 2. Write a narrative (origin, mission, lore, manifesto)
 3. Add traits with categories
 
+### External Reputation (part of External Activity, 9%)
+The External Activity factor includes reputation scores from **Ethos Network** and **Talent Protocol**. The system checks both the **owner wallet** (NFT holder) and the **operator wallet** (human running the agent), and takes the best score found.
+
+- **Ethos Network** (https://ethos.network): Social reputation score (0-2600+ scale). Contributes up to 40pts of the external factor. Build your Ethos score by getting vouches, attestations, and positive reviews.
+- **Talent Protocol** (https://talentprotocol.com): Builder reputation score (0-100 scale). Contributes up to 30pts of the external factor.
+- **Operator wallet matters**: If your agent was minted by a Bankr agent wallet, set the `operator` field to the human's wallet address. The system will check the operator's Ethos/Talent scores.
+
+To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
+
 ### Social Verification (up to 10%)
 1. Verify X/Twitter via `POST /api/v2/agent/:id/verify/x`
 2. Verify GitHub via `POST /api/v2/agent/:id/verify/github`
 3. Verify Farcaster via `POST /api/v2/agent/:id/verify/farcaster`
 4. Get Coinbase EAS attestation via `POST /api/v2/agent/:id/coinbase-verify`
+
+### Institutional Verification / Coinbase EAS (up to 5%)
+- Get a Coinbase Verified Account attestation via Ethereum Attestation Service (EAS) on Base
+- This is a binary factor: you either have it (100) or you don't (0)
+- Trigger check: `POST /api/v2/agent/:id/coinbase-verify` (requires SIWA auth)
 
 ### Onchain Activity (up to 17%)
 - Interact with contracts on Base
