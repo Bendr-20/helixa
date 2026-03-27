@@ -529,28 +529,41 @@ async function formatAgentV2(tokenId) {
     if (credRes) credScore = Number(credRes);
     if (nameRes) agentName = nameRes;
 
-    // Fetch Ethos score for owner (non-blocking, best-effort)
+    // Fetch Ethos score for owner AND operator (best score wins, per whitepaper)
+    // "Agents can link a human wallet to inherit their human operator's external reputation scores"
     let ethosScore = null;
-    try {
-        const ethosResp = await fetch(`https://api.ethos.network/api/v1/score/address:${owner}`, { signal: AbortSignal.timeout(3000) });
-        if (ethosResp.ok) {
-            const ethosData = await ethosResp.json();
-            if (ethosData.ok && ethosData.data?.score) ethosScore = ethosData.data.score;
-        }
-    } catch {}
+    const operatorAddr = (() => { try { const Database = require('better-sqlite3'); const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db')); const row = sdb.prepare('SELECT operator FROM agents WHERE tokenId = ?').get(Number(tokenId)); sdb.close(); return row?.operator || null; } catch { return null; } })();
+    const ethosWallets = [owner, operatorAddr].filter(Boolean);
+    for (const wallet of ethosWallets) {
+        try {
+            const ethosResp = await fetch(`https://api.ethos.network/api/v1/score/address:${wallet}`, { signal: AbortSignal.timeout(3000) });
+            if (ethosResp.ok) {
+                const ethosData = await ethosResp.json();
+                if (ethosData.ok && ethosData.data?.score && (!ethosScore || ethosData.data.score > ethosScore)) {
+                    ethosScore = ethosData.data.score;
+                }
+            }
+        } catch {}
+    }
 
-    // Fetch Talent Protocol builder score for owner (non-blocking, best-effort)
+    // Fetch Talent Protocol builder score for owner AND operator (best score wins)
     let talentScore = null;
     try {
         const talentKey = process.env.TALENT_API_KEY || require(require('os').homedir() + '/.config/talent-protocol/config.json').apiKey;
         if (talentKey) {
-            const talentResp = await fetch(`https://api.talentprotocol.com/score?id=${owner}`, {
-                headers: { 'X-API-KEY': talentKey, 'Accept': 'application/json' },
-                signal: AbortSignal.timeout(3000)
-            });
-            if (talentResp.ok) {
-                const talentData = await talentResp.json();
-                if (talentData.score?.points) talentScore = talentData.score.points;
+            for (const wallet of ethosWallets) {
+                try {
+                    const talentResp = await fetch(`https://api.talentprotocol.com/score?id=${wallet}`, {
+                        headers: { 'X-API-KEY': talentKey, 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(3000)
+                    });
+                    if (talentResp.ok) {
+                        const talentData = await talentResp.json();
+                        if (talentData.score?.points && (!talentScore || talentData.score.points > talentScore)) {
+                            talentScore = talentData.score.points;
+                        }
+                    }
+                } catch {}
             }
         }
     } catch {}
@@ -3255,7 +3268,7 @@ function computeCredBreakdown(agent) {
 
     const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
 
-    // External activity: GitHub commits, task completions, integrations
+    // External activity: GitHub commits, task completions, integrations, Ethos & Talent scores
     const externalSignals = [
         hasVerif('github-verified'),  // has linked GitHub
         hasVerif('x-verified'),       // has linked X
@@ -3263,9 +3276,20 @@ function computeCredBreakdown(agent) {
         (agent.externalActivity || 0) > 0, // task completions, API usage
     ].filter(Boolean).length;
 
+    // Ethos Network reputation score (0-2600+ scale, normalize to 0-40 contribution)
+    // Score >1000 = reputable, >1500 = strong, >2000 = excellent
+    const ethosContribution = agent.ethosScore
+        ? Math.min(40, Math.round((agent.ethosScore / 2000) * 40))
+        : 0;
+
+    // Talent Protocol builder score (0-100 scale, normalize to 0-30 contribution)
+    const talentContribution = agent.talentScore
+        ? Math.min(30, Math.round((agent.talentScore / 100) * 30))
+        : 0;
+
     const components = {
         activity: { raw: Math.min(100, (agent.points || 0) * 2), maxRaw: 100 },
-        external: { raw: Math.min(100, externalSignals * 25 + (agent.externalActivity || 0) * 5), maxRaw: 100 },
+        external: { raw: Math.min(100, externalSignals * 15 + (agent.externalActivity || 0) * 5 + ethosContribution + talentContribution), maxRaw: 100 },
         verify: { raw: Math.min(100, verifCount * 25), maxRaw: 100 },
         coinbase: { raw: hasVerif('coinbase-verified') ? 100 : 0, maxRaw: 100 },
         age: { raw: Math.min(100, ageDays * 5), maxRaw: 100 },
