@@ -4206,6 +4206,123 @@ app.get('/api/v2/agent/:id/soul/handshakes', requireSIWA, async (req, res) => {
     }
 });
 
+// ─── Session Outcome API (Platform Cred Reporting) ─────────────
+(() => {
+    const Database = require('better-sqlite3');
+    const sodb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
+
+    // Create tables
+    sodb.exec(`CREATE TABLE IF NOT EXISTS platform_keys (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        platform_name TEXT NOT NULL,
+        api_key TEXT NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        active INTEGER DEFAULT 1
+    )`);
+    sodb.exec(`CREATE TABLE IF NOT EXISTS session_outcomes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_address TEXT NOT NULL,
+        outcome TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        invoice_id TEXT,
+        amount_usdc REAL,
+        timestamp TEXT NOT NULL,
+        counterparty TEXT,
+        source TEXT,
+        metadata_json TEXT,
+        cred_delta REAL NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+    sodb.exec(`CREATE INDEX IF NOT EXISTS idx_so_agent ON session_outcomes(agent_address)`);
+    sodb.exec(`CREATE INDEX IF NOT EXISTS idx_so_session ON session_outcomes(session_id)`);
+
+    // Seed initial API key if none exist
+    const keyCount = sodb.prepare('SELECT COUNT(*) as c FROM platform_keys').get().c;
+    if (keyCount === 0) {
+        sodb.prepare('INSERT INTO platform_keys (platform_name, api_key) VALUES (?, ?)').run(
+            'helixa-internal', 'hxk_a83ea6318c0fa2beb18030cebc5a645b52bfbf524006bc43d02a0a7efa8b7432'
+        );
+        console.log('[SESSION-OUTCOME] Seeded initial platform API key');
+    }
+
+    const VALID_OUTCOMES = ['COMPLETED', 'FAILED', 'VIOLATED', 'DEFAULTED', 'INJECTED'];
+    const ETH_ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+
+    function calcCredDelta(outcome, amountUsdc) {
+        const amt = amountUsdc || 0;
+        switch (outcome) {
+            case 'COMPLETED':  return amt > 100 ? 3 : amt > 10 ? 2 : 1;
+            case 'FAILED':     return amt > 100 ? -3 : amt > 10 ? -2 : -1;
+            case 'VIOLATED':   return amt > 100 ? -10 : amt > 10 ? -7 : -5;
+            case 'DEFAULTED':  return amt > 100 ? -15 : amt > 10 ? -12 : -8;
+            case 'INJECTED':   return -3;
+            default: return 0;
+        }
+    }
+
+    function getTier(cred) {
+        if (cred >= 80) return 'Preferred';
+        if (cred >= 60) return 'Prime';
+        if (cred >= 40) return 'Qualified';
+        if (cred >= 20) return 'Marginal';
+        return 'Junk';
+    }
+
+    app.post('/api/v2/agent/:address/session-outcome', (req, res) => {
+        try {
+            // Auth
+            const apiKey = req.headers['x-api-key'];
+            if (!apiKey) return res.status(401).json({ error: 'Missing X-API-Key header' });
+            const platform = sodb.prepare('SELECT platform_name FROM platform_keys WHERE api_key = ? AND active = 1').get(apiKey);
+            if (!platform) return res.status(403).json({ error: 'Invalid or inactive API key' });
+
+            // Validate address
+            const { address } = req.params;
+            if (!ETH_ADDR_RE.test(address)) return res.status(400).json({ error: 'Invalid agent address format' });
+
+            // Validate payload
+            const { outcome, sessionId, invoiceId, amountUsdc, timestamp, counterparty, metadata } = req.body;
+            if (!outcome || !VALID_OUTCOMES.includes(outcome)) return res.status(400).json({ error: `Invalid outcome. Must be one of: ${VALID_OUTCOMES.join(', ')}` });
+            if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+            if (!timestamp) return res.status(400).json({ error: 'timestamp is required' });
+            if (isNaN(Date.parse(timestamp))) return res.status(400).json({ error: 'timestamp must be valid ISO-8601' });
+            if (counterparty && !ETH_ADDR_RE.test(counterparty)) return res.status(400).json({ error: 'Invalid counterparty address format' });
+
+            // Find agent
+            const agent = sodb.prepare('SELECT tokenId, credScore FROM agents WHERE LOWER(agentAddress) = LOWER(?)').get(address);
+            if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+            // Calculate delta and new cred
+            const delta = calcCredDelta(outcome, amountUsdc);
+            const currentCred = agent.credScore || 0;
+            const newCred = Math.max(0, Math.min(100, currentCred + delta));
+
+            // Store outcome
+            sodb.prepare(`INSERT INTO session_outcomes (agent_address, outcome, session_id, invoice_id, amount_usdc, timestamp, counterparty, source, metadata_json, cred_delta)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+                address.toLowerCase(), outcome, sessionId, invoiceId || null, amountUsdc || null,
+                timestamp, counterparty || null, platform.platform_name,
+                metadata ? JSON.stringify(metadata) : null, delta
+            );
+
+            // Update agent cred
+            sodb.prepare('UPDATE agents SET credScore = ? WHERE tokenId = ?').run(newCred, agent.tokenId);
+
+            res.json({
+                ok: true,
+                credDelta: (delta >= 0 ? '+' : '') + delta,
+                newCred,
+                tier: getTier(newCred),
+            });
+        } catch (e) {
+            console.error('[SESSION-OUTCOME] Error:', e.message);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    console.log('📋 Session outcome endpoint ready: POST /api/v2/agent/:address/session-outcome');
+})();
+
 // ─── Error Handler ──────────────────────────────────────────────
 
 app.use((err, req, res, next) => {
@@ -4935,6 +5052,10 @@ app.use('/preview', (req, res) => {
         .replace(/"\/helixa-logo\.png/g, '"/preview/helixa-logo.png');
     res.type('html').send(html);
 });
+
+app.use('/reports', express.static(path.join(__dirname, 'public', 'reports'), {
+    maxAge: '1h',
+}));
 
 app.use('/video', express.static(path.join(__dirname, 'public', 'video'), {
     maxAge: '7d',
