@@ -1148,12 +1148,33 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
         // TODO: Replace with actual card render URL when available
         const imageUrl = `https://api.helixa.xyz/api/v2/aura/${agent.tokenId}.png`;
         
+        const agentName = agent.name || `Helixa Agent #${agent.tokenId}`;
+        const agentDesc = agent.narrative?.mission 
+            ? `${agent.name} — ${agent.narrative.mission}`
+            : `${agent.name} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`;
+        
         res.json({
-            name: agent.name || `Helixa Agent #${agent.tokenId}`,
-            description: agent.narrative?.mission 
-                ? `${agent.name} — ${agent.narrative.mission}`
-                : `${agent.name} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`,
+            // ERC-8004 registration file fields
+            type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+            name: agentName,
+            description: agentDesc,
             image: imageUrl,
+            services: [
+                { name: 'web', endpoint: `https://helixa.xyz/agent/${agent.tokenId}` },
+                { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '0.3.0' },
+                { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
+                { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
+            ],
+            x402Support: true,
+            active: true,
+            registrations: [
+                {
+                    agentId: agent.tokenId,
+                    agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
+                },
+            ],
+            supportedTrust: ['reputation'],
+            // OpenSea-compatible fields (backward compat)
             external_url: `https://helixa.xyz/agent/${agent.tokenId}`,
             attributes,
         });
@@ -1852,7 +1873,7 @@ function build8004RegistrationFile(tokenId, name, framework, narrative, opts = {
         image: `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
         services: [
             { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
-            { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '1.0.0' },
+            { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '0.3.0' },
             { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
             { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
         ],
@@ -2439,6 +2460,10 @@ app.get('/.well-known/agent.json', (req, res) => {
             skills_sh: 'npx skills add Bendr-20/helixa-agent-skills',
             mcp: 'npm install helixa-mcp-server',
         },
+        registrations: [
+            { agentId: 1, agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}` },
+        ],
+        supportedTrust: ['reputation'],
     });
 });
 
@@ -2452,7 +2477,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
         image: 'https://api.helixa.xyz/api/v2/aura/1.png',
         services: [
             { name: 'web', endpoint: 'https://helixa.xyz' },
-            { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '1.0.0' },
+            { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '0.3.0' },
             { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
             { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
         ],
