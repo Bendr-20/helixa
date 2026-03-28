@@ -2414,6 +2414,34 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
 
 // ─── Discovery & OpenAPI ────────────────────────────────────────
 
+// ─── .well-known/agent.json — Agent discovery manifest ──────────
+app.get('/.well-known/agent.json', (req, res) => {
+    res.json({
+        name: 'Helixa',
+        description: 'The credibility layer for AI agents. Cred scoring, soul locking, agent identity on Base.',
+        url: 'https://helixa.xyz',
+        api: 'https://api.helixa.xyz/api/v2',
+        documentation: 'https://api.helixa.xyz/docs',
+        capabilities: ['cred-scoring', 'agent-identity', 'soul-locking', 'session-outcomes', 'agent-search'],
+        protocols: ['ERC-8004', 'x402'],
+        chain: { name: 'Base', chainId: 8453 },
+        contract: V2_CONTRACT_ADDRESS,
+        endpoints: {
+            check_cred: 'GET /api/v2/agent/{address}/cred',
+            get_agent: 'GET /api/v2/agent/{id}',
+            search_agents: 'GET /api/v2/agents?search={query}',
+            report_outcome: 'POST /api/v2/agent/{address}/session-outcome',
+            mint: 'Contract call: mint() with 0.0025 ETH',
+            stats: 'GET /api/v2/stats',
+        },
+        mint_price: '0.0025 ETH',
+        skills: {
+            skills_sh: 'npx skills add Bendr-20/helixa-agent-skills',
+            mcp: 'npm install helixa-mcp-server',
+        },
+    });
+});
+
 // Well-known agent registry — machine-readable service manifest
 // ERC-8004 domain verification (proves we control this endpoint domain)
 app.get('/.well-known/agent-registration.json', (req, res) => {
@@ -2497,11 +2525,33 @@ app.get('/api/v2/openapi.json', (req, res) => {
         },
         servers: [{ url: 'https://api.helixa.xyz', description: 'Production (Base Mainnet)' }],
         paths: {
+            '/api/v2/stats': {
+                get: {
+                    summary: 'Protocol statistics',
+                    description: 'Returns aggregate Helixa protocol stats: total agents, mints, verifications, cred distribution.',
+                    responses: {
+                        '200': {
+                            description: 'Protocol stats object',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    totalAgents: { type: 'integer' },
+                                    totalVerified: { type: 'integer' },
+                                    totalSoulLocked: { type: 'integer' },
+                                    totalHandshakes: { type: 'integer' },
+                                    avgCredScore: { type: 'number' },
+                                },
+                            } } },
+                        },
+                    },
+                },
+            },
             '/api/v2/agents': {
                 get: {
-                    summary: 'List all agents',
-                    description: 'Returns all registered Helixa agents with personality, traits, cred scores, and metadata.',
+                    summary: 'List or search agents',
+                    description: 'Returns registered Helixa agents. Use search param to filter by name or address.',
                     parameters: [
+                        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by agent name or wallet address' },
                         { name: 'limit', in: 'query', schema: { type: 'integer', default: 100, maximum: 200 } },
                         { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
                     ],
@@ -2513,6 +2563,53 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     summary: 'Get agent by token ID',
                     parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
                     responses: { '200': { description: 'Agent object with full personality, traits, narrative, and cred score' } },
+                },
+            },
+            '/api/v2/agent/{address}/cred': {
+                get: {
+                    summary: 'Check agent Cred score',
+                    description: 'Returns the Cred score, tier, and factor breakdown for an agent by wallet address.',
+                    parameters: [{ name: 'address', in: 'path', required: true, schema: { type: 'string' }, description: 'Agent wallet address (0x...)' }],
+                    responses: {
+                        '200': {
+                            description: 'Cred score breakdown',
+                            content: { 'application/json': { schema: {
+                                type: 'object',
+                                properties: {
+                                    address: { type: 'string' },
+                                    credScore: { type: 'number' },
+                                    tier: { type: 'string', enum: ['basic', 'verified', 'trusted', 'elite', 'legendary'] },
+                                    factors: { type: 'object' },
+                                },
+                            } } },
+                        },
+                        '404': { description: 'Agent not found' },
+                    },
+                },
+            },
+            '/api/v2/agent/{address}/session-outcome': {
+                post: {
+                    summary: 'Report a session outcome',
+                    description: 'Report the outcome of an agent interaction session. Requires API key.',
+                    parameters: [{ name: 'address', in: 'path', required: true, schema: { type: 'string' }, description: 'Agent wallet address' }],
+                    security: [{ apiKey: [] }],
+                    requestBody: {
+                        required: true,
+                        content: { 'application/json': { schema: {
+                            type: 'object',
+                            required: ['outcome'],
+                            properties: {
+                                outcome: { type: 'string', enum: ['success', 'failure', 'partial'] },
+                                details: { type: 'string' },
+                                sessionId: { type: 'string' },
+                                duration: { type: 'integer', description: 'Session duration in seconds' },
+                            },
+                        } } },
+                    },
+                    responses: {
+                        '200': { description: 'Outcome recorded' },
+                        '401': { description: 'Missing or invalid API key' },
+                    },
                 },
             },
             '/api/v2/mint': {
@@ -2604,6 +2701,12 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     in: 'header',
                     name: 'Authorization',
                     description: 'SIWA token: address:timestamp:signature (agent signs message with wallet key)',
+                },
+                apiKey: {
+                    type: 'apiKey',
+                    in: 'header',
+                    name: 'X-API-Key',
+                    description: 'API key for reporting session outcomes',
                 },
             },
         },
