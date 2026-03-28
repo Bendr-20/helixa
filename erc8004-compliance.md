@@ -41,22 +41,37 @@
 | `/.well-known/agent-registration.json` | ✅ Implemented |
 | `/.well-known/agent.json` | ✅ Implemented (with registrations + supportedTrust) |
 
-## Reputation Registry
+## Reputation Registry — `ReputationRegistry.sol` ✅ IMPLEMENTED
 
 | Feature | ERC-8004 Spec | Helixa Status |
 |---------|--------------|---------------|
-| `giveFeedback()` | Required | ❌ Not implemented (separate contract) |
-| `revokeFeedback()` | Required | ❌ Not implemented |
-| `getSummary()` | Required | ❌ Not implemented |
-| Feedback system | Required | ⚠️ We have Cred Scores (off-chain oracle) but not the on-chain feedback registry |
+| Score submission | Required | ✅ `submitReputation(agent, score, metadata)` — ORACLE_ROLE gated |
+| Score query | Required | ✅ `getReputation(agent)` → (score, timestamp, metadata) |
+| History | Required | ✅ `getReputationHistory(agent)` → full array |
+| Tier classification | Required | ✅ `getTier(agent)` — 5 tiers: Junk/Marginal/Qualified/Prime/Preferred |
+| Identity link | Required | ✅ `identityRegistry` pointer, admin-updatable |
+| Events | Required | ✅ `ReputationUpdated(agent, score, oracle, timestamp)` |
+| Access control | Required | ✅ OpenZeppelin AccessControl (ORACLE_ROLE, ADMIN) |
+| Upgradeability | Recommended | ✅ UUPS proxy pattern |
 
-## Validation Registry
+**Contract:** `contracts/ReputationRegistry.sol`
+**Key design:** Address-keyed (not token ID), identity-contract-agnostic
+
+## Validation Registry — `ValidationRegistry.sol` ✅ IMPLEMENTED
 
 | Feature | ERC-8004 Spec | Helixa Status |
 |---------|--------------|---------------|
-| `validationRequest()` | Required | ❌ Not implemented |
-| `validationResponse()` | Required | ❌ Not implemented |
-| Full validation flow | Required | ❌ Not implemented |
+| Submit attestation | Required | ✅ `submitValidation(agent, type, evidence)` — VALIDATOR_ROLE gated |
+| Revoke attestation | Required | ✅ `revokeValidation(agent, id)` — original validator only |
+| Query validations | Required | ✅ `getValidations(agent)`, `getValidation(id)` |
+| Type check | Required | ✅ `isValidated(agent, type)` → bool |
+| Standard types | Required | ✅ identity, capability, security, compliance + custom |
+| Events | Required | ✅ `ValidationSubmitted`, `ValidationRevoked` |
+| Access control | Required | ✅ OpenZeppelin AccessControl (VALIDATOR_ROLE, ADMIN) |
+| Upgradeability | Recommended | ✅ UUPS proxy pattern |
+
+**Contract:** `contracts/ValidationRegistry.sol`
+**Key design:** Address-keyed, supports multiple validators per agent, revocation tracking
 
 ## Summary
 
@@ -71,10 +86,10 @@
 1. **No `register(string agentURI)` function** — Our mint function has a different signature. Would need a V3 contract or wrapper.
 2. **No `getMetadata`/`setMetadata` key-value store** — Spec requires on-chain bytes metadata. We use structured Agent struct + off-chain profiles.
 3. **No `setAgentWallet` with EIP-712 signature** — Critical for agent wallet rotation. Would need contract upgrade.
-4. **No Reputation Registry** — Separate contract needed for on-chain feedback.
-5. **No Validation Registry** — Separate contract needed for validation flows.
+4. ~~No Reputation Registry~~ → ✅ `ReputationRegistry.sol` built (UUPS, address-keyed, 35 tests passing)
+5. ~~No Validation Registry~~ → ✅ `ValidationRegistry.sol` built (UUPS, address-keyed, 35 tests passing)
 
 ### Recommendation
 - **Phase 1 (Done):** Registration file compliance, domain verification, service endpoints ✅
 - **Phase 2:** Deploy a thin proxy/wrapper contract implementing `register(agentURI)`, `setAgentURI`, `getMetadata`/`setMetadata`, and `setAgentWallet` that delegates to existing V2 contract.
-- **Phase 3:** Deploy Reputation Registry and Validation Registry as separate contracts linked to V2.
+- **Phase 3:** ✅ Reputation Registry and Validation Registry built as standalone UUPS contracts. Ready for deployment to Base mainnet.

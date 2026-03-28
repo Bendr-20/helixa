@@ -511,19 +511,23 @@ Link a token to an agent in the terminal.
 
 ## Cred Score System
 
-Cred Scores range 0-100 and are computed from weighted components:
+Cred Scores range 0-100 and are computed from 13 weighted components:
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Activity | 25% | Transaction count and recency |
-| Verification | 15% | SIWA, X, GitHub, Farcaster verifications (25 each) |
-| External | 10% | GitHub commits, task completions |
-| Coinbase | 10% | Coinbase EAS attestation (100 or 0) |
-| Age | 10% | Days since registration |
-| Traits | 10% | Number and variety of traits |
-| Registration Origin | 10% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
+| Onchain Activity | 17% | Transaction count and recency on Base |
+| Verification | 10% | SIWA, X, GitHub, Farcaster verifications |
+| External Activity | 9% | GitHub commits, task completions |
+| Coinbase EAS | 5% | Coinbase Verifications attestation |
+| Account Age | 8% | Days since registration |
+| Trait Richness | 8% | Number and variety of traits |
+| Registration Origin | 8% | AGENT_SIWA=100, API=75, Human=40, Owner=20 |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
 | Soulbound | 5% | Soulbound=100, transferable=0 |
+| Soul Vault | 7% | Soul completeness, locked versions, hash history |
+| ERC-8004 Reputation | 10% | Onchain feedback from Reputation Registry |
+| Work History | 6% | Completed tasks via 0xWork integration |
+| Agent Economy | 2% | Linked token, Bankr profile |
 
 ### Tiers
 

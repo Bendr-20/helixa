@@ -5,7 +5,7 @@
 - **Chain:** Base (Chain ID: 8453)
 - **RPC:** `https://mainnet.base.org`
 - **Explorer:** https://basescan.org
-- **Standard:** ERC-8004 (Trustless Agents)
+- **Standard:** ERC-8004 (Agent Identity)
 
 ---
 
