@@ -99,6 +99,9 @@ app.use(securityHeaders);
 app.use(cors);
 app.use(globalRateLimit);
 
+// Trust Graph Dashboard — mounted as static before any middleware can interfere
+app.use('/trust-graph', express.static(path.resolve(__dirname, 'public', 'trust-graph.html')));
+
 // Doppel voice audio cache (TTS files served for MML <m-audio>) — mounted early to bypass payment middleware
 const doppelAudioPath = path.resolve(__dirname, '..', '..', 'doppel-agent', 'audio-cache');
 app.use('/audio/voice', express.static(doppelAudioPath, {
@@ -456,6 +459,8 @@ if (Object.keys(x402Routes).length > 0) {
     const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
     app.use((req, res, next) => {
         if (req.paymentVerified) return next();
+        // Skip x402 for non-API routes (dashboard pages, static assets)
+        if (!req.path.startsWith('/api/')) return next();
         return x402Mw(req, res, next);
     });
     
@@ -2435,35 +2440,143 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
 
 // ─── Discovery & OpenAPI ────────────────────────────────────────
 
-// ─── .well-known/agent.json — Agent discovery manifest ──────────
+// ─── .well-known/agent.json — Open 402 Directory manifest ──────────
 app.get('/.well-known/agent.json', (req, res) => {
     res.json({
-        name: 'Helixa',
-        description: 'The credibility layer for AI agents. Cred scoring, soul locking, agent identity on Base.',
-        url: 'https://helixa.xyz',
-        api: 'https://api.helixa.xyz/api/v2',
-        documentation: 'https://api.helixa.xyz/docs',
-        capabilities: ['cred-scoring', 'agent-identity', 'soul-locking', 'session-outcomes', 'agent-search'],
-        protocols: ['ERC-8004', 'x402'],
-        chain: { name: 'Base', chainId: 8453 },
-        contract: V2_CONTRACT_ADDRESS,
-        endpoints: {
-            check_cred: 'GET /api/v2/agent/{address}/cred',
-            get_agent: 'GET /api/v2/agent/{id}',
-            search_agents: 'GET /api/v2/agents?search={query}',
-            report_outcome: 'POST /api/v2/agent/{address}/session-outcome',
-            mint: 'Contract call: mint() with 0.0025 ETH',
-            stats: 'GET /api/v2/stats',
+        version: '1.0',
+        origin: 'api.helixa.xyz',
+        payout_address: TREASURY_ADDRESS,
+        display_name: 'Helixa',
+        description: 'The credibility layer for AI agents. On-chain identity registry, cred scoring, soul locking, and trust infrastructure on Base. ERC-8004 compliant.',
+        extensions: {
+            helixa: {
+                contract: V2_CONTRACT_ADDRESS,
+                chain: { name: 'Base', chainId: 8453 },
+                website: 'https://helixa.xyz',
+                skills: {
+                    skills_sh: 'npx skills add Bendr-20/helixa-agent-skills',
+                    mcp: 'npm install helixa-mcp-server',
+                },
+                registrations: [
+                    { agentId: 1, agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}` },
+                ],
+            },
         },
-        mint_price: '0.0025 ETH',
-        skills: {
-            skills_sh: 'npx skills add Bendr-20/helixa-agent-skills',
-            mcp: 'npm install helixa-mcp-server',
+        payments: {
+            x402: {
+                networks: [
+                    {
+                        network: 'base',
+                        asset: 'USDC',
+                        contract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                        facilitator: 'https://x402.dexter.cash',
+                    },
+                ],
+                recipient: TREASURY_ADDRESS,
+            },
         },
-        registrations: [
-            { agentId: 1, agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}` },
+        intents: [
+            {
+                name: 'mint_agent_identity',
+                description: 'Register a new AI agent identity on-chain via the Helixa registry. Creates an ERC-8004 compliant agent NFT on Base with soul traits, cred scoring, and verifiable identity. Requires SIWA (Sign-In With Agent) authentication.',
+                endpoint: 'https://api.helixa.xyz/api/v2/mint',
+                method: 'POST',
+                parameters: {
+                    traits: { type: 'object', required: false, description: 'Agent soul traits (personality, values, capabilities)' },
+                },
+                returns: { type: 'object', description: 'Minted agent token ID, transaction hash, and metadata URI' },
+                price: { amount: PRICING.agentMint, currency: 'USDC', model: 'per_call' },
+            },
+            {
+                name: 'get_agent',
+                description: 'Look up any registered agent by token ID. Returns full profile including soul traits, cred score, tier, name, owner, and verification status.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}',
+                method: 'GET',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                },
+                returns: { type: 'object', description: 'Full agent profile with traits, cred, tier, name, owner address' },
+                price: { amount: 0, currency: 'USD' },
+            },
+            {
+                name: 'search_agents',
+                description: 'Search the Helixa agent registry by name, trait, or keyword. Returns matching agents with cred scores and profiles.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agents',
+                method: 'GET',
+                parameters: {
+                    search: { type: 'string', required: false, description: 'Search query' },
+                },
+                returns: { type: 'array', description: 'Array of matching agent profiles' },
+                price: { amount: 0, currency: 'USD' },
+            },
+            {
+                name: 'check_cred',
+                description: 'Get the credibility score and tier for any registered agent. Returns numeric score (0-100) and tier label (Junk, Marginal, Qualified, Prime, Preferred).',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/cred',
+                method: 'GET',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                },
+                returns: { type: 'object', description: 'Cred score, tier, and tier label' },
+                price: { amount: 0, currency: 'USD' },
+            },
+            {
+                name: 'full_cred_report',
+                description: 'Detailed credibility report with full scoring breakdown across all weighted components. Paid endpoint via x402.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/cred-report',
+                method: 'GET',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                },
+                returns: { type: 'object', description: 'Full scoring breakdown with all CRED_WEIGHTS components and recommendations' },
+                price: { amount: PRICING.credReport, currency: 'USDC', model: 'per_call' },
+                payments: { x402: { direct_price: PRICING.credReport } },
+            },
+            {
+                name: 'update_agent',
+                description: 'Update an agent\'s traits and metadata. Requires SIWA authentication as the agent. Paid via x402.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/update',
+                method: 'POST',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                    traits: { type: 'object', required: true, description: 'Updated soul traits' },
+                },
+                returns: { type: 'object', description: 'Updated agent profile' },
+                price: { amount: PRICING.update, currency: 'USDC', model: 'per_call' },
+                payments: { x402: { direct_price: PRICING.update } },
+            },
+            {
+                name: 'lock_soul',
+                description: 'Lock an agent\'s soul on-chain via the Chain of Identity protocol. Creates an immutable, versioned hash of the agent\'s soul state on the SoulSovereign contract. Paid via x402.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/soul/lock',
+                method: 'POST',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                },
+                returns: { type: 'object', description: 'Soul lock transaction hash, version number, and timestamp' },
+                price: { amount: PRICING.soulLock, currency: 'USDC', model: 'per_call' },
+                payments: { x402: { direct_price: PRICING.soulLock } },
+            },
+            {
+                name: 'verify_soul',
+                description: 'Verify an agent\'s current soul state against the on-chain hash. Returns whether the soul matches the latest locked version.',
+                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/soul/verify',
+                method: 'GET',
+                parameters: {
+                    id: { type: 'integer', required: true, description: 'Agent token ID' },
+                },
+                returns: { type: 'object', description: 'Verification result with match status, version, and timestamps' },
+                price: { amount: 0, currency: 'USD' },
+            },
+            {
+                name: 'get_stats',
+                description: 'Registry-wide statistics including total agents minted, named, verified, soul-locked, and cred distribution.',
+                endpoint: 'https://api.helixa.xyz/api/v2/stats',
+                method: 'GET',
+                returns: { type: 'object', description: 'Registry statistics' },
+                price: { amount: 0, currency: 'USD' },
+            },
         ],
-        supportedTrust: ['reputation'],
     });
 });
 
@@ -4368,7 +4481,7 @@ app.get('/api/v2/agent/:id/soul/handshakes', requireSIWA, async (req, res) => {
     const keyCount = sodb.prepare('SELECT COUNT(*) as c FROM platform_keys').get().c;
     if (keyCount === 0) {
         sodb.prepare('INSERT INTO platform_keys (platform_name, api_key) VALUES (?, ?)').run(
-            'helixa-internal', 'hxk_a83ea6318c0fa2beb18030cebc5a645b52bfbf524006bc43d02a0a7efa8b7432'
+            'helixa-internal', 'hxk_0b5d94329eddb6b9ec3ce85e6493643efc7ed29ee2402c78c1dec82daedf2f0a'
         );
         console.log('[SESSION-OUTCOME] Seeded initial platform API key');
     }
@@ -5184,6 +5297,14 @@ app.use('/preview', (req, res) => {
 app.use('/reports', express.static(path.join(__dirname, 'public', 'reports'), {
     maxAge: '1h',
 }));
+
+app.get('/trust-graph', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'trust-graph.html'));
+});
+
+app.get('/trust-graph-v2', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'trust-graph-v2.html'));
+});
 
 app.use('/video', express.static(path.join(__dirname, 'public', 'video'), {
     maxAge: '7d',
