@@ -1,0 +1,13 @@
+AgentDNA Registry Addresses - Base Mainnet (Chain 8453)
+Deployed: 2026-03-29
+
+ReputationRegistry:
+  Implementation: 0x3C4f323D135dA35225Bd400C4637Ee54cA8caA34
+  Proxy:          0xdAF60adf2305a9202f8455396f7ce2aE2E700cA0
+
+ValidationRegistry:
+  Implementation: 0xfe50F21c83de30bBc8B8D55Ca8e3b9C683937541
+  Proxy:          0x1768e989ed59CA0716094B68B030462E9cD4adA4
+
+Admin: 0x339559A2d1CD15059365FC7bD36b3047BbA480E0
+IdentityRegistry (V2): 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trust Graph v2 - Helixa</title>
+<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #0a0b0f; --surface: #12131a; --surface2: #1a1b24;
+  --accent: #7c5cfc; --text: #e0e0e6; --dim: #6a6b75;
+  --gold: #d4a841; --blue: #4a8fd4; --green: #4ad48a;
+  --grey: #6a6b75; --red: #d44a4a;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Inter', -apple-system, sans-serif; overflow: hidden; height: 100vh; }
+#canvas-container { position: absolute; inset: 0; z-index: 0; }
+canvas { outline: none; }
+
+/* Stats bar */
+#stats-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+  background: var(--surface); border-bottom: 1px solid #2a2b35;
+  display: flex; align-items: center; padding: 8px 16px; gap: 24px;
+  font-size: 13px; flex-wrap: wrap;
+}
+#stats-bar .logo { font-weight: 700; font-size: 16px; color: var(--accent); margin-right: 8px; }
+.stat-item { display: flex; flex-direction: column; }
+.stat-label { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-weight: 600; font-size: 14px; }
+
+/* Search */
+#search-box {
+  margin-left: auto; padding: 6px 12px; background: var(--bg);
+  border: 1px solid #2a2b35; border-radius: 6px; color: var(--text);
+  font-size: 13px; width: 200px; outline: none;
+}
+#search-box:focus { border-color: var(--accent); }
+
+/* Filters */
+#filter-bar {
+  position: fixed; top: 48px; left: 0; right: 0; z-index: 10;
+  background: var(--surface); border-bottom: 1px solid #2a2b35;
+  display: flex; padding: 6px 16px; gap: 6px; flex-wrap: wrap; align-items: center;
+}
+#filter-bar .section-label { color: var(--dim); font-size: 10px; text-transform: uppercase; margin-right: 4px; letter-spacing: 0.5px; }
+.filter-btn {
+  padding: 4px 10px; border-radius: 4px; border: 1px solid #2a2b35;
+  background: var(--bg); color: var(--dim); font-size: 11px; cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-btn:hover { border-color: var(--accent); }
+.filter-sep { width: 1px; height: 20px; background: #2a2b35; margin: 0 6px; }
+#mock-btn { margin-left: auto; background: var(--surface2); color: var(--dim); }
+
+/* Leaderboard */
+#leaderboard {
+  position: fixed; top: 90px; right: 0; width: 280px; bottom: 0; z-index: 10;
+  background: var(--surface); border-left: 1px solid #2a2b35;
+  overflow-y: auto; padding: 12px; display: flex; flex-direction: column;
+}
+#leaderboard h3 { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.lb-item {
+  display: flex; align-items: center; padding: 6px 8px; border-radius: 6px;
+  cursor: pointer; gap: 8px; font-size: 12px; transition: background 0.15s;
+}
+.lb-item:hover { background: var(--surface2); }
+.lb-rank { color: var(--dim); width: 20px; text-align: right; flex-shrink: 0; }
+.lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-score { font-weight: 600; flex-shrink: 0; }
+.lb-tier { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* Profile panel */
+#profile-panel {
+  position: fixed; bottom: 16px; left: 16px; z-index: 20;
+  background: var(--surface); border: 1px solid #2a2b35; border-radius: 10px;
+  padding: 16px; width: 320px; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#profile-panel .close-btn {
+  position: absolute; top: 8px; right: 12px; background: none; border: none;
+  color: var(--dim); font-size: 18px; cursor: pointer;
+}
+#profile-panel h3 { font-size: 16px; margin-bottom: 8px; padding-right: 24px; word-break: break-all; }
+.profile-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #1a1b24; }
+.profile-row .label { color: var(--dim); }
+.profile-row .value { font-weight: 500; word-break: break-all; text-align: right; max-width: 60%; }
+
+/* Loading */
+#loading {
+  position: fixed; inset: 0; z-index: 100; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 12px;
+}
+#loading .spinner { width: 32px; height: 32px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Mobile */
+@media (max-width: 768px) {
+  #leaderboard { display: none; }
+  #search-box { width: 120px; }
+  #profile-panel { width: calc(100vw - 32px); }
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><div>Loading agents...</div></div>
+
+<div id="stats-bar">
+  <span class="logo">HELIXA Trust Graph</span>
+  <div class="stat-item"><span class="stat-label">Total Agents</span><span class="stat-value" id="stat-total">--</span></div>
+  <div class="stat-item"><span class="stat-label">Scored</span><span class="stat-value" id="stat-scored">--</span></div>
+  <div class="stat-item"><span class="stat-label">Soulbound</span><span class="stat-value" id="stat-soulbound">--</span></div>
+  <div class="stat-item"><span class="stat-label">Avg Cred</span><span class="stat-value" id="stat-avg">--</span></div>
+  <div class="stat-item"><span class="stat-label">Visible</span><span class="stat-value" id="stat-visible">--</span></div>
+  <input id="search-box" type="text" placeholder="Search name or address...">
+</div>
+
+<div id="filter-bar">
+  <span class="section-label">Tier</span>
+  <button class="filter-btn active" data-tier="ALL">All</button>
+  <button class="filter-btn" data-tier="PREFERRED" style="--c:var(--gold)">Preferred</button>
+  <button class="filter-btn" data-tier="PRIME" style="--c:var(--blue)">Prime</button>
+  <button class="filter-btn" data-tier="QUALIFIED" style="--c:var(--green)">Qualified</button>
+  <button class="filter-btn" data-tier="MARGINAL" style="--c:var(--grey)">Marginal</button>
+  <button class="filter-btn" data-tier="JUNK" style="--c:var(--red)">Junk</button>
+  <div class="filter-sep"></div>
+  <span class="section-label">Platform</span>
+  <div id="platform-filters"></div>
+  <button class="filter-btn" id="mock-btn">Mock 130K</button>
+</div>
+
+<div id="leaderboard">
+  <h3>Leaderboard - Top 50</h3>
+  <div id="lb-list"></div>
+</div>
+
+<div id="profile-panel">
+  <button class="close-btn" onclick="closeProfile()">x</button>
+  <h3 id="profile-name"></h3>
+  <div id="profile-details"></div>
+</div>
+
+<div id="canvas-container"><div id="load-status" style="color:#7c5cfc;padding:40px;text-align:center;font-size:14px">Initializing graph...</div></div>
+
+<script>
+const TIER_COLORS = {
+  PREFERRED: [212, 168, 65],
+  PRIME: [74, 143, 212],
+  QUALIFIED: [74, 212, 138],
+  MARGINAL: [106, 107, 117],
+  JUNK: [212, 74, 74]
+};
+const TIER_ORDER = { PREFERRED: 0, PRIME: 1, QUALIFIED: 2, MARGINAL: 3, JUNK: 4 };
+
+let allAgents = [];
+let filteredAgents = [];
+let platformCentroids = {};
+let agentPositions = [];
+let currentZoom = 1;
+let activeTiers = new Set(['PREFERRED', 'PRIME', 'QUALIFIED', 'MARGINAL', 'JUNK']);
+let activePlatforms = new Set();
+let searchQuery = '';
+let deckgl = null;
+let useMock = false;
+
+// Ring config per tier
+const RING_CONFIG = {
+  PREFERRED: { rMin: 0, rMax: 100, radius: 150, opacity: 255 },
+  PRIME:     { rMin: 150, rMax: 350, radius: 100, opacity: 255 },
+  QUALIFIED: { rMin: 400, rMax: 700, radius: 60, opacity: 255 },
+  MARGINAL:  { rMin: 800, rMax: 1200, radius: 25, opacity: 160 },
+  JUNK:      { rMin: 1400, rMax: 3000, radius: 5, opacity: 30 }
+};
+
+const RING_BORDERS = [125, 375, 750, 1300, 3100]; // radii for ring dividers
+
+// Layout
+function layoutAgents(agents) {
+  // Group by tier
+  const tierGroups = { PREFERRED: [], PRIME: [], QUALIFIED: [], MARGINAL: [], JUNK: [] };
+  agents.forEach(a => {
+    const tier = a.cred_tier || 'JUNK';
+    if (tierGroups[tier]) tierGroups[tier].push(a);
+    else tierGroups.JUNK.push(a);
+  });
+
+  agentPositions = [];
+  const goldenAngle = 2.399963;
+
+  Object.entries(tierGroups).forEach(([tier, group]) => {
+    const cfg = RING_CONFIG[tier];
+    // Sort by cred_score desc -- higher score closer to inner edge
+    group.sort((a, b) => (b.cred_score || 0) - (a.cred_score || 0));
+
+    group.forEach((agent, idx) => {
+      const t = group.length <= 1 ? 0 : idx / (group.length - 1);
+      const r = cfg.rMin + (cfg.rMax - cfg.rMin) * Math.sqrt(t);
+      const theta = idx * goldenAngle;
+      agentPositions.push({
+        ...agent,
+        _x: r * Math.cos(theta),
+        _y: r * Math.sin(theta),
+        _platform: agent.platform || 'unknown'
+      });
+    });
+  });
+}
+
+function applyFilters() {
+  const q = searchQuery.toLowerCase();
+  filteredAgents = agentPositions.filter(a => {
+    if (!activeTiers.has(a.cred_tier || 'JUNK')) return false;
+    if (activePlatforms.size > 0 && !activePlatforms.has(a._platform)) return false;
+    if (q && !(a.name || '').toLowerCase().includes(q) && !(a.address || '').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('stat-visible').textContent = filteredAgents.length.toLocaleString();
+  renderDeck();
+}
+
+function renderDeck() {
+  const zoom = currentZoom;
+  const zoomLevel = Math.log2(zoom);
+  const layers = [];
+
+  // Ring borders
+  const ringCircles = RING_BORDERS.map(r => {
+    const pts = [];
+    for (let i = 0; i <= 128; i++) {
+      const a = (2 * Math.PI * i) / 128;
+      pts.push([r * Math.cos(a), r * Math.sin(a)]);
+    }
+    return { path: pts };
+  });
+  layers.push(new deck.PathLayer({
+    id: 'ring-borders',
+    data: ringCircles,
+    getPath: d => d.path,
+    getColor: [42, 43, 53, 128],
+    getWidth: 2,
+    widthUnits: 'pixels',
+    pickable: false,
+  }));
+
+  // Ring tier labels
+  const ringLabels = [
+    { text: 'PREFERRED', pos: [0, -60] },
+    { text: 'PRIME', pos: [0, -250] },
+    { text: 'QUALIFIED', pos: [0, -550] },
+    { text: 'MARGINAL', pos: [0, -1000] },
+    { text: 'JUNK', pos: [0, -2200] },
+  ];
+  layers.push(new deck.TextLayer({
+    id: 'ring-labels',
+    data: ringLabels,
+    getPosition: d => d.pos,
+    getText: d => d.text,
+    getSize: 11,
+    getColor: [106, 107, 117, 120],
+    getTextAnchor: 'middle',
+    getAlignmentBaseline: 'center',
+    fontFamily: 'Inter, sans-serif',
+    fontWeight: 700,
+    sizeUnits: 'pixels',
+    billboard: true,
+    letterSpacing: 0.15,
+  }));
+
+  // Agent dots
+  layers.push(new deck.ScatterplotLayer({
+    id: 'agents',
+    data: filteredAgents,
+    getPosition: d => [d._x, d._y],
+    getRadius: d => {
+      const cfg = RING_CONFIG[d.cred_tier || 'JUNK'];
+      return cfg ? cfg.radius : 5;
+    },
+    getFillColor: d => {
+      const c = TIER_COLORS[d.cred_tier] || TIER_COLORS.JUNK;
+      const cfg = RING_CONFIG[d.cred_tier || 'JUNK'];
+      return [c[0], c[1], c[2], cfg ? cfg.opacity : 30];
+    },
+    pickable: true,
+    radiusUnits: 'common',
+    radiusMinPixels: 1,
+    radiusMaxPixels: 30,
+    updateTriggers: {
+      getFillColor: [zoom],
+      getRadius: [zoom]
+    }
+  }));
+
+  // Labels: Preferred + Prime always, Qualified when zoomed
+  const labelAgents = filteredAgents.filter(a =>
+    a.cred_tier === 'PREFERRED' || a.cred_tier === 'PRIME' ||
+    (a.cred_tier === 'QUALIFIED' && zoomLevel > 2)
+  );
+  if (labelAgents.length > 0) {
+    layers.push(new deck.TextLayer({
+      id: 'agent-labels',
+      data: labelAgents,
+      getPosition: d => [d._x, d._y],
+      getText: d => d.name || '',
+      getSize: d => d.cred_tier === 'PREFERRED' ? 14 : d.cred_tier === 'PRIME' ? 12 : 10,
+      getColor: [255, 255, 255, 220],
+      getTextAnchor: 'middle',
+      getAlignmentBaseline: 'bottom',
+      getPixelOffset: [0, -8],
+      fontFamily: 'Inter, sans-serif',
+      fontWeight: 600,
+      sizeUnits: 'pixels',
+      billboard: true,
+      updateTriggers: { getData: [zoomLevel] }
+    }));
+  }
+
+  if (deckgl) {
+    deckgl.setProps({ layers });
+  }
+}
+
+function initDeck() {
+  if (typeof deck === 'undefined') {
+    document.getElementById('canvas-container').innerHTML = '<div style="color:#d44a4a;padding:40px;text-align:center;font-size:16px">deck.gl failed to load. Try refreshing.</div>';
+    return;
+  }
+  try {
+  deckgl = new deck.DeckGL({
+    container: 'canvas-container',
+    views: new deck.OrthographicView(),
+    initialViewState: {
+      target: [0, 0, 0],
+      zoom: -3,
+    },
+    controller: { scrollZoom: true, dragPan: true, doubleClickZoom: true, touchRotate: false, inertia: 300, minZoom: -4, maxZoom: 8 },
+    onViewStateChange: ({ viewState }) => {
+      currentZoom = Math.pow(2, viewState.zoom);
+      renderDeck();
+      return viewState;
+    },
+    onClick: (info) => {
+      if (info.object && info.object.address) showProfile(info.object);
+    },
+    getTooltip: ({ object }) => {
+      if (!object || !object.name) return null;
+      return { html: `<b>${object.name}</b><br>${object.cred_tier} | Score: ${object.cred_score || 0}`, style: { background: '#12131a', color: '#e0e0e6', border: '1px solid #2a2b35', borderRadius: '6px', padding: '8px', fontSize: '12px' } };
+    },
+    layers: []
+  });
+  } catch(e) {
+    document.getElementById('canvas-container').innerHTML = '<div style="color:#d44a4a;padding:40px;text-align:center;font-size:16px">WebGL error: ' + e.message + '</div>';
+  }
+}
+
+function showProfile(agent) {
+  const panel = document.getElementById('profile-panel');
+  document.getElementById('profile-name').textContent = agent.name || 'Unnamed';
+  const rows = [
+    ['Address', agent.address || '--'],
+    ['Platform', agent._platform],
+    ['Cred Score', agent.cred_score || 0],
+    ['Cred Tier', agent.cred_tier || 'JUNK'],
+  ];
+  document.getElementById('profile-details').innerHTML = rows.map(([l, v]) =>
+    `<div class="profile-row"><span class="label">${l}</span><span class="value">${v}</span></div>`
+  ).join('');
+  panel.style.display = 'block';
+}
+
+function closeProfile() {
+  document.getElementById('profile-panel').style.display = 'none';
+}
+
+function buildLeaderboard(agents) {
+  const top50 = agents.slice().sort((a, b) => (b.cred_score || 0) - (a.cred_score || 0)).slice(0, 50);
+  const list = document.getElementById('lb-list');
+  list.innerHTML = top50.map((a, i) => {
+    const c = TIER_COLORS[a.cred_tier] || TIER_COLORS.JUNK;
+    return `<div class="lb-item" onclick='showProfile(${JSON.stringify(a).replace(/'/g, "&#39;")})'>
+      <span class="lb-rank">${i + 1}</span>
+      <span class="lb-tier" style="background:rgb(${c.join(',')})"></span>
+      <span class="lb-name">${a.name || 'Unnamed'}</span>
+      <span class="lb-score">${a.cred_score || 0}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(agents) {
+  document.getElementById('stat-total').textContent = agents.length.toLocaleString();
+  const scored = agents.filter(a => (a.cred_score || 0) > 0).length;
+  document.getElementById('stat-scored').textContent = scored.toLocaleString();
+  const soulbound = agents.filter(a => a.cred_tier && a.cred_tier !== 'JUNK').length;
+  document.getElementById('stat-soulbound').textContent = soulbound.toLocaleString();
+  const avg = agents.length ? (agents.reduce((s, a) => s + (a.cred_score || 0), 0) / agents.length).toFixed(1) : 0;
+  document.getElementById('stat-avg').textContent = avg;
+}
+
+function setupFilters(agents) {
+  // Tier buttons
+  document.querySelectorAll('[data-tier]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tier = btn.dataset.tier;
+      if (tier === 'ALL') {
+        if (activeTiers.size === 5) {
+          activeTiers = new Set(['PREFERRED', 'PRIME', 'QUALIFIED', 'MARGINAL', 'JUNK']);
+        } else {
+          activeTiers = new Set(['PREFERRED', 'PRIME', 'QUALIFIED', 'MARGINAL', 'JUNK']);
+        }
+      } else {
+        if (activeTiers.has(tier)) activeTiers.delete(tier); else activeTiers.add(tier);
+      }
+      document.querySelectorAll('[data-tier]').forEach(b => {
+        if (b.dataset.tier === 'ALL') b.classList.toggle('active', activeTiers.size === 5);
+        else b.classList.toggle('active', activeTiers.has(b.dataset.tier));
+      });
+      applyFilters();
+    });
+  });
+
+  // Platform buttons
+  const platforms = [...new Set(agents.map(a => a.platform || 'unknown'))].sort((a, b) => {
+    const ca = agents.filter(x => (x.platform || 'unknown') === a).length;
+    const cb = agents.filter(x => (x.platform || 'unknown') === b).length;
+    return cb - ca;
+  });
+  const pf = document.getElementById('platform-filters');
+  platforms.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn active';
+    btn.dataset.platform = p;
+    btn.textContent = p;
+    btn.addEventListener('click', () => {
+      if (activePlatforms.size === 0) {
+        // First click: select only this
+        activePlatforms = new Set([p]);
+        document.querySelectorAll('[data-platform]').forEach(b => b.classList.toggle('active', b.dataset.platform === p));
+      } else if (activePlatforms.has(p) && activePlatforms.size === 1) {
+        // Deselect last = show all
+        activePlatforms.clear();
+        document.querySelectorAll('[data-platform]').forEach(b => b.classList.add('active'));
+      } else {
+        if (activePlatforms.has(p)) activePlatforms.delete(p); else activePlatforms.add(p);
+        document.querySelectorAll('[data-platform]').forEach(b => b.classList.toggle('active', activePlatforms.has(b.dataset.platform)));
+      }
+      applyFilters();
+    });
+    pf.appendChild(btn);
+  });
+
+  // Search
+  document.getElementById('search-box').addEventListener('input', (e) => {
+    searchQuery = e.target.value;
+    applyFilters();
+  });
+
+  // Mock button
+  document.getElementById('mock-btn').addEventListener('click', () => {
+    if (useMock) {
+      useMock = false;
+      document.getElementById('mock-btn').textContent = 'Mock 130K';
+      init(allAgents);
+    } else {
+      useMock = true;
+      document.getElementById('mock-btn').textContent = 'Use Real Data';
+      const mock = generateMock(130000);
+      init(mock);
+    }
+  });
+}
+
+function generateMock(n) {
+  const platforms = ['erc8004', 'unknown', '8004scan', 'clawnch', 'helixa', 'virtuals', 'solana'];
+  const tiers = ['JUNK', 'JUNK', 'JUNK', 'JUNK', 'MARGINAL', 'QUALIFIED', 'PRIME', 'PREFERRED'];
+  const mock = [];
+  for (let i = 0; i < n; i++) {
+    const tier = tiers[Math.floor(Math.random() * tiers.length)];
+    mock.push({
+      name: `Agent-${i}`,
+      address: `0x${i.toString(16).padStart(40, '0')}`,
+      platform: platforms[Math.floor(Math.random() * platforms.length)],
+      cred_score: tier === 'JUNK' ? 0 : Math.floor(Math.random() * 100),
+      cred_tier: tier
+    });
+  }
+  return mock;
+}
+
+function init(agents) {
+  layoutAgents(agents);
+  updateStats(agents);
+  buildLeaderboard(agents);
+  applyFilters();
+}
+
+async function main() {
+  const status = document.getElementById('load-status');
+  if (status) status.textContent = 'Starting deck.gl...';
+  initDeck();
+  if (status) status.textContent = 'Fetching 132K agents...';
+  try {
+    const resp = await fetch('/trust-graph/api/agents');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    allAgents = await resp.json();
+    if (status) status.textContent = 'Loaded ' + allAgents.length + ' agents. Rendering...';
+  } catch (e) {
+    if (status) status.textContent = 'Failed to load: ' + e.message;
+    console.error('Fetch failed:', e.message);
+    allAgents = [];
+  }
+  document.getElementById('loading').style.display = 'none';
+  setupFilters(allAgents);
+  init(allAgents);
+  if (status) {
+    if (filteredAgents.length > 0) {
+      status.textContent = filteredAgents.length + ' agents rendered. Zoom/pan to explore.';
+      setTimeout(() => status.style.display = 'none', 3000);
+    } else {
+      status.textContent = 'WARNING: 0 agents after filtering. Data: ' + allAgents.length + ' loaded, positions: ' + agentPositions.length;
+    }
+  }
+}
+
+main();
+</script>
+</body>
+</html>

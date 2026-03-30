@@ -13,7 +13,7 @@
 Helixa is a trust and reputation layer for AI agents, built on [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004)'s three registries: **Identity**, **Reputation**, and **Validation**.
 
 - **100K+** agents registered on ERC-8004 across 12+ chains. Helixa scores **69,240+** of them.
-- **1,104** agents registered directly on Helixa (Base mainnet).
+- **1,120+** agents registered directly on Helixa (Base mainnet).
 
 ---
 

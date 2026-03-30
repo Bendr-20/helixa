@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document outlines how A0x can integrate with Helixa's credibility infrastructure to give AI clones verifiable reputation scores, trait enrichment, and on-chain identity via ERC-8004.
+This document outlines how A0x can integrate with Helixa's credibility infrastructure to give AI clones verifiable reputation scores, trait enrichment, and onchain identity via ERC-8004.
 
 The integration is structured in three phases:
 
@@ -254,7 +254,7 @@ User asks clone to do something
 
 ## Phase 3: On-Chain Registration via ERC-8004
 
-Clones mint a permanent on-chain identity through the Helixa V2 contract, creating a trust chain from the real person to their verified clone.
+Clones mint a permanent onchain identity through the Helixa V2 contract, creating a trust chain from the real person to their verified clone.
 
 ### Contract
 
@@ -266,7 +266,7 @@ Clones mint a permanent on-chain identity through the Helixa V2 contract, creati
 ```
 Real Person (leader)
   → signs off on clone's knowledge base (soul lock)
-    → Clone gets on-chain identity (ERC-8004)
+    → Clone gets onchain identity (ERC-8004)
       → Cred score accrues via session outcomes
 ```
 
@@ -274,7 +274,7 @@ Real Person (leader)
 
 #### `mint()`
 
-Register a new agent on-chain.
+Register a new agent onchain.
 
 ```solidity
 function mint(
@@ -330,7 +330,7 @@ A standalone, address-keyed registry for universal cred scores. Any protocol can
 function getReputation(address agent) external view returns (uint256 score, string memory tier)
 ```
 
-This is the on-chain equivalent of the `/api/v2/agent/{address}` endpoint.
+This is the onchain equivalent of the `/api/v2/agent/{address}` endpoint.
 
 ### Validation Registry
 
@@ -359,7 +359,7 @@ Other protocols can check these attestations before interacting with a clone.
 - [ ] Implement clone minting flow via V2 contract
 - [ ] Generate soul hash from clone's knowledge base
 - [ ] Implement leader sign-off (soul lock) UX
-- [ ] Query Reputation Registry for on-chain scores
+- [ ] Query Reputation Registry for onchain scores
 
 ---
 

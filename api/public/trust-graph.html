@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helixa - Trust Graph</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0b0f;--surface:#12131a;--surface2:#1a1b25;--border:#2a2b35;
+  --text:#e0e0e6;--text2:#8a8b95;--gold:#d4a841;--blue:#4a8fd4;
+  --green:#4ad48a;--grey:#6a6b75;--red:#d44a4a;--accent:#7c5cfc;
+}
+html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);z-index:10;position:relative}
+.header h1{font-size:22px;font-weight:700;letter-spacing:-0.5px}
+.header h1 span{color:var(--accent);font-weight:300;font-size:15px;margin-left:8px}
+.header-right{display:flex;align-items:center;gap:14px}
+.header-right a{font-size:13px;color:var(--text2)}
+.header-right a:hover{color:var(--text)}
+.toggle-btn{font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;background:var(--surface2);color:var(--text2);cursor:pointer}
+.toggle-btn:hover{border-color:var(--accent);color:var(--text)}
+.toggle-btn.active{border-color:var(--accent);color:var(--accent)}
+
+/* STATS BAR */
+.stats-bar{display:flex;flex-wrap:wrap;gap:0;padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto}
+.stat{padding:8px 16px;font-size:12px;color:var(--text2);border-right:1px solid var(--border);white-space:nowrap}
+.stat strong{color:var(--text);font-size:14px;margin-right:4px}
+.stat:last-child{border-right:none}
+
+/* SEARCH */
+.search-wrap{position:relative;margin:8px 20px;z-index:20;width:calc(100% - 40px);max-width:400px}
+.search-input{width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.search-input:focus{border-color:var(--accent)}
+.search-results{background:var(--surface);border:1px solid var(--border);border-radius:6px;margin-top:4px;max-height:240px;overflow-y:auto;display:none}
+.search-results.show{display:block}
+.search-result{padding:8px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.search-result:hover{background:var(--surface2)}
+
+/* MAIN LAYOUT */
+.main{display:flex;height:calc(100vh - 82px);position:relative}
+.graph-area{flex:1;position:relative;overflow:hidden}
+.graph-area svg{width:100%;height:100%}
+
+/* SIDEBAR */
+.sidebar{width:320px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.sidebar-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.sidebar-section h3{font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:10px}
+.agent-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:13px;transition:background .15s}
+.agent-row:hover{background:var(--surface2)}
+.agent-row.selected{background:var(--accent);color:#fff}
+.agent-rank{width:18px;text-align:right;color:var(--text2);font-size:11px;flex-shrink:0}
+.agent-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-score{font-weight:600;font-size:12px;flex-shrink:0}
+.tier-badge{font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;flex-shrink:0;text-transform:uppercase}
+.tier-Preferred{background:var(--gold);color:#000}
+.tier-Prime{background:var(--blue);color:#fff}
+.tier-Qualified{background:var(--green);color:#000}
+.tier-Marginal{background:var(--grey);color:#fff}
+.tier-Junk{background:var(--red);color:#fff}
+
+/* PROFILE PANEL */
+.profile-panel{display:none;position:absolute;right:320px;top:0;width:360px;height:100%;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;z-index:5}
+.profile-panel.show{display:block}
+.profile-open .search-wrap{display:none!important}
+.profile-close{position:absolute;top:10px;right:12px;cursor:pointer;font-size:18px;color:var(--text2);background:none;border:none}
+.profile-close:hover{color:var(--text)}
+.profile-header{padding:20px 16px 12px;border-bottom:1px solid var(--border)}
+.profile-header h2{font-size:18px;margin-bottom:4px}
+.profile-addr{font-size:11px;color:var(--text2);font-family:monospace;word-break:break-all}
+.profile-body{padding:16px}
+.profile-row{margin-bottom:12px}
+.profile-row label{font-size:11px;text-transform:uppercase;color:var(--text2);display:block;margin-bottom:3px}
+.profile-row .val{font-size:14px}
+.profile-traits{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.profile-traits span{font-size:11px;padding:2px 8px;background:var(--surface2);border-radius:3px}
+.profile-links{display:flex;gap:10px;margin-top:16px}
+.profile-links a{font-size:12px;padding:6px 14px;border-radius:5px;border:1px solid var(--border)}
+.profile-links a:hover{border-color:var(--accent)}
+.profile-narrative{font-size:13px;color:var(--text2);line-height:1.5;margin-top:8px}
+
+/* TOOLTIP */
+.tooltip{position:absolute;pointer-events:none;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-size:12px;z-index:30;display:none;white-space:nowrap}
+
+/* MOBILE */
+@media(max-width:768px){
+  .sidebar{position:absolute;right:0;top:0;height:100%;z-index:8;display:none}
+  .sidebar.show{display:block}
+  .profile-panel{right:0;width:100%}
+  .search-wrap{width:100%;max-width:none;margin:0}
+  .mobile-toggle{display:block!important;position:static;flex-shrink:0}
+  .stats-bar{flex-wrap:wrap;padding:6px 12px;gap:4px}
+  .stats-bar .stat{font-size:12px;padding:4px 8px;border:none;min-width:auto}
+  .stats-bar .stat[style*="display:flex"]{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:2px 0}
+  .header{padding:8px 12px}
+  .header h1{font-size:18px}
+}
+.mobile-toggle{display:none;position:absolute;top:8px;right:8px;z-index:25;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);cursor:pointer;font-size:12px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Helixa <span>Trust Graph</span></h1>
+  <div class="header-right">
+    <button class="toggle-btn" id="dataToggle" onclick="toggleDataSource()">Mock Data</button>
+    <a href="https://docs.helixa.xyz" target="_blank">API Docs</a>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar">
+  <div class="stat"><strong id="statTotal">--</strong> Agents Indexed</div>
+  <div class="stat"><strong id="statSoulbound">--</strong> Soulbound</div>
+  <div class="stat"><strong id="statAvgCred">--</strong> Avg Cred</div>
+  <div class="stat" id="tierBreakdown"></div>
+  <div class="stat" style="display:flex;gap:4px;align-items:center">
+    <span style="color:var(--text2);font-size:11px;margin-right:4px">Tier:</span>
+    <button class="tier-filter active" data-tier="all" onclick="filterTier('all')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;font-size:11px">All</button>
+    <button class="tier-filter" data-tier="Preferred" onclick="filterTier('Preferred')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--gold);cursor:pointer;font-size:11px">Preferred</button>
+    <button class="tier-filter" data-tier="Prime" onclick="filterTier('Prime')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--blue);cursor:pointer;font-size:11px">Prime</button>
+    <button class="tier-filter" data-tier="Qualified" onclick="filterTier('Qualified')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--green);cursor:pointer;font-size:11px">Qualified</button>
+    <button class="tier-filter" data-tier="Marginal" onclick="filterTier('Marginal')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--grey);cursor:pointer;font-size:11px">Marginal</button>
+  </div>
+  <div class="stat" style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+    <span style="color:var(--text2);font-size:11px;margin-right:4px">Platform:</span>
+    <button class="plat-filter active" data-plat="all" onclick="filterPlatform('all')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--accent);color:#fff;cursor:pointer;font-size:11px">All</button>
+    <button class="plat-filter" data-plat="openclaw" onclick="filterPlatform('openclaw')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">OpenClaw</button>
+    <button class="plat-filter" data-plat="bankr" onclick="filterPlatform('bankr')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">Bankr</button>
+    <button class="plat-filter" data-plat="virtuals" onclick="filterPlatform('virtuals')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">Virtuals</button>
+    <button class="plat-filter" data-plat="based" onclick="filterPlatform('based')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">Based</button>
+    <button class="plat-filter" data-plat="eliza" onclick="filterPlatform('eliza')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">ElizaOS</button>
+    <button class="plat-filter" data-plat="crewai" onclick="filterPlatform('crewai')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">CrewAI</button>
+    <button class="plat-filter" data-plat="langchain" onclick="filterPlatform('langchain')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">LangChain</button>
+    <button class="plat-filter" data-plat="soulbound" onclick="filterPlatform('soulbound')" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:#d4a841;cursor:pointer;font-size:11px">Soulbound</button>
+  </div>
+</div>
+
+<div style="padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+  <div class="search-wrap">
+    <input class="search-input" id="searchInput" placeholder="Search by name or address..." autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('show')">Leaderboard</button>
+</div>
+
+<div class="main">
+
+  <div class="graph-area" id="graphArea">
+    <svg id="graphSvg"></svg>
+  </div>
+
+  <div class="profile-panel" id="profilePanel">
+    <button class="profile-close" onclick="closeProfile()">x</button>
+    <button onclick="closeProfile()" style="width:100%;padding:10px;margin-bottom:12px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;cursor:pointer;font-size:14px">Back to Graph</button>
+    <div class="profile-header">
+      <h2 id="profName">--</h2>
+      <div class="profile-addr" id="profAddr">--</div>
+    </div>
+    <div class="profile-body" id="profBody"></div>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-section">
+      <h3>Top by Cred</h3>
+      <div id="topCred"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Recently Soulbound</h3>
+      <div id="topSoulbound"></div>
+    </div>
+    <div class="sidebar-section">
+      <h3>Newest Agents</h3>
+      <div id="topNewest"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const API = 'https://api.helixa.xyz/api/v2';
+const TIER_COLORS = {Preferred:'#d4a841',Prime:'#4a8fd4',Qualified:'#4ad48a',Marginal:'#6a6b75',Junk:'#d44a4a'};
+const TIER_ORDER = ['Preferred','Prime','Qualified','Marginal','Junk'];
+
+let allAgents = [];
+let useMock = false;
+let simulation, svg, g, nodeEls, selectedAgent = null;
+
+function getTier(score) {
+  if (score >= 80) return 'Preferred';
+  if (score >= 60) return 'Prime';
+  if (score >= 40) return 'Qualified';
+  if (score >= 20) return 'Marginal';
+  return 'Junk';
+}
+
+function truncAddr(a) { return a ? a.slice(0,6)+'...'+a.slice(-4) : ''; }
+
+// MOCK DATA
+function generateMock() {
+  const frameworks = ['openclaw','based','virtuals','bankr','eliza','goat'];
+  const names = ['Atlas','Nova','Cipher','Drift','Echo','Flux','Glyph','Helix','Ion','Jade','Kite','Lux','Mist','Nyx','Orb','Pulse','Quasar','Rift','Spark','Thorn','Umbra','Vex','Warp','Xeno','Yaw','Zen','Aegis','Bolt','Core','Dune','Edge','Fuse','Grid','Haze','Iris','Jinx','Keen','Loop','Myth','Neon','Opal','Pike','Quad','Rune','Silo','Tide','Unit','Volt','Wisp','Zeal'];
+  const agents = [];
+  for (let i = 0; i < 120; i++) {
+    const score = Math.max(0, Math.min(100, Math.floor(Math.random() * 100)));
+    const addr = '0x' + Array.from({length:40},()=>'0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+    agents.push({
+      tokenId: i+1,
+      name: names[i % names.length] + (i >= names.length ? ' '+(Math.floor(i/names.length)+1) : ''),
+      agentAddress: addr,
+      framework: frameworks[Math.floor(Math.random()*frameworks.length)],
+      verified: Math.random()>0.7,
+      soulbound: Math.random()>0.6,
+      mintOrigin: Math.random()>0.5?'AGENT_SIWA':'HUMAN',
+      credScore: score,
+      points: Math.floor(Math.random()*500),
+      traitCount: Math.floor(Math.random()*5),
+      personality: null,
+      owner: addr,
+      mintedAt: new Date(Date.now() - Math.random()*30*86400000).toISOString()
+    });
+  }
+  return agents;
+}
+
+async function fetchAgents() {
+  if (useMock) return generateMock();
+  try {
+    // Fetch 500 agents in batches
+    const batches = await Promise.all([
+      fetch(API+'/agents?limit=100&offset=0&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=100&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=200&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=300&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=400&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=500&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=600&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=700&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=800&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=900&spam=true').then(r=>r.json()),
+      fetch(API+'/agents?limit=100&offset=1000&spam=true').then(r=>r.json()),
+    ]);
+    const raw = batches.flatMap(b => b.agents || []);
+    // Deduplicate by address
+    const seen = new Set();
+    const agents = raw.filter(a => {
+      const key = a.agentAddress || a.tokenId;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    // Store total from first batch
+    window._apiTotal = batches[0].totalUnfiltered || batches[0].total || agents.length;
+    return agents;
+  } catch(e) {
+    console.warn('API failed, falling back to mock:', e);
+    useMock = true;
+    document.getElementById('dataToggle').classList.add('active');
+    document.getElementById('dataToggle').textContent = 'Mock Data (API failed)';
+    return generateMock();
+  }
+}
+
+function toggleDataSource() {
+  useMock = !useMock;
+  const btn = document.getElementById('dataToggle');
+  btn.classList.toggle('active', useMock);
+  btn.textContent = useMock ? 'Mock Data' : 'Live API';
+  init();
+}
+
+function updateStats(agents) {
+  const total = window._apiTotal || agents.length;
+  const sb = agents.filter(a=>a.soulbound).length;
+  const avg = agents.length ? (agents.reduce((s,a)=>s+a.credScore,0)/agents.length).toFixed(1) : 0;
+  document.getElementById('statTotal').textContent = total.toLocaleString();
+  document.getElementById('statSoulbound').textContent = sb.toLocaleString();
+  document.getElementById('statAvgCred').textContent = avg;
+  const tiers = {};
+  agents.forEach(a => { const t = getTier(a.credScore); tiers[t] = (tiers[t]||0)+1; });
+  document.getElementById('tierBreakdown').innerHTML = TIER_ORDER.map(t =>
+    `<span style="color:${TIER_COLORS[t]}">${t}: ${tiers[t]||0}</span>`
+  ).join(' &middot; ');
+}
+
+function updateSidebar(agents) {
+  const sorted = [...agents].sort((a,b)=>b.credScore-a.credScore);
+  const soulbound = agents.filter(a=>a.soulbound).sort((a,b)=>new Date(b.mintedAt)-new Date(a.mintedAt));
+  const newest = [...agents].sort((a,b)=>new Date(b.mintedAt)-new Date(a.mintedAt));
+
+  document.getElementById('topCred').innerHTML = renderList(sorted.slice(0,10));
+  document.getElementById('topSoulbound').innerHTML = renderList(soulbound.slice(0,10));
+  document.getElementById('topNewest').innerHTML = renderList(newest.slice(0,10));
+}
+
+function renderList(list) {
+  return list.map((a,i) => {
+    const tier = getTier(a.credScore);
+    return `<div class="agent-row" data-id="${a.tokenId}" onclick="selectAgent(${a.tokenId})">
+      <span class="agent-rank">${i+1}</span>
+      <span class="agent-name">${a.name || truncAddr(a.agentAddress)}</span>
+      <span class="agent-score" style="color:${TIER_COLORS[tier]}">${a.credScore}</span>
+      <span class="tier-badge tier-${tier}">${tier}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectAgent(tokenId) {
+  const agent = allAgents.find(a=>a.tokenId===tokenId);
+  if (!agent) return;
+  selectedAgent = tokenId;
+  showProfile(agent);
+  highlightNode(tokenId);
+  // Highlight sidebar
+  document.querySelectorAll('.agent-row').forEach(el => el.classList.toggle('selected', +el.dataset.id===tokenId));
+}
+
+function showProfile(a) {
+  const panel = document.getElementById('profilePanel');
+  const tier = getTier(a.credScore);
+  document.getElementById('profName').textContent = a.name || 'Unnamed Agent';
+  document.getElementById('profAddr').textContent = a.agentAddress;
+  document.getElementById('profBody').innerHTML = `
+    <div class="profile-row"><label>Cred Score</label><div class="val" style="color:${TIER_COLORS[tier]};font-size:24px;font-weight:700">${a.credScore} <span class="tier-badge tier-${tier}">${tier}</span></div></div>
+    <div class="profile-row"><label>Framework</label><div class="val">${a.framework || 'Unknown'}</div></div>
+    <div class="profile-row"><label>Soulbound</label><div class="val">${a.soulbound ? 'Yes' : 'No'}</div></div>
+    <div class="profile-row"><label>Verified</label><div class="val">${a.verified ? 'Yes' : 'No'}</div></div>
+    <div class="profile-row"><label>Mint Origin</label><div class="val">${a.mintOrigin || '--'}</div></div>
+    <div class="profile-row"><label>Registered</label><div class="val">${a.mintedAt ? new Date(a.mintedAt).toLocaleDateString() : '--'}</div></div>
+    <div class="profile-row"><label>Points</label><div class="val">${a.points || 0}</div></div>
+    ${a.personality ? `<div class="profile-row"><label>Personality</label><div class="profile-narrative">${Object.entries(a.personality).map(([k,v])=>`<strong>${k}:</strong> ${v}`).join('<br>')}</div></div>` : ''}
+    <div class="profile-links">
+      <a href="https://basescan.org/address/${a.agentAddress}" target="_blank">View on Basescan</a>
+      <a href="https://docs.helixa.xyz" target="_blank">Integrate via API</a>
+    </div>
+  `;
+  panel.classList.add('show');
+  document.body.classList.add('profile-open');
+}
+
+let activeTierFilter = 'all';
+let activePlatFilter = 'all';
+
+function applyFilters() {
+  if (!nodeEls) return;
+  nodeEls.attr('opacity', d => {
+    const tierMatch = activeTierFilter === 'all' || getTier(d.credScore) === activeTierFilter;
+    const fw = (d.framework||'').toLowerCase();
+    let platMatch = activePlatFilter === 'all';
+    if (activePlatFilter === 'soulbound') platMatch = d.soulbound;
+    else if (activePlatFilter !== 'all') platMatch = fw.includes(activePlatFilter);
+    return (tierMatch && platMatch) ? 1 : 0.08;
+  });
+  const filtered = allAgents.filter(a => {
+    const tierMatch = activeTierFilter === 'all' || getTier(a.credScore) === activeTierFilter;
+    const fw = (a.framework||'').toLowerCase();
+    let platMatch = activePlatFilter === 'all';
+    if (activePlatFilter === 'soulbound') platMatch = a.soulbound;
+    else if (activePlatFilter !== 'all') platMatch = fw.includes(activePlatFilter);
+    return tierMatch && platMatch;
+  });
+  updateSidebar(filtered);
+}
+
+function filterPlatform(plat) {
+  activePlatFilter = plat;
+  document.querySelectorAll('.plat-filter').forEach(b => {
+    b.classList.toggle('active', b.dataset.plat === plat);
+    b.style.background = b.dataset.plat === plat ? 'var(--accent)' : 'transparent';
+  });
+  applyFilters();
+}
+
+function filterTier(tier) {
+  activeTierFilter = tier;
+  document.querySelectorAll('.tier-filter').forEach(b => {
+    b.classList.toggle('active', b.dataset.tier === tier);
+    b.style.background = b.dataset.tier === tier ? 'var(--accent)' : 'transparent';
+  });
+  applyFilters();
+}
+
+function closeProfile() {
+  document.getElementById('profilePanel').classList.remove('show');
+  document.body.classList.remove('profile-open');
+  selectedAgent = null;
+  document.querySelectorAll('.agent-row').forEach(el => el.classList.remove('selected'));
+  if (nodeEls) nodeEls.attr('stroke', null).attr('stroke-width', 0);
+}
+
+function highlightNode(tokenId) {
+  if (!nodeEls) return;
+  nodeEls.attr('stroke', d => d.tokenId === tokenId ? '#fff' : null)
+         .attr('stroke-width', d => d.tokenId === tokenId ? 3 : 0);
+  // Center on node
+  const node = allAgents.find(a=>a.tokenId===tokenId);
+  if (node && node.x != null) {
+    const transform = d3.zoomTransform(svg.node());
+    const tx = -node.x * transform.k + graphW/2;
+    const ty = -node.y * transform.k + graphH/2;
+    svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(transform.k));
+  }
+}
+
+// SEARCH
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  if (!q) { searchResults.classList.remove('show'); return; }
+  const matches = allAgents.filter(a =>
+    (a.name && a.name.toLowerCase().includes(q)) || a.agentAddress.toLowerCase().includes(q)
+  ).slice(0,10);
+  if (!matches.length) { searchResults.classList.remove('show'); return; }
+  searchResults.innerHTML = matches.map(a => {
+    const tier = getTier(a.credScore);
+    return `<div class="search-result" onclick="selectAgent(${a.tokenId});searchResults.classList.remove('show')">
+      <span>${a.name || truncAddr(a.agentAddress)}</span>
+      <span class="tier-badge tier-${tier}">${a.credScore}</span>
+    </div>`;
+  }).join('');
+  searchResults.classList.add('show');
+});
+document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) searchResults.classList.remove('show'); });
+
+// GRAPH
+let graphW, graphH, zoom;
+
+function buildGraph(agents) {
+  const container = document.getElementById('graphArea');
+  graphW = container.clientWidth;
+  graphH = container.clientHeight;
+
+  d3.select('#graphSvg').selectAll('*').remove();
+  svg = d3.select('#graphSvg').attr('width', graphW).attr('height', graphH);
+
+  // Cluster centers by framework
+  const frameworks = [...new Set(agents.map(a=>a.framework||'unknown'))];
+  const clusterCenters = {};
+  const angleStep = (2*Math.PI)/frameworks.length;
+  const clusterRadius = Math.min(graphW,graphH)*0.25;
+  frameworks.forEach((f,i) => {
+    clusterCenters[f] = {
+      x: graphW/2 + clusterRadius * Math.cos(angleStep*i),
+      y: graphH/2 + clusterRadius * Math.sin(angleStep*i)
+    };
+  });
+
+  // Init positions near cluster centers
+  agents.forEach(a => {
+    const c = clusterCenters[a.framework||'unknown'];
+    a.x = c.x + (Math.random()-0.5)*120;
+    a.y = c.y + (Math.random()-0.5)*120;
+  });
+
+  // Generate sparse connections (same framework, nearby cred)
+  const links = [];
+  const byFramework = {};
+  agents.forEach(a => { (byFramework[a.framework||'unknown'] = byFramework[a.framework||'unknown']||[]).push(a); });
+  Object.values(byFramework).forEach(group => {
+    const sorted = [...group].sort((a,b)=>b.credScore-a.credScore);
+    // Connect top agents in each framework lightly
+    for (let i = 0; i < Math.min(sorted.length-1, 8); i++) {
+      links.push({source:sorted[i].tokenId, target:sorted[i+1].tokenId});
+    }
+  });
+
+  zoom = d3.zoom().scaleExtent([0.2, 5]).on('zoom', e => g.attr('transform', e.transform));
+  svg.call(zoom);
+
+  g = svg.append('g');
+
+  // Links
+  const linkEls = g.append('g').selectAll('line').data(links).join('line')
+    .attr('stroke', '#1e1f2a').attr('stroke-width', 0.5).attr('opacity', 0.4);
+
+  // Nodes
+  const nodeScale = d3.scaleSqrt().domain([0,100]).range([3,18]);
+  nodeEls = g.append('g').selectAll('circle').data(agents, d=>d.tokenId).join('circle')
+    .attr('r', d => nodeScale(d.credScore))
+    .attr('fill', d => TIER_COLORS[getTier(d.credScore)])
+    .attr('opacity', 0.85)
+    .attr('cursor', 'pointer')
+    .on('mouseover', (e,d) => {
+      const tip = document.getElementById('tooltip');
+      tip.style.display = 'block';
+      tip.textContent = `${d.name||truncAddr(d.agentAddress)} | Cred: ${d.credScore}`;
+      tip.style.left = (e.pageX+12)+'px';
+      tip.style.top = (e.pageY-8)+'px';
+    })
+    .on('mousemove', (e) => {
+      const tip = document.getElementById('tooltip');
+      tip.style.left = (e.pageX+12)+'px';
+      tip.style.top = (e.pageY-8)+'px';
+    })
+    .on('mouseout', () => { document.getElementById('tooltip').style.display='none'; })
+    .on('click', (e,d) => selectAgent(d.tokenId))
+    .call(d3.drag()
+      .on('start', (e,d) => { if(!e.active) simulation.alphaTarget(0.1).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag', (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end', (e,d) => { if(!e.active) simulation.alphaTarget(0); d.fx=null; d.fy=null; })
+    );
+
+  // Framework labels - subtle, behind nodes
+  g.append('g').selectAll('text').data(frameworks).join('text')
+    .attr('x', f => clusterCenters[f].x)
+    .attr('y', f => clusterCenters[f].y - clusterRadius*0.35)
+    .attr('text-anchor', 'middle')
+    .attr('class', 'cluster-label')
+    .attr('fill', 'rgba(255,255,255,0.06)')
+    .attr('font-size', '16px')
+    .attr('font-weight', '700')
+    .attr('pointer-events', 'none')
+    .text(f => f.toUpperCase());
+
+  // Resolve link references
+  const idMap = {};
+  agents.forEach(a => idMap[a.tokenId] = a);
+  const resolvedLinks = links.map(l => ({source: idMap[l.source], target: idMap[l.target]})).filter(l=>l.source&&l.target);
+
+  simulation = d3.forceSimulation(agents)
+    .force('charge', d3.forceManyBody().strength(-15))
+    .force('center', d3.forceCenter(graphW/2, graphH/2).strength(0.05))
+    .force('collision', d3.forceCollide().radius(d => nodeScale(d.credScore)+2))
+    .force('link', d3.forceLink(resolvedLinks).id(d=>d.tokenId).distance(40).strength(0.3))
+    .force('cluster', forceCluster(clusterCenters, 0.15))
+    .on('tick', () => {
+      nodeEls.attr('cx', d=>d.x).attr('cy', d=>d.y);
+      linkEls.attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+             .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+    });
+}
+
+function forceCluster(centers, strength) {
+  let nodes;
+  function force(alpha) {
+    nodes.forEach(d => {
+      const c = centers[d.framework||'unknown'];
+      d.vx += (c.x - d.x) * alpha * strength;
+      d.vy += (c.y - d.y) * alpha * strength;
+    });
+  }
+  force.initialize = (n) => { nodes = n; };
+  return force;
+}
+
+async function init() {
+  allAgents = await fetchAgents();
+  updateStats(allAgents);
+  updateSidebar(allAgents);
+  buildGraph(allAgents);
+}
+
+init();
+window.addEventListener('resize', () => { if(allAgents.length) buildGraph(allAgents); });
+</script>
+</body>
+</html>
