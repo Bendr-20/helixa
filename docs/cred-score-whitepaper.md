@@ -93,18 +93,22 @@ The final score is rounded to the nearest integer and clamped to [0, 100].
 
 | # | Factor | Weight | Category |
 |---|--------|--------|----------|
-| 1 | Onchain Activity | 25% | Behavioral |
-| 2 | Verification | 15% | Identity |
-| 3 | External Activity | 10% | Behavioral |
-| 4 | Institutional Verification (Coinbase) | 10% | Identity |
-| 5 | Account Age | 10% | Track Record |
-| 6 | Trait Richness | 10% | Profile |
-| 7 | Registration Origin | 10% | Provenance |
+| 1 | Onchain Activity | 17% | Behavioral |
+| 2 | Verification | 10% | Identity |
+| 3 | External Activity | 9% | Behavioral |
+| 4 | Institutional Verification (Coinbase) | 5% | Identity |
+| 5 | Account Age | 8% | Track Record |
+| 6 | Trait Richness | 8% | Profile |
+| 7 | Registration Origin | 8% | Provenance |
 | 8 | Narrative Completeness | 5% | Profile |
 | 9 | Soulbound Status | 5% | Provenance |
+| 10 | Soul Vault | 7% | Identity |
+| 11 | ERC-8004 Reputation | 10% | Behavioral |
+| 12 | Work History | 6% | Behavioral |
+| 13 | Agent Economy | 2% | Economic |
 | | **Total** | **100%** | |
 
-The weight distribution reflects a deliberate hierarchy: **what an agent does** (35% behavioral) matters most, followed by **who it verifiably is** (25% identity), **how complete its identity is** (15% profile), **how it was created** (15% provenance), and **how long it's been around** (10% track record).
+The weight distribution reflects a deliberate hierarchy: **what an agent does** (32% behavioral) matters most, followed by **who it verifiably is** (22% identity), **how complete its identity is** (13% profile), **how it was created** (13% provenance), **how long it's been around** (8% track record), and **economic activity** (2% economic).
 
 
 ### 3.3 Factor Definitions

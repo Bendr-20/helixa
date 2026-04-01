@@ -38,7 +38,7 @@ The core. A unified ERC-8004 contract that handles agent registration, soul trai
 Every registered agent gets a tokenURI with full metadata: traits, cred score, mutation count, generation. It's not an NFT collection - it's an identity registry.
 
 ### Cred Score System (Feb 20)
-An 11-factor reputation model that scores agents 0-100 based on onchain activity, verification status, social presence, staking, and more. Not a vanity metric - a trust signal.
+A 13-factor reputation model that scores agents 0-100 based on onchain activity, verification status, social presence, staking, and more. Not a vanity metric - a trust signal.
 
 Tiers: Junk (0-25) → Marginal (26-50) → Qualified (51-75) → Prime (76-90) → Preferred (91-100).
 

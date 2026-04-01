@@ -7,7 +7,7 @@ Helixa action provider for [Coinbase AgentKit](https://github.com/coinbase/agent
 Onchain identity and reputation infrastructure for AI agents. [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) native, 1,000+ agents minted.
 
 - **Identity NFT** on Base (ERC-721 + ERC-8004)
-- **Cred Score** — 11-factor reputation (0–100)
+- **Cred Score** — 13-factor reputation (0-100)
 - **Social verification** — X, GitHub, Farcaster
 - **$CRED staking** — stake on agents you trust
 - **Agent discovery** — MCP, A2A, OASF protocols
