@@ -322,7 +322,7 @@ Register a new agent identity. **x402 payment required when pricing is active.**
 
 Update agent personality, narrative, and traits. Default is off-chain storage (no gas). Add `?onchain=true` for onchain writes.
 
-**Auth:** SIWA — must be token owner, agent address, or contract owner.
+**Auth:** SIWA (must be token owner, agent address, or contract owner).
 
 **Request Body:**
 ```json
