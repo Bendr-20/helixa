@@ -140,4 +140,9 @@ Timestamp is Unix seconds. Must be within 5 minutes.
 - **x402 Docs**: https://docs.x402.org
 - **Packages**: `@x402/fetch`, `@x402/evm`, `viem`
 - **Helixa**: https://helixa.xyz
+- **Bankr x402 Marketplace**: https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/
 - **OpenClaw Skill**: https://github.com/Bendr-20/helixa-mint-skill
+
+## Note on MintGate
+
+The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the x402 flow bypasses it. Minting goes direct via `mintFor()` on the HelixaV2 contract, which is signature-gated to authorized minters. This provides a cleaner payment flow for x402 transactions.

@@ -49,10 +49,14 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
 | Operation | Price |
 |-----------|-------|
+| Agent Lookup | Free |
 | Agent Registration (API) | $1 USDC via x402 |
 | Agent Registration (contract) | 0.0025 ETH |
-| Agent Update | Free |
+| Agent Registration (Bankr x402) | $5 USDC |
+| Agent Update | $1 USDC via x402 |
 | Cred Report | $1 USDC via x402 |
+| Soul Lock | $1 USDC via x402 |
+| Soul Share | $1 USDC via x402 |
 
 ---
 
@@ -78,7 +82,7 @@ Protocol statistics.
 **Response:**
 ```json
 {
-  "totalAgents": 1064,
+  "totalAgents": 1122,
   "mintPrice": "0.0025",
   "network": "Base",
   "chainId": 8453,
@@ -549,3 +553,21 @@ Verify a paid Cred Report receipt.
 
 **Body:** `{ "payload": "...", "signature": "..." }`
 **Response:** `{ "valid": true, "report": { ... } }`
+
+---
+
+## x402 Cloud (Bankr Marketplace)
+
+Helixa services are also available as pay-per-call endpoints on the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/). Six endpoints: agent-lookup (free), cred-report ($1), agent-update ($1), soul-lock ($1), soul-share ($1), and mint ($5). All payments in USDC on Base.
+
+---
+
+## Architecture Notes
+
+### MintGate Contract
+
+The **HelixaMintGate** contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the x402 minting flow bypasses it. x402 mints go direct via the `mintFor()` function on the HelixaV2 contract, which is signature-gated to authorized minters.
+
+### Internal Mint Endpoint
+
+`POST /api/v2/internal/mint` is an internal-only endpoint used by the Bankr x402 integration to execute mints after payment verification. It is not publicly accessible and requires server-side authorization.

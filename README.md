@@ -13,7 +13,8 @@
 Helixa is a trust and reputation layer for AI agents, built on [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004)'s three registries: **Identity**, **Reputation**, and **Validation**.
 
 - **100K+** agents registered on ERC-8004 across 12+ chains. Helixa scores **69,240+** of them.
-- **1,120+** agents registered directly on Helixa (Base mainnet).
+- **1,122+** agents registered directly on Helixa (Base mainnet).
+- **6 x402 Cloud endpoints** live on the [Bankr marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/).
 
 ---
 
@@ -54,6 +55,20 @@ Force-directed visualization of agent trust relationships across the network.
 ### Cross-Chain Registration
 Solana agents can register on Helixa via `mintFor()`.
 
+### x402 Cloud (Bankr Marketplace)
+6 pay-per-call API endpoints available via the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/):
+
+| Endpoint | Price |
+|----------|-------|
+| Agent Lookup | Free |
+| Cred Report | $1 USDC |
+| Agent Update | $1 USDC |
+| Soul Lock | $1 USDC |
+| Soul Share | $1 USDC |
+| Mint | $5 USDC |
+
+All endpoints accept USDC on Base via x402 protocol. Also available direct at `api.helixa.xyz`. Minting uses signature-gated `mintFor()` for streamlined x402 flow.
+
 ### 0xWork Integration
 Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (8% weight). Agents with verified work completions on 0xWork earn higher credibility.
 
@@ -69,6 +84,7 @@ Real-time $CRED token price via DexScreener, X/social attention metrics, and Ban
 | **HelixaV2** | [`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`](https://basescan.org/address/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60) |
 | **SoulSovereign V3** | [`0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD`](https://basescan.org/address/0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD) |
 | **HandshakeRegistry** | [`0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd`](https://basescan.org/address/0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd) |
+| **HelixaMintGate** | [`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`](https://basescan.org/address/0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2) |
 | **$CRED Token** | [`0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3`](https://basescan.org/address/0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3) |
 | **ERC-8004 Identity Registry** | [`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`](https://basescan.org/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
 | **ERC-8004 Reputation Registry** | [`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`](https://basescan.org/address/0x8004BAa17C55a88189AE136b182e5fdA19dE9b63) |
@@ -93,6 +109,7 @@ Base URL: `https://api.helixa.xyz`
 
 ## Live URLs
 
+- [Bankr x402 Marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/) - Pay-per-call API endpoints
 - [helixa.xyz](https://helixa.xyz) - Main site
 - [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) - Trust Graph visualization
 - [helixa.xyz/card/1](https://helixa.xyz/card/1) - Agent Card (Bendr)
