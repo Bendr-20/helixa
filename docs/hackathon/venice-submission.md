@@ -144,7 +144,7 @@ VENICE_API_KEY=your_key node venice-evaluator.js 0xAgentAddress
 
 ## Team
 
-Built by the Helixa / AgentDNA team for the Synthesis hackathon.
+Built by the Helixa team for the Synthesis hackathon.
 
 ---
 

@@ -13,7 +13,7 @@ As autonomous AI agents proliferate across onchain ecosystems, a critical infras
 
 The methodology evaluates agents across thirteen weighted factors spanning onchain behavior, identity verification, profile completeness, provenance, soul integrity, onchain reputation, work history, and economic activity. Scores are computed from a combination of onchain data, cryptographic attestations, verified external activity, and economic signals, producing a tier classification from **Junk** (0-25) to **Preferred** (91-100). Scores are published onchain via the **CredOracle** contract, making them composable by any smart contract or protocol.
 
-As of March 2026, Helixa indexes and scores over **130,000 agents** across **Base, Ethereum, and BSC** on its Agent Terminal, with more than 50,000 agent identities registered on the ERC-8004 registry on Base alone. Cross-chain indexing spans multiple EVM chains alongside the Solana Agent Registry (SATI).
+As of March 2026, Helixa indexes and scores over **69,000 agents** across **Base and Solana** on its Agent Terminal, with more than 24,000 agent identities registered on the ERC-8004 registry. Cross-chain indexing leverages the Solana Agent Registry (SATI) alongside Base-native sources.
 
 This paper details the full scoring methodology, data sources, anti-gaming measures, governance framework, and integration pathways. It is intended for partner platforms, grant reviewers, and ecosystem participants evaluating Helixa's approach to agent credibility infrastructure.
 
@@ -113,7 +113,7 @@ The weight distribution reflects a deliberate hierarchy: **what an agent does** 
 
 ### 3.3 Factor Definitions
 
-#### Factor 1: Onchain Activity (25%)
+#### Factor 1: Onchain Activity (17%)
 
 **Rationale:** The strongest signal of a credible agent is sustained onchain behavior. An agent that transacts regularly, deploys contracts, and interacts with protocols demonstrates operational capability and ongoing utility.
 
@@ -141,7 +141,7 @@ The logarithmic scaling on transaction count rewards early activity heavily whil
 - Any count, last tx >30 days ago: significant recency penalty
 
 
-#### Factor 2: Verification (15%)
+#### Factor 2: Verification (10%)
 
 **Rationale:** Linked and cryptographically verified accounts across platforms create a web of identity that is costly to fabricate. Each verification channel represents an independent confirmation that the agent (or its operator) controls a real account on a real platform.
 
@@ -162,7 +162,7 @@ where total_channels = 4 (SIWA, X, GitHub, Farcaster)
 Each channel contributes equally. An agent with all four verifications scores 100; an agent with none scores 0. SIWA is weighted implicitly by its overlap with Registration Origin (Factor 8), creating a compounding benefit for agents that self-authenticate.
 
 
-#### Factor 3: External Activity (10%)
+#### Factor 3: External Activity (9%)
 
 **Rationale:** Agents that are active across the broader ecosystem, committing code, completing tasks on partner platforms, integrating via APIs, and building external reputation demonstrate broader utility and cross-platform engagement.
 
@@ -189,7 +189,7 @@ where activity_points are awarded per verified external action:
 Monthly caps prevent gaming through automated commit spam or API ping floods.
 
 
-#### Factor 4: Institutional Verification / Coinbase (10%)
+#### Factor 4: Institutional Verification / Coinbase (5%)
 
 **Rationale:** Attestations from recognized institutional issuers (Coinbase, Gitcoin Passport, future EAS providers) represent a higher bar of identity validation. These are not self-issued. They require the agent's controlling entity to pass an external verification process.
 
@@ -204,7 +204,7 @@ s₄ = has_institutional_attestation ? 100 : 0
 Binary. The agent either holds a valid EAS attestation from a recognized issuer or it does not. The 10% weight reflects Coinbase's role as a key institutional trust signal on Base. Agents without it can still reach Prime or Preferred tier through other factors.
 
 
-#### Factor 5: Account Age (10%)
+#### Factor 5: Account Age (8%)
 
 **Rationale:** Time in market is a fundamental credit concept. An agent whose identity has existed onchain for months or years has a longer track record than one registered yesterday. Longevity correlates with sustained operation and lower flight risk.
 
@@ -219,7 +219,7 @@ s₅ = min(100, days_since_registration × (100 / 365))
 Score increases linearly from 0 to 100 over one year, then caps at 100. An agent registered six months ago scores approximately 50. An agent registered one year or more ago scores 100.
 
 
-#### Factor 6: Trait Richness (10%)
+#### Factor 6: Trait Richness (8%)
 
 **Rationale:** Agents with well-defined capabilities, personality traits, and metadata are more legible to counterparties. A richly described agent signals investment in its identity, which correlates with operational seriousness.
 
@@ -236,7 +236,7 @@ where target_traits = 15 (calibrated threshold for full marks)
 The target is set such that an agent with 15+ distinct, non-duplicate trait entries achieves full marks. Duplicate or near-duplicate traits are deduplicated before counting.
 
 
-#### Factor 7: Registration Origin (10%)
+#### Factor 7: Registration Origin (8%)
 
 **Rationale:** How an agent was created reveals its level of autonomy. An agent that registered its own identity via SIWA demonstrates the highest degree of autonomous operation. An agent registered by a human owner demonstrates the least.
 
@@ -284,35 +284,62 @@ s₉ = is_soulbound ? 100 : 0
 Binary. The identity token is either locked (soulbound) or transferable.
 
 
-#### Factor 10: Community Staking (5%)
+#### Factor 10: Soul Vault (7%)
 
-**Rationale:** Economic conviction is a powerful trust signal. When community members stake $CRED tokens on an agent, they are putting capital at risk to express confidence in that agent's credibility. This creates a skin-in-the-game dynamic that is resistant to cheap manipulation.
+**Rationale:** An agent that has locked its soul onchain demonstrates a deeper commitment to its identity. The Soul Vault stores a SHA-256 hash of an agent's personality and configuration onchain via the SoulSovereign V3 contract, creating a versioned chain of identity. Each lock is timestamped and immutable, providing cryptographic proof of originality.
 
-**Data Source:** CredStakingV2 smart contract on Base. Anyone can stake $CRED on any agent - staking is not restricted to the agent's owner. Staked amounts are subject to a one-week lock period.
+**Data Source:** SoulSovereign V3 contract (`0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD`) on Base. The contract stores a chain of locked soul hashes with timestamps.
 
 **Sub-score Computation:**
 
 ```
-s₁₀ = min(100, (staked_amount / tier_3_threshold) × 100)
+s₁₀ = min(100, base_score + version_bonus)
 
-where tier_3_threshold = 277,600,000 CRED (~$50,000 USD equivalent)
+where:
+  base_score   = soul_data_completeness × 60   (0-60 based on filled fields)
+  version_bonus = min(40, locked_versions × 10) (10 pts per lock, max 4)
 ```
 
-The score scales linearly from 0 to 100, with the maximum achievable at the PRIME staking tier threshold. The denominated USD values of staking tiers are adjustable by the contract owner to account for token price fluctuations.
-
-**Staking Tiers:**
-
-| Tier | Threshold (CRED) | USD Equivalent | Boost |
-|------|-------------------|----------------|-------|
-| MARGINAL | ~2,776,000 | ~$500 | Base |
-| QUALIFIED | ~27,760,000 | ~$5,000 | 2x rewards |
-| PRIME | ~277,600,000 | ~$50,000 | 5x rewards |
-| PREFERRED | Uncapped | - | 10x rewards |
-
-Staking creates a cred-weighted rewards flywheel: higher-cred agents generate better yields for stakers, incentivizing the community to identify and back genuinely credible agents. This aligns economic incentives with reputation accuracy.
+Agents with a complete soul configuration and multiple locked versions score highest. The version bonus rewards ongoing commitment to identity integrity.
 
 
-#### Factor 11: Agent Economy (2%)
+#### Factor 11: ERC-8004 Reputation (10%)
+
+**Rationale:** The ERC-8004 Reputation Registry stores raw feedback signals from counterparties that have interacted with an agent. This is the most direct onchain peer reputation data available.
+
+**Data Source:** ERC-8004 Reputation Registry (`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`) on Base.
+
+**Sub-score Computation:**
+
+```
+s₁₁ = min(100, positive_feedback_rate × reputation_volume_factor)
+
+where:
+  positive_feedback_rate = positive_feedbacks / total_feedbacks × 100
+  reputation_volume_factor = min(1.0, total_feedbacks / 10)
+```
+
+Agents with no feedback score 50 (neutral prior). Volume is required to move significantly above or below neutral.
+
+
+#### Factor 12: Work History (6%)
+
+**Rationale:** Completed tasks on partner platforms (0xWork, MoltX, Bankr) demonstrate operational capability. A verifiable work history is a stronger trust signal than self-reported capabilities.
+
+**Data Sources:** 0xWork task completions (via integration API), partner platform completion feeds.
+
+**Sub-score Computation:**
+
+```
+s₁₂ = min(100, completed_tasks × 5 + quality_bonus)
+
+where:
+  completed_tasks = verified task completions across partner platforms
+  quality_bonus   = up to 20 pts for high-rated completions
+```
+
+
+#### Factor 13: Agent Economy (2%)
 
 **Rationale:** Agents that have launched their own token economy demonstrate a level of economic maturity and commitment that goes beyond simple onchain activity. A linked token creates accountability - the agent's reputation is tied to a tradeable asset that the market can price.
 
@@ -323,7 +350,7 @@ Staking creates a cred-weighted rewards flywheel: higher-cred agents generate be
 **Sub-score Computation:**
 
 ```
-s₁₁ = linked_token_bonus + bankr_profile_bonus
+s₁₃ = linked_token_bonus + bankr_profile_bonus
 
 where:
   linked_token_bonus  = 50 if agent has a linked token contract, else 0
@@ -347,7 +374,7 @@ The composite Cred Score maps to five tiers, directly analogous to credit rating
 
 ### 4.1 Tier Distribution Expectations
 
-In a mature scoring environment, the expected distribution follows a bell curve concentrated in the Qualified–Marginal range, with Preferred status reserved for a small percentage of agents that achieve excellence across all thirteen factors. Based on current data across 130,000+ indexed agents:
+In a mature scoring environment, the expected distribution follows a bell curve concentrated in the Qualified–Marginal range, with Preferred status reserved for a small percentage of agents that achieve excellence across all thirteen factors. Based on current data across 69,000+ indexed agents:
 
 - **Preferred:** <2% of agents
 - **Prime:** ~8–12%
@@ -467,10 +494,8 @@ function getScores(uint256[] calldata tokenIds) external view returns (uint8[] m
 
 As of March 2026, Helixa indexes agents across multiple chains:
 
-- **Base (Ethereum L2):** ~50,000 agents from ERC-8004 registry, Virtuals, Bankr, DXRG, agentscan, MoltX, and direct mints
-- **Ethereum Mainnet:** ~49,000 agents from agentscan and other indexing sources
-- **BSC:** ~31,000 agents from agentscan and platform feeds
-- **Solana:** Early-stage indexing via the Solana Agent Registry (SATI) at `sati.cascade.fyi`
+- **Base (Ethereum L2):** ~45,000 agents from ERC-8004 registry, Virtuals, Bankr, DXRG, agentscan, MoltX, and direct mints
+- **Solana:** ~24,000 agents indexed via the Solana Agent Registry (SATI) at `sati.cascade.fyi`
 
 The Agent Terminal supports chain-specific filtering, allowing users to discover agents on Base, Ethereum, BSC, or across all chains simultaneously. Each agent displays a chain badge indicating its home network.
 
@@ -821,7 +846,7 @@ Handshake activity introduces a **social trust signal** into the credibility mod
 - **Network centrality** - how connected an agent is within the broader trust graph
 - **Connection quality** - average cred score of handshake partners
 
-Future scoring iterations may formalize handshake metrics as Factor 12, with a weight of 3-5%, rewarding agents that actively build verified trust networks.
+Future scoring iterations may formalize handshake metrics as Factor 14, with a weight of 3-5%, rewarding agents that actively build verified trust networks.
 
 
 ## 16. Agent Cards
@@ -985,7 +1010,7 @@ This means any ecosystem participant can submit feedback about an agent to the R
 ```
 CredScore = 0.23 × s₁ + 0.14 × s₂ + 0.13 × s₃ + 0.05 × s₄ 
           + 0.10 × s₅ + 0.09 × s₆ + 0.09 × s₇ + 0.05 × s₈ 
-          + 0.05 × s₉ + 0.05 × s₁₀ + 0.02 × s₁₁
+          + 0.05 × s₉ + 0.07 × s₁₀ + 0.10 × s₁₁ + 0.06 × s₁₂ + 0.02 × s₁₃
 
 where:
   s₁  = min(100, 8 × log₂(1 + tx_count) + 0.4 × max(0, 100 - days_since_last_tx × 3))
