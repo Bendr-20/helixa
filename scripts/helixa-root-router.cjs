@@ -4,10 +4,19 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT || 3460);
 const API_BASE = 'http://127.0.0.1:3457';
+const PUBLIC_API_BASE = 'https://api.helixa.xyz';
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'api', 'public');
 const V2_HTML = path.join(PUBLIC_DIR, 'trust-graph-v2.html');
 const LOGO_PNG = path.resolve(__dirname, '..', 'docs', 'helixa-logo.png');
 const HQ_IMAGE = path.resolve(__dirname, '..', 'assets', 'misc', 'bro-handshake-ref.jpg');
+
+const TIER_RING = {
+  PREFERRED: { stroke: '#e8b84b', glow: 'rgba(232,184,75,0.35)', inner: 'rgba(232,184,75,0.12)' },
+  PRIME: { stroke: '#5a9de6', glow: 'rgba(90,157,230,0.35)', inner: 'rgba(90,157,230,0.12)' },
+  QUALIFIED: { stroke: '#2fb86f', glow: 'rgba(47,184,111,0.30)', inner: 'rgba(47,184,111,0.10)' },
+  MARGINAL: { stroke: '#8f8f94', glow: 'rgba(143,143,148,0.25)', inner: 'rgba(143,143,148,0.08)' },
+  JUNK: { stroke: '#cc2d2d', glow: 'rgba(204,45,45,0.28)', inner: 'rgba(204,45,45,0.08)' },
+};
 
 const cache = {
   expiresAt: 0,
@@ -63,6 +72,31 @@ function tierForScore(rawScore) {
   if (score >= 51) return 'QUALIFIED';
   if (score >= 26) return 'MARGINAL';
   return 'JUNK';
+}
+
+function auraCircleSvg(tokenId, tier) {
+  const palette = TIER_RING[String(tier || 'JUNK').toUpperCase()] || TIER_RING.JUNK;
+  const auraUrl = `${PUBLIC_API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="avatar-clip">
+      <circle cx="128" cy="128" r="78" />
+    </clipPath>
+  </defs>
+  <circle cx="128" cy="128" r="98" fill="${palette.inner}" />
+  <circle cx="128" cy="128" r="102" fill="none" stroke="${palette.glow}" stroke-width="18" filter="url(#glow)" />
+  <circle cx="128" cy="128" r="96" fill="rgba(255,255,255,0.02)" stroke="${palette.stroke}" stroke-width="8" />
+  <circle cx="128" cy="128" r="82" fill="rgba(10,10,20,0.14)" stroke="rgba(255,255,255,0.35)" stroke-width="2" />
+  <image href="${auraUrl}" x="44" y="44" width="168" height="168" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatar-clip)" />
+</svg>`;
 }
 
 function normalizeAgent(agent, handshakeCount) {
@@ -266,8 +300,8 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname.startsWith('/trust-graph/api/aura-circle/')) {
       const tokenId = pathname.replace('/trust-graph/api/aura-circle/', '');
-      const upstream = `${API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png${url.search}`;
-      await proxyBinary(res, upstream);
+      const tier = url.searchParams.get('tier') || 'JUNK';
+      send(res, 200, auraCircleSvg(tokenId, tier), { 'Content-Type': 'image/svg+xml; charset=utf-8' });
       return;
     }
 
