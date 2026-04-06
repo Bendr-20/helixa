@@ -12,6 +12,7 @@ const HQ_IMAGE = path.resolve(__dirname, '..', 'assets', 'misc', 'bro-handshake-
 const cache = {
   expiresAt: 0,
   data: null,
+  pending: null,
 };
 
 function send(res, status, body, headers = {}) {
@@ -131,7 +132,7 @@ async function buildData() {
         from,
         to,
         reciprocated: Boolean(edge.reciprocated),
-        type: edge.reciprocated ? 'reciprocated' : 'handshake',
+        type: edge.reciprocated ? 'handshake-accepted' : 'handshake',
         createdAt: edge.createdAt || edge.timestamp || null,
       };
     })
@@ -146,10 +147,20 @@ async function buildData() {
 
 async function getData() {
   if (cache.data && cache.expiresAt > Date.now()) return cache.data;
-  const data = await buildData();
-  cache.data = data;
-  cache.expiresAt = Date.now() + 10_000;
-  return data;
+  if (cache.pending) return cache.pending;
+
+  cache.pending = (async () => {
+    const data = await buildData();
+    cache.data = data;
+    cache.expiresAt = Date.now() + 60_000;
+    return data;
+  })();
+
+  try {
+    return await cache.pending;
+  } finally {
+    cache.pending = null;
+  }
 }
 
 async function getDetailedAgent(address) {
