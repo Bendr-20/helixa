@@ -7,7 +7,12 @@ const API_BASE = 'http://127.0.0.1:3457';
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'api', 'public');
 const V2_HTML = path.join(PUBLIC_DIR, 'trust-graph-v2.html');
 const LOGO_PNG = path.resolve(__dirname, '..', 'docs', 'helixa-logo.png');
-const HQ_JPG = path.join(PUBLIC_DIR, 'helixa-hq.jpg');
+const HQ_IMAGE = path.resolve(__dirname, '..', 'assets', 'misc', 'bro-handshake-ref.jpg');
+
+const cache = {
+  expiresAt: 0,
+  data: null,
+};
 
 function send(res, status, body, headers = {}) {
   res.writeHead(status, {
@@ -32,7 +37,7 @@ function sendFile(res, filePath, contentType = 'text/html; charset=utf-8') {
 }
 
 async function fetchJson(url) {
-  const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  const resp = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
   return resp.json();
 }
@@ -50,23 +55,130 @@ async function proxyBinary(res, url) {
   });
 }
 
-async function getAgents() {
-  const data = await fetchJson(`${API_BASE}/api/v2/agents?limit=5000`);
-  return Array.isArray(data) ? data : (data.agents || []);
+function tierForScore(rawScore) {
+  const score = Number(rawScore || 0);
+  if (score >= 91) return 'PREFERRED';
+  if (score >= 76) return 'PRIME';
+  if (score >= 51) return 'QUALIFIED';
+  if (score >= 26) return 'MARGINAL';
+  return 'JUNK';
 }
 
-async function getTrustGraph() {
-  const data = await fetchJson(`${API_BASE}/api/v2/trust-graph`);
-  return data || {};
+function normalizeAgent(agent, handshakeCount) {
+  const tokenId = Number(agent.tokenId ?? agent.token_id ?? 0) || null;
+  const credScore = Number(agent.credScore ?? agent.cred_score ?? 0) || 0;
+  const address = agent.address || agent.agentAddress || agent.agent_wallet || agent.owner || agent.owner_address || null;
+  const owner = agent.owner || agent.owner_address || null;
+  const framework = agent.framework || agent.platform || 'unknown';
+
+  return {
+    tokenId,
+    name: agent.name || agent.agentName || `Agent #${tokenId || '?'}`,
+    address,
+    owner,
+    framework,
+    platform: agent.platform || framework,
+    cred_score: credScore,
+    cred_tier: agent.credTier || agent.cred_tier || tierForScore(credScore),
+    handshakeCount: Number(handshakeCount || 0),
+    mintedAt: agent.mintedAt || agent.registeredAt || agent.created_at || null,
+    verified: Boolean(agent.isVerified ?? agent.verified ?? false),
+    imageUrl: agent.imageUrl || agent.image_url || (tokenId ? `${API_BASE}/api/v2/aura/${tokenId}.png` : null),
+    _detailFetched: false,
+  };
 }
 
 function findAgentByAddress(agents, address) {
   const needle = String(address || '').toLowerCase();
-  return agents.find((agent) => {
-    return [agent.address, agent.agentAddress, agent.agent_wallet, agent.owner, agent.owner_address]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase() === needle);
+  return agents.find((agent) => String(agent.address || '').toLowerCase() === needle);
+}
+
+async function buildData() {
+  const [agentsResp, graphResp] = await Promise.all([
+    fetchJson(`${API_BASE}/api/v2/agents?limit=5000`),
+    fetchJson(`${API_BASE}/api/v2/trust-graph`),
+  ]);
+
+  const rawAgents = Array.isArray(agentsResp) ? agentsResp : (agentsResp.agents || []);
+  const rawEdges = Array.isArray(graphResp.edges) ? graphResp.edges : [];
+
+  const handshakeCountByTokenId = new Map();
+  for (const edge of rawEdges) {
+    const from = Number(edge.from || 0);
+    const to = Number(edge.to || 0);
+    if (from) handshakeCountByTokenId.set(from, (handshakeCountByTokenId.get(from) || 0) + 1);
+    if (to) handshakeCountByTokenId.set(to, (handshakeCountByTokenId.get(to) || 0) + 1);
+  }
+
+  const agents = rawAgents.map((agent) => {
+    const tokenId = Number(agent.tokenId ?? agent.token_id ?? 0) || null;
+    return normalizeAgent(agent, tokenId ? handshakeCountByTokenId.get(tokenId) || 0 : 0);
   });
+
+  const addressByTokenId = new Map();
+  for (const agent of agents) {
+    if (agent.tokenId && agent.address) {
+      addressByTokenId.set(Number(agent.tokenId), agent.address);
+    }
+  }
+
+  const edges = rawEdges
+    .map((edge) => {
+      const from = addressByTokenId.get(Number(edge.from || 0));
+      const to = addressByTokenId.get(Number(edge.to || 0));
+      if (!from || !to) return null;
+      return {
+        from,
+        to,
+        reciprocated: Boolean(edge.reciprocated),
+        type: edge.reciprocated ? 'reciprocated' : 'handshake',
+        createdAt: edge.createdAt || edge.timestamp || null,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    agents,
+    edges,
+    transactions: [],
+  };
+}
+
+async function getData() {
+  if (cache.data && cache.expiresAt > Date.now()) return cache.data;
+  const data = await buildData();
+  cache.data = data;
+  cache.expiresAt = Date.now() + 10_000;
+  return data;
+}
+
+async function getDetailedAgent(address) {
+  const data = await getData();
+  const base = findAgentByAddress(data.agents, address);
+  if (!base) return null;
+
+  if (!base.tokenId) return base;
+
+  try {
+    const detail = await fetchJson(`${API_BASE}/api/v2/agent/${base.tokenId}`);
+    const credScore = Number(detail.credScore ?? base.cred_score ?? 0) || 0;
+    return {
+      ...base,
+      name: detail.agentName || detail.name || base.name,
+      address: base.address,
+      owner: detail.owner || base.owner,
+      framework: detail.framework || base.framework,
+      platform: detail.platform || detail.framework || base.platform,
+      cred_score: credScore,
+      cred_tier: detail.credTier || tierForScore(credScore),
+      handshakeCount: Number(detail.handshakeCount ?? base.handshakeCount ?? 0),
+      mintedAt: detail.mintedAt || detail.created_at || base.mintedAt,
+      verified: Boolean(detail.isVerified ?? detail.verified ?? base.verified),
+      _detailFetched: true,
+    };
+  } catch {
+    return base;
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -108,39 +220,31 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/trust-graph/helixa-hq.jpg') {
-      sendFile(res, HQ_JPG, 'image/jpeg');
+      sendFile(res, HQ_IMAGE, 'image/jpeg');
       return;
     }
 
     if (pathname === '/trust-graph/api/agents') {
-      const agents = await getAgents();
-      sendJson(res, 200, agents);
+      const data = await getData();
+      sendJson(res, 200, data.agents);
       return;
     }
 
     if (pathname === '/trust-graph/api/edges') {
-      const graph = await getTrustGraph();
-      sendJson(res, 200, graph.edges || []);
+      const data = await getData();
+      sendJson(res, 200, data.edges);
       return;
     }
 
     if (pathname === '/trust-graph/api/transactions') {
-      const graph = await getTrustGraph();
-      const transactions = (graph.edges || []).map((edge) => ({
-        from: edge.from,
-        to: edge.to,
-        token: 'HANDSHAKE',
-        count: 1,
-        createdAt: edge.createdAt || edge.timestamp || null,
-      }));
-      sendJson(res, 200, transactions);
+      const data = await getData();
+      sendJson(res, 200, data.transactions);
       return;
     }
 
     if (pathname.startsWith('/trust-graph/api/agent/')) {
       const address = pathname.replace('/trust-graph/api/agent/', '');
-      const agents = await getAgents();
-      const agent = findAgentByAddress(agents, address);
+      const agent = await getDetailedAgent(address);
       if (!agent) {
         sendJson(res, 404, { error: 'Agent not found' });
         return;
@@ -164,5 +268,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`[helixa-root-router] listening on ${PORT}`);
-  console.log(`[helixa-root-router] mode=trust-graph-v2`);
+  console.log('[helixa-root-router] mode=trust-graph-v2');
 });
