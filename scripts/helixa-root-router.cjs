@@ -20,11 +20,43 @@ const API_BASE = 'http://127.0.0.1:3457';
 const TERMINAL_API_BASE = 'http://127.0.0.1:3000';
 const MAX_GRAPH_AGENTS = 50000;
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'api', 'public');
+const DOCS_DIR = path.resolve(__dirname, '..', 'docs');
 const V2_HTML = path.join(PUBLIC_DIR, 'trust-graph-v2.html');
+const DOCS_INDEX_HTML = path.join(DOCS_DIR, 'index.html');
 const LOGO_PNG = path.resolve(__dirname, '..', 'docs', 'helixa-logo.png');
 const HQ_IMAGE = path.resolve(__dirname, '..', '..', 'doppel-hq.png');
 const HQ_IMAGE_TYPE = 'image/png';
 const LOCAL_AGENTS_DB = path.resolve(__dirname, '..', 'data', 'agents.db');
+const SPA_ENTRY_ROUTES = new Set([
+  '/mint',
+  '/manage',
+  '/stake',
+  '/messages',
+  '/agents',
+  '/jobs',
+  '/soul',
+  '/token',
+]);
+const CONTENT_TYPES = {
+  '.css': 'text/css; charset=utf-8',
+  '.gif': 'image/gif',
+  '.html': 'text/html; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
+  '.js': 'application/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.md': 'text/markdown; charset=utf-8',
+  '.mp3': 'audio/mpeg',
+  '.mp4': 'video/mp4',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.wav': 'audio/wav',
+  '.webp': 'image/webp',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
 
 const TIER_RING = {
   PREFERRED: { stroke: '#e8b84b', glow: 'rgba(232,184,75,0.35)', inner: 'rgba(232,184,75,0.12)' },
@@ -97,6 +129,38 @@ async function fetchAuraPngBuffer(tokenId) {
   const upstream = await fetch(`${API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png`);
   if (!upstream.ok) throw new Error(`Aura fetch failed for token ${tokenId}: HTTP ${upstream.status}`);
   return Buffer.from(await upstream.arrayBuffer());
+}
+
+function contentTypeFor(filePath) {
+  return CONTENT_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+}
+
+function docsPathFor(pathname) {
+  const cleanPath = pathname.replace(/^\/+/, '');
+  const resolved = path.resolve(DOCS_DIR, cleanPath);
+  if (resolved !== DOCS_DIR && !resolved.startsWith(`${DOCS_DIR}${path.sep}`)) return null;
+  return resolved;
+}
+
+function tryServeDocsFile(pathname, res) {
+  const candidate = docsPathFor(pathname);
+  if (!candidate) return false;
+
+  try {
+    const stat = fs.statSync(candidate);
+    if (stat.isDirectory()) {
+      const indexPath = path.join(candidate, 'index.html');
+      if (!fs.existsSync(indexPath)) return false;
+      sendFile(res, indexPath, 'text/html; charset=utf-8');
+      return true;
+    }
+
+    if (!stat.isFile()) return false;
+    sendFile(res, candidate, contentTypeFor(candidate));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function fetchAuraPngDataUri(tokenId) {
@@ -443,6 +507,15 @@ const server = http.createServer(async (req, res) => {
         'Content-Type': 'image/svg+xml; charset=utf-8',
         'Cache-Control': 'public, max-age=300',
       });
+      return;
+    }
+
+    if (tryServeDocsFile(pathname, res)) {
+      return;
+    }
+
+    if (SPA_ENTRY_ROUTES.has(pathname)) {
+      sendFile(res, DOCS_INDEX_HTML);
       return;
     }
 
