@@ -804,13 +804,18 @@ function renderDeck() {
   // Handshake arcs
   if (showHandshakes && allEdges.length > 0) {
     const addrPos = {};
-    agentPositions.forEach(a => { if (a.address) addrPos[a.address.toLowerCase()] = [a._x, a._y]; });
+    agentPositions.forEach(a => {
+      const key = (a._graphKey || a.address || '').toLowerCase();
+      if (key) addrPos[key] = [a._x, a._y];
+    });
     const edgeData = allEdges.filter(e => {
-      const f = addrPos[e.from.toLowerCase()], t = addrPos[e.to.toLowerCase()];
+      const fromKey = (e.from || '').toLowerCase();
+      const toKey = (e.to || '').toLowerCase();
+      const f = addrPos[fromKey], t = addrPos[toKey];
       return f && t;
     }).map(e => ({
-      from: addrPos[e.from.toLowerCase()],
-      to: addrPos[e.to.toLowerCase()],
+      from: addrPos[(e.from || '').toLowerCase()],
+      to: addrPos[(e.to || '').toLowerCase()],
       type: e.type,
       reciprocated: e.reciprocated
     }));
@@ -829,13 +834,18 @@ function renderDeck() {
   // Transaction arcs
   if (showTransactions && allTransactions.length > 0) {
     const addrPos = {};
-    agentPositions.forEach(a => { if (a.address) addrPos[a.address.toLowerCase()] = [a._x, a._y]; });
+    agentPositions.forEach(a => {
+      const key = (a._graphKey || a.address || '').toLowerCase();
+      if (key) addrPos[key] = [a._x, a._y];
+    });
     const txData = allTransactions.filter(e => {
-      const f = addrPos[e.from.toLowerCase()], t = addrPos[e.to.toLowerCase()];
+      const fromKey = (e.from || '').toLowerCase();
+      const toKey = (e.to || '').toLowerCase();
+      const f = addrPos[fromKey], t = addrPos[toKey];
       return f && t;
     }).map(e => ({
-      from: addrPos[e.from.toLowerCase()],
-      to: addrPos[e.to.toLowerCase()],
+      from: addrPos[(e.from || '').toLowerCase()],
+      to: addrPos[(e.to || '').toLowerCase()],
       token: e.token, count: e.count
     }));
     if (txData.length > 0) {
@@ -884,9 +894,10 @@ function initDeck() {
 // ─── Profile ───
 async function showProfile(agent) {
   // Fetch full detail from API if address available
-  if (agent.address && !agent._detailFetched) {
+  const detailKey = agent._detailKey || agent.address;
+  if (detailKey && !agent._detailFetched) {
     try {
-      const resp = await fetch('/trust-graph/api/agent/' + agent.address);
+      const resp = await fetch('/trust-graph/api/agent/' + encodeURIComponent(detailKey));
       if (resp.ok) {
         const detail = await resp.json();
         Object.assign(agent, detail, { _detailFetched: true });
