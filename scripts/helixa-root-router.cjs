@@ -4,6 +4,8 @@ const path = require('path');
 
 const PORT = Number(process.env.PORT || 3460);
 const API_BASE = 'http://127.0.0.1:3457';
+const TERMINAL_API_BASE = 'http://127.0.0.1:3000';
+const HELIXA_REGISTRY = '0x2e3b541c59d38b84e3bc54e977200230a204fe60';
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'api', 'public');
 const V2_HTML = path.join(PUBLIC_DIR, 'trust-graph-v2.html');
 const LOGO_PNG = path.resolve(__dirname, '..', 'docs', 'helixa-logo.png');
@@ -131,26 +133,38 @@ async function getAuraCircleSvg(tokenId, tier) {
   }
 }
 
+function extractHelixaTokenId(agent) {
+  const rawToken = String(agent.token_id ?? agent.tokenId ?? '').toLowerCase();
+  const registry = String(agent.registry || '').toLowerCase();
+  const platform = String(agent.platform || '').toLowerCase();
+  if (platform === 'helixa' || registry === HELIXA_REGISTRY) {
+    const match = rawToken.match(/(\d+)$/);
+    return match ? Number(match[1]) : null;
+  }
+  return null;
+}
+
 function normalizeAgent(agent, handshakeCount) {
-  const tokenId = Number(agent.tokenId ?? agent.token_id ?? 0) || null;
+  const helixaTokenId = extractHelixaTokenId(agent);
   const credScore = Number(agent.credScore ?? agent.cred_score ?? 0) || 0;
-  const address = agent.address || agent.agentAddress || agent.agent_wallet || agent.owner || agent.owner_address || null;
+  const address = String(agent.address || agent.agentAddress || agent.agent_wallet || agent.owner || agent.owner_address || '').toLowerCase() || null;
   const owner = agent.owner || agent.owner_address || null;
   const framework = agent.framework || agent.platform || 'unknown';
+  const credTier = String(agent.credTier || agent.cred_tier || tierForScore(credScore)).toUpperCase();
 
   return {
-    tokenId,
-    name: agent.name || agent.agentName || `Agent #${tokenId || '?'}`,
+    tokenId: helixaTokenId,
+    name: agent.name || agent.agentName || `Agent #${helixaTokenId || agent.id || '?'}`,
     address,
     owner,
     framework,
     platform: agent.platform || framework,
     cred_score: credScore,
-    cred_tier: agent.credTier || agent.cred_tier || tierForScore(credScore),
+    cred_tier: credTier,
     handshakeCount: Number(handshakeCount || 0),
     mintedAt: agent.mintedAt || agent.registeredAt || agent.created_at || null,
-    verified: Boolean(agent.isVerified ?? agent.verified ?? false),
-    imageUrl: agent.imageUrl || agent.image_url || (tokenId ? `${API_BASE}/api/v2/aura/${tokenId}.png` : null),
+    verified: Boolean(agent.isVerified ?? agent.verified ?? agent.is_verified ?? false),
+    imageUrl: helixaTokenId ? `/trust-graph/api/aura-circle/${helixaTokenId}?tier=${credTier}` : (agent.imageUrl || agent.image_url || null),
     _detailFetched: false,
   };
 }
@@ -161,38 +175,40 @@ function findAgentByAddress(agents, address) {
 }
 
 async function buildData() {
-  const [agentsResp, graphResp] = await Promise.all([
-    fetchJson(`${API_BASE}/api/v2/agents?limit=5000`),
+  const [terminalResp, graphResp] = await Promise.all([
+    fetchJson(`${TERMINAL_API_BASE}/api/terminal/feed?limit=50000&page=1`),
     fetchJson(`${API_BASE}/api/v2/trust-graph`),
   ]);
 
-  const rawAgents = Array.isArray(agentsResp) ? agentsResp : (agentsResp.agents || []);
+  const rawAgents = terminalResp?.data?.agents || [];
   const rawEdges = Array.isArray(graphResp.edges) ? graphResp.edges : [];
 
-  const handshakeCountByTokenId = new Map();
+  const addressByHelixaTokenId = new Map();
+  const rawByAddress = new Map();
+  for (const raw of rawAgents) {
+    const address = String(raw.address || '').toLowerCase();
+    if (address) rawByAddress.set(address, raw);
+    const helixaTokenId = extractHelixaTokenId(raw);
+    if (helixaTokenId && address) addressByHelixaTokenId.set(helixaTokenId, address);
+  }
+
+  const handshakeCountByAddress = new Map();
   for (const edge of rawEdges) {
-    const from = Number(edge.from || 0);
-    const to = Number(edge.to || 0);
-    if (from) handshakeCountByTokenId.set(from, (handshakeCountByTokenId.get(from) || 0) + 1);
-    if (to) handshakeCountByTokenId.set(to, (handshakeCountByTokenId.get(to) || 0) + 1);
+    const from = addressByHelixaTokenId.get(Number(edge.from || 0));
+    const to = addressByHelixaTokenId.get(Number(edge.to || 0));
+    if (from) handshakeCountByAddress.set(from, (handshakeCountByAddress.get(from) || 0) + 1);
+    if (to) handshakeCountByAddress.set(to, (handshakeCountByAddress.get(to) || 0) + 1);
   }
 
-  const agents = rawAgents.map((agent) => {
-    const tokenId = Number(agent.tokenId ?? agent.token_id ?? 0) || null;
-    return normalizeAgent(agent, tokenId ? handshakeCountByTokenId.get(tokenId) || 0 : 0);
+  const agents = rawAgents.map((raw) => {
+    const address = String(raw.address || '').toLowerCase();
+    return normalizeAgent(raw, handshakeCountByAddress.get(address) || 0);
   });
-
-  const addressByTokenId = new Map();
-  for (const agent of agents) {
-    if (agent.tokenId && agent.address) {
-      addressByTokenId.set(Number(agent.tokenId), agent.address);
-    }
-  }
 
   const edges = rawEdges
     .map((edge) => {
-      const from = addressByTokenId.get(Number(edge.from || 0));
-      const to = addressByTokenId.get(Number(edge.to || 0));
+      const from = addressByHelixaTokenId.get(Number(edge.from || 0));
+      const to = addressByHelixaTokenId.get(Number(edge.to || 0));
       if (!from || !to) return null;
       return {
         from,
@@ -208,6 +224,7 @@ async function buildData() {
     agents,
     edges,
     transactions: [],
+    rawByAddress,
   };
 }
 
@@ -230,27 +247,31 @@ async function getData() {
 }
 
 async function getDetailedAgent(address) {
+  const needle = String(address || '').toLowerCase();
   const data = await getData();
-  const base = findAgentByAddress(data.agents, address);
+  const base = findAgentByAddress(data.agents, needle);
   if (!base) return null;
 
-  if (!base.tokenId) return base;
-
   try {
-    const detail = await fetchJson(`${API_BASE}/api/v2/agent/${base.tokenId}`);
-    const credScore = Number(detail.credScore ?? base.cred_score ?? 0) || 0;
+    const terminal = await fetchJson(`${TERMINAL_API_BASE}/api/terminal/agent/${encodeURIComponent(needle)}`);
+    const detail = terminal?.data || {};
+    const credScore = Number(detail.cred_score ?? base.cred_score ?? 0) || 0;
+    const credTier = String(detail.cred_tier || base.cred_tier || tierForScore(credScore)).toUpperCase();
+    const helixaTokenId = extractHelixaTokenId(detail);
     return {
       ...base,
-      name: detail.agentName || detail.name || base.name,
-      address: base.address,
-      owner: detail.owner || base.owner,
-      framework: detail.framework || base.framework,
+      name: detail.name || base.name,
+      address: needle,
+      owner: detail.owner_address || base.owner,
+      framework: detail.framework || detail.platform || base.framework,
       platform: detail.platform || detail.framework || base.platform,
       cred_score: credScore,
-      cred_tier: detail.credTier || tierForScore(credScore),
-      handshakeCount: Number(detail.handshakeCount ?? base.handshakeCount ?? 0),
-      mintedAt: detail.mintedAt || detail.created_at || base.mintedAt,
-      verified: Boolean(detail.isVerified ?? detail.verified ?? base.verified),
+      cred_tier: credTier,
+      handshakeCount: Number(base.handshakeCount || 0),
+      mintedAt: detail.created_at || base.mintedAt,
+      verified: Boolean(detail.is_verified ?? base.verified),
+      tokenId: helixaTokenId ?? base.tokenId,
+      imageUrl: helixaTokenId ? `/trust-graph/api/aura-circle/${helixaTokenId}?tier=${credTier}` : (detail.image_url || base.imageUrl || null),
       _detailFetched: true,
     };
   } catch {
