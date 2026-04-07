@@ -166,7 +166,7 @@ if (PRICING.agentMint > 0) {
     };
 }
 if (PRICING.update > 0) {
-    x402Routes['POST /api/v2/agent/:id/update'] = {
+    x402Routes['POST /api/v2/agent/[id]/update'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.update}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
         description: 'Update agent traits and metadata', mimeType: 'application/json',
     };
@@ -178,13 +178,13 @@ if (PRICING.credReport > 0) {
     };
 }
 if (PRICING.soulLock > 0) {
-    x402Routes['POST /api/v2/agent/:id/soul/lock'] = {
+    x402Routes['POST /api/v2/agent/[id]/soul/lock'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.soulLock}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
         description: 'Lock your agent soul onchain (Chain of Identity)', mimeType: 'application/json',
     };
 }
 if (PRICING.soulHandshake > 0) {
-    x402Routes['POST /api/v2/agent/:id/soul/share'] = {
+    x402Routes['POST /api/v2/agent/[id]/soul/share'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.soulHandshake}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
         description: 'Initiate a soul handshake with another agent', mimeType: 'application/json',
     };
