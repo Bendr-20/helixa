@@ -676,7 +676,7 @@ const RING_CONFIG = {
   PRIME:     { rMin: 150,  rMax: 350,  radius: 100, opacity: 255 },
   QUALIFIED: { rMin: 400,  rMax: 700,  radius: 60,  opacity: 255 },
   MARGINAL:  { rMin: 800,  rMax: 1200, radius: 25,  opacity: 160 },
-  JUNK:      { rMin: 1400, rMax: 3000, radius: 7,   opacity: 80 }
+  JUNK:      { rMin: 1400, rMax: 3000, radius: 5,   opacity: 34 }
 };
 const RING_BORDERS = [125, 375, 750, 1300, 3100];
 
@@ -763,8 +763,10 @@ function renderDeck() {
     id: 'agents', data: filteredAgents, getPosition: d => [d._x, d._y],
     getRadius: d => RING_CONFIG[d.cred_tier||'JUNK']?.radius || 5,
     getFillColor: d => {
-      const c = TIER_COLORS[d.cred_tier]||TIER_COLORS.JUNK;
-      const o = RING_CONFIG[d.cred_tier||'JUNK']?.opacity || 30;
+      const tier = d.cred_tier || 'JUNK';
+      const c = TIER_COLORS[tier]||TIER_COLORS.JUNK;
+      let o = RING_CONFIG[tier]?.opacity || 30;
+      if (tier === 'JUNK' && currentTheme === 'dark') o = 22;
       return [c[0],c[1],c[2],o];
     },
     pickable: true, radiusUnits: 'common', radiusMinPixels: 1, radiusMaxPixels: 30,
@@ -786,12 +788,12 @@ function renderDeck() {
       getSize: d => {
         const tier = d.cred_tier || 'JUNK';
         const cfg = RING_CONFIG[tier];
-        if (tier === 'JUNK') return showJunkAuras ? 10 : 0;
-        return cfg ? cfg.radius * 2.6 : 24;
+        if (tier === 'JUNK') return showJunkAuras ? 7 : 0;
+        return cfg ? cfg.radius * 1.9 : 20;
       },
       sizeUnits: 'common',
-      sizeMinPixels: 18,
-      sizeMaxPixels: 80,
+      sizeMinPixels: 14,
+      sizeMaxPixels: 52,
       pickable: true,
       updateTriggers: { getSize: [zoom, activeTiers.size, showJunkAuras] }
     }));
