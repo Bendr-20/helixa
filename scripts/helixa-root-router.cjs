@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 
 let Database = null;
 for (const candidate of [
@@ -92,12 +93,64 @@ function tierForScore(rawScore) {
   return 'JUNK';
 }
 
-async function fetchAuraPngDataUri(tokenId) {
+async function fetchAuraPngBuffer(tokenId) {
   const upstream = await fetch(`${API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png`);
   if (!upstream.ok) throw new Error(`Aura fetch failed for token ${tokenId}: HTTP ${upstream.status}`);
-  const contentType = upstream.headers.get('content-type') || 'image/png';
-  const bytes = Buffer.from(await upstream.arrayBuffer());
-  return `data:${contentType};base64,${bytes.toString('base64')}`;
+  return Buffer.from(await upstream.arrayBuffer());
+}
+
+async function fetchAuraPngDataUri(tokenId) {
+  const bytes = await fetchAuraPngBuffer(tokenId);
+  return `data:image/png;base64,${bytes.toString('base64')}`;
+}
+
+async function getCircularAuraPng(tokenId) {
+  const key = `icon-png:${tokenId}`;
+  const cached = iconCache.get(key);
+  if (cached?.data && cached.expiresAt > Date.now()) return cached.data;
+  if (cached?.pending) return cached.pending;
+
+  const pending = (async () => {
+    const bytes = await fetchAuraPngBuffer(tokenId);
+    const avatarSize = 104;
+    const canvasSize = 128;
+    const inset = Math.floor((canvasSize - avatarSize) / 2);
+
+    const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${avatarSize}" height="${avatarSize}" viewBox="0 0 ${avatarSize} ${avatarSize}"><circle cx="${avatarSize/2}" cy="${avatarSize/2}" r="${avatarSize/2 - 2}" fill="white"/></svg>`);
+
+    const maskedAvatar = await sharp(bytes)
+      .resize(avatarSize, avatarSize, { fit: 'cover' })
+      .composite([{ input: mask, blend: 'dest-in' }])
+      .png()
+      .toBuffer();
+
+    const png = await sharp({
+      create: {
+        width: canvasSize,
+        height: canvasSize,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      },
+    })
+      .composite([{ input: maskedAvatar, left: inset, top: inset }])
+      .png()
+      .toBuffer();
+
+    iconCache.set(key, { data: png, expiresAt: Date.now() + 300_000, pending: null });
+    return png;
+  })();
+
+  iconCache.set(key, { data: cached?.data || null, expiresAt: 0, pending });
+
+  try {
+    return await pending;
+  } catch (err) {
+    if (cached?.data) return cached.data;
+    throw err;
+  } finally {
+    const current = iconCache.get(key);
+    if (current?.pending === pending) current.pending = null;
+  }
 }
 
 async function getAuraCircleSvg(tokenId, tier) {
@@ -369,6 +422,16 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       sendJson(res, 200, agent);
+      return;
+    }
+
+    if (pathname.startsWith('/trust-graph/api/aura-icon/')) {
+      const tokenId = pathname.replace('/trust-graph/api/aura-icon/', '').replace(/\.png$/i, '');
+      const png = await getCircularAuraPng(tokenId);
+      send(res, 200, png, {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=300',
+      });
       return;
     }
 

@@ -794,7 +794,7 @@ function renderDeck() {
       data: helixaAgents,
       getPosition: d => [d._x, d._y],
       getIcon: d => ({
-        url: `/api/v2/aura/${d.tokenId}.png`,
+        url: `/trust-graph/api/aura-icon/${d.tokenId}.png`,
         width: 128, height: 128, anchorY: 64, mask: false
       }),
       getSize: d => {
