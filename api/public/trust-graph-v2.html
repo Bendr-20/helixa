@@ -772,7 +772,8 @@ function renderDeck() {
   }));
 
   // Aura PFP icons for Helixa agents (those with tokenId)
-  const helixaAgents = filteredAgents.filter(a => a.tokenId);
+  const showJunkAuras = activeTiers.size === 1 && activeTiers.has('JUNK');
+  const helixaAgents = filteredAgents.filter(a => a.tokenId && (a.cred_tier !== 'JUNK' || showJunkAuras));
   if (helixaAgents.length > 0) {
     layers.push(new deck.IconLayer({
       id: 'aura-icons',
@@ -783,14 +784,16 @@ function renderDeck() {
         width: 128, height: 128, anchorY: 64, mask: false
       }),
       getSize: d => {
-        const cfg = RING_CONFIG[d.cred_tier || 'JUNK'];
-        return cfg ? cfg.radius * 2.2 : 20;
+        const tier = d.cred_tier || 'JUNK';
+        const cfg = RING_CONFIG[tier];
+        if (tier === 'JUNK') return showJunkAuras ? 10 : 0;
+        return cfg ? cfg.radius * 2.6 : 24;
       },
       sizeUnits: 'common',
-      sizeMinPixels: 16,
-      sizeMaxPixels: 64,
+      sizeMinPixels: 18,
+      sizeMaxPixels: 80,
       pickable: true,
-      updateTriggers: { getSize: [zoom] }
+      updateTriggers: { getSize: [zoom, activeTiers.size, showJunkAuras] }
     }));
   }
 
