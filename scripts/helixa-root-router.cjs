@@ -264,11 +264,7 @@ const server = http.createServer(async (req, res) => {
     const pathname = decodeURIComponent(url.pathname);
 
     if (pathname === '/' || pathname === '/v2' || pathname === '/v2/') {
-      res.writeHead(302, {
-        Location: '/trust-graph/v2/',
-        'Cache-Control': 'no-store',
-      });
-      res.end();
+      sendFile(res, V2_HTML);
       return;
     }
 
@@ -278,11 +274,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/trust-graph' || pathname === '/trust-graph/') {
-      res.writeHead(302, {
-        Location: '/trust-graph/v2/',
-        'Cache-Control': 'no-store',
-      });
-      res.end();
+      sendFile(res, V2_HTML);
       return;
     }
 
