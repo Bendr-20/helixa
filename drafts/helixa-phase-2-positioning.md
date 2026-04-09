@@ -64,12 +64,15 @@ Helixa is not trying to be another marketplace front end.
 Helixa is the trust and routing layer that makes marketplaces smarter.
 
 ## Wedge Product
-The Phase 2 wedge is an Operator Console built on top of the Trust Terminal.
+The Phase 2 wedge is an Operator Console built from the existing graph page direction and current operator data.
 It should show:
 - trust
 - work
 - backing
 - momentum
+
+Cred stays the canonical Helixa score underneath that view.
+The 4 buckets are the faster explanation layer for humans.
 
 That is the first thing people should understand when they see the product.
 

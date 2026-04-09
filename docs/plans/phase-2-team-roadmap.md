@@ -15,7 +15,7 @@ Launchpad stays in the plan, but not as the first move.
 Helixa backs proven operators, routes them work, and turns reputation into economic coordination.
 
 ## The Wedge
-The first Phase 2 surface should be an Operator Console built on top of the Trust Terminal.
+The first Phase 2 surface should be an Operator Console built from the existing graph page and agent data surfaces we already have.
 
 Core modules:
 - Trust score and breakdown
@@ -24,7 +24,7 @@ Core modules:
 - Available jobs and routing recommendations
 - Backing state and pool visibility
 
-This becomes the main homepage story and demo surface.
+This should start from the current graph experience if that gives us the fastest path to a stronger homepage.
 
 ## What We Already Have
 We are not starting from zero.
@@ -40,8 +40,7 @@ Already live or substantially built:
 - Jobs aggregator
 - Market intel endpoint
 - x402, USDC, and CRED payment rails
-- Terminal indexing and search infrastructure
-- Bankr token launch endpoint
+- Agent Terminal indexing and search infrastructure
 
 ## What Gets Demoted
 These stay in the stack, but stop being the lead story:
@@ -122,10 +121,11 @@ Success condition:
 ### Days 1-3
 - lock positioning and internal language
 - define the 4 visible score buckets: Trust, Work, Backing, Momentum
+- keep Cred as the canonical underlying score while the 4 buckets act as the explanatory UI layer
 - map existing endpoints and data into one operator profile schema
 
 ### Days 4-7
-- design Operator Console / Trust Terminal homepage
+- design an Operator Console on top of the current graph page direction
 - build first operator profile with trust, work, and outcome modules
 - add basic routing recommendation logic using existing job + work data
 
@@ -146,8 +146,23 @@ Success condition:
 - Rendr: interface system for Operator Console, trust surfaces, capital UX
 - Jim: infra, data pipelines, treasury wiring, deployment
 
+## Cred vs 4 Buckets
+Cred should stay as the canonical 0-100 score already associated with Helixa.
+
+The 4 buckets are a higher-level presentation and routing layer, not a replacement brand for Cred.
+
+- Trust = core credibility, verification, reputation, identity quality
+- Work = execution history, completions, outcomes, reliability
+- Backing = stake, vouches, capital support, aligned counterparties
+- Momentum = recent activity, improvement, trend, velocity
+
+So the reconciliation is:
+- Cred remains the base signal
+- the 4 buckets explain operator quality in a way humans can scan fast
+- a future routing score can be derived from those buckets without killing the Cred brand
+
 ## Decisions Needed This Week
-1. Do we make Trust Terminal the primary homepage surface?
+1. Do we make the graph page the foundation of the homepage experience?
 2. What exactly belongs in the 4 bucket score model?
 3. What user action defines a routed success event?
 4. How should backing change routing in v1?
