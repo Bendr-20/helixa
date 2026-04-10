@@ -185,7 +185,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
   ].filter(Boolean).length;
 
   const isBusy = isPending || isConfirming || isPendingPersonality || isConfirmingPersonality || isPendingNarrative || isConfirmingNarrative;
-  const mintDisabled = isBusy || alreadyMinted || isWrongChain || !data.name;
+  const mintDisabled = isBusy || alreadyMinted || !data.name;
 
   return (
     <div className="max-w-6xl mx-auto">
