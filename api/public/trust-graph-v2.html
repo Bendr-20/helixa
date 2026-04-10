@@ -6,6 +6,7 @@
 <title>Helixa Hub - Helixa</title>
 <link rel="icon" type="image/png" href="/trust-graph/helixa-logo.png">
 <link rel="apple-touch-icon" href="/trust-graph/helixa-logo.png">
+<script src="https://unpkg.com/deck.gl@8.9.35/dist.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -873,32 +874,13 @@ function renderDeck() {
   if (deckgl) deckgl.setProps({ layers });
 }
 
-let deckLoadPromise = null;
-function ensureDeckLoaded() {
-  if (typeof deck !== 'undefined') return Promise.resolve();
-  if (deckLoadPromise) return deckLoadPromise;
-
-  deckLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/deck.gl@8.9.35/dist.min.js';
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load graph renderer.'));
-    document.head.appendChild(script);
-  });
-
-  return deckLoadPromise;
-}
-
-async function initDeck() {
-  try {
-    await ensureDeckLoaded();
-  } catch (e) {
-    document.getElementById('canvas-container').innerHTML = '<div style="padding:20px;color:#f00">Failed to load deck.gl. Check internet connection.</div>';
-    throw e;
+function initDeck() {
+  if (typeof deck === 'undefined') {
+    document.getElementById('canvas-container').innerHTML = '<div style="color:var(--red);padding:40px;text-align:center;font-size:13px">Renderer failed to load. Refresh to retry.</div>';
+    return;
   }
-  deckgl = new deck.DeckGL({
-
+  try {
+    deckgl = new deck.DeckGL({
       container: 'canvas-container',
       views: new deck.OrthographicView(),
       initialViewState: { target: [0,0,0], zoom: -3 },
@@ -1137,10 +1119,7 @@ async function main() {
 
   const msg = document.getElementById('load-msg');
   msg.textContent = 'Initializing renderer...';
-  const deckReady = initDeck().catch((e) => {
-    msg.textContent = e.message || 'Failed to load graph renderer.';
-    throw e;
-  });
+  initDeck();
   msg.textContent = 'Loading agent data...';
   try {
     const resp = await fetch('/trust-graph/api/agents');
@@ -1173,7 +1152,6 @@ async function main() {
     renderDeck();
   });
 
-  await deckReady;
   setupFilters(allAgents); init(allAgents);
 
   // Dashboard cards: Leaderboard mini
