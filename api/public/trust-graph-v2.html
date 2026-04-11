@@ -51,6 +51,15 @@ body {
   letter-spacing: -0.01em;
 }
 #canvas-container { position: absolute; inset: 0; z-index: 0; background: var(--canvas-bg); }
+#aura-overlay { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.aura-overlay-node {
+  position: absolute; transform: translate(-50%, -50%);
+  border: none; background: transparent; padding: 0; margin: 0;
+  width: 40px; height: 40px; border-radius: 50%; overflow: hidden;
+  cursor: pointer; pointer-events: auto;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+}
+.aura-overlay-node img { width: 100%; height: 100%; display: block; }
 canvas { outline: none; }
 
 /* ─── Header ─── */
@@ -452,6 +461,7 @@ canvas { outline: none; }
   #dashboard-cards { right: 0; left: 0; bottom: 56px; flex-wrap: nowrap; }
   .dash-card { min-width: 180px; flex: 0 0 180px; }
   #canvas-container { bottom: 56px; }
+  #aura-overlay { bottom: 56px; }
 }
 @media (max-width: 480px) {
   .stats-row .stat:nth-child(n+4) { display: none; }
@@ -582,6 +592,7 @@ canvas { outline: none; }
 </div>
 
 <div id="canvas-container"></div>
+<div id="aura-overlay"></div>
 
 <!-- Dashboard Cards -->
 <div id="dashboard-cards">
@@ -713,6 +724,51 @@ function applyFilters() {
   renderDeck();
 }
 
+function auraOverlaySize(agent) {
+  const tier = agent.cred_tier || 'JUNK';
+  const base = tier === 'PREFERRED' ? 58 : tier === 'PRIME' ? 50 : tier === 'QUALIFIED' ? 40 : tier === 'MARGINAL' ? 30 : 22;
+  const scale = Math.max(0.9, Math.min(1.25, Math.sqrt(currentZoom || 1)));
+  return Math.round(base * scale);
+}
+
+function renderAuraOverlay(agents) {
+  const overlay = document.getElementById('aura-overlay');
+  if (!overlay) return;
+  if (!deckgl || typeof deckgl.getViewports !== 'function' || !agents.length) {
+    overlay.innerHTML = '';
+    return;
+  }
+
+  const viewport = deckgl.getViewports()[0];
+  if (!viewport) {
+    overlay.innerHTML = '';
+    return;
+  }
+
+  overlay.innerHTML = '';
+  const width = overlay.clientWidth || window.innerWidth;
+  const height = overlay.clientHeight || window.innerHeight;
+
+  agents.forEach(agent => {
+    const projected = viewport.project([agent._x, agent._y]);
+    const x = projected[0], y = projected[1];
+    const size = auraOverlaySize(agent);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (x < -size || y < -size || x > width + size || y > height + size) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'aura-overlay-node';
+    btn.setAttribute('aria-label', agent.name || `Agent ${agent.tokenId}`);
+    btn.style.left = `${x}px`;
+    btn.style.top = `${y}px`;
+    btn.style.width = `${size}px`;
+    btn.style.height = `${size}px`;
+    btn.innerHTML = `<img src="/trust-graph/api/aura-circle/${agent.tokenId}?tier=${agent.cred_tier || 'JUNK'}&v=3" alt="">`;
+    btn.onclick = (ev) => { ev.stopPropagation(); showProfile(agent); };
+    overlay.appendChild(btn);
+  });
+}
+
 // ─── Render ───
 function renderDeck() {
   const zoom = currentZoom;
@@ -788,28 +844,7 @@ function renderDeck() {
       return (Number(b.handshakeCount)||0) - (Number(a.handshakeCount)||0);
     })
     .slice(0, 36);
-  if (helixaAgents.length > 0) {
-    layers.push(new deck.IconLayer({
-      id: 'aura-icons',
-      data: helixaAgents,
-      getPosition: d => [d._x, d._y],
-      getIcon: d => ({
-        url: `/trust-graph/api/aura-icon/${d.tokenId}.png?v=2`,
-        width: 128, height: 128, anchorY: 64, mask: false
-      }),
-      getSize: d => {
-        const tier = d.cred_tier || 'JUNK';
-        const cfg = RING_CONFIG[tier];
-        if (tier === 'JUNK') return showJunkAuras ? 7 : 0;
-        return cfg ? cfg.radius * 1.9 : 20;
-      },
-      sizeUnits: 'common',
-      sizeMinPixels: 14,
-      sizeMaxPixels: 52,
-      pickable: true,
-      updateTriggers: { getSize: [zoom, activeTiers.size, showJunkAuras] }
-    }));
-  }
+  const overlayAgents = helixaAgents.slice(0, 12);
 
   // Labels removed - names show via tooltip on hover
 
@@ -872,6 +907,7 @@ function renderDeck() {
   }
 
   if (deckgl) deckgl.setProps({ layers });
+  renderAuraOverlay(overlayAgents);
 }
 
 function initDeck() {
