@@ -525,7 +525,51 @@ function saveProfile(tokenId, data) {
     return profiles[tokenId];
 }
 
+const AURA_CACHE_TTL_MS = 5 * 60 * 1000;
+const AURA_PENDING_STALE_MS = 20 * 1000;
+const auraPngCache = new Map();
+
+function getLocalAuraAgentRow(tokenId) {
+    try {
+        const Database = require('better-sqlite3');
+        const db = new Database(path.join(__dirname, '..', 'data', 'agents.db'), { readonly: true, fileMustExist: true });
+        const row = db.prepare(`
+            SELECT tokenId, name, agentAddress, framework, verified, soulbound, credScore, points, owner, operator
+            FROM agents
+            WHERE tokenId = ?
+        `).get(Number(tokenId));
+        db.close();
+        return row || null;
+    } catch {
+        return null;
+    }
+}
+
+function isStaleAuraPending(entry) {
+    return Boolean(entry?.pending && entry?.pendingStartedAt && (Date.now() - entry.pendingStartedAt > AURA_PENDING_STALE_MS));
+}
+
 async function formatAgentAuraSource(tokenId) {
+    const profile = getProfile(tokenId);
+    const localRow = getLocalAuraAgentRow(tokenId);
+
+    if (localRow) {
+        return {
+            tokenId: Number(tokenId),
+            name: localRow.name || `Agent #${tokenId}`,
+            framework: localRow.framework || 'custom',
+            agentAddress: localRow.agentAddress || localRow.owner || localRow.operator || '0x0000',
+            traits: Array.isArray(profile?.traits) ? profile.traits : [],
+            mutationCount: 0,
+            soulbound: Boolean(localRow.soulbound),
+            points: Number(localRow.points || 0),
+            generation: 0,
+            personality: profile?.personality || null,
+            narrative: profile?.narrative || null,
+            credScore: Number(localRow.credScore || 0),
+        };
+    }
+
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
 
     const safe = (p, fallback = null) => p.catch(() => fallback);
@@ -563,7 +607,6 @@ async function formatAgentAuraSource(tokenId) {
         }))
         : [];
 
-    const profile = getProfile(tokenId);
     if (profile?.personality) personality = { ...(personality || {}), ...profile.personality };
     if (profile?.narrative) narrative = { ...(narrative || {}), ...profile.narrative };
 
@@ -1278,40 +1321,59 @@ app.get(['/api/v2/aura/:id.png', '/api/v2/card/:id.png'], async (req, res) => {
         const sharp = require('sharp');
         const { generateAura } = require('../sdk/lib/aura-v3.cjs');
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentAuraSource(tokenId);
-        
-        // Keep aura generation lightweight. This route is hit by the Trust Graph UI,
-        // so avoid the slow external enrichments in the full agent formatter.
-        const p = agent.personality || {};
-        const n = agent.narrative || {};
-        const auraData = {
-            name: agent.name || `Agent #${tokenId}`,
-            address: agent.agentAddress || '0x0000',
-            agentAddress: agent.agentAddress || '0x0000',
-            framework: agent.framework || 'custom',
-            traitCount: (agent.traits || []).length,
-            mutationCount: agent.mutationCount || 0,
-            soulbound: agent.soulbound || false,
-            points: agent.points || 0,
-            generation: agent.generation || 0,
-            quirks: p.quirks || '',
-            humor: p.humor || '',
-            values: p.values || '',
-            communicationStyle: p.communicationStyle || '',
-            riskTolerance: p.riskTolerance || 5,
-            autonomyLevel: p.autonomyLevel || 5,
-            origin: n.origin || '',
-            mission: n.mission || '',
-            credScore: agent.credScore || 0,
-        };
-        
-        const svg = generateAura(auraData, 500);
-        const png = await sharp(Buffer.from(svg)).png().toBuffer();
-        
+        const cached = auraPngCache.get(tokenId);
+
+        if (cached?.buffer && cached.expiresAt > Date.now()) {
+            res.set('Content-Type', 'image/png');
+            res.set('Cache-Control', 'public, max-age=300');
+            return res.send(cached.buffer);
+        }
+        if (isStaleAuraPending(cached)) auraPngCache.delete(tokenId);
+
+        let pending = cached?.pending;
+        if (!pending) {
+            pending = (async () => {
+                const agent = await formatAgentAuraSource(tokenId);
+
+                // Keep aura generation lightweight. This route is hit by the Trust Graph UI,
+                // so avoid the slow external enrichments in the full agent formatter.
+                const p = agent.personality || {};
+                const n = agent.narrative || {};
+                const auraData = {
+                    name: agent.name || `Agent #${tokenId}`,
+                    address: agent.agentAddress || '0x0000',
+                    agentAddress: agent.agentAddress || '0x0000',
+                    framework: agent.framework || 'custom',
+                    traitCount: (agent.traits || []).length,
+                    mutationCount: agent.mutationCount || 0,
+                    soulbound: agent.soulbound || false,
+                    points: agent.points || 0,
+                    generation: agent.generation || 0,
+                    quirks: p.quirks || '',
+                    humor: p.humor || '',
+                    values: p.values || '',
+                    communicationStyle: p.communicationStyle || '',
+                    riskTolerance: p.riskTolerance || 5,
+                    autonomyLevel: p.autonomyLevel || 5,
+                    origin: n.origin || '',
+                    mission: n.mission || '',
+                    credScore: agent.credScore || 0,
+                };
+
+                const svg = generateAura(auraData, 500);
+                return sharp(Buffer.from(svg)).png().toBuffer();
+            })();
+            auraPngCache.set(tokenId, { buffer: cached?.buffer || null, expiresAt: 0, pending, pendingStartedAt: Date.now() });
+        }
+
+        const png = await pending;
+        auraPngCache.set(tokenId, { buffer: png, expiresAt: Date.now() + AURA_CACHE_TTL_MS, pending: null, pendingStartedAt: 0 });
+
         res.set('Content-Type', 'image/png');
         res.set('Cache-Control', 'public, max-age=300');
         res.send(png);
     } catch (e) {
+        auraPngCache.delete(parseInt(req.params.id));
         res.status(404).json({ error: 'Card not found', detail: e.message });
     }
 });
