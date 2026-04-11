@@ -19,6 +19,8 @@ const PORT = Number(process.env.PORT || 3460);
 const API_BASE = 'http://127.0.0.1:3457';
 const TERMINAL_API_BASE = 'http://127.0.0.1:3000';
 const MAX_GRAPH_AGENTS = 50000;
+const FETCH_TIMEOUT_MS = 15000;
+const ICON_PENDING_STALE_MS = 20000;
 const PUBLIC_DIR = path.resolve(__dirname, '..', 'api', 'public');
 const DOCS_DIR = path.resolve(__dirname, '..', 'docs');
 const V2_HTML = path.join(PUBLIC_DIR, 'trust-graph-v2.html');
@@ -111,7 +113,10 @@ function sendFile(res, filePath, contentType = 'text/html; charset=utf-8') {
 }
 
 async function fetchJson(url) {
-  const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+  const resp = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${url}`);
   return resp.json();
 }
@@ -126,9 +131,15 @@ function tierForScore(rawScore) {
 }
 
 async function fetchAuraPngBuffer(tokenId) {
-  const upstream = await fetch(`${API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png`);
+  const upstream = await fetch(`${API_BASE}/api/v2/aura/${encodeURIComponent(tokenId)}.png`, {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!upstream.ok) throw new Error(`Aura fetch failed for token ${tokenId}: HTTP ${upstream.status}`);
   return Buffer.from(await upstream.arrayBuffer());
+}
+
+function isStalePending(entry) {
+  return Boolean(entry?.pending && entry?.pendingStartedAt && (Date.now() - entry.pendingStartedAt > ICON_PENDING_STALE_MS));
 }
 
 function contentTypeFor(filePath) {
@@ -172,7 +183,8 @@ async function getCircularAuraPng(tokenId) {
   const key = `icon-png:${tokenId}`;
   const cached = iconCache.get(key);
   if (cached?.data && cached.expiresAt > Date.now()) return cached.data;
-  if (cached?.pending) return cached.pending;
+  if (isStalePending(cached)) iconCache.delete(key);
+  else if (cached?.pending) return cached.pending;
 
   const pending = (async () => {
     const bytes = await fetchAuraPngBuffer(tokenId);
@@ -204,7 +216,7 @@ async function getCircularAuraPng(tokenId) {
     return png;
   })();
 
-  iconCache.set(key, { data: cached?.data || null, expiresAt: 0, pending });
+  iconCache.set(key, { data: cached?.data || null, expiresAt: 0, pending, pendingStartedAt: Date.now() });
 
   try {
     return await pending;
@@ -222,7 +234,8 @@ async function getAuraCircleSvg(tokenId, tier) {
   const key = `${tokenId}:${normalizedTier}`;
   const cached = iconCache.get(key);
   if (cached?.data && cached.expiresAt > Date.now()) return cached.data;
-  if (cached?.pending) return cached.pending;
+  if (isStalePending(cached)) iconCache.delete(key);
+  else if (cached?.pending) return cached.pending;
 
   const pending = (async () => {
     const palette = TIER_RING[normalizedTier] || TIER_RING.JUNK;
@@ -251,7 +264,7 @@ async function getAuraCircleSvg(tokenId, tier) {
     return svg;
   })();
 
-  iconCache.set(key, { data: cached?.data || null, expiresAt: 0, pending });
+  iconCache.set(key, { data: cached?.data || null, expiresAt: 0, pending, pendingStartedAt: Date.now() });
 
   try {
     return await pending;
