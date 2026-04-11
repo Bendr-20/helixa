@@ -102,6 +102,12 @@ app.use(globalRateLimit);
 // Trust Graph Dashboard — mounted as static before any middleware can interfere
 app.use('/trust-graph', express.static(path.resolve(__dirname, 'public', 'trust-graph.html')));
 
+// Compliance endpoints (Probe audit: x402, llms.txt, security.txt, OpenAPI, etc.)
+require('./compliance-endpoints.js')(app);
+
+// Pitch deck
+app.use('/helixa-pitch-deck.html', express.static(path.resolve(__dirname, 'public', 'helixa-pitch-deck.html')));
+
 // Doppel voice audio cache (TTS files served for MML <m-audio>) — mounted early to bypass payment middleware
 const doppelAudioPath = path.resolve(__dirname, '..', '..', 'doppel-agent', 'audio-cache');
 app.use('/audio/voice', express.static(doppelAudioPath, {
@@ -364,8 +370,17 @@ function paymentGate(priceUSD, recipient) {
     };
 }
 
-// Mount: TX hash bypass (app.use, runs first) → x402 SDK (app.use, runs second)
+// Mount: Internal key bypass → TX hash bypass → x402 SDK
 if (Object.keys(x402Routes).length > 0) {
+    // Internal API key bypass (for Bankr x402 Cloud proxy)
+    app.use((req, res, next) => {
+        const internalKey = req.headers['x-internal-key'];
+        if (internalKey && internalKey === (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+            req.paymentVerified = { method: 'internal-key' };
+        }
+        return next();
+    });
+
     // TX hash gate runs on all requests — if payment header found & verified, marks req
     app.use(async (req, res, next) => {
         // Only check routes that x402 would gate
@@ -458,6 +473,7 @@ if (Object.keys(x402Routes).length > 0) {
     // x402 SDK — skip if already paid via TX hash or MPP
     const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
     app.use((req, res, next) => {
+        if (req.path.includes('cred-report')) console.log(`[X402-GATE] path=${req.path} paymentVerified=${JSON.stringify(req.paymentVerified)}`);
         if (req.paymentVerified) return next();
         // Skip x402 for non-API routes (dashboard pages, static assets)
         if (!req.path.startsWith('/api/')) return next();
@@ -507,6 +523,74 @@ function saveProfile(tokenId, data) {
     profiles[tokenId] = { ...(profiles[tokenId] || {}), ...data, updatedAt: new Date().toISOString() };
     saveProfiles(profiles);
     return profiles[tokenId];
+}
+
+async function formatAgentAuraSource(tokenId) {
+    if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
+
+    const safe = (p, fallback = null) => p.catch(() => fallback);
+    const [agent, owner, personalityRes, narrativeRes, traitsRes, ptsRes, credRes, nameRes] = await Promise.all([
+        readContract.getAgent(tokenId),
+        safe(readContract.ownerOf(tokenId)),
+        safe(readContract.getPersonality(tokenId)),
+        safe(readContract.getNarrative(tokenId)),
+        safe(readContract.getTraits(tokenId), []),
+        safe(readContract.points(tokenId), 0),
+        safe(readContract.getCredScore(tokenId), 0),
+        safe(readContract.nameOf(tokenId), ''),
+    ]);
+
+    let personality = personalityRes ? {
+        quirks: personalityRes[0],
+        communicationStyle: personalityRes[1],
+        values: personalityRes[2],
+        humor: personalityRes[3],
+        riskTolerance: Number(personalityRes[4]),
+        autonomyLevel: Number(personalityRes[5]),
+    } : null;
+
+    let narrative = narrativeRes ? {
+        origin: narrativeRes.origin,
+        mission: narrativeRes.mission,
+        lore: narrativeRes.lore,
+        manifesto: narrativeRes.manifesto,
+    } : null;
+
+    const onchainTraits = Array.isArray(traitsRes)
+        ? traitsRes.map((t) => ({
+            name: typeof t === 'string' ? t : t.name,
+            category: typeof t === 'string' ? 'trait' : t.category,
+        }))
+        : [];
+
+    const profile = getProfile(tokenId);
+    if (profile?.personality) personality = { ...(personality || {}), ...profile.personality };
+    if (profile?.narrative) narrative = { ...(narrative || {}), ...profile.narrative };
+
+    const traits = [...onchainTraits];
+    if (Array.isArray(profile?.traits) && profile.traits.length > 0) {
+        const existingNames = new Set(traits.map((t) => t.name));
+        for (const t of profile.traits) {
+            if (!t?.name || existingNames.has(t.name)) continue;
+            traits.push(t);
+            existingNames.add(t.name);
+        }
+    }
+
+    return {
+        tokenId: Number(tokenId),
+        name: nameRes || agent.name || `Agent #${tokenId}`,
+        framework: agent.framework || 'custom',
+        agentAddress: agent.agentAddress || owner || '0x0000',
+        traits,
+        mutationCount: Number(agent.mutationCount || 0),
+        soulbound: Boolean(agent.soulbound),
+        points: Number(ptsRes || 0),
+        generation: Number(agent.generation || 0),
+        personality,
+        narrative,
+        credScore: Number(credRes || 0),
+    };
 }
 
 async function formatAgentV2(tokenId) {
@@ -1194,15 +1278,16 @@ app.get(['/api/v2/aura/:id.png', '/api/v2/card/:id.png'], async (req, res) => {
         const sharp = require('sharp');
         const { generateAura } = require('../sdk/lib/aura-v3.cjs');
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentV2(tokenId);
+        const agent = await formatAgentAuraSource(tokenId);
         
-        // Build aura from agent data — match frontend fields exactly
+        // Keep aura generation lightweight. This route is hit by the Trust Graph UI,
+        // so avoid the slow external enrichments in the full agent formatter.
         const p = agent.personality || {};
         const n = agent.narrative || {};
         const auraData = {
             name: agent.name || `Agent #${tokenId}`,
-            address: agent.agentAddress || agent.owner || '0x0000',
-            agentAddress: agent.agentAddress || agent.owner || '0x0000',
+            address: agent.agentAddress || '0x0000',
+            agentAddress: agent.agentAddress || '0x0000',
             framework: agent.framework || 'custom',
             traitCount: (agent.traits || []).length,
             mutationCount: agent.mutationCount || 0,
@@ -3687,6 +3772,68 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
     }
 });
 
+// INTERNAL: Full Cred Report (for Bankr x402 Cloud proxy - bypasses x402 gate)
+app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
+    const internalKey = req.headers['x-internal-key'];
+    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    req.paymentVerified = { method: 'internal-key' };
+    next();
+}, async (req, res) => {
+    try {
+        const tokenId = parseInt(req.params.id);
+        const agent = await formatAgentV2(tokenId);
+        const tierInfo = getCredTier(agent.credScore);
+        const { components, computedScore } = computeCredBreakdown(agent);
+        const recommendations = getCredRecommendations(agent, components);
+        let rank = null, totalAgents = 0;
+        try {
+            const allAgents = indexer.getAllAgents();
+            totalAgents = allAgents.length;
+            const sorted = [...allAgents].sort((a, b) => (b.credScore || 0) - (a.credScore || 0));
+            const idx = sorted.findIndex(a => a.tokenId === tokenId);
+            if (idx >= 0) rank = idx + 1;
+        } catch {}
+        const traits = agent.traits || [];
+        const hasVerif = (name) => traits.some(t => t.name === name);
+        const verificationStatus = {
+            siwa: hasVerif('siwa-verified'), x: hasVerif('x-verified'),
+            github: hasVerif('github-verified'), farcaster: hasVerif('farcaster-verified'),
+            coinbase: hasVerif('coinbase-verified'),
+            total: ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified'].filter(v => hasVerif(v)).length,
+            max: 5,
+        };
+        const narrative = agent.narrative || {};
+        const narrativeFields = ['origin', 'mission', 'lore', 'manifesto'];
+        const narrativeAnalysis = {};
+        for (const f of narrativeFields) { narrativeAnalysis[f] = { present: !!narrative[f], length: narrative[f] ? narrative[f].length : 0 }; }
+        const narrativeCompleteness = narrativeFields.filter(f => !!narrative[f]).length;
+        const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
+        const ageDays = mintDate ? Math.floor((Date.now() - mintDate.getTime()) / 86400000) : 0;
+        const report = {
+            generatedAt: new Date().toISOString(),
+            agent: { tokenId, name: agent.name, framework: agent.framework, owner: agent.owner, agentAddress: agent.agentAddress, mintOrigin: agent.mintOrigin, mintedAt: agent.mintedAt, ageDays, soulbound: agent.soulbound, verified: agent.verified, points: agent.points },
+            credScore: { score: agent.credScore, computedScore, tier: tierInfo.tier, tierLabel: tierInfo.label, rank, totalAgents, percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null },
+            scoreBreakdown: components,
+            verifications: verificationStatus,
+            narrativeAnalysis: { completeness: `${narrativeCompleteness}/4`, fields: narrativeAnalysis },
+            personality: agent.personality,
+            recommendations,
+            tierScale: [
+                { tier: 'JUNK', range: '0-25' }, { tier: 'MARGINAL', range: '26-50' },
+                { tier: 'QUALIFIED', range: '51-75' }, { tier: 'PRIME', range: '76-90' }, { tier: 'PREFERRED', range: '91-100' },
+            ],
+            explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
+        };
+        console.log(`[CRED REPORT] Internal report for Agent #${tokenId} (score: ${agent.credScore}, tier: ${tierInfo.tier})`);
+        res.json(report);
+    } catch (e) {
+        console.error(`[CRED REPORT] Internal error for #${req.params.id}:`, e.message);
+        res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
 // PAID: Full Cred Report ($1 USDC via x402)
 app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
     try {
@@ -3732,7 +3879,8 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             paidAmount: `$${PRICING.credReport} USDC`,
             network: 'eip155:8453',
         });
-        const receiptSignature = crypto.createHmac('sha256', process.env.RECEIPT_HMAC_SECRET || DEPLOYER_KEY.slice(0, 32))
+        const hmacSecret = process.env.RECEIPT_HMAC_SECRET || (DEPLOYER_KEY ? DEPLOYER_KEY.slice(0, 32) : 'helixa-default-hmac-key-fallback');
+        const receiptSignature = crypto.createHmac('sha256', hmacSecret)
             .update(receiptPayload).digest('hex');
 
         // Ethos score
@@ -3835,6 +3983,47 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
         };
 
+        // Natural language assessment via Bankr LLM
+        try {
+            const bankrApiKey = _bankrApiKey || getBankrApiKey();
+            console.log(`[CRED REPORT] Bankr API key available: ${!!bankrApiKey}`);
+            if (bankrApiKey) {
+                const assessmentPrompt = `You are a concise analyst for AgentDNA, an onchain agent identity protocol. Write a 2-3 paragraph natural language assessment of this agent's credibility based on their cred report data. Be direct, specific, and actionable. No fluff.
+
+Agent: ${agent.name} (Token #${tokenId})
+Cred Score: ${agent.credScore}/100 (${tierInfo.label} tier)
+Rank: #${rank || '?'} of ${totalAgents} agents (${rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : '?'}th percentile)
+Age: ${ageDays} days
+Soulbound: ${agent.soulbound ? 'Yes' : 'No'}
+Verifications: SIWA=${verificationStatus.siwa}, X=${verificationStatus.x}, GitHub=${verificationStatus.github}, Farcaster=${verificationStatus.farcaster}, Coinbase=${verificationStatus.coinbase}
+Narrative completeness: ${narrativeCompleteness}/4 fields
+Score breakdown: ${Object.entries(components).map(([k,v]) => `${v.label}: ${v.weightedScore}/${v.maxWeightedScore}`).join(', ')}
+Recommendations: ${recommendations.map(r => r.action).join(', ')}`;
+
+                const llmRes = await fetch('https://llm.bankr.bot/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${bankrApiKey}` },
+                    body: JSON.stringify({
+                        model: 'gpt-5.4-nano',
+                        messages: [{ role: 'user', content: assessmentPrompt }],
+                        max_tokens: 500,
+                        temperature: 0.7,
+                    }),
+                });
+                console.log(`[CRED REPORT] LLM response: ${llmRes.status} ${llmRes.statusText}`);
+                if (llmRes.ok) {
+                    const llmData = await llmRes.json();
+                    report.analysis = llmData.choices?.[0]?.message?.content || null;
+                } else {
+                    const errText = await llmRes.text();
+                    console.warn(`[CRED REPORT] LLM error: ${errText.slice(0, 200)}`);
+                }
+            }
+        } catch (llmErr) {
+            console.warn(`[CRED REPORT] LLM assessment failed: ${llmErr.message}`);
+            // Non-fatal - report still works without it
+        }
+
         console.log(`[CRED REPORT] Paid report generated for Agent #${tokenId} (score: ${agent.credScore}, tier: ${tierInfo.tier})`);
         res.json(report);
     } catch (e) {
@@ -3849,7 +4038,8 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
     if (!payload || !signature) {
         return res.status(400).json({ error: 'payload and signature required' });
     }
-    const expected = crypto.createHmac('sha256', process.env.RECEIPT_HMAC_SECRET || DEPLOYER_KEY.slice(0, 32))
+    const hmacSecret2 = process.env.RECEIPT_HMAC_SECRET || (DEPLOYER_KEY ? DEPLOYER_KEY.slice(0, 32) : 'helixa-default-hmac-key-fallback');
+    const expected = crypto.createHmac('sha256', hmacSecret2)
         .update(payload).digest('hex');
     const valid = expected === signature;
     let parsed = null;
@@ -3860,6 +4050,175 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 // Soul Vault — Phase 1
 // ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// MintGate — Signature-gated minting
+// ═══════════════════════════════════════════════════════════════
+const MINTGATE_ADDRESS = process.env.MINTGATE_ADDRESS || '0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2';
+
+// Generate a mint signature (internal endpoint, called by Bankr x402 handler)
+app.post('/api/v2/internal/mint-signature', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const { to, paymentRef } = req.body;
+        if (!to || !paymentRef) {
+            return res.status(400).json({ error: 'Missing to or paymentRef' });
+        }
+
+        const deployerKey = DEPLOYER_KEY || (await initDeployerKey(), DEPLOYER_KEY);
+        if (!deployerKey) {
+            return res.status(500).json({ error: 'Signer not available' });
+        }
+
+        const signerWallet = new ethers.Wallet(deployerKey);
+        const nonce = ethers.hexlify(ethers.randomBytes(32));
+        const expiry = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+        const chainId = 8453;
+        const gateAddress = MINTGATE_ADDRESS;
+
+        if (!gateAddress) {
+            return res.status(500).json({ error: 'MintGate contract not configured' });
+        }
+
+        // Pack and sign: (to, nonce, expiry, paymentRef, chainId, contractAddress)
+        const messageHash = ethers.solidityPackedKeccak256(
+            ['address', 'bytes32', 'uint256', 'string', 'uint256', 'address'],
+            [to, nonce, expiry, paymentRef, chainId, gateAddress]
+        );
+        const signature = await signerWallet.signMessage(ethers.getBytes(messageHash));
+
+        res.json({
+            to,
+            nonce,
+            expiry,
+            paymentRef,
+            signature,
+            mintGateAddress: gateAddress,
+            chainId,
+        });
+    } catch (e) {
+        console.error('[MINTGATE] Signature generation failed:', e.message);
+        res.status(500).json({ error: 'Signature generation failed', detail: e.message });
+    }
+});
+
+// POST /api/v2/internal/mint — Direct mint via mintFree() for x402/Bankr payments
+// No SIWA needed — payment already verified by x402 layer
+app.post('/api/v2/internal/mint', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const { to, name, framework, soulbound, personality, narrative, paymentRef } = req.body;
+        if (!to || !name) {
+            return res.status(400).json({ error: 'Missing required: to, name' });
+        }
+        if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
+            return res.status(400).json({ error: 'Invalid wallet address' });
+        }
+        const NAME_REGEX = /^[\x20-\x7E\u00C0-\u024F\u0370-\u03FF]{1,64}$/;
+        if (!NAME_REGEX.test(name)) {
+            return res.status(400).json({ error: 'Name contains invalid characters' });
+        }
+
+        const fw = (framework || 'custom').toLowerCase();
+        const VALID_FRAMEWORKS = ['openclaw', 'eliza', 'langchain', 'crewai', 'autogpt', 'bankr', 'virtuals', 'based', 'agentkit', 'custom'];
+        if (!VALID_FRAMEWORKS.includes(fw)) {
+            return res.status(400).json({ error: `framework must be one of: ${VALID_FRAMEWORKS.join(', ')}` });
+        }
+
+        if (!isContractDeployed()) {
+            return res.status(503).json({ error: 'Contract not ready' });
+        }
+
+        // Check if already minted
+        const hasMinted = await readContract.hasMinted(to);
+        if (hasMinted) {
+            return res.status(409).json({ error: 'This address already has an agent' });
+        }
+
+        console.log(`[X402 MINT] ${name} (${fw}) -> ${to} [ref: ${paymentRef || 'none'}]`);
+
+        // Use mintFor (deployer is owner, no ETH needed)
+        // MintOrigin: 0=DIRECT, 1=AGENT_SIWA, 2=PARTNER, 3=REFERRAL
+        const tx = await contract.mintFor(
+            to,             // to (owner)
+            to,             // agentAddress
+            name,
+            fw,
+            soulbound === true,
+            2,              // MintOrigin.PARTNER (x402/Bankr)
+        );
+        console.log(`[X402 MINT] TX: ${tx.hash}`);
+        const receipt = await tx.wait();
+
+        // Extract tokenId from event
+        let tokenId = null;
+        for (const log of receipt.logs) {
+            try {
+                const parsed = contract.interface.parseLog(log);
+                if (parsed?.name === 'AgentRegistered') {
+                    tokenId = Number(parsed.args.tokenId);
+                    break;
+                }
+            } catch {}
+        }
+
+        // Set personality if provided
+        const MAX_STR = 256;
+        const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
+        if (personality && tokenId !== null) {
+            try {
+                const ptx = await contract.setPersonality(tokenId, [
+                    clamp(personality.quirks),
+                    clamp(personality.communicationStyle),
+                    clamp(personality.values),
+                    clamp(personality.humor),
+                    Math.min(10, Math.max(0, parseInt(personality.riskTolerance) || 5)),
+                    Math.min(10, Math.max(0, parseInt(personality.autonomyLevel) || 5)),
+                ]);
+                await ptx.wait();
+            } catch (e) {
+                console.error(`[X402 MINT] Personality failed: ${e.message}`);
+            }
+        }
+
+        // Set narrative if provided
+        if (narrative && tokenId !== null) {
+            try {
+                const ntx = await contract.setNarrative(tokenId, [
+                    clamp(narrative.origin, 512),
+                    clamp(narrative.mission, 512),
+                    clamp(narrative.lore, 1024),
+                    clamp(narrative.manifesto, 1024),
+                ]);
+                await ntx.wait();
+            } catch (e) {
+                console.error(`[X402 MINT] Narrative failed: ${e.message}`);
+            }
+        }
+
+        res.json({
+            success: true,
+            tokenId,
+            txHash: tx.hash,
+            owner: to,
+            name,
+            framework: fw,
+            paymentRef: paymentRef || null,
+            explorer: `https://basescan.org/tx/${tx.hash}`,
+        });
+    } catch (e) {
+        console.error('[X402 MINT] Failed:', e.message);
+        res.status(500).json({ error: 'Mint failed', detail: e.message });
+    }
+});
 
 // Ensure soul_vault table exists (idempotent)
 (() => {
