@@ -12,10 +12,18 @@ That gives us:
 - one discovery surface
 - separate scoring logic for agents vs humans
 - clean human-to-agent linkage for delegated trust
+- a path to expand later into teams, tools, infrastructure, and platforms without changing the base pattern
 
 ## Core Decision
 
-Helixa will treat a human as a first-class principal that can mint an ERC-8004 identity and publish a registration file with:
+Helixa should use ERC-8004 as the canonical base pattern, keep agents as the only hard onchain primitive for now, and add the broader human and work graph offchain first.
+
+For phase 1:
+- onchain: agent identity remains the primary hard primitive
+- offchain: humans, teams, work history, routing, and trust relationships live in the API, database, and graph
+- registration shape: reuse the ERC-8004 profile structure as the base schema for all principals
+
+Within that model, Helixa will treat a human as a first-class principal that can publish a profile using:
 
 - standard ERC-8004 fields
 - `metadata.entityType = "human"`
@@ -83,9 +91,48 @@ Helixa principal types:
 - `human`
 - `agent`
 - `team`
-- `service`
+- `tool`
+- `infrastructure`
+- `platform`
 
-For phase 1, only `human` and `agent` need to ship.
+For v1, the real focus should stay tight:
+- `human`
+- `agent`
+- `team`
+
+The others can exist as later graph-native entity types without becoming the first shipping surface.
+
+## Base schema strategy
+
+Do not invent a brand new profile language.
+
+Use the ERC-8004 registration shape as the base profile schema:
+- `name`
+- `description`
+- `image`
+- `services`
+- `skills`
+- `domains`
+- `supportedTrust`
+- `metadata`
+
+Then extend it with Helixa-only fields for the universal registry layer:
+- `entityType`
+- `operators`
+- `dependencies`
+- `backedBy`
+- `usedBy`
+- `hostedBy`
+- `health`
+- `riskFlags`
+- `evidence`
+- `externalIds`
+- `credVersion`
+- `credFactors`
+
+So the model is:
+- ERC-8004 schema = base profile language
+- Helixa schema = extended universal registry language
 
 ## Human Cred Score
 
@@ -157,6 +204,25 @@ Long term, the best human score will not come from imported badges. It comes fro
 - dispute rate
 - delivery consistency
 - response quality
+
+## Pools and service lanes
+
+This should be framed as a trust-backed service allocation system, not staking.
+
+The primitive is:
+- back providers
+- route work
+- track outcomes
+- share upside
+- increase or decrease Cred
+
+Pools are trusted service lanes, for example:
+- MVP Build Pool
+- AI Consultant Pool
+- Security Review Pool
+- Automation Pool
+
+That means Human Cred is not just a static identity score. It becomes one of the routing inputs for real work.
 
 ## Human to agent trust transfer
 
@@ -248,8 +314,27 @@ Index:
 - Ethos scores
 - Farcaster/GitHub/X account bindings
 - work history and repeat-hire metrics
+- graph relationships across humans, agents, teams, tools, infrastructure, and platforms
 
 Do not force all imported data onchain. That gets expensive and brittle fast.
+
+## Trust graph as product surface
+
+The trust graph should be the real product surface.
+
+The graph should expand beyond agent-to-agent links and support edges like:
+- `operatorOf`
+- `memberOf`
+- `backs`
+- `usedBy`
+- `dependsOn`
+- `hostedBy`
+- `verifiedBy`
+- `workedWith`
+- `endorsed`
+- `deliveredFor`
+
+That is how Helixa becomes a protocol for human + agent work, not just a score terminal.
 
 ## Scoring safeguards
 
@@ -265,11 +350,13 @@ Human reputation is easier to fake socially than agent state is to fake onchain,
 ## Rollout plan
 
 ### Phase 1 - Human profiles
-- mint/register human principals on the ERC-8004 rail
+- keep agents as the only hard onchain primitive
+- add human principals offchain first using the ERC-8004-shaped profile model
 - add `entityType=human`
 - ship Human Cred API and UI
 - integrate Coinbase EAS and Talent Protocol first
 - support human <-> agent linking
+- expose the first trust-graph edges for operators, teams, and work relationships
 
 ### Phase 2 - Human reputation loop
 - collect ERC-8004 feedback on humans
@@ -296,10 +383,12 @@ Teams get better routing because both sides of the loop are visible.
 Build this in the smallest useful slice:
 
 1. Human principal profile model
-2. `entityType=human` ERC-8004 registration convention
-3. Human Cred scorer in API only
-4. Coinbase EAS integration
-5. Talent Protocol integration
-6. Agent `linkedHuman` field and bounded inheritance
+2. ERC-8004-shaped universal profile schema
+3. `entityType=human` convention
+4. Human Cred scorer in API only
+5. Coinbase EAS integration
+6. Talent Protocol integration
+7. Agent `linkedHuman` and `operator` fields with bounded inheritance
+8. Initial graph edges for `operatorOf`, `memberOf`, and `workedWith`
 
-That is enough to prove the thesis without overbuilding.
+That is enough to prove the thesis without overbuilding or deploying more contracts too early.
