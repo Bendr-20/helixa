@@ -525,6 +525,64 @@ function saveProfile(tokenId, data) {
     return profiles[tokenId];
 }
 
+const HUMAN_PROFILES_PATH = path.join(__dirname, '..', 'data', 'human-profiles.json');
+function loadHumanProfiles() {
+    try { return JSON.parse(fs.readFileSync(HUMAN_PROFILES_PATH, 'utf8')); } catch { return {}; }
+}
+function saveHumanProfiles(profiles) {
+    fs.writeFileSync(HUMAN_PROFILES_PATH, JSON.stringify(profiles, null, 2));
+}
+function saveHumanProfile(walletAddress, data) {
+    const key = ethers.getAddress(walletAddress).toLowerCase();
+    const profiles = loadHumanProfiles();
+    profiles[key] = {
+        ...(profiles[key] || {}),
+        ...data,
+        walletAddress: ethers.getAddress(walletAddress),
+        updatedAt: new Date().toISOString(),
+    };
+    if (!profiles[key].createdAt) profiles[key].createdAt = new Date().toISOString();
+    saveHumanProfiles(profiles);
+    return profiles[key];
+}
+function getHumanProfileByWallet(walletAddress) {
+    try {
+        const key = ethers.getAddress(walletAddress).toLowerCase();
+        return loadHumanProfiles()[key] || null;
+    } catch {
+        return null;
+    }
+}
+function getHumanProfileById(id) {
+    const profiles = loadHumanProfiles();
+    if (/^\d+$/.test(String(id))) {
+        const tokenId = Number(id);
+        return Object.values(profiles).find(p => Number(p.tokenId) === tokenId) || null;
+    }
+    try {
+        return profiles[ethers.getAddress(String(id)).toLowerCase()] || null;
+    } catch {
+        return null;
+    }
+}
+
+function clampList(input, maxItems = 24, maxChars = 64) {
+    if (!Array.isArray(input)) return [];
+    return input
+        .map(v => typeof v === 'string' ? v.trim().slice(0, maxChars) : '')
+        .filter(Boolean)
+        .slice(0, maxItems);
+}
+
+function clampObjectStrings(input, maxEntries = 24, maxChars = 128) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+    const out = {};
+    for (const [k, v] of Object.entries(input).slice(0, maxEntries)) {
+        if (typeof v === 'string' && v.trim()) out[k] = v.trim().slice(0, maxChars);
+    }
+    return out;
+}
+
 const AURA_CACHE_TTL_MS = 5 * 60 * 1000;
 const AURA_PENDING_STALE_MS = 20 * 1000;
 const auraPngCache = new Map();
@@ -859,6 +917,192 @@ async function formatAgentV2(tokenId) {
     return result;
 }
 
+async function fetchCoinbaseAttestationStatus(walletAddress) {
+    try {
+        const indexer = new ethers.Contract(COINBASE_INDEXER, COINBASE_INDEXER_ABI, provider);
+        const eas = new ethers.Contract(EAS_CONTRACT, EAS_ABI, provider);
+        const attestationUid = await indexer.getAttestationUid(walletAddress, COINBASE_VERIFIED_ACCOUNT_SCHEMA);
+        if (attestationUid === ethers.ZeroHash) return { verified: false, attestationUid: null };
+        const attestation = await eas.getAttestation(attestationUid);
+        const now = Math.floor(Date.now() / 1000);
+        if ((attestation.revocationTime > 0 && attestation.revocationTime <= now) || (attestation.expirationTime > 0 && attestation.expirationTime <= now)) {
+            return { verified: false, attestationUid, revokedOrExpired: true };
+        }
+        return { verified: true, attestationUid, attester: attestation.attester };
+    } catch {
+        return { verified: false, attestationUid: null };
+    }
+}
+
+async function fetchTalentScore(walletAddress) {
+    try {
+        const talentKey = process.env.TALENT_API_KEY || require(require('os').homedir() + '/.config/talent-protocol/config.json').apiKey;
+        if (!talentKey) return null;
+        const resp = await fetch(`https://api.talentprotocol.com/score?id=${walletAddress}`, {
+            headers: { 'X-API-KEY': talentKey, 'Accept': 'application/json' },
+            signal: AbortSignal.timeout(3000),
+        });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return Number(data?.score?.points || 0) || null;
+    } catch {
+        return null;
+    }
+}
+
+async function fetchEthosScore(walletAddress) {
+    try {
+        const resp = await fetch(`https://api.ethos.network/api/v1/score/address:${walletAddress}`, { signal: AbortSignal.timeout(3000) });
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        return data?.ok && data?.data?.score ? Number(data.data.score) : null;
+    } catch {
+        return null;
+    }
+}
+
+function buildHumanRegistrationFile(profile) {
+    const walletAddress = profile.walletAddress;
+    const tokenId = profile.tokenId ?? null;
+    return {
+        type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+        name: profile.name || `Human ${walletAddress.slice(0, 6)}`,
+        description: profile.description || 'Human principal in the Helixa network.',
+        image: profile.image || null,
+        active: profile.active !== false,
+        services: profile.services || {
+            web: { url: tokenId !== null ? `https://helixa.xyz/h/${tokenId}` : `https://helixa.xyz/h/${walletAddress}` },
+        },
+        supportedTrust: Array.isArray(profile.supportedTrust) && profile.supportedTrust.length ? profile.supportedTrust : ['reputation'],
+        skills: profile.skills || [],
+        domains: profile.domains || [],
+        metadata: {
+            ...(profile.metadata || {}),
+            entityType: 'human',
+            principalType: 'human',
+            linkedAccounts: profile.linkedAccounts || {},
+            linkedAgents: profile.linkedAgents || [],
+            externalIds: profile.externalIds || {},
+            organization: profile.organization || null,
+        },
+    };
+}
+
+async function computeHumanCred(profile) {
+    const walletAddress = ethers.getAddress(profile.walletAddress);
+    const [coinbase, talentScore, ethosScore, txCount] = await Promise.all([
+        fetchCoinbaseAttestationStatus(walletAddress),
+        fetchTalentScore(walletAddress),
+        fetchEthosScore(walletAddress),
+        readProvider.getTransactionCount(walletAddress).catch(() => 0),
+    ]);
+
+    const weights = {
+        verifiedIdentity: 20,
+        builderReputation: 20,
+        socialReputation: 15,
+        onchainHistory: 10,
+        workHistory: 15,
+        networkEndorsements: 10,
+        profileCompleteness: 5,
+        longevity: 5,
+    };
+
+    const linkedAccounts = profile.linkedAccounts || {};
+    const hasEnsLike = Boolean(linkedAccounts.ens || linkedAccounts.basename);
+    const identityRaw = Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0));
+    const builderRaw = Math.max(0, Math.min(100, Math.round((Number(talentScore || 0) / 400) * 100)));
+    const socialRaw = Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)));
+    const onchainRaw = Math.max(0, Math.min(100, Math.round(Math.log10(Number(txCount || 0) + 1) * 45)));
+
+    const work = profile.workHistory || {};
+    const workRaw = Math.max(0, Math.min(100,
+        (Math.min(Number(work.completedJobs || 0), 10) * 6) +
+        (Math.min(Number(work.repeatClients || 0), 5) * 8) +
+        (Math.min(Number(work.referrals || 0), 5) * 4)
+    ));
+
+    const endorsements = profile.endorsements || {};
+    const endorsementRaw = Math.max(0, Math.min(100,
+        (Math.min(Number(endorsements.count || 0), 10) * 7) +
+        (Math.min(Number(endorsements.positiveReviews || 0), 6) * 5)
+    ));
+
+    let completenessChecks = 0;
+    if (profile.name) completenessChecks++;
+    if (profile.description) completenessChecks++;
+    if (Array.isArray(profile.skills) && profile.skills.length) completenessChecks++;
+    if (Array.isArray(profile.domains) && profile.domains.length) completenessChecks++;
+    if (Object.keys(linkedAccounts).length) completenessChecks++;
+    const profileRaw = Math.round((completenessChecks / 5) * 100);
+
+    const createdAt = profile.createdAt ? Date.parse(profile.createdAt) : Date.now();
+    const ageDays = Math.max(0, Math.floor((Date.now() - createdAt) / 86400000));
+    const longevityRaw = Math.min(100, Math.round((ageDays / 365) * 100));
+
+    const weighted = {
+        verifiedIdentity: Math.round(identityRaw * weights.verifiedIdentity / 100),
+        builderReputation: Math.round(builderRaw * weights.builderReputation / 100),
+        socialReputation: Math.round(socialRaw * weights.socialReputation / 100),
+        onchainHistory: Math.round(onchainRaw * weights.onchainHistory / 100),
+        workHistory: Math.round(workRaw * weights.workHistory / 100),
+        networkEndorsements: Math.round(endorsementRaw * weights.networkEndorsements / 100),
+        profileCompleteness: Math.round(profileRaw * weights.profileCompleteness / 100),
+        longevity: Math.round(longevityRaw * weights.longevity / 100),
+    };
+
+    const score = Object.values(weighted).reduce((a, b) => a + b, 0);
+    return {
+        score: Math.max(0, Math.min(100, score)),
+        tier: getCredTier(Math.max(0, Math.min(100, score))),
+        walletAddress,
+        tokenId: profile.tokenId ?? null,
+        sources: {
+            coinbaseVerified: coinbase.verified,
+            coinbaseAttestationUid: coinbase.attestationUid,
+            talentScore,
+            ethosScore,
+            txCount,
+        },
+        breakdown: {
+            verifiedIdentity: { weight: weights.verifiedIdentity, raw: identityRaw, contribution: weighted.verifiedIdentity },
+            builderReputation: { weight: weights.builderReputation, raw: builderRaw, contribution: weighted.builderReputation },
+            socialReputation: { weight: weights.socialReputation, raw: socialRaw, contribution: weighted.socialReputation },
+            onchainHistory: { weight: weights.onchainHistory, raw: onchainRaw, contribution: weighted.onchainHistory },
+            workHistory: { weight: weights.workHistory, raw: workRaw, contribution: weighted.workHistory },
+            networkEndorsements: { weight: weights.networkEndorsements, raw: endorsementRaw, contribution: weighted.networkEndorsements },
+            profileCompleteness: { weight: weights.profileCompleteness, raw: profileRaw, contribution: weighted.profileCompleteness },
+            longevity: { weight: weights.longevity, raw: longevityRaw, contribution: weighted.longevity },
+        },
+    };
+}
+
+async function formatHumanPrincipal(profile) {
+    const registration = buildHumanRegistrationFile(profile);
+    const cred = await computeHumanCred(profile);
+    return {
+        id: profile.tokenId ?? profile.walletAddress,
+        walletAddress: cred.walletAddress,
+        tokenId: profile.tokenId ?? null,
+        entityType: 'human',
+        name: profile.name,
+        description: profile.description || null,
+        image: profile.image || null,
+        organization: profile.organization || null,
+        skills: profile.skills || [],
+        domains: profile.domains || [],
+        linkedAccounts: profile.linkedAccounts || {},
+        linkedAgents: profile.linkedAgents || [],
+        externalIds: profile.externalIds || {},
+        services: profile.services || {},
+        metadata: registration.metadata,
+        humanCred: cred,
+        registration,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+    };
+}
+
 // ─── Public Endpoints ───────────────────────────────────────────
 
 // Discovery
@@ -881,10 +1125,14 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/stats': 'Protocol statistics',
                 'GET /api/v2/agents': 'Agent directory (paginated)',
                 'GET /api/v2/agent/:id': 'Single agent profile',
+                'GET /api/v2/human/:id': 'Single human principal profile',
+                'GET /api/v2/human/:id/cred': 'Human Cred score and breakdown',
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
                 'POST /api/v2/mint': 'Register new agent (SIWA required, free Phase 1)',
+                'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWA required)',
+                'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWA required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
@@ -1221,6 +1469,28 @@ app.get('/api/v2/agent/:id', async (req, res) => {
         res.json(agent);
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
+// GET /api/v2/human/:id
+app.get('/api/v2/human/:id', async (req, res) => {
+    try {
+        const profile = getHumanProfileById(req.params.id);
+        if (!profile) return res.status(404).json({ error: 'Human principal not found' });
+        res.json(await formatHumanPrincipal(profile));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load human principal', detail: e.message.slice(0, 200) });
+    }
+});
+
+// GET /api/v2/human/:id/cred
+app.get('/api/v2/human/:id/cred', async (req, res) => {
+    try {
+        const profile = getHumanProfileById(req.params.id);
+        if (!profile) return res.status(404).json({ error: 'Human principal not found' });
+        res.json(await computeHumanCred(profile));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to compute Human Cred', detail: e.message.slice(0, 200) });
     }
 });
 
@@ -2244,6 +2514,149 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
         }
     } catch (e) {
         res.status(500).json({ error: 'Update failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/principals/human/register — Register a human principal, optionally minting on HelixaV2
+app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
+    const caller = req.agent.address;
+    const {
+        tokenId: requestedTokenId,
+        mintOnchain,
+        soulbound,
+        framework,
+        name,
+        description,
+        image,
+        organization,
+        skills,
+        domains,
+        linkedAccounts,
+        linkedAgents,
+        externalIds,
+        services,
+        supportedTrust,
+        metadata,
+    } = req.body || {};
+
+    const clamp = (s, max = 256) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
+
+    try {
+        let tokenId = requestedTokenId != null ? Number(requestedTokenId) : null;
+        if (requestedTokenId != null && !Number.isInteger(tokenId)) {
+            return res.status(400).json({ error: 'tokenId must be an integer when provided' });
+        }
+        if (mintOnchain && tokenId !== null) {
+            return res.status(400).json({ error: 'Provide either tokenId or mintOnchain, not both' });
+        }
+
+        const existing = getHumanProfileByWallet(caller);
+        const displayName = clamp(name || existing?.name || '', 64);
+        if (!displayName) return res.status(400).json({ error: 'name required' });
+
+        if (tokenId !== null) {
+            if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+            const owner = await readContract.ownerOf(tokenId);
+            if (owner.toLowerCase() !== caller.toLowerCase()) {
+                return res.status(403).json({ error: 'Caller must own tokenId to bind it as a human principal' });
+            }
+        }
+
+        let mintTxHash = null;
+        if (mintOnchain) {
+            if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+            const tx = await contract.mintFor(
+                caller,
+                caller,
+                displayName,
+                clamp(framework || 'human', 32) || 'human',
+                soulbound === true,
+                0,
+            );
+            const receipt = await tx.wait();
+            mintTxHash = tx.hash;
+            for (const log of receipt.logs) {
+                try {
+                    const parsed = contract.interface.parseLog(log);
+                    if (parsed?.name === 'AgentRegistered') {
+                        tokenId = Number(parsed.args.tokenId);
+                        break;
+                    }
+                } catch {}
+            }
+            if (tokenId === null) return res.status(500).json({ error: 'Human mint succeeded but tokenId could not be recovered' });
+        }
+
+        const normalizedProfile = saveHumanProfile(caller, {
+            tokenId,
+            name: displayName,
+            description: clamp(description || existing?.description || '', 512),
+            image: clamp(image || existing?.image || '', 512),
+            organization: clamp(organization || existing?.organization || '', 128),
+            skills: clampList(skills ?? existing?.skills ?? [], 24, 64),
+            domains: clampList(domains ?? existing?.domains ?? [], 24, 64),
+            linkedAccounts: clampObjectStrings(linkedAccounts ?? existing?.linkedAccounts ?? {}, 24, 128),
+            linkedAgents: [...new Set(clampList(linkedAgents ?? existing?.linkedAgents ?? [], 32, 64))],
+            externalIds: clampObjectStrings(externalIds ?? existing?.externalIds ?? {}, 24, 128),
+            services: services && typeof services === 'object' && !Array.isArray(services) ? services : (existing?.services || {}),
+            supportedTrust: clampList(supportedTrust ?? existing?.supportedTrust ?? ['reputation'], 8, 32),
+            metadata: metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : (existing?.metadata || {}),
+            active: true,
+            entityType: 'human',
+            principalType: 'human',
+        });
+
+        if (tokenId !== null && isContractDeployed()) {
+            try {
+                const dataURI = registrationFileToDataURI(buildHumanRegistrationFile(normalizedProfile));
+                const metaTx = await contract.setMetadata(tokenId, dataURI);
+                await metaTx.wait();
+            } catch (e) {
+                console.error(`[HUMAN REGISTER] Metadata sync failed for #${tokenId}: ${e.message}`);
+            }
+        }
+
+        const formatted = await formatHumanPrincipal(normalizedProfile);
+        res.json({
+            success: true,
+            principal: formatted,
+            mintedOnchain: Boolean(mintOnchain),
+            txHash: mintTxHash,
+            message: tokenId !== null
+                ? `Human principal ${displayName} registered${mintOnchain ? ' and minted on HelixaV2' : ''}`
+                : `Human principal ${displayName} registered offchain`,
+        });
+    } catch (e) {
+        console.error('[HUMAN REGISTER] Error:', e.message);
+        res.status(500).json({ error: 'Human register failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/human/:id/link-agent — Link an owned agent to a human principal
+app.post('/api/v2/human/:id/link-agent', requireSIWA, async (req, res) => {
+    const caller = req.agent.address;
+    const { agentTokenId } = req.body || {};
+    const tokenId = Number(agentTokenId);
+    if (!Number.isInteger(tokenId)) return res.status(400).json({ error: 'agentTokenId required' });
+
+    try {
+        const profile = getHumanProfileById(req.params.id);
+        if (!profile) return res.status(404).json({ error: 'Human principal not found' });
+        if (profile.walletAddress.toLowerCase() !== caller.toLowerCase()) {
+            return res.status(403).json({ error: 'Caller must own this human principal profile' });
+        }
+        if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+
+        const owner = await readContract.ownerOf(tokenId);
+        if (owner.toLowerCase() !== caller.toLowerCase()) {
+            return res.status(403).json({ error: 'Caller must own the linked agent token' });
+        }
+
+        const linked = [...new Set([...(profile.linkedAgents || []), String(tokenId)])];
+        const updated = saveHumanProfile(caller, { linkedAgents: linked });
+        res.json({ success: true, principal: await formatHumanPrincipal(updated) });
+    } catch (e) {
+        res.status(500).json({ error: 'Agent link failed: ' + e.message.slice(0, 200) });
     }
 });
 
