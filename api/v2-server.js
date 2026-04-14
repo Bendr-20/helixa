@@ -583,6 +583,79 @@ function clampObjectStrings(input, maxEntries = 24, maxChars = 128) {
     return out;
 }
 
+function clampEmail(input, maxChars = 254) {
+    if (typeof input !== 'string') return '';
+    const value = input.trim().toLowerCase().slice(0, maxChars);
+    if (!value) return '';
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? value : '';
+}
+
+function clampHandle(input, maxChars = 64) {
+    if (typeof input !== 'string') return '';
+    return input.trim().slice(0, maxChars);
+}
+
+function normalizeNotificationChannels(input, contact = {}) {
+    const allowed = new Set(['email', 'telegram']);
+    const requested = Array.isArray(input) ? input : [];
+    const normalized = [];
+    for (const value of requested) {
+        const channel = typeof value === 'string' ? value.trim().toLowerCase() : '';
+        if (!allowed.has(channel)) continue;
+        if (channel === 'email' && !contact.email) continue;
+        if (channel === 'telegram' && !contact.telegram) continue;
+        if (!normalized.includes(channel)) normalized.push(channel);
+    }
+    if (!normalized.length) {
+        if (contact.email) normalized.push('email');
+        if (contact.telegram) normalized.push('telegram');
+    }
+    return normalized;
+}
+
+function sanitizeHumanContact(input, existing = {}) {
+    const next = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+    return {
+        email: clampEmail(next.email ?? existing.email ?? ''),
+        telegram: clampHandle(next.telegram ?? existing.telegram ?? '', 64),
+    };
+}
+
+function sanitizeHumanNotificationPreferences(input, existing = {}, contact = {}) {
+    const next = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+    const channels = normalizeNotificationChannels(next.channels ?? existing.channels, contact);
+    const requestedPreferred = typeof next.preferredChannel === 'string'
+        ? next.preferredChannel.trim().toLowerCase()
+        : typeof existing.preferredChannel === 'string'
+            ? existing.preferredChannel.trim().toLowerCase()
+            : '';
+    const preferredChannel = channels.includes(requestedPreferred) ? requestedPreferred : (channels[0] || null);
+    return {
+        channels,
+        preferredChannel,
+        proposalAlerts: next.proposalAlerts != null ? Boolean(next.proposalAlerts) : (existing.proposalAlerts ?? true),
+        taskAlerts: next.taskAlerts != null ? Boolean(next.taskAlerts) : (existing.taskAlerts ?? true),
+    };
+}
+
+function getAgentSocials(tokenId) {
+    try {
+        const sdb = getSoulDb();
+        const row = sdb.prepare('SELECT x, github, website, telegram, email FROM agent_socials WHERE tokenId = ?').get(tokenId);
+        sdb.close();
+        if (!row) return {};
+        const socials = {};
+        if (row.x) socials.x = row.x;
+        if (row.github) socials.github = row.github;
+        if (row.website) socials.website = row.website;
+        if (row.telegram) socials.telegram = row.telegram;
+        if (row.email) socials.email = row.email;
+        return socials;
+    } catch {
+        return {};
+    }
+}
+
 const AURA_CACHE_TTL_MS = 5 * 60 * 1000;
 const AURA_PENDING_STALE_MS = 20 * 1000;
 const auraPngCache = new Map();
@@ -822,6 +895,7 @@ async function formatAgentV2(tokenId) {
             } catch { return null; }
         })(),
         agentName: agentName || null,
+        socials: getAgentSocials(Number(tokenId)),
         linkedToken: linkedToken.contractAddress ? linkedToken : null,
         personality: personality ? {
             quirks: personality[0],
@@ -964,6 +1038,7 @@ async function fetchEthosScore(walletAddress) {
 function buildHumanRegistrationFile(profile) {
     const walletAddress = profile.walletAddress;
     const tokenId = profile.tokenId ?? null;
+    const notificationChannels = normalizeNotificationChannels(profile.notificationPreferences?.channels, profile.contact || {});
     return {
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name: profile.name || `Human ${walletAddress.slice(0, 6)}`,
@@ -984,6 +1059,11 @@ function buildHumanRegistrationFile(profile) {
             linkedAgents: profile.linkedAgents || [],
             externalIds: profile.externalIds || {},
             organization: profile.organization || null,
+            notificationChannels,
+            contactAvailable: {
+                email: Boolean(profile.contact?.email),
+                telegram: Boolean(profile.contact?.telegram),
+            },
         },
     };
 }
@@ -1077,9 +1157,16 @@ async function computeHumanCred(profile) {
     };
 }
 
-async function formatHumanPrincipal(profile) {
+async function formatHumanPrincipal(profile, options = {}) {
+    const { includePrivate = false } = options;
     const registration = buildHumanRegistrationFile(profile);
     const cred = await computeHumanCred(profile);
+    const notificationPreferences = sanitizeHumanNotificationPreferences(profile.notificationPreferences, profile.notificationPreferences, profile.contact || {});
+    const publicContact = {
+        hasEmail: Boolean(profile.contact?.email),
+        hasTelegram: Boolean(profile.contact?.telegram),
+        channels: notificationPreferences.channels,
+    };
     return {
         id: profile.tokenId ?? profile.walletAddress,
         walletAddress: cred.walletAddress,
@@ -1095,6 +1182,8 @@ async function formatHumanPrincipal(profile) {
         linkedAgents: profile.linkedAgents || [],
         externalIds: profile.externalIds || {},
         services: profile.services || {},
+        contact: includePrivate ? (profile.contact || { email: '', telegram: '' }) : publicContact,
+        notificationPreferences,
         metadata: registration.metadata,
         humanCred: cred,
         registration,
@@ -1477,7 +1566,7 @@ app.get('/api/v2/human/:id', async (req, res) => {
     try {
         const profile = getHumanProfileById(req.params.id);
         if (!profile) return res.status(404).json({ error: 'Human principal not found' });
-        res.json(await formatHumanPrincipal(profile));
+        res.json(await formatHumanPrincipal(profile, { includePrivate: false }));
     } catch (e) {
         res.status(500).json({ error: 'Failed to load human principal', detail: e.message.slice(0, 200) });
     }
@@ -2536,6 +2625,8 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
         externalIds,
         services,
         supportedTrust,
+        contact,
+        notificationPreferences,
         metadata,
     } = req.body || {};
 
@@ -2553,6 +2644,12 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
         const existing = getHumanProfileByWallet(caller);
         const displayName = clamp(name || existing?.name || '', 64);
         if (!displayName) return res.status(400).json({ error: 'name required' });
+        const normalizedContact = sanitizeHumanContact(contact, existing?.contact || {});
+        const normalizedNotificationPreferences = sanitizeHumanNotificationPreferences(
+            notificationPreferences,
+            existing?.notificationPreferences || {},
+            normalizedContact,
+        );
 
         if (tokenId !== null) {
             if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
@@ -2600,6 +2697,8 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             externalIds: clampObjectStrings(externalIds ?? existing?.externalIds ?? {}, 24, 128),
             services: services && typeof services === 'object' && !Array.isArray(services) ? services : (existing?.services || {}),
             supportedTrust: clampList(supportedTrust ?? existing?.supportedTrust ?? ['reputation'], 8, 32),
+            contact: normalizedContact,
+            notificationPreferences: normalizedNotificationPreferences,
             metadata: metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : (existing?.metadata || {}),
             active: true,
             entityType: 'human',
@@ -2616,7 +2715,7 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             }
         }
 
-        const formatted = await formatHumanPrincipal(normalizedProfile);
+        const formatted = await formatHumanPrincipal(normalizedProfile, { includePrivate: true });
         res.json({
             success: true,
             principal: formatted,
@@ -2654,7 +2753,7 @@ app.post('/api/v2/human/:id/link-agent', requireSIWA, async (req, res) => {
 
         const linked = [...new Set([...(profile.linkedAgents || []), String(tokenId)])];
         const updated = saveHumanProfile(caller, { linkedAgents: linked });
-        res.json({ success: true, principal: await formatHumanPrincipal(updated) });
+        res.json({ success: true, principal: await formatHumanPrincipal(updated, { includePrivate: true }) });
     } catch (e) {
         res.status(500).json({ error: 'Agent link failed: ' + e.message.slice(0, 200) });
     }
@@ -6715,20 +6814,7 @@ app.get('/api/v2/agent/:id/card', async (req, res) => {
         } catch {}
 
         // Socials
-        let socials = {};
-        try {
-            const sdb = getSoulDb();
-            const row = sdb.prepare('SELECT x, github, website, telegram, email FROM agent_socials WHERE tokenId = ?').get(tokenId);
-            sdb.close();
-            if (row) {
-                socials = {};
-                if (row.x) socials.x = row.x;
-                if (row.github) socials.github = row.github;
-                if (row.website) socials.website = row.website;
-                if (row.telegram) socials.telegram = row.telegram;
-                if (row.email) socials.email = row.email;
-            }
-        } catch {}
+        const socials = getAgentSocials(tokenId);
 
         // Capabilities from traits
         const capabilities = (agent.traits || [])
