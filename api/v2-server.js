@@ -1057,6 +1057,8 @@ async function formatAgentV2(tokenId) {
         web: { url: `https://helixa.xyz/agent/${tokenId}` },
         ...(socials.email ? { email: { address: socials.email } } : {}),
         ...(socials.telegram ? { telegram: { handle: socials.telegram } } : {}),
+        mcp: { url: 'https://api.helixa.xyz/api/mcp' },
+        a2a: { url: 'https://api.helixa.xyz/api/a2a' },
     };
     result.services = sanitizePrincipalServices(profile.services, defaultServices, { email: socials.email, telegram: socials.telegram });
     result.metadata = sanitizePrincipalMetadata(
@@ -2531,24 +2533,39 @@ function build8004RegistrationFile(tokenId, name, framework, narrative, opts = {
     if (opts.hasCoinbase) capabilities.push('coinbase-verified');
     if (opts.credTier) capabilities.push(`cred-${opts.credTier.toLowerCase()}`);
 
+    const profile = getProfile(tokenId) || {};
+    const socials = getAgentSocials(Number(tokenId));
+    const services = sanitizePrincipalServices(profile.services, {
+        web: { url: `https://helixa.xyz/agent/${tokenId}` },
+        ...(socials.email ? { email: { address: socials.email } } : {}),
+        ...(socials.telegram ? { telegram: { handle: socials.telegram } } : {}),
+        mcp: { url: 'https://api.helixa.xyz/api/mcp' },
+        a2a: { url: 'https://api.helixa.xyz/api/a2a' },
+    }, { email: socials.email, telegram: socials.telegram });
+    const metadata = sanitizePrincipalMetadata(
+        profile.metadata,
+        {},
+        { entityType: 'agent', principalType: 'agent', framework: framework || 'unknown' },
+        { services, fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+    );
+
     return {
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name,
         description,
         image: `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
-        services: [
-            { name: 'web', endpoint: `https://helixa.xyz/agent/${tokenId}` },
-            { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '0.3.0' },
-            { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
-            { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
-        ],
-        x402Support: true,
+        services,
         active: true,
-        capabilities,
-        agentMetadata: {
+        skills: clampList(profile.skills || [], 24, 64),
+        domains: clampList(profile.domains || [], 24, 64),
+        supportedTrust: ['reputation'],
+        metadata: {
+            ...metadata,
             framework: framework || 'unknown',
             credScore: opts.credScore ?? null,
             credTier: opts.credTier ?? null,
+            x402Support: true,
+            capabilities,
             verifications: [
                 ...(opts.hasX ? ['x'] : []),
                 ...(opts.hasGithub ? ['github'] : []),
@@ -2565,7 +2582,6 @@ function build8004RegistrationFile(tokenId, name, framework, narrative, opts = {
                 agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
             },
         ],
-        supportedTrust: ['reputation'],
     };
 }
 
