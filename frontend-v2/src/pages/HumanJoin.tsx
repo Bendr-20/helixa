@@ -435,7 +435,7 @@ export function HumanJoin() {
               Join Helixa as a <span className="text-gradient">Human</span>
             </h1>
             <p style={{ color: '#9a94af', fontSize: '1rem', maxWidth: '700px', lineHeight: 1.6, marginBottom: '1rem' }}>
-              Create your profile first, publish onchain later if and when it matters. The human path starts with identity, discoverability, and work context, not minting.
+              Build your human profile around identity, discoverability, and real work context. This is where people show who they are, what they do, and how they plug into Helixa.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {stepOrder.map((step, index) => (
