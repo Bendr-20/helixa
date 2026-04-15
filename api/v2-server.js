@@ -6210,11 +6210,13 @@ app.post('/api/a2a', a2aHandler);
 // Enhanced Search
 app.get('/api/v2/search', async (req, res) => {
     try {
-        const q = req.query.q || '';
+        const q = String(req.query.q || '').trim();
+        const qLower = q.toLowerCase();
         const minCred = parseInt(req.query.minCred) || 0;
         const tierFilter = (req.query.tier || '').toUpperCase();
         const verifiedOnly = req.query.verified === 'true';
-        const capability = req.query.capability;
+        const capability = String(req.query.capability || '').trim();
+        const capabilityLower = capability.toLowerCase();
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
 
         const tierOrder = ['JUNK', 'MARGINAL', 'QUALIFIED', 'PRIME', 'PREFERRED'];
@@ -6222,7 +6224,7 @@ app.get('/api/v2/search', async (req, res) => {
 
         const result = indexer.queryAgents({
             page: 1, limit: 200, sort: 'credScore', order: 'desc',
-            search: q || undefined, framework: capability,
+            search: q || undefined, framework: capability || undefined,
             verified: verifiedOnly ? 'true' : undefined, showSpam: false,
         });
 
@@ -6233,14 +6235,16 @@ app.get('/api/v2/search', async (req, res) => {
             agents = agents.filter(a => tierOrder.indexOf(getCredTier(a.credScore || 0).tier) >= minTierIdx);
         }
 
-        const mapped = agents.slice(0, limit).map(a => {
+        const mappedAgents = agents.slice(0, limit).map(a => {
             const tierInfo = getCredTier(a.credScore || 0);
             const traits = a.traits || [];
             const verifications = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
                 .filter(v => traits.some(t => t.name === v))
                 .map(v => v.replace('-verified', ''));
             return {
+                entityType: 'agent',
                 tokenId: a.tokenId,
+                id: String(a.tokenId),
                 name: a.name,
                 framework: a.framework,
                 description: a.description || '',
@@ -6253,11 +6257,84 @@ app.get('/api/v2/search', async (req, res) => {
                     profile: `https://api.helixa.xyz/api/v2/agent/${a.tokenId}`,
                     cred: `https://api.helixa.xyz/api/v2/agent/${a.tokenId}/cred`,
                     card: `https://api.helixa.xyz/api/v2/card/${a.tokenId}.png`,
+                    publicProfile: `https://helixa.xyz/agent/${a.tokenId}`,
                 },
             };
         });
 
-        res.json({ query: q, total: mapped.length, filters: { minCred, tier: tierFilter || null, verified: verifiedOnly, capability: capability || null }, agents: mapped });
+        const humanProfiles = Object.values(loadHumanProfiles()).filter(profile => profile?.active !== false);
+        const mappedHumans = [];
+
+        for (const profile of humanProfiles) {
+            const formatted = await formatHumanPrincipal(profile, { includePrivate: false });
+            const score = formatted?.humanCred?.score || 0;
+            const tierInfo = getCredTier(score);
+            const haystack = [
+                formatted.name,
+                formatted.description,
+                formatted.organization,
+                ...(formatted.skills || []),
+                ...(formatted.domains || []),
+                ...(formatted.metadata?.serviceCategories || []),
+                ...(formatted.metadata?.languages || []),
+                ...Object.values(formatted.linkedAccounts || {}),
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            if (qLower && !haystack.includes(qLower)) continue;
+            if (capabilityLower) {
+                const capabilityMatch = [
+                    ...(formatted.skills || []),
+                    ...(formatted.domains || []),
+                    ...(formatted.metadata?.serviceCategories || []),
+                ].some(value => String(value).toLowerCase() === capabilityLower);
+                if (!capabilityMatch) continue;
+            }
+            if (minCred > 0 && score < minCred) continue;
+            if (minTierIdx >= 0 && tierOrder.indexOf(tierInfo.tier) < minTierIdx) continue;
+            if (verifiedOnly && !formatted.walletAddress) continue;
+
+            mappedHumans.push({
+                entityType: 'human',
+                id: formatted.tokenId != null ? String(formatted.tokenId) : formatted.walletAddress,
+                tokenId: formatted.tokenId,
+                walletAddress: formatted.walletAddress,
+                name: formatted.name,
+                description: formatted.description || '',
+                organization: formatted.organization || '',
+                credScore: score,
+                tier: tierInfo.tier,
+                tierLabel: tierInfo.label,
+                verified: Boolean(formatted.walletAddress),
+                verifications: formatted.walletAddress ? ['wallet'] : [],
+                skills: formatted.skills || [],
+                serviceCategories: formatted.metadata?.serviceCategories || [],
+                suggested_actions: {
+                    profile: `https://api.helixa.xyz/api/v2/human/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}`,
+                    cred: `https://api.helixa.xyz/api/v2/human/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}/cred`,
+                    publicProfile: `https://helixa.xyz/h/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}`,
+                },
+            });
+        }
+
+        mappedHumans.sort((a, b) => (b.credScore || 0) - (a.credScore || 0));
+        const limitedHumans = mappedHumans.slice(0, limit);
+        const principals = [...mappedAgents, ...limitedHumans]
+            .sort((a, b) => (b.credScore || 0) - (a.credScore || 0))
+            .slice(0, limit);
+
+        res.json({
+            query: q,
+            total: mappedAgents.length,
+            humanTotal: limitedHumans.length,
+            principalTotal: principals.length,
+            filters: { minCred, tier: tierFilter || null, verified: verifiedOnly, capability: capability || null },
+            agents: mappedAgents,
+            humans: limitedHumans,
+            principals,
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
