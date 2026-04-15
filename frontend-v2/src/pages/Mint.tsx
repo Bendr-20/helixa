@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { MintFlow } from '../components/MintFlow/MintFlow';
-import { useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { API_URL } from '../lib/constants';
 
-type MintPath = null | 'human' | 'agent';
+type MintPath = null | 'agent';
 
 function HumanIcon() {
   return (
@@ -76,7 +75,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
           color: '#b490ff',
           marginBottom: '1rem',
         }}>
-          Agent Registration — SIWA + x402
+          Agent Registration - SIWA + x402
         </div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
@@ -84,7 +83,6 @@ curl -X POST ${API_URL}/api/v2/mint \\
         </p>
       </div>
 
-      {/* Flow diagram */}
       <div style={{
         display: 'flex',
         justifyContent: 'center',
@@ -117,7 +115,6 @@ curl -X POST ${API_URL}/api/v2/mint \\
         ))}
       </div>
 
-      {/* Pricing */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
@@ -143,7 +140,6 @@ curl -X POST ${API_URL}/api/v2/mint \\
         ))}
       </div>
 
-      {/* Code blocks */}
       <div style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h3 style={{ fontSize: '0.95rem', color: '#6eecd8', margin: 0 }}>Step 1: SIWA Authentication</h3>
@@ -196,7 +192,6 @@ curl -X POST ${API_URL}/api/v2/mint \\
         }}>{mintExample}</pre>
       </div>
 
-      {/* What you get */}
       <div style={{
         padding: '1.5rem',
         background: 'rgba(255,255,255,0.02)',
@@ -220,7 +215,6 @@ curl -X POST ${API_URL}/api/v2/mint \\
         </div>
       </div>
 
-      {/* Links */}
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
         <a href="/docs" style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
@@ -253,22 +247,27 @@ curl -X POST ${API_URL}/api/v2/mint \\
 
 export function Mint() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [mintPath, setMintPath] = useState<MintPath>(null);
   const referralCode = searchParams.get('ref') || '';
 
-  const handleMintComplete = (tokenId: string) => {};
+  useEffect(() => {
+    if (location.hash === '#agent-mint') {
+      setMintPath('agent');
+    }
+  }, [location.hash]);
 
-  // Two-button chooser
   if (!mintPath) {
     return (
       <div className="mint-page">
         <div className="mint-container">
           <div className="mint-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
             <h1>
-              Register Your <span className="text-gradient">Agent</span>
+              Choose Your <span className="text-gradient">Path</span>
             </h1>
-            <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '500px', margin: '0.5rem auto 0' }}>
-              Create your onchain identity and start building reputation.
+            <p style={{ fontSize: '1.1rem', color: '#888', maxWidth: '560px', margin: '0.5rem auto 0' }}>
+              Humans onboard into discoverable profiles. Agents authenticate and register programmatically.
             </p>
             {referralCode && (
               <div style={{
@@ -281,7 +280,7 @@ export function Mint() {
                 color: '#6eecd8',
                 display: 'inline-block',
               }}>
-                Referral code <strong>{referralCode}</strong> applied — +25 bonus points!
+                Referral code <strong>{referralCode}</strong> applied - +25 bonus points!
               </div>
             )}
           </div>
@@ -293,9 +292,8 @@ export function Mint() {
             maxWidth: '700px',
             margin: '0 auto',
           }}>
-            {/* Human Card */}
             <button
-              onClick={() => setMintPath('human')}
+              onClick={() => navigate('/join/human')}
               style={{
                 background: 'rgba(110, 236, 216, 0.05)',
                 border: '2px solid rgba(110, 236, 216, 0.2)',
@@ -320,9 +318,9 @@ export function Mint() {
               <div style={{ color: '#6eecd8', marginBottom: '1rem' }}>
                 <HumanIcon />
               </div>
-              <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I'm Human</h2>
+              <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I&apos;m Human</h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
-                Sign in with email, social, or wallet. Register directly from the contract.
+                Create your profile, link your work, and get discovered on Helixa.
               </p>
               <div style={{
                 marginTop: '1.25rem',
@@ -333,11 +331,10 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#6eecd8',
               }}>
-                ~$5 in ETH + gas
+                No gas required
               </div>
             </button>
 
-            {/* Agent Card */}
             <button
               onClick={() => setMintPath('agent')}
               style={{
@@ -364,7 +361,7 @@ export function Mint() {
               <div style={{ color: '#b490ff', marginBottom: '1rem' }}>
                 <AgentIcon />
               </div>
-              <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I'm an Agent</h2>
+              <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I&apos;m an Agent</h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
                 Authenticate with SIWA. Pay via x402. Fully programmatic.
               </p>
@@ -395,50 +392,6 @@ export function Mint() {
     );
   }
 
-  // Human path — existing Privy + MintFlow
-  if (mintPath === 'human') {
-    return (
-      <div className="mint-page">
-        <div className="mint-container">
-          <div style={{ marginBottom: '1.5rem' }}>
-            <button
-              onClick={() => setMintPath(null)}
-              style={{
-                background: 'none', border: 'none', color: '#666', cursor: 'pointer',
-                fontSize: '0.85rem', padding: '0.3rem 0', display: 'flex', alignItems: 'center', gap: '0.3rem',
-              }}
-            >
-              ← Back to selection
-            </button>
-          </div>
-          <div className="mint-header">
-            <h1>
-              Register Your <span className="text-gradient">Agent</span>
-            </h1>
-            <p>
-              Sign in with email, social login, or wallet to register your identity on Base mainnet.
-            </p>
-            {referralCode && (
-              <div style={{
-                marginTop: '0.75rem',
-                padding: '0.5rem 1rem',
-                background: 'rgba(110, 236, 216, 0.1)',
-                border: '1px solid rgba(110, 236, 216, 0.3)',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                color: '#6eecd8',
-              }}>
-                Referral code <strong>{referralCode}</strong> applied — +25 bonus points!
-              </div>
-            )}
-          </div>
-          <MintFlow onComplete={handleMintComplete} />
-        </div>
-      </div>
-    );
-  }
-
-  // Agent path — SIWA + x402 docs
   return (
     <div className="mint-page">
       <div className="mint-container">

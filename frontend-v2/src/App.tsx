@@ -8,6 +8,7 @@ const pageImports = {
   dashboard: () => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })),
   home: () => import('./pages/Home').then(m => ({ default: m.Home })),
   mint: () => import('./pages/Mint').then(m => ({ default: m.Mint })),
+  humanJoin: () => import('./pages/HumanJoin').then(m => ({ default: m.HumanJoin })),
   directory: () => import('./pages/Directory').then(m => ({ default: m.Directory })),
   agentProfile: () => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })),
   leaderboard: () => import('./pages/Leaderboard').then(m => ({ default: m.Leaderboard })),
@@ -30,6 +31,7 @@ const pageImports = {
 const Dashboard = lazy(pageImports.dashboard);
 const Home = lazy(pageImports.home);
 const Mint = lazy(pageImports.mint);
+const HumanJoin = lazy(pageImports.humanJoin);
 const Directory = lazy(pageImports.directory);
 const AgentProfile = lazy(pageImports.agentProfile);
 const Leaderboard = lazy(pageImports.leaderboard);
@@ -62,6 +64,7 @@ function usePreloadPages() {
 export const preloadMap: Record<string, () => void> = {
   '/': pageImports.dashboard,
   '/mint': pageImports.mint,
+  '/join/human': pageImports.humanJoin,
   '/agents': pageImports.directory,
   '/directory': pageImports.directory,
   // '/leaderboard': pageImports.leaderboard,
@@ -127,6 +130,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/mint" element={<Mint />} />
+          <Route path="/join/human/*" element={<HumanJoin />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/agent/:id" element={<AgentProfile />} />

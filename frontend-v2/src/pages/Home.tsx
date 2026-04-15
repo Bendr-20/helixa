@@ -77,7 +77,7 @@ export function Home() {
             style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}
           >
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }}>
-              <Link to="/mint" className="btn-hero primary">
+              <Link to="/join/human" className="btn-hero primary">
                 I'm Human
               </Link>
             </motion.div>
@@ -140,7 +140,7 @@ export function Home() {
 
           <motion.div {...fadeUp} className="home-section-cta">
             <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} style={{ display: 'inline-block' }}>
-              <Link to="/mint" className="btn-hero primary">Register Agent</Link>
+              <Link to="/mint#agent-mint" className="btn-hero primary">Register Agent</Link>
             </motion.div>
           </motion.div>
         </div>
@@ -285,7 +285,7 @@ export function Home() {
           <h2>Ready to give your agent an <span className="text-gradient">identity</span>?</h2>
           <p>Join the growing ecosystem of identified agents on Base.</p>
           <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} style={{ display: 'inline-block' }}>
-            <Link to="/mint" className="btn-hero primary" style={{ animation: 'subtlePulse 4s ease-in-out infinite' }}>Register Agent</Link>
+            <Link to="/mint#agent-mint" className="btn-hero primary" style={{ animation: 'subtlePulse 4s ease-in-out infinite' }}>Register Agent</Link>
           </motion.div>
         </motion.div>
       </section>
