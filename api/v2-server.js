@@ -595,6 +595,49 @@ function clampHandle(input, maxChars = 64) {
     return input.trim().slice(0, maxChars);
 }
 
+function clampUrl(input, maxChars = 512) {
+    if (typeof input !== 'string') return '';
+    const value = input.trim().slice(0, maxChars);
+    if (!value) return '';
+    return /^https?:\/\//i.test(value) ? value : '';
+}
+
+function clampIdLike(input, maxChars = 128) {
+    if (typeof input !== 'string') return '';
+    return input.trim().slice(0, maxChars);
+}
+
+function normalizeCommunicationChannels(input, services = {}, fallback = []) {
+    const allowed = new Set(['email', 'telegram', 'web', 'mcp', 'a2a']);
+    const requested = Array.isArray(input) ? input : [];
+    const normalized = [];
+    const available = {
+        email: Boolean(services.email?.address),
+        telegram: Boolean(services.telegram?.handle),
+        web: Boolean(services.web?.url),
+        mcp: Boolean(services.mcp?.url),
+        a2a: Boolean(services.a2a?.url),
+    };
+    for (const value of requested) {
+        const channel = typeof value === 'string' ? value.trim().toLowerCase() : '';
+        if (!allowed.has(channel) || !available[channel]) continue;
+        if (!normalized.includes(channel)) normalized.push(channel);
+    }
+    if (!normalized.length) {
+        for (const value of fallback) {
+            const channel = typeof value === 'string' ? value.trim().toLowerCase() : '';
+            if (!allowed.has(channel) || !available[channel]) continue;
+            if (!normalized.includes(channel)) normalized.push(channel);
+        }
+    }
+    if (!normalized.length) {
+        for (const channel of ['email', 'telegram', 'web', 'mcp', 'a2a']) {
+            if (available[channel]) normalized.push(channel);
+        }
+    }
+    return normalized;
+}
+
 function normalizeNotificationChannels(input, contact = {}) {
     const allowed = new Set(['email', 'telegram']);
     const requested = Array.isArray(input) ? input : [];
@@ -619,6 +662,71 @@ function sanitizeHumanContact(input, existing = {}) {
         email: clampEmail(next.email ?? existing.email ?? ''),
         telegram: clampHandle(next.telegram ?? existing.telegram ?? '', 64),
     };
+}
+
+function sanitizePrincipalServices(input, existing = {}, contact = {}) {
+    const next = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+    const prev = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {};
+    const out = {};
+
+    const webUrl = clampUrl(next.web?.url ?? prev.web?.url ?? '');
+    if (webUrl) out.web = { url: webUrl };
+
+    const emailAddress = clampEmail(next.email?.address ?? contact.email ?? prev.email?.address ?? '');
+    if (emailAddress) out.email = { address: emailAddress };
+
+    const telegramHandle = clampHandle(next.telegram?.handle ?? contact.telegram ?? prev.telegram?.handle ?? '', 64);
+    if (telegramHandle) out.telegram = { handle: telegramHandle };
+
+    const mcpUrl = clampUrl(next.mcp?.url ?? prev.mcp?.url ?? '');
+    if (mcpUrl) out.mcp = { url: mcpUrl };
+
+    const a2aUrl = clampUrl(next.a2a?.url ?? prev.a2a?.url ?? '');
+    if (a2aUrl) out.a2a = { url: a2aUrl };
+
+    const ensName = clampIdLike(next.ens?.name ?? prev.ens?.name ?? '', 128);
+    if (ensName) out.ens = { name: ensName };
+
+    const didId = clampIdLike(next.did?.id ?? prev.did?.id ?? '', 256);
+    if (didId) out.did = { id: didId };
+
+    return out;
+}
+
+function sanitizePrincipalMetadata(input, existing = {}, enforced = {}, options = {}) {
+    const next = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+    const prev = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing : {};
+    const services = options.services || {};
+    const fallbackChannels = options.fallbackChannels || [];
+    const meta = {
+        entityType: clampIdLike(next.entityType ?? prev.entityType ?? enforced.entityType ?? '', 32),
+        principalType: clampIdLike(next.principalType ?? prev.principalType ?? enforced.principalType ?? '', 32),
+        timezone: clampIdLike(next.timezone ?? prev.timezone ?? enforced.timezone ?? '', 64),
+        languages: clampList(next.languages ?? prev.languages ?? enforced.languages ?? [], 8, 16),
+        region: clampIdLike(next.region ?? prev.region ?? enforced.region ?? '', 64),
+        openToWork: next.openToWork != null ? Boolean(next.openToWork) : (prev.openToWork != null ? Boolean(prev.openToWork) : (enforced.openToWork != null ? Boolean(enforced.openToWork) : true)),
+        preferredCommunicationChannels: [],
+        acceptedPayments: clampList(next.acceptedPayments ?? prev.acceptedPayments ?? enforced.acceptedPayments ?? [], 8, 24),
+        serviceCategories: clampList(next.serviceCategories ?? prev.serviceCategories ?? enforced.serviceCategories ?? [], 12, 64),
+        linkedAccounts: clampObjectStrings(next.linkedAccounts ?? prev.linkedAccounts ?? enforced.linkedAccounts ?? {}, 16, 128),
+    };
+
+    const preferredCommunicationChannels = normalizeCommunicationChannels(
+        next.preferredCommunicationChannels ?? prev.preferredCommunicationChannels ?? enforced.preferredCommunicationChannels ?? [],
+        services,
+        fallbackChannels,
+    );
+    if (preferredCommunicationChannels.length) meta.preferredCommunicationChannels = preferredCommunicationChannels;
+
+    for (const key of ['organization', 'framework', 'operatorType', 'managedBy', 'linkedHuman']) {
+        const value = clampIdLike(next[key] ?? prev[key] ?? enforced[key] ?? '', 128);
+        if (value) meta[key] = value;
+    }
+
+    const linkedAgents = clampList(next.linkedAgents ?? prev.linkedAgents ?? enforced.linkedAgents ?? [], 32, 64);
+    if (linkedAgents.length) meta.linkedAgents = linkedAgents;
+
+    return meta;
 }
 
 function sanitizeHumanNotificationPreferences(input, existing = {}, contact = {}) {
@@ -854,6 +962,8 @@ async function formatAgentV2(tokenId) {
     }
 
     // Build base result from onchain data
+    const profile = getProfile(tokenId) || {};
+    const socials = getAgentSocials(Number(tokenId));
     const result = {
         tokenId: Number(tokenId),
         agentAddress: agent.agentAddress,
@@ -895,7 +1005,11 @@ async function formatAgentV2(tokenId) {
             } catch { return null; }
         })(),
         agentName: agentName || null,
-        socials: getAgentSocials(Number(tokenId)),
+        socials,
+        skills: clampList(profile.skills || [], 24, 64),
+        domains: clampList(profile.domains || [], 24, 64),
+        services: {},
+        metadata: {},
         linkedToken: linkedToken.contractAddress ? linkedToken : null,
         personality: personality ? {
             quirks: personality[0],
@@ -920,7 +1034,6 @@ async function formatAgentV2(tokenId) {
     };
 
     // Merge off-chain profile overrides (traits, personality, narrative)
-    const profile = getProfile(tokenId);
     if (profile) {
         if (profile.personality) {
             result.personality = { ...(result.personality || {}), ...profile.personality };
@@ -939,6 +1052,19 @@ async function formatAgentV2(tokenId) {
             }
         }
     }
+
+    const defaultServices = {
+        web: { url: `https://helixa.xyz/agent/${tokenId}` },
+        ...(socials.email ? { email: { address: socials.email } } : {}),
+        ...(socials.telegram ? { telegram: { handle: socials.telegram } } : {}),
+    };
+    result.services = sanitizePrincipalServices(profile.services, defaultServices, { email: socials.email, telegram: socials.telegram });
+    result.metadata = sanitizePrincipalMetadata(
+        profile.metadata,
+        {},
+        { entityType: 'agent', principalType: 'agent', framework: result.framework },
+        { services: result.services, fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+    );
 
     // Fetch 0xWork stats (non-blocking, best-effort)
     try {
@@ -1038,28 +1164,34 @@ async function fetchEthosScore(walletAddress) {
 function buildHumanRegistrationFile(profile) {
     const walletAddress = profile.walletAddress;
     const tokenId = profile.tokenId ?? null;
-    const notificationChannels = normalizeNotificationChannels(profile.notificationPreferences?.channels, profile.contact || {});
+    const services = sanitizePrincipalServices(profile.services, profile.services, profile.contact || {});
+    if (!services.web) services.web = { url: tokenId !== null ? `https://helixa.xyz/h/${tokenId}` : `https://helixa.xyz/h/${walletAddress}` };
+    const metadata = sanitizePrincipalMetadata(
+        profile.metadata,
+        profile.metadata,
+        {
+            entityType: 'human',
+            principalType: 'human',
+            linkedAccounts: profile.linkedAccounts || {},
+            linkedAgents: profile.linkedAgents || [],
+            organization: profile.organization || null,
+        },
+        { services, fallbackChannels: ['email', 'telegram', 'web'] },
+    );
     return {
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name: profile.name || `Human ${walletAddress.slice(0, 6)}`,
         description: profile.description || 'Human principal in the Helixa network.',
         image: profile.image || null,
         active: profile.active !== false,
-        services: profile.services || {
-            web: { url: tokenId !== null ? `https://helixa.xyz/h/${tokenId}` : `https://helixa.xyz/h/${walletAddress}` },
-        },
+        services,
         supportedTrust: Array.isArray(profile.supportedTrust) && profile.supportedTrust.length ? profile.supportedTrust : ['reputation'],
         skills: profile.skills || [],
         domains: profile.domains || [],
         metadata: {
-            ...(profile.metadata || {}),
-            entityType: 'human',
-            principalType: 'human',
-            linkedAccounts: profile.linkedAccounts || {},
-            linkedAgents: profile.linkedAgents || [],
+            ...metadata,
             externalIds: profile.externalIds || {},
-            organization: profile.organization || null,
-            notificationChannels,
+            notificationChannels: normalizeNotificationChannels(profile.notificationPreferences?.channels, profile.contact || {}),
             contactAvailable: {
                 email: Boolean(profile.contact?.email),
                 telegram: Boolean(profile.contact?.telegram),
@@ -1181,7 +1313,7 @@ async function formatHumanPrincipal(profile, options = {}) {
         linkedAccounts: profile.linkedAccounts || {},
         linkedAgents: profile.linkedAgents || [],
         externalIds: profile.externalIds || {},
-        services: profile.services || {},
+        services: registration.services,
         contact: includePrivate ? (profile.contact || { email: '', telegram: '' }) : publicContact,
         notificationPreferences,
         metadata: registration.metadata,
@@ -1822,7 +1954,7 @@ app.get('/api/v2/og/:address', (req, res) => {
 
 // POST /api/v2/mint — Mint new agent (x402 payment or TX hash)
 async function mintHandler(req, res) {
-    const { name, framework, soulbound, personality, narrative, referralCode } = req.body;
+    const { name, framework, soulbound, personality, narrative, referralCode, services, skills, domains, metadata } = req.body;
     
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
         return res.status(400).json({ error: 'name required (1-64 chars)' });
@@ -2086,6 +2218,24 @@ async function mintHandler(req, res) {
             console.error(`[TERMINAL] DB merge failed (non-fatal): ${e.message}`);
         }
         
+        const normalizedServices = sanitizePrincipalServices(services, {}, {});
+        const normalizedMetadata = sanitizePrincipalMetadata(
+            metadata,
+            {},
+            { entityType: 'agent', principalType: 'agent', framework: fw },
+            { services: normalizedServices, fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+        );
+        if (tokenId !== null) {
+            const publicProfile = {};
+            const normalizedSkills = clampList(skills || [], 24, 64);
+            const normalizedDomains = clampList(domains || [], 24, 64);
+            if (Object.keys(normalizedServices).length) publicProfile.services = normalizedServices;
+            if (normalizedSkills.length) publicProfile.skills = normalizedSkills;
+            if (normalizedDomains.length) publicProfile.domains = normalizedDomains;
+            if (Object.keys(normalizedMetadata).length) publicProfile.metadata = normalizedMetadata;
+            if (Object.keys(publicProfile).length) saveProfile(tokenId, publicProfile);
+        }
+
         // Fetch full agent data so callers don't need to poll
         let agentData = null;
         try {
@@ -2110,6 +2260,10 @@ async function mintHandler(req, res) {
                 name: agentData.name,
                 agentAddress: agentData.agentAddress,
                 framework: agentData.framework,
+                skills: agentData.skills,
+                domains: agentData.domains,
+                services: agentData.services,
+                metadata: agentData.metadata,
                 traits: agentData.traits,
                 personality: agentData.personality,
                 narrative: agentData.narrative,
@@ -2423,7 +2577,7 @@ function registrationFileToDataURI(regFile) {
 // Default: off-chain storage. Add ?onchain=true to force onchain writes.
 app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
-    const { personality, narrative, traits } = req.body;
+    const { personality, narrative, traits, services, skills, domains, metadata } = req.body;
     const useOnchain = req.query.onchain === 'true';
     
     if (!isContractDeployed()) {
@@ -2448,6 +2602,25 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
         const updated = [];
         const MAX_STR = 256;
         const clamp = (s, max = MAX_STR) => (typeof s === 'string' ? s.slice(0, max) : '');
+        const existingProfile = getProfile(tokenId) || {};
+        const existingSocials = getAgentSocials(tokenId);
+        const servicesProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'services');
+        const skillsProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'skills');
+        const domainsProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'domains');
+        const metadataProvided = Object.prototype.hasOwnProperty.call(req.body || {}, 'metadata');
+        const normalizedServices = servicesProvided
+            ? sanitizePrincipalServices(services, existingProfile.services || {}, { email: existingSocials.email, telegram: existingSocials.telegram })
+            : null;
+        const normalizedMetadata = metadataProvided
+            ? sanitizePrincipalMetadata(
+                metadata,
+                existingProfile.metadata || {},
+                { entityType: 'agent', principalType: 'agent', framework: agentData__.framework },
+                { services: normalizedServices || sanitizePrincipalServices(existingProfile.services || {}, existingProfile.services || {}, { email: existingSocials.email, telegram: existingSocials.telegram }), fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+            )
+            : null;
+        const normalizedSkills = skillsProvided ? clampList(skills ?? [], 24, 64) : null;
+        const normalizedDomains = domainsProvided ? clampList(domains ?? [], 24, 64) : null;
         
         if (useOnchain) {
             // ─── ONCHAIN PATH (legacy, costs gas) ─────────────────
@@ -2528,7 +2701,6 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
             if (personality) {
                 // Merge with existing off-chain or onchain personality
                 let current = {};
-                const existingProfile = getProfile(tokenId);
                 if (existingProfile && existingProfile.personality) {
                     current = existingProfile.personality;
                 } else {
@@ -2553,7 +2725,6 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
             }
             
             if (narrative) {
-                const existingProfile = getProfile(tokenId);
                 const currentNarrative = (existingProfile && existingProfile.narrative) || {};
                 profileData.narrative = { ...currentNarrative };
                 if (narrative.origin) { profileData.narrative.origin = clamp(narrative.origin); updated.push('narrative.origin'); }
@@ -2563,7 +2734,6 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
             }
             
             if (traits && Array.isArray(traits)) {
-                const existingProfile = getProfile(tokenId);
                 const existingTraits = (existingProfile && existingProfile.traits) || [];
                 const existingNames = new Set(existingTraits.map(t => t.name));
                 const newTraits = [...existingTraits];
@@ -2586,6 +2756,23 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
                     sdb.close();
                     updated.push('operator');
                 } catch (e) { console.error(`[OPERATOR] Failed for #${tokenId}:`, e.message); }
+            }
+
+            if (servicesProvided) {
+                profileData.services = normalizedServices;
+                updated.push('services');
+            }
+            if (skillsProvided) {
+                profileData.skills = normalizedSkills;
+                updated.push('skills');
+            }
+            if (domainsProvided) {
+                profileData.domains = normalizedDomains;
+                updated.push('domains');
+            }
+            if (metadataProvided) {
+                profileData.metadata = normalizedMetadata;
+                updated.push('metadata');
             }
 
             if (updated.length > 0) {
@@ -2645,6 +2832,19 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
         const displayName = clamp(name || existing?.name || '', 64);
         if (!displayName) return res.status(400).json({ error: 'name required' });
         const normalizedContact = sanitizeHumanContact(contact, existing?.contact || {});
+        const normalizedServices = sanitizePrincipalServices(services, existing?.services || {}, normalizedContact);
+        const normalizedMetadata = sanitizePrincipalMetadata(
+            metadata,
+            existing?.metadata || {},
+            {
+                entityType: 'human',
+                principalType: 'human',
+                linkedAccounts: clampObjectStrings(linkedAccounts ?? existing?.linkedAccounts ?? {}, 24, 128),
+                linkedAgents: [...new Set(clampList(linkedAgents ?? existing?.linkedAgents ?? [], 32, 64))],
+                organization: clamp(organization || existing?.organization || '', 128),
+            },
+            { services: normalizedServices, fallbackChannels: ['email', 'telegram', 'web'] },
+        );
         const normalizedNotificationPreferences = sanitizeHumanNotificationPreferences(
             notificationPreferences,
             existing?.notificationPreferences || {},
@@ -2689,17 +2889,17 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             name: displayName,
             description: clamp(description || existing?.description || '', 512),
             image: clamp(image || existing?.image || '', 512),
-            organization: clamp(organization || existing?.organization || '', 128),
+            organization: normalizedMetadata.organization || clamp(organization || existing?.organization || '', 128),
             skills: clampList(skills ?? existing?.skills ?? [], 24, 64),
             domains: clampList(domains ?? existing?.domains ?? [], 24, 64),
-            linkedAccounts: clampObjectStrings(linkedAccounts ?? existing?.linkedAccounts ?? {}, 24, 128),
-            linkedAgents: [...new Set(clampList(linkedAgents ?? existing?.linkedAgents ?? [], 32, 64))],
+            linkedAccounts: normalizedMetadata.linkedAccounts || {},
+            linkedAgents: normalizedMetadata.linkedAgents || [],
             externalIds: clampObjectStrings(externalIds ?? existing?.externalIds ?? {}, 24, 128),
-            services: services && typeof services === 'object' && !Array.isArray(services) ? services : (existing?.services || {}),
+            services: normalizedServices,
             supportedTrust: clampList(supportedTrust ?? existing?.supportedTrust ?? ['reputation'], 8, 32),
             contact: normalizedContact,
             notificationPreferences: normalizedNotificationPreferences,
-            metadata: metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? metadata : (existing?.metadata || {}),
+            metadata: normalizedMetadata,
             active: true,
             entityType: 'human',
             principalType: 'human',
