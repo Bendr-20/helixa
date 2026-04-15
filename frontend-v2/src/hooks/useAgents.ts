@@ -29,6 +29,46 @@ interface AgentData {
   linkedToken: any;
 }
 
+export interface HumanData {
+  id: string;
+  walletAddress: string;
+  tokenId: number | null;
+  entityType: 'human';
+  name: string;
+  description: string | null;
+  image: string | null;
+  organization: string | null;
+  skills: string[];
+  domains: string[];
+  linkedAccounts: Record<string, string>;
+  linkedAgents: string[];
+  externalIds: Record<string, string>;
+  services: Record<string, any>;
+  contact: {
+    hasEmail?: boolean;
+    hasTelegram?: boolean;
+    channels?: string[];
+  } | Record<string, any>;
+  notificationPreferences?: {
+    channels?: string[];
+    preferredChannel?: string | null;
+    proposalAlerts?: boolean;
+    taskAlerts?: boolean;
+  };
+  metadata?: Record<string, any>;
+  humanCred?: {
+    score: number;
+    tier?: string | { tier?: string; label?: string };
+    walletAddress: string;
+    tokenId: number | null;
+    sources?: Record<string, any>;
+    breakdown?: Record<string, any>;
+  };
+  registration?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 function normalizeAgent(raw: any): AgentData {
   return {
     id: raw.tokenId ?? raw.id,
@@ -106,6 +146,19 @@ export function useAgent(tokenId: number | string | undefined) {
       return normalizeAgent(await res.json());
     },
     enabled: tokenId !== undefined,
+    staleTime: 15_000,
+  });
+}
+
+export function useHuman(id: number | string | undefined) {
+  return useQuery({
+    queryKey: ['v2-human', id],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(id))}`);
+      if (!res.ok) throw new Error('Human principal not found');
+      return await res.json() as HumanData;
+    },
+    enabled: id !== undefined && id !== null && String(id).trim().length > 0,
     staleTime: 15_000,
   });
 }

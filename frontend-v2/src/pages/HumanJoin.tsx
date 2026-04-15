@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { ethers } from 'ethers';
+import { API_URL } from '../lib/constants';
 
 type HumanJoinStep = 'intro' | 'profile' | 'work' | 'links' | 'review';
 type AuthMethod = 'email' | 'wallet' | 'social';
@@ -148,12 +151,26 @@ function humanize(value: string) {
     .join(' ');
 }
 
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+function compactObject(input: Record<string, string | undefined>) {
+  return Object.fromEntries(Object.entries(input).filter(([, value]) => Boolean(value && value.trim())));
+}
+
+function parseLinkedAgentTokenId(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const match = trimmed.match(/(?:^|:)(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
+async function buildSiwaToken(wallet: { address: string; getEthereumProvider: () => Promise<any> }) {
+  const address = wallet.address;
+  const timestamp = Date.now().toString();
+  const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
+  const provider = await wallet.getEthereumProvider();
+  const signer = await new ethers.BrowserProvider(provider).getSigner();
+  const signature = await signer.signMessage(message);
+  return `${address}:${timestamp}:${signature}`;
 }
 
 function StepPill({ active, complete, label, onClick }: { active: boolean, complete: boolean, label: string, onClick: () => void }) {
@@ -210,8 +227,14 @@ function SummaryRow({ label, value }: { label: string, value: string }) {
 export function HumanJoin() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { ready, authenticated, login, user } = usePrivy();
+  const { wallets } = useWallets();
+  const wallet = wallets[0];
   const [draft, setDraft] = useState<HumanJoinDraft>(readStoredDraft);
   const [saveMessage, setSaveMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentStep = pathSteps[location.pathname] || 'intro';
   const stepOrder: HumanJoinStep[] = ['intro', 'profile', 'work', 'links', 'review'];
@@ -221,11 +244,14 @@ export function HumanJoin() {
     window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
   }, [draft]);
 
-  const publicSlug = useMemo(() => slugify(draft.displayName || 'human-profile'), [draft.displayName]);
+  const walletAddress = wallet?.address || user?.wallet?.address || '';
+  const publicProfilePath = walletAddress ? `/h/${walletAddress}` : '/h/{wallet-address}';
 
   const updateDraft = (patch: Partial<HumanJoinDraft>) => {
     setDraft(prev => ({ ...prev, ...patch }));
     if (saveMessage) setSaveMessage('');
+    if (submitError) setSubmitError('');
+    if (submitSuccess) setSubmitSuccess('');
   };
 
   const toggleArrayValue = (field: 'serviceCategories' | 'paymentPreferences' | 'communicationChannels', value: string) => {
@@ -237,6 +263,8 @@ export function HumanJoin() {
       return { ...prev, [field]: next };
     });
     if (saveMessage) setSaveMessage('');
+    if (submitError) setSubmitError('');
+    if (submitSuccess) setSubmitSuccess('');
   };
 
   const goToStep = (step: HumanJoinStep) => navigate(stepPaths[step]);
@@ -250,6 +278,135 @@ export function HumanJoin() {
   const saveDraftLocally = () => {
     window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
     setSaveMessage('Draft saved locally on this device.');
+    if (submitError) setSubmitError('');
+    if (submitSuccess) setSubmitSuccess('');
+  };
+
+  const publishProfile = async () => {
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    if (!draft.displayName.trim()) {
+      setSubmitError('Display name is required.');
+      return;
+    }
+
+    if (!ready) {
+      setSubmitError('Auth is still loading. Try again in a second.');
+      return;
+    }
+
+    if (!authenticated) {
+      await login();
+      setSubmitError('Sign-in opened. Once it completes, click publish again.');
+      return;
+    }
+
+    if (!wallet) {
+      setSubmitError('Signed in, but wallet is not ready yet. Give it a second and try again.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const authToken = await buildSiwaToken(wallet);
+      const linkedAgentTokenId = parseLinkedAgentTokenId(draft.linkedAgent);
+      const linkedAccounts = compactObject({
+        x: draft.x.replace(/^@/, '').trim(),
+        github: draft.github.trim(),
+        farcaster: draft.farcaster.trim(),
+        ens: draft.ens.trim(),
+        basename: draft.basename.trim(),
+      });
+      const externalIds = compactObject({
+        x: draft.x.replace(/^@/, '').trim(),
+        github: draft.github.trim(),
+        farcaster: draft.farcaster.trim(),
+        ens: draft.ens.trim(),
+        basename: draft.basename.trim(),
+      });
+      const authEmail = user?.email?.address?.trim() || '';
+      const requestedChannels = draft.communicationChannels.filter(channel => ['email', 'telegram', 'web'].includes(channel));
+      const availableChannels = requestedChannels.filter(channel => {
+        if (channel === 'email') return Boolean(authEmail);
+        if (channel === 'web') return Boolean(draft.website.trim());
+        return false;
+      });
+
+      const payload = {
+        name: draft.displayName.trim(),
+        description: draft.bio.trim(),
+        image: draft.profileImage.trim() || undefined,
+        skills: draft.skills,
+        domains: [],
+        linkedAccounts,
+        linkedAgents: linkedAgentTokenId !== null ? [String(linkedAgentTokenId)] : [],
+        externalIds,
+        services: {
+          ...(draft.website.trim() ? { web: { url: draft.website.trim() } } : {}),
+          ...(draft.ens.trim() ? { ens: { name: draft.ens.trim() } } : {}),
+        },
+        contact: {
+          email: authEmail,
+        },
+        notificationPreferences: {
+          channels: availableChannels,
+          preferredChannel: availableChannels[0] || null,
+          proposalAlerts: true,
+          taskAlerts: true,
+        },
+        metadata: {
+          timezone: draft.timezone.trim(),
+          region: draft.region.trim(),
+          languages: draft.languages,
+          openToWork: draft.openToWork,
+          acceptedPayments: draft.paymentPreferences,
+          serviceCategories: draft.serviceCategories,
+          preferredCommunicationChannels: requestedChannels,
+          linkedAccounts,
+          linkedAgents: linkedAgentTokenId !== null ? [String(linkedAgentTokenId)] : [],
+        },
+      };
+
+      const registerRes = await fetch(`${API_URL}/api/v2/principals/human/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const registerData = await registerRes.json().catch(() => ({}));
+      if (!registerRes.ok) throw new Error(registerData?.error || 'Human register failed');
+
+      let principal = registerData.principal;
+
+      if (linkedAgentTokenId !== null && principal?.id) {
+        const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ agentTokenId: linkedAgentTokenId }),
+        });
+
+        if (linkRes.ok) {
+          const linkData = await linkRes.json().catch(() => ({}));
+          if (linkData?.principal) principal = linkData.principal;
+        }
+      }
+
+      const profileId = principal?.tokenId ?? principal?.walletAddress ?? principal?.id;
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setSubmitSuccess(registerData?.message || 'Human profile published.');
+      navigate(`/h/${profileId}`);
+    } catch (error: any) {
+      setSubmitError(error?.message || 'Failed to publish human profile.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const profileReady = draft.displayName.trim().length > 0 && draft.timezone.trim().length > 0;
@@ -577,7 +734,7 @@ export function HumanJoin() {
                 border: '1px solid rgba(110,236,216,0.14)',
                 color: '#c5fff3',
               }}>
-                Public preview URL: <strong>/h/{publicSlug || 'human-profile'}</strong>
+                Public profile route: <strong>{publicProfilePath}</strong>
               </div>
 
               <SummaryRow label="Display Name" value={draft.displayName} />
@@ -593,13 +750,47 @@ export function HumanJoin() {
               <SummaryRow label="Linked Agent" value={draft.linkedAgent ? `${draft.linkedAgent} (${humanize(draft.relationship)})` : ''} />
               <SummaryRow label="Open To Work" value={draft.openToWork ? 'Yes' : 'Not right now'} />
 
+              <div style={{
+                marginBottom: '1rem',
+                padding: '1rem 1.1rem',
+                borderRadius: '14px',
+                background: authenticated ? 'rgba(180,144,255,0.08)' : 'rgba(255,255,255,0.03)',
+                border: authenticated ? '1px solid rgba(180,144,255,0.16)' : '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <div style={{ color: '#f3f0ff', fontWeight: 600, marginBottom: '0.35rem' }}>
+                  {authenticated ? 'Signed in and ready to publish' : 'Sign in required to publish'}
+                </div>
+                <div style={{ color: '#9a94af', lineHeight: 1.5, fontSize: '0.92rem' }}>
+                  {authenticated
+                    ? (user?.email?.address || walletAddress || 'Your connected identity will be used to create this profile.')
+                    : 'Privy can sign in with email, social, or wallet, then uses the connected wallet to sign the SIWA message Helixa expects.'}
+                </div>
+              </div>
+
+              {submitError && (
+                <div style={{ marginTop: '1rem', color: '#fca5a5', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                  {submitError}
+                </div>
+              )}
+
+              {submitSuccess && (
+                <div style={{ marginTop: '1rem', color: '#86efac', fontSize: '0.92rem', lineHeight: 1.5 }}>
+                  {submitSuccess}
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
                 <button type="button" className="btn-hero secondary" onClick={previousStep}>Back</button>
-                <button type="button" className="btn-hero primary" onClick={saveDraftLocally}>Save Draft</button>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn-hero secondary" onClick={saveDraftLocally}>Save Draft</button>
+                  <button type="button" className="btn-hero primary" onClick={publishProfile} disabled={isSubmitting || !profileReady} style={{ opacity: isSubmitting || !profileReady ? 0.6 : 1 }}>
+                    {isSubmitting ? 'Publishing...' : authenticated ? 'Publish Human Profile' : 'Sign In to Publish'}
+                  </button>
+                </div>
               </div>
 
               <div style={{ marginTop: '1rem', color: '#8d87a1', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                {saveMessage || 'Drafts stay on this device for now, so you can come back and finish your profile later.'}
+                {saveMessage || 'Drafts stay on this device until you publish, so you can come back and finish later.'}
               </div>
             </div>
           )}

@@ -9,6 +9,7 @@ const pageImports = {
   home: () => import('./pages/Home').then(m => ({ default: m.Home })),
   mint: () => import('./pages/Mint').then(m => ({ default: m.Mint })),
   humanJoin: () => import('./pages/HumanJoin').then(m => ({ default: m.HumanJoin })),
+  humanProfile: () => import('./pages/HumanProfile').then(m => ({ default: m.HumanProfile })),
   directory: () => import('./pages/Directory').then(m => ({ default: m.Directory })),
   agentProfile: () => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })),
   leaderboard: () => import('./pages/Leaderboard').then(m => ({ default: m.Leaderboard })),
@@ -32,6 +33,7 @@ const Dashboard = lazy(pageImports.dashboard);
 const Home = lazy(pageImports.home);
 const Mint = lazy(pageImports.mint);
 const HumanJoin = lazy(pageImports.humanJoin);
+const HumanProfile = lazy(pageImports.humanProfile);
 const Directory = lazy(pageImports.directory);
 const AgentProfile = lazy(pageImports.agentProfile);
 const Leaderboard = lazy(pageImports.leaderboard);
@@ -131,6 +133,7 @@ function AnimatedRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/mint" element={<Mint />} />
           <Route path="/join/human/*" element={<HumanJoin />} />
+          <Route path="/h/:id" element={<HumanProfile />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/agent/:id" element={<AgentProfile />} />
