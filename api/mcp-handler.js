@@ -10,6 +10,7 @@ const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/ser
 const { z } = require('zod');
 
 const HELP_REQUESTS_PATH = path.join(__dirname, '..', 'data', 'human-help-requests.json');
+const SYNAGENT_MATCH_URL = 'https://synagent.helixa.xyz/match';
 const TIER_ORDER = ['JUNK', 'MARGINAL', 'QUALIFIED', 'PRIME', 'PREFERRED'];
 
 function loadHelpRequests() {
@@ -73,9 +74,11 @@ function tierPasses(getCredTier, credScore, minTier) {
 
 function getAgentVerifications(agent) {
     const traits = Array.isArray(agent?.traits) ? agent.traits : [];
-    return ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
+    const derived = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
         .filter(value => traits.some(trait => trait?.name === value || trait === value))
         .map(value => value.replace('-verified', ''));
+    if (agent?.verified && !derived.includes('registry')) derived.unshift('registry');
+    return derived;
 }
 
 function toKeywordTerms(value) {
@@ -177,12 +180,6 @@ function agentMatches(summary, filters) {
         const framework = normalizeText(summary.framework);
         if (capability && framework !== capability && !haystack.includes(capability)) return false;
     }
-    if (needles.requiredSkills.length) {
-        const skillHaystack = makeSearchHaystack([summary.name, summary.framework, summary.description]);
-        const hasAny = needles.requiredSkills.some(skill => skillHaystack.includes(skill));
-        if (!hasAny) return false;
-    }
-    if (needles.category && !haystack.includes(needles.category)) return false;
     return true;
 }
 
@@ -214,19 +211,6 @@ function humanMatches(summary, filters) {
         ].map(value => value.toLowerCase());
         if (capability && !exactPools.includes(capability)) return false;
     }
-    if (needles.requiredSkills.length) {
-        const exactPools = [
-            ...(summary.skills || []),
-            ...(summary.domains || []),
-            ...(summary.serviceCategories || []),
-        ].map(value => value.toLowerCase());
-        const hasAny = needles.requiredSkills.some(skill => exactPools.includes(skill) || haystack.includes(skill));
-        if (!hasAny) return false;
-    }
-    if (needles.category) {
-        const categories = (summary.serviceCategories || []).map(value => value.toLowerCase());
-        if (!categories.includes(needles.category) && !haystack.includes(needles.category)) return false;
-    }
     if (filters.openToWork === true && summary.openToWork === false) return false;
     return true;
 }
@@ -240,9 +224,51 @@ function buildNeedleSummary(input = {}) {
     };
 }
 
+function buildSynagentHandoff(input = {}, extra = {}) {
+    const payload = {
+        source: 'helixa-mcp',
+        requestId: clampString(extra.requestId, 64) || null,
+        title: clampString(input.title, 160) || null,
+        brief: clampString(input.brief || input.query, 4000) || null,
+        requester: clampString(input.requester, 160) || null,
+        contact: clampString(input.contact, 256) || null,
+        budget: clampString(input.budget, 128) || null,
+        urgency: clampString(input.urgency, 32) || null,
+        category: clampString(input.category, 64) || null,
+        capability: clampString(input.capability, 64) || null,
+        principalType: clampString(input.principalType, 32) || null,
+        requiredSkills: clampList(input.requiredSkills || [], 12, 64),
+        candidateId: normalizeId(extra.candidateId) || null,
+        candidateType: clampString(extra.candidateType, 32) || null,
+        candidateName: clampString(extra.candidateName, 160) || null,
+    };
+
+    const params = new URLSearchParams();
+    params.set('source', payload.source);
+    if (payload.requestId) params.set('requestId', payload.requestId);
+    if (payload.title) params.set('title', payload.title);
+    if (payload.brief) params.set('brief', payload.brief);
+    if (payload.requester) params.set('requester', payload.requester);
+    if (payload.contact) params.set('contact', payload.contact);
+    if (payload.budget) params.set('budget', payload.budget);
+    if (payload.urgency) params.set('urgency', payload.urgency);
+    if (payload.category) params.set('category', payload.category);
+    if (payload.capability) params.set('capability', payload.capability);
+    if (payload.principalType) params.set('principalType', payload.principalType);
+    if (payload.requiredSkills.length) params.set('requiredSkills', payload.requiredSkills.join(','));
+    if (payload.candidateId) params.set('candidateId', payload.candidateId);
+    if (payload.candidateType) params.set('candidateType', payload.candidateType);
+    if (payload.candidateName) params.set('candidateName', payload.candidateName);
+
+    return {
+        url: `${SYNAGENT_MATCH_URL}?${params.toString()}`,
+        payload,
+        message: 'Open this Synagent intake link to continue the request in the boutique front door.',
+    };
+}
+
 function scoreCandidate(candidate, request) {
     const reasons = [];
-    let score = Math.max(0, Math.min(100, Number(candidate.credScore || 0)));
     const query = normalizeText(request.query || request.brief || '');
     const requiredSkills = clampList(request.requiredSkills || [], 12, 64).map(value => value.toLowerCase());
     const category = normalizeText(request.category);
@@ -258,14 +284,24 @@ function scoreCandidate(candidate, request) {
         ])
         : makeSearchHaystack([candidate.name, candidate.framework, candidate.description]);
 
+    const breakdown = {
+        cred: Math.min(30, Math.round(Math.max(0, Math.min(100, Number(candidate.credScore || 0))) * 0.30)),
+        briefOverlap: 0,
+        capability: 0,
+        requiredSkills: 0,
+        category: 0,
+        verification: 0,
+        availability: 0,
+    };
+
     if (query && haystack.includes(query)) {
-        score += 18;
+        breakdown.briefOverlap = 20;
         reasons.push('Matches the brief language directly');
     } else {
         const queryTerms = toKeywordTerms(request.query || request.brief || '');
         const overlapTerms = queryTerms.filter(term => haystack.includes(term));
         if (overlapTerms.length) {
-            score += Math.min(16, overlapTerms.length * 6);
+            breakdown.briefOverlap = Math.min(16, overlapTerms.length * 6);
             reasons.push(`Relevant brief overlap: ${overlapTerms.slice(0, 3).join(', ')}`);
         }
     }
@@ -274,7 +310,7 @@ function scoreCandidate(candidate, request) {
         const capability = normalizeText(request.capability);
         if (candidate.entityType === 'agent') {
             if (normalizeText(candidate.framework) === capability || haystack.includes(capability)) {
-                score += 16;
+                breakdown.capability = 18;
                 reasons.push(`Capability match on ${request.capability}`);
             }
         } else {
@@ -284,7 +320,7 @@ function scoreCandidate(candidate, request) {
                 ...(candidate.serviceCategories || []),
             ].map(value => value.toLowerCase());
             if (pools.includes(capability) || haystack.includes(capability)) {
-                score += 16;
+                breakdown.capability = 18;
                 reasons.push(`Capability match on ${request.capability}`);
             }
         }
@@ -300,7 +336,7 @@ function scoreCandidate(candidate, request) {
             : [normalizeText(candidate.framework), haystack];
         const overlaps = requiredSkills.filter(skill => pools.some(value => value && value.includes(skill)));
         if (overlaps.length) {
-            score += overlaps.length * 10;
+            breakdown.requiredSkills = Math.min(18, overlaps.length * 9);
             reasons.push(`Skill overlap: ${overlaps.slice(0, 3).join(', ')}`);
         }
     }
@@ -310,26 +346,29 @@ function scoreCandidate(candidate, request) {
             ? (candidate.serviceCategories || []).some(value => value.toLowerCase() === category) || haystack.includes(category)
             : haystack.includes(category);
         if (categoryMatch) {
-            score += 8;
+            breakdown.category = 8;
             reasons.push(`Relevant to ${request.category}`);
         }
     }
 
     if (candidate.verified) {
-        score += 4;
+        breakdown.verification = 4;
         reasons.push('Has verification signals');
     }
 
     if (candidate.entityType === 'human' && candidate.openToWork !== false) {
-        score += 6;
+        breakdown.availability = 6;
         reasons.push('Marked open to work');
     }
 
     if (!reasons.length) reasons.push('High baseline Cred relative to the request');
 
+    const score = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
+
     return {
         score: Math.max(0, Math.min(100, Math.round(score))),
         reasons: reasons.slice(0, 4),
+        breakdown,
     };
 }
 
@@ -390,6 +429,7 @@ async function findPrincipalMatches(input, deps) {
                 ...agent,
                 matchScore: scored.score,
                 recommendationReasoning: scored.reasons,
+                scoreBreakdown: scored.breakdown,
             });
         }
     }
@@ -404,6 +444,7 @@ async function findPrincipalMatches(input, deps) {
                 ...human,
                 matchScore: scored.score,
                 recommendationReasoning: scored.reasons,
+                scoreBreakdown: scored.breakdown,
             });
         }
     }
@@ -486,7 +527,7 @@ function hydrateRequestInput(input, principalType) {
 
 function buildStoredRequest(input, matches) {
     const now = new Date().toISOString();
-    return {
+    const request = {
         id: `req_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`,
         createdAt: now,
         updatedAt: now,
@@ -509,9 +550,12 @@ function buildStoredRequest(input, matches) {
             matchScore: match.matchScore,
             credScore: match.credScore,
             recommendationReasoning: match.recommendationReasoning,
+            scoreBreakdown: match.scoreBreakdown,
             suggested_actions: match.suggested_actions,
         })),
     };
+    request.handoff = buildSynagentHandoff(request, { requestId: request.id });
+    return request;
 }
 
 function buildReasoningPayload(candidate, request) {
@@ -532,6 +576,7 @@ function buildReasoningPayload(candidate, request) {
         },
         matchScore: reasoning.score,
         recommendationReasoning: reasoning.reasons,
+        scoreBreakdown: reasoning.breakdown,
     };
 }
 
@@ -552,7 +597,7 @@ function createMcpHandler({
         try {
             const server = new McpServer({
                 name: 'helixa',
-                version: '1.1.0',
+                version: '1.2.0',
             });
 
             // Tool: search_agents
@@ -723,7 +768,7 @@ function createMcpHandler({
                     });
 
                     const request = persistHelpRequest(buildStoredRequest(hydrated, matches));
-                    return jsonResult({ success: true, request, matches });
+                    return jsonResult({ success: true, request, matches, handoff: request.handoff });
                 }
             );
 
@@ -768,12 +813,77 @@ function createMcpHandler({
                         success: true,
                         request,
                         matches,
+                        handoff: request.handoff,
                         nextActions: [
                             'Review the ranked human principals',
                             'Use get_principal_profile for any shortlisted human',
+                            'Use handoff_to_synagent to continue in the Synagent intake flow',
                             'Use track_job with the returned request id to retrieve the stored brief later',
                         ],
                     });
+                }
+            );
+
+            // Tool: handoff_to_synagent
+            server.tool(
+                'handoff_to_synagent',
+                'Create a Synagent intake handoff URL from a stored request or inline brief fields.',
+                {
+                    requestId: z.string().optional().describe('Stored request ID returned by submit_brief or request_human_help'),
+                    brief: z.string().optional().describe('Plain-language description of the work if no stored request is used'),
+                    title: z.string().optional().describe('Optional short title for the intake'),
+                    requester: z.string().optional().describe('Who is making the request'),
+                    contact: z.string().optional().describe('How to follow up with the requester'),
+                    budget: z.string().optional().describe('Optional budget or pricing context'),
+                    urgency: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Urgency level'),
+                    category: z.string().optional().describe('Relevant work category'),
+                    capability: z.string().optional().describe('Specific framework, skill, or service capability'),
+                    requiredSkills: z.array(z.string()).optional().describe('Required skills or capabilities'),
+                    principalType: z.enum(['all', 'agent', 'human']).optional().describe('Which principal types should be favored'),
+                    candidateId: z.union([z.string(), z.number()]).optional().describe('Optional matched candidate to preselect'),
+                    entityType: z.enum(['auto', 'agent', 'human']).optional().describe('Type of the optional candidate'),
+                },
+                async ({ requestId, candidateId, entityType = 'auto', ...input }) => {
+                    try {
+                        let request = null;
+                        if (requestId) {
+                            request = findHelpRequest(clampString(requestId, 64));
+                            if (!request) return errorResult('Request not found', { requestId });
+                        } else {
+                            request = hydrateRequestInput(input, input.principalType || 'all');
+                            if (!request.brief) return errorResult('brief is required when requestId is not provided');
+                        }
+
+                        let candidate = null;
+                        if (candidateId != null) {
+                            const resolved = await resolvePrincipalProfile(candidateId, entityType, {
+                                formatAgentV2,
+                                getHumanProfileById,
+                                formatHumanPrincipal,
+                            });
+                            candidate = {
+                                id: resolved.entityType === 'agent' ? String(resolved.profile.tokenId) : normalizeId(resolved.profile.tokenId != null ? resolved.profile.tokenId : resolved.profile.walletAddress),
+                                entityType: resolved.entityType,
+                                name: resolved.profile.name,
+                            };
+                        }
+
+                        const handoff = buildSynagentHandoff(request, {
+                            requestId: request.id || null,
+                            candidateId: candidate?.id,
+                            candidateType: candidate?.entityType,
+                            candidateName: candidate?.name,
+                        });
+
+                        return jsonResult({
+                            success: true,
+                            request,
+                            candidate,
+                            handoff,
+                        });
+                    } catch (e) {
+                        return errorResult(e.message);
+                    }
                 }
             );
 
@@ -785,7 +895,7 @@ function createMcpHandler({
                 async ({ requestId }) => {
                     const request = findHelpRequest(clampString(requestId, 64));
                     if (!request) return errorResult('Request not found', { requestId });
-                    return jsonResult({ success: true, request });
+                    return jsonResult({ success: true, request, handoff: request.handoff || buildSynagentHandoff(request, { requestId: request.id }) });
                 }
             );
 

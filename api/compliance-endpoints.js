@@ -133,8 +133,9 @@ Sitemap: https://helixa.xyz/sitemap.xml`
   app.get('/.well-known/mcp.json', (req, res) => {
     res.json({
       name: 'Helixa',
-      version: '2.1.0',
+      version: '2.2.0',
       description: 'Cred-aware discovery, identity, and routing for agents and humans on Base',
+      homepage: 'https://api.helixa.xyz/mcp',
       tools: [
         {
           name: 'get_agent_profile',
@@ -232,6 +233,28 @@ Sitemap: https://helixa.xyz/sitemap.xml`
               limit: { type: 'number' }
             },
             required: ['brief']
+          }
+        },
+        {
+          name: 'handoff_to_synagent',
+          description: 'Create a Synagent intake handoff URL from a stored request or inline brief',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              requestId: { type: 'string' },
+              brief: { type: 'string' },
+              title: { type: 'string' },
+              requester: { type: 'string' },
+              contact: { type: 'string' },
+              budget: { type: 'string' },
+              urgency: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'] },
+              category: { type: 'string' },
+              capability: { type: 'string' },
+              requiredSkills: { type: 'array', items: { type: 'string' } },
+              principalType: { type: 'string', enum: ['all', 'agent', 'human'] },
+              candidateId: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+              entityType: { type: 'string', enum: ['auto', 'agent', 'human'] }
+            }
           }
         },
         {

@@ -1439,6 +1439,12 @@ app.get('/preview/dashboard', (req, res) => {
     res.status(404).send('No preview');
 });
 
+app.get('/mcp', (req, res) => {
+    const landingPath = path.resolve(__dirname, 'public', 'mcp.html');
+    if (fs.existsSync(landingPath)) return res.type('html').send(fs.readFileSync(landingPath, 'utf8'));
+    res.status(404).send('No MCP landing page');
+});
+
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: 'v2', port: PORT, contractDeployed: isContractDeployed() });
 });
@@ -6440,8 +6446,9 @@ app.get('/.well-known/mcp/server-card.json', (req, res) => {
     res.json({
         name: 'Helixa',
         description: 'Helixa MCP server for agent identity, human principals, Cred-aware discovery, and request routing on Base.',
-        version: '1.1.0',
+        version: '1.2.0',
         url: 'https://api.helixa.xyz/api/mcp',
+        homepage: 'https://api.helixa.xyz/mcp',
         transport: 'streamable-http',
         tools: [
             { name: 'search_agents', description: 'Search agents by query, filter by cred score, tier, and verification status' },
@@ -6451,6 +6458,7 @@ app.get('/.well-known/mcp/server-card.json', (req, res) => {
             { name: 'get_cred_score', description: 'Get cred score and tier for an agent' },
             { name: 'submit_brief', description: 'Store a brief server-side and return ranked recommendations' },
             { name: 'request_human_help', description: 'Submit a human help request and return ranked human matches' },
+            { name: 'handoff_to_synagent', description: 'Create a Synagent intake handoff URL from a stored request or inline brief' },
             { name: 'track_job', description: 'Retrieve a stored brief or human-help request by request ID' },
             { name: 'get_recommendation_reasoning', description: 'Explain why a candidate matches a brief or stored request' },
             { name: 'get_stats', description: 'Get registry statistics across agents and human principals' },
@@ -6481,7 +6489,7 @@ app.get('/.well-known/oasf-record.json', (req, res) => {
                 openapi: 'https://api.helixa.xyz/api/v2/openapi.json',
             },
         },
-        capabilities: ['agent-search', 'cred-scoring', 'identity-verification', 'agent-profiles', 'cross-registration'],
+        capabilities: ['agent-search', 'cred-scoring', 'identity-verification', 'agent-profiles', 'cross-registration', 'principal-matching', 'brief-routing', 'synagent-handoff'],
         chain: { name: 'Base', chainId: 8453, contract: V2_CONTRACT_ADDRESS },
     });
 });
