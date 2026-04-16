@@ -25,7 +25,7 @@ let {
 } = svc;
 
 const credOracle = require('./services/cred-oracle');
-const { requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
+const { parseSIWA, verifySIWA, requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
 const { buildSIWSMessage, pendingChallenges, requireSIWS, requireAuth } = require('./middleware/siws');
 const { securityHeaders, cors } = require('./middleware/cors');
 const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
@@ -207,6 +207,41 @@ const USDC_DECIMALS = 6;
 const CRED_TOKEN_ADDRESS = credOracle.CRED_ADDRESS;
 const CRED_TOKEN_DECIMALS = credOracle.CRED_DECIMALS;
 const usedPaymentTxs = new Set(); // prevent replay
+const mintInFlightAddresses = new Set();
+
+function getValidatedSIWAAddress(req) {
+    const parsed = parseSIWA(req.headers.authorization);
+    if (!parsed) return null;
+    if (!verifySIWA(parsed.address, parsed.timestamp, parsed.signature)) return null;
+    try {
+        return ethers.getAddress(parsed.address);
+    } catch {
+        return null;
+    }
+}
+
+function acquireMintRequestLock(req, res, address) {
+    if (!address) return null;
+    const key = address.toLowerCase();
+    if (req._mintLockAddress === key && typeof req._mintLockRelease === 'function') {
+        return req._mintLockRelease;
+    }
+    if (mintInFlightAddresses.has(key)) return null;
+
+    mintInFlightAddresses.add(key);
+    let released = false;
+    const release = () => {
+        if (released) return;
+        released = true;
+        mintInFlightAddresses.delete(key);
+    };
+
+    req._mintLockAddress = key;
+    req._mintLockRelease = release;
+    res.on('finish', release);
+    res.on('close', release);
+    return release;
+}
 
 async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) {
     const provider = new ethers.JsonRpcProvider(RPC_URL);
@@ -401,6 +436,22 @@ if (Object.keys(x402Routes).length > 0) {
         if (!txHash || typeof txHash !== 'string') return next();
         
         console.log(`[TX-BYPASS] Found TX hash for ${req.method} ${req.path}: ${txHash.slice(0,15)}...`);
+
+        if (req.path === '/api/v2/mint') {
+            const mintAddress = getValidatedSIWAAddress(req);
+            if (!mintAddress) {
+                return res.status(401).json({ error: 'Valid SIWA authentication required before payment verification' });
+            }
+            try {
+                const hasMinted = await readContract.hasMinted(mintAddress);
+                if (hasMinted) {
+                    return res.status(409).json({ error: 'This address already has an agent' });
+                }
+            } catch {}
+            if (!acquireMintRequestLock(req, res, mintAddress)) {
+                return res.status(409).json({ error: 'Mint already in progress for this address' });
+            }
+        }
         
         const priceStr = matched.accepts?.[0]?.price || '$1';
         const priceUSD = parseFloat(priceStr.replace('$', ''));
@@ -1975,6 +2026,9 @@ async function mintHandler(req, res) {
     }
     
     const agentAddress = req.agent.address;
+    if (!acquireMintRequestLock(req, res, agentAddress)) {
+        return res.status(409).json({ error: 'Mint already in progress for this address' });
+    }
     
     if (!isContractDeployed()) {
         // TODO: Once V2 contract is deployed, remove this block
@@ -2301,6 +2355,13 @@ app.post('/api/v2/mint', requireSIWA, mintHandler);
 app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
     const { paymentTx } = req.body;
     if (!paymentTx) return res.status(400).json({ error: 'paymentTx required (USDC transfer TX hash)' });
+    if (!acquireMintRequestLock(req, res, req.agent?.address)) {
+        return res.status(409).json({ error: 'Mint already in progress for this address' });
+    }
+    try {
+        const hasMinted = await readContract.hasMinted(req.agent.address);
+        if (hasMinted) return res.status(409).json({ error: 'This address already has an agent' });
+    } catch {}
     if (usedPaymentTxs.has(paymentTx.toLowerCase())) return res.status(400).json({ error: 'Payment TX already used' });
     
     try {
