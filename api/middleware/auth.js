@@ -1,13 +1,18 @@
 /**
- * SIWA (Sign-In With Agent) Authentication Middleware
+ * Wallet auth middleware.
+ *
+ * - SIWA = Sign-In With Agent, for agent auth
+ * - SIWE = Sign-In With Ethereum, for human wallet auth
  */
 
 const { ethers } = require('ethers');
 
 const SIWA_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 const SIWA_DOMAIN = 'api.helixa.xyz';
+const SIWE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+const SIWE_DOMAIN = 'api.helixa.xyz';
 
-function parseSIWA(authHeader) {
+function parseWalletSignIn(authHeader) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
     const token = authHeader.slice(7);
     const parts = token.split(':');
@@ -19,19 +24,47 @@ function parseSIWA(authHeader) {
     };
 }
 
-function verifySIWA(address, timestamp, signature) {
+function parseSIWA(authHeader) {
+    return parseWalletSignIn(authHeader);
+}
+
+function parseSIWE(authHeader) {
+    return parseWalletSignIn(authHeader);
+}
+
+function verifyWalletMessage(address, timestamp, signature, messageFactory, expiryMs) {
     try {
-        const message = `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet ${address} at ${timestamp}`;
+        const message = messageFactory(address, timestamp);
         const recovered = ethers.verifyMessage(message, signature);
         if (recovered.toLowerCase() !== address.toLowerCase()) return false;
         let ts = parseInt(timestamp);
         if (isNaN(ts)) return false;
         if (ts < 1e12) ts = ts * 1000;
-        if (Date.now() - ts > SIWA_EXPIRY_MS) return false;
+        if (Date.now() - ts > expiryMs) return false;
         return true;
     } catch {
         return false;
     }
+}
+
+function verifySIWA(address, timestamp, signature) {
+    return verifyWalletMessage(
+        address,
+        timestamp,
+        signature,
+        (walletAddress, ts) => `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet ${walletAddress} at ${ts}`,
+        SIWA_EXPIRY_MS,
+    );
+}
+
+function verifySIWE(address, timestamp, signature) {
+    return verifyWalletMessage(
+        address,
+        timestamp,
+        signature,
+        (walletAddress, ts) => `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet ${walletAddress} at ${ts}`,
+        SIWE_EXPIRY_MS,
+    );
 }
 
 function requireSIWA(req, res, next) {
@@ -47,6 +80,25 @@ function requireSIWA(req, res, next) {
         return res.status(401).json({ error: 'Invalid or expired SIWA token' });
     }
     req.agent = {
+        address: ethers.getAddress(parsed.address),
+        timestamp: parseInt(parsed.timestamp),
+    };
+    next();
+}
+
+function requireSIWE(req, res, next) {
+    const parsed = parseSIWE(req.headers.authorization);
+    if (!parsed) {
+        return res.status(401).json({
+            error: 'SIWE authentication required',
+            hint: 'Set Authorization: Bearer {address}:{timestamp}:{signature}',
+            message_format: `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
+        });
+    }
+    if (!verifySIWE(parsed.address, parsed.timestamp, parsed.signature)) {
+        return res.status(401).json({ error: 'Invalid or expired SIWE token' });
+    }
+    req.human = {
         address: ethers.getAddress(parsed.address),
         timestamp: parseInt(parsed.timestamp),
     };
@@ -114,19 +166,30 @@ async function requirePrivyAccessToken(req, res, next) {
 }
 
 /**
- * Hybrid auth for human‑only endpoints: accept either SIWA (wallet) or Privy access token (email/social).
+ * Hybrid auth for human-only endpoints: accept either SIWE (wallet) or Privy access token (email/social).
+ * Legacy SIWA is accepted temporarily for backward compatibility with already-open clients.
  */
 async function requireHumanAuth(req, res, next) {
-    // Try SIWA first
-    const siwaParsed = parseSIWA(req.headers.authorization);
-    if (siwaParsed && verifySIWA(siwaParsed.address, siwaParsed.timestamp, siwaParsed.signature)) {
+    const siweParsed = parseSIWE(req.headers.authorization);
+    if (siweParsed && verifySIWE(siweParsed.address, siweParsed.timestamp, siweParsed.signature)) {
         req.humanAuth = {
-            type: 'siwa',
-            walletAddress: ethers.getAddress(siwaParsed.address),
+            type: 'siwe',
+            walletAddress: ethers.getAddress(siweParsed.address),
             userId: null,
         };
         return next();
     }
+
+    const legacySiwaParsed = parseSIWA(req.headers.authorization);
+    if (legacySiwaParsed && verifySIWA(legacySiwaParsed.address, legacySiwaParsed.timestamp, legacySiwaParsed.signature)) {
+        req.humanAuth = {
+            type: 'siwe-legacy-siwa',
+            walletAddress: ethers.getAddress(legacySiwaParsed.address),
+            userId: null,
+        };
+        return next();
+    }
+
     // Fall back to Privy access token
     const token = parsePrivyAuthHeader(req.headers.authorization);
     if (token) {
@@ -143,17 +206,51 @@ async function requireHumanAuth(req, res, next) {
     // Neither valid
     return res.status(401).json({
         error: 'Human authentication required',
-        hint: 'Set Authorization: Bearer {address}:{timestamp}:{signature} (SIWA) or Bearer {access-token} (Privy)',
-        message_format: `Either wallet sign‑in or Privy email/social auth accepted`,
+        hint: 'Set Authorization: Bearer {address}:{timestamp}:{signature} (SIWE) or Bearer {access-token} (Privy)',
+        message_format: `Either SIWE wallet sign-in or Privy email/social auth accepted`,
+    });
+}
+
+function requireHumanWalletAuth(req, res, next) {
+    const siweParsed = parseSIWE(req.headers.authorization);
+    if (siweParsed && verifySIWE(siweParsed.address, siweParsed.timestamp, siweParsed.signature)) {
+        req.human = {
+            address: ethers.getAddress(siweParsed.address),
+            timestamp: parseInt(siweParsed.timestamp),
+            authType: 'siwe',
+        };
+        return next();
+    }
+
+    const legacySiwaParsed = parseSIWA(req.headers.authorization);
+    if (legacySiwaParsed && verifySIWA(legacySiwaParsed.address, legacySiwaParsed.timestamp, legacySiwaParsed.signature)) {
+        req.human = {
+            address: ethers.getAddress(legacySiwaParsed.address),
+            timestamp: parseInt(legacySiwaParsed.timestamp),
+            authType: 'siwe-legacy-siwa',
+        };
+        return next();
+    }
+
+    return res.status(401).json({
+        error: 'SIWE authentication required',
+        hint: 'Set Authorization: Bearer {address}:{timestamp}:{signature}',
+        message_format: `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
     });
 }
 
 module.exports = {
+    parseWalletSignIn,
     parseSIWA,
+    parseSIWE,
     verifySIWA,
+    verifySIWE,
     requireSIWA,
+    requireSIWE,
     SIWA_DOMAIN,
+    SIWE_DOMAIN,
     verifyPrivyAccessToken,
     requirePrivyAccessToken,
     requireHumanAuth,
+    requireHumanWalletAuth,
 };

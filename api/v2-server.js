@@ -25,7 +25,15 @@ let {
 } = svc;
 
 const credOracle = require('./services/cred-oracle');
-const { parseSIWA, verifySIWA, requireSIWA, SIWA_DOMAIN, requireHumanAuth } = require('./middleware/auth');
+const {
+    parseSIWA,
+    verifySIWA,
+    requireSIWA,
+    SIWA_DOMAIN,
+    SIWE_DOMAIN,
+    requireHumanAuth,
+    requireHumanWalletAuth,
+} = require('./middleware/auth');
 const { buildSIWSMessage, pendingChallenges, requireSIWS, requireAuth } = require('./middleware/siws');
 const { securityHeaders, cors } = require('./middleware/cors');
 const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
@@ -1433,15 +1441,23 @@ app.get(['/', '/api/v2'], (req, res) => {
     res.json({
         name: 'Helixa V2 API',
         version: '2.0.0',
-        description: 'Agent identity infrastructure with SIWA auth, x402 and MPP payments',
+        description: 'Agent identity infrastructure with SIWA for agents, SIWE for humans, plus x402 and MPP payments',
         contract: V2_CONTRACT_ADDRESS,
         contractDeployed: isContractDeployed(),
         network: 'Base (8453)',
         auth: {
-            type: 'SIWA (Sign-In With Agent) or Privy access token',
-            header: 'Authorization: Bearer {address}:{timestamp}:{signature} (SIWA) or Bearer {access-token} (Privy)',
-            message: `SIWA: Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
-            expiry: '1 hour (SIWA) / as per token (Privy)',
+            agent: {
+                type: 'SIWA (Sign-In With Agent)',
+                header: 'Authorization: Bearer {address}:{timestamp}:{signature}',
+                message: `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
+                expiry: '1 hour',
+            },
+            human: {
+                type: 'SIWE (Sign-In With Ethereum) or Privy access token',
+                header: 'Authorization: Bearer {address}:{timestamp}:{signature} (SIWE) or Bearer {access-token} (Privy)',
+                message: `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
+                expiry: '1 hour (SIWE) / as per token (Privy)',
+            },
         },
         endpoints: {
             public: {
@@ -1454,8 +1470,8 @@ app.get(['/', '/api/v2'], (req, res) => {
             },
             authenticated: {
                 'POST /api/v2/mint': 'Register new agent (SIWA required, free Phase 1)',
-                'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWA or Privy access token)',
-                'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWA required)',
+                'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWE or Privy access token)',
+                'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
                 'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
@@ -2998,13 +3014,13 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
         }
         // If tokenId is provided but caller has no wallet, reject (cannot bind token)
         if (tokenId !== null && !callerWallet) {
-            return res.status(403).json({ error: 'Token binding requires wallet authentication (SIWA)' });
+            return res.status(403).json({ error: 'Token binding requires wallet authentication (SIWE)' });
         }
 
         let mintTxHash = null;
         if (mintOnchain) {
             if (!callerWallet) {
-                return res.status(403).json({ error: 'On‑chain mint requires wallet authentication (SIWA)' });
+                return res.status(403).json({ error: 'On-chain mint requires wallet authentication (SIWE)' });
             }
             if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
             const tx = await contract.mintFor(
@@ -3080,8 +3096,8 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
 });
 
 // POST /api/v2/human/:id/link-agent — Link an owned agent to a human principal
-app.post('/api/v2/human/:id/link-agent', requireSIWA, async (req, res) => {
-    const caller = req.agent.address;
+app.post('/api/v2/human/:id/link-agent', requireHumanWalletAuth, async (req, res) => {
+    const caller = req.human.address;
     const { agentTokenId } = req.body || {};
     const tokenId = Number(agentTokenId);
     if (!Number.isInteger(tokenId)) return res.status(400).json({ error: 'agentTokenId required' });

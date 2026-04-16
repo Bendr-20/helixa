@@ -163,10 +163,10 @@ function parseLinkedAgentTokenId(value: string) {
   return match ? Number(match[1]) : null;
 }
 
-async function buildSiwaToken(wallet: { address: string; getEthereumProvider: () => Promise<any> }) {
+async function buildSiweToken(wallet: { address: string; getEthereumProvider: () => Promise<any> }) {
   const address = wallet.address;
   const timestamp = Date.now().toString();
-  const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
+  const message = `Sign-In With Ethereum: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
   const provider = await wallet.getEthereumProvider();
   const signer = await new ethers.BrowserProvider(provider).getSigner();
   const signature = await signer.signMessage(message);
@@ -303,7 +303,7 @@ export function HumanJoin() {
     }
 
     const linkedAgentTokenId = parseLinkedAgentTokenId(draft.linkedAgent);
-    // If linking an agent, we need wallet proof (SIWA). If no linked agent, we can use Privy access token.
+    // If linking an agent, we need human wallet proof (SIWE). If no linked agent, we can use Privy access token.
     if (linkedAgentTokenId !== null && !wallet) {
       setSubmitError('Linking an agent requires wallet authentication. Please connect a wallet or remove the linked agent.');
       return;
@@ -314,7 +314,7 @@ export function HumanJoin() {
       let authToken = '';
       if (linkedAgentTokenId !== null && wallet) {
         // Wallet proof required for linking
-        authToken = await buildSiwaToken(wallet);
+        authToken = await buildSiweToken(wallet);
       } else {
         // No linked agent → use Privy access token (email/social)
         const token = await getAccessToken();
@@ -775,7 +775,7 @@ export function HumanJoin() {
                 <div style={{ color: '#9a94af', lineHeight: 1.5, fontSize: '0.92rem' }}>
                   {authenticated
                     ? (user?.email?.address || walletAddress || 'Your connected identity will be used to create this profile.')
-                    : 'Privy can sign in with email, social, or wallet, then uses the connected wallet to sign the SIWA message Helixa expects.'}
+                    : 'Privy can sign in with email, social, or wallet. Human wallet auth uses SIWE, not agent auth.'}
                 </div>
               </div>
 
