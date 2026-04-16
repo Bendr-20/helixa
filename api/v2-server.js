@@ -98,11 +98,48 @@ async function recordHandshakeOnchain(fromTokenId, toTokenId) {
     }
 }
 
+async function persistHumanProfileImage(imageInput) {
+    const value = typeof imageInput === 'string' ? imageInput.trim() : '';
+    if (!value) return '';
+    if (!value.startsWith('data:image/')) return value;
+
+    const match = value.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (!match) throw new Error('Invalid uploaded profile image');
+
+    const [, mimeType, base64Payload] = match;
+    if (!['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(mimeType.toLowerCase())) {
+        throw new Error('Unsupported profile image format');
+    }
+
+    const input = Buffer.from(base64Payload, 'base64');
+    if (!input.length) throw new Error('Uploaded profile image is empty');
+    if (input.length > 1_500_000) throw new Error('Profile image is too large');
+
+    const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 24);
+    const filename = `${hash}.webp`;
+    const outputPath = path.join(HUMAN_UPLOADS_DIR, filename);
+
+    if (!fs.existsSync(outputPath)) {
+        const sharp = require('sharp');
+        await sharp(input, { limitInputPixels: 4096 * 4096 })
+            .rotate()
+            .resize(512, 512, { fit: 'cover', position: 'attention' })
+            .webp({ quality: 82 })
+            .toFile(outputPath);
+    }
+
+    return `${PUBLIC_BASE_URL}/uploads/humans/${filename}`;
+}
+
 // ─── Express App ────────────────────────────────────────────────
 const PORT = process.env.V2_API_PORT || 3457;
+const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://api.helixa.xyz';
+const PUBLIC_UPLOADS_DIR = path.resolve(__dirname, 'public', 'uploads');
+const HUMAN_UPLOADS_DIR = path.join(PUBLIC_UPLOADS_DIR, 'humans');
+fs.mkdirSync(HUMAN_UPLOADS_DIR, { recursive: true });
 const app = express();
 app.set('trust proxy', true);
-app.use(express.json({ limit: '200kb' }));
+app.use(express.json({ limit: '2mb' }));
 app.use(securityHeaders);
 app.use(cors);
 app.use(globalRateLimit);
@@ -115,6 +152,7 @@ require('./compliance-endpoints.js')(app);
 
 // Pitch deck
 app.use('/helixa-pitch-deck.html', express.static(path.resolve(__dirname, 'public', 'helixa-pitch-deck.html')));
+app.use('/uploads', express.static(PUBLIC_UPLOADS_DIR));
 
 // Doppel voice audio cache (TTS files served for MML <m-audio>) — mounted early to bypass payment middleware
 const doppelAudioPath = path.resolve(__dirname, '..', '..', 'doppel-agent', 'audio-cache');
@@ -3045,11 +3083,13 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
             if (tokenId === null) return res.status(500).json({ error: 'Human mint succeeded but tokenId could not be recovered' });
         }
 
+        const normalizedImage = await persistHumanProfileImage(image || existing?.image || '');
+
         const profileData = {
             tokenId,
             name: displayName,
             description: clamp(description || existing?.description || '', 512),
-            image: clamp(image || existing?.image || '', 512),
+            image: clamp(normalizedImage, 512),
             organization: normalizedMetadata.organization || clamp(organization || existing?.organization || '', 128),
             skills: clampList(skills ?? existing?.skills ?? [], 24, 64),
             domains: clampList(domains ?? existing?.domains ?? [], 24, 64),

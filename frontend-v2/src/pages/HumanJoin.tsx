@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
@@ -27,6 +27,9 @@ type HumanJoinDraft = {
   ens: string;
   basename: string;
   website: string;
+  talentProtocol: string;
+  ethos: string;
+  eas: string;
   linkedAgent: string;
   relationship: RelationshipType;
 };
@@ -52,6 +55,9 @@ const defaultDraft: HumanJoinDraft = {
   ens: '',
   basename: '',
   website: '',
+  talentProtocol: '',
+  ethos: '',
+  eas: '',
   linkedAgent: '',
   relationship: 'operator',
 };
@@ -163,6 +169,61 @@ function parseLinkedAgentTokenId(value: string) {
   return match ? Number(match[1]) : null;
 }
 
+function buildEnsAvatarUrl(name?: string) {
+  const normalized = (name || '').trim().toLowerCase();
+  if (!normalized || !normalized.endsWith('.eth')) return '';
+  return `https://metadata.ens.domains/mainnet/avatar/${encodeURIComponent(normalized)}`;
+}
+
+async function optimizeProfileImage(file: File) {
+  if (!file.type.startsWith('image/')) throw new Error('Choose an image file.');
+
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Could not read that image.'));
+      img.src = objectUrl;
+    });
+
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not process that image.');
+
+    const sourceSize = Math.min(image.width, image.height);
+    const sourceX = (image.width - sourceSize) / 2;
+    const sourceY = (image.height - sourceSize) / 2;
+    ctx.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+    let quality = 0.9;
+    let dataUrl = canvas.toDataURL('image/webp', quality);
+    while (dataUrl.length > 180_000 && quality > 0.55) {
+      quality -= 0.08;
+      dataUrl = canvas.toDataURL('image/webp', quality);
+    }
+
+    if (dataUrl.length > 180_000) {
+      quality = 0.82;
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+      while (dataUrl.length > 180_000 && quality > 0.5) {
+        quality -= 0.08;
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+      }
+    }
+
+    if (dataUrl.length > 190_000) throw new Error('That image is still too large after compression. Try a smaller photo.');
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 async function buildSiweToken(wallet: { address: string; getEthereumProvider: () => Promise<any> }) {
   const address = wallet.address;
   const timestamp = Date.now().toString();
@@ -246,6 +307,8 @@ export function HumanJoin() {
 
   const walletAddress = wallet?.address || user?.wallet?.address || '';
   const publicProfilePath = walletAddress ? `/h/${walletAddress}` : '/h/{profile-id}';
+  const ensAvatarUrl = buildEnsAvatarUrl(draft.ens);
+  const profilePreview = draft.profileImage.trim() || ensAvatarUrl;
 
   const updateDraft = (patch: Partial<HumanJoinDraft>) => {
     setDraft(prev => ({ ...prev, ...patch }));
@@ -280,6 +343,29 @@ export function HumanJoin() {
     setSaveMessage('Draft saved locally on this device.');
     if (submitError) setSubmitError('');
     if (submitSuccess) setSubmitSuccess('');
+  };
+
+  const importEnsAvatar = () => {
+    if (!ensAvatarUrl) {
+      setSubmitError('Add a valid ENS name first if you want to import an ENS avatar.');
+      return;
+    }
+    updateDraft({ profileImage: ensAvatarUrl });
+    setSaveMessage(`Using ENS avatar from ${draft.ens.trim()}.`);
+  };
+
+  const handleProfileImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      const optimized = await optimizeProfileImage(file);
+      updateDraft({ profileImage: optimized });
+      setSaveMessage(`${file.name} is ready as your profile photo.`);
+    } catch (error: any) {
+      setSubmitError(error?.message || 'Could not prepare that profile image.');
+    }
   };
 
   const publishProfile = async () => {
@@ -336,6 +422,9 @@ export function HumanJoin() {
         farcaster: draft.farcaster.trim(),
         ens: draft.ens.trim(),
         basename: draft.basename.trim(),
+        talentProtocol: draft.talentProtocol.trim(),
+        ethos: draft.ethos.trim(),
+        eas: draft.eas.trim(),
       });
       const authEmail = user?.email?.address?.trim() || '';
       const requestedChannels = draft.communicationChannels.filter(channel => ['email', 'telegram', 'web'].includes(channel));
@@ -357,6 +446,9 @@ export function HumanJoin() {
         services: {
           ...(draft.website.trim() ? { web: { url: draft.website.trim() } } : {}),
           ...(draft.ens.trim() ? { ens: { name: draft.ens.trim() } } : {}),
+          ...(draft.talentProtocol.trim() ? { talentProtocol: { url: draft.talentProtocol.trim() } } : {}),
+          ...(draft.ethos.trim() ? { ethos: { url: draft.ethos.trim() } } : {}),
+          ...(draft.eas.trim() ? { eas: { url: draft.eas.trim() } } : {}),
         },
         contact: {
           email: authEmail,
@@ -429,6 +521,9 @@ export function HumanJoin() {
     draft.farcaster && `Farcaster: ${draft.farcaster}`,
     draft.ens && `ENS: ${draft.ens}`,
     draft.basename && `Basename: ${draft.basename}`,
+    draft.talentProtocol && `Talent Protocol: ${draft.talentProtocol}`,
+    draft.ethos && `Ethos: ${draft.ethos}`,
+    draft.eas && `EAS: ${draft.eas}`,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -587,13 +682,68 @@ export function HumanJoin() {
               </div>
 
               <div style={{ marginBottom: '2rem' }}>
-                <label style={fieldLabelStyle}>Profile Image URL (optional)</label>
-                <input
-                  value={draft.profileImage}
-                  onChange={e => updateDraft({ profileImage: e.target.value })}
-                  placeholder="https://..."
-                  style={inputStyle}
-                />
+                <label style={fieldLabelStyle}>Profile Photo (optional)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    {profilePreview ? (
+                      <img
+                        src={profilePreview}
+                        alt="Profile preview"
+                        style={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '999px',
+                          objectFit: 'cover',
+                          border: '1px solid rgba(180, 144, 255, 0.35)',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '120px',
+                          height: '120px',
+                          borderRadius: '999px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '2rem',
+                          fontWeight: 700,
+                          color: '#f3f0ff',
+                          background: 'linear-gradient(135deg, rgba(180,144,255,0.22), rgba(110,236,216,0.22))',
+                          border: '1px solid rgba(180, 144, 255, 0.35)',
+                        }}
+                      >
+                        {(draft.displayName || 'H').split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div style={{ color: '#9a94af', fontSize: '0.92rem', lineHeight: 1.5, marginBottom: '0.85rem' }}>
+                      Use a face, logo, or personal brand image. If left blank, we&apos;ll use your ENS avatar when available, or fall back to a simple initials tile.
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleProfileImageUpload}
+                      style={{ ...inputStyle, padding: '0.75rem' }}
+                    />
+
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+                      <button type="button" className="btn-hero secondary" onClick={() => updateDraft({ profileImage: '' })}>
+                        Clear Photo
+                      </button>
+                    </div>
+
+                    <input
+                      value={draft.profileImage}
+                      onChange={e => updateDraft({ profileImage: e.target.value })}
+                      placeholder="https://..."
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -710,6 +860,31 @@ export function HumanJoin() {
                 </div>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={fieldLabelStyle}>Talent Protocol (optional)</label>
+                  <input value={draft.talentProtocol} onChange={e => updateDraft({ talentProtocol: e.target.value })} placeholder="https://talentprotocol.com/..." style={inputStyle} />
+                </div>
+                <div>
+                  <label style={fieldLabelStyle}>Ethos (optional)</label>
+                  <input value={draft.ethos} onChange={e => updateDraft({ ethos: e.target.value })} placeholder="https://ethos.network/..." style={inputStyle} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={fieldLabelStyle}>EAS (optional)</label>
+                <input value={draft.eas} onChange={e => updateDraft({ eas: e.target.value })} placeholder="https://easscan.org/..." style={inputStyle} />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button type="button" className="btn-hero secondary" onClick={importEnsAvatar} disabled={!draft.ens.trim()} style={{ opacity: draft.ens.trim() ? 1 : 0.55 }}>
+                  Use ENS Avatar
+                </button>
+                <div style={{ color: '#8d87a1', fontSize: '0.9rem' }}>
+                  If your ENS has an avatar, we&apos;ll use it as your human profile photo.
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Linked Agent (optional)</label>
@@ -759,6 +934,7 @@ export function HumanJoin() {
               <SummaryRow label="Accepted Payments" value={draft.paymentPreferences.map(humanize).join(', ')} />
               <SummaryRow label="Communication Channels" value={draft.communicationChannels.map(humanize).join(', ')} />
               <SummaryRow label="Public Links" value={publicLinks} />
+              <SummaryRow label="Profile Photo" value={draft.profileImage ? (draft.profileImage.startsWith('data:image/') ? 'Uploaded photo ready' : draft.profileImage) : (ensAvatarUrl ? `ENS avatar from ${draft.ens}` : 'Initials fallback')} />
               <SummaryRow label="Linked Agent" value={draft.linkedAgent ? `${draft.linkedAgent} (${humanize(draft.relationship)})` : ''} />
               <SummaryRow label="Open To Work" value={draft.openToWork ? 'Yes' : 'Not right now'} />
 

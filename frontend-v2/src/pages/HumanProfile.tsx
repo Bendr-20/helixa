@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { CredBadge } from '../components/CredBadge';
 import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
@@ -16,6 +17,12 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Unknown';
   return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function buildEnsAvatarUrl(name?: string) {
+  const normalized = (name || '').trim().toLowerCase();
+  if (!normalized || !normalized.endsWith('.eth')) return '';
+  return `https://metadata.ens.domains/mainnet/avatar/${encodeURIComponent(normalized)}`;
 }
 
 function renderLinkedAccount(key: string, value: string) {
@@ -52,9 +59,19 @@ function renderLinkedAccount(key: string, value: string) {
   return <span className="badge">{humanize(key)}: {value}</span>;
 }
 
+function buildExternalLink(label: string, url?: string) {
+  if (!url) return null;
+  return { label, url };
+}
+
 export function HumanProfile() {
   const { id } = useParams<{ id: string }>();
   const { data: human, isLoading, error } = useHuman(id);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [human?.image, human?.linkedAccounts?.ens, human?.externalIds?.ens, human?.services?.ens?.name]);
 
   if (isLoading) {
     return (
@@ -116,6 +133,15 @@ export function HumanProfile() {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+  const ensAvatar = buildEnsAvatarUrl(
+    human.linkedAccounts?.ens || human.externalIds?.ens || human.services?.ens?.name
+  );
+  const resolvedAvatar = avatarLoadFailed ? '' : (human.image || ensAvatar);
+  const externalProofLinks = [
+    buildExternalLink('Talent Protocol', human.services?.talentProtocol?.url || human.externalIds?.talentProtocol),
+    buildExternalLink('Ethos', human.services?.ethos?.url || human.externalIds?.ethos),
+    buildExternalLink('EAS', human.services?.eas?.url || human.externalIds?.eas),
+  ].filter(Boolean) as Array<{ label: string; url: string }>;
 
   return (
     <div className="py-8">
@@ -135,12 +161,13 @@ export function HumanProfile() {
             <div className="lg:col-span-1">
               <div className="card text-center sticky top-8">
                 <div className="mb-6 flex justify-center">
-                  {human.image ? (
+                  {resolvedAvatar ? (
                     <img
-                      src={human.image}
+                      src={resolvedAvatar}
                       alt={human.name}
                       className="w-32 h-32 rounded-full object-cover border"
                       style={{ borderColor: 'rgba(180, 144, 255, 0.35)' }}
+                      onError={() => setAvatarLoadFailed(true)}
                     />
                   ) : (
                     <div
@@ -245,11 +272,18 @@ export function HumanProfile() {
                     <div key={key}>{renderLinkedAccount(key, value)}</div>
                   )) : <span className="text-muted text-sm">No linked accounts added yet.</span>}
                 </div>
-                {human.services?.web?.url && (
-                  <a href={human.services.web.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary text-sm">
-                    Visit Website
-                  </a>
-                )}
+                <div className="flex flex-wrap gap-3">
+                  {human.services?.web?.url && (
+                    <a href={human.services.web.url} target="_blank" rel="noopener noreferrer" className="btn btn-secondary text-sm">
+                      Visit Website
+                    </a>
+                  )}
+                  {externalProofLinks.map(link => (
+                    <a key={link.label} href={link.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm">
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
               </div>
 
               <div className="card">
