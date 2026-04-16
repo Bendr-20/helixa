@@ -25,7 +25,7 @@ let {
 } = svc;
 
 const credOracle = require('./services/cred-oracle');
-const { parseSIWA, verifySIWA, requireSIWA, SIWA_DOMAIN } = require('./middleware/auth');
+const { parseSIWA, verifySIWA, requireSIWA, SIWA_DOMAIN, requireHumanAuth } = require('./middleware/auth');
 const { buildSIWSMessage, pendingChallenges, requireSIWS, requireAuth } = require('./middleware/siws');
 const { securityHeaders, cors } = require('./middleware/cors');
 const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
@@ -584,17 +584,22 @@ function saveHumanProfiles(profiles) {
     fs.writeFileSync(HUMAN_PROFILES_PATH, JSON.stringify(profiles, null, 2));
 }
 function saveHumanProfile(walletAddress, data) {
-    const key = ethers.getAddress(walletAddress).toLowerCase();
+    const key = walletAddress && ethers.isAddress(walletAddress)
+        ? ethers.getAddress(walletAddress).toLowerCase()
+        : null;
     const profiles = loadHumanProfiles();
-    profiles[key] = {
-        ...(profiles[key] || {}),
+    // If wallet is provided, store under wallet key; otherwise use userId if present.
+    const storageKey = key || (data.userId ? `user:${data.userId}` : null);
+    if (!storageKey) throw new Error('saveHumanProfile requires either walletAddress or userId');
+    profiles[storageKey] = {
+        ...(profiles[storageKey] || {}),
         ...data,
-        walletAddress: ethers.getAddress(walletAddress),
+        walletAddress: key ? ethers.getAddress(walletAddress) : null,
         updatedAt: new Date().toISOString(),
     };
-    if (!profiles[key].createdAt) profiles[key].createdAt = new Date().toISOString();
+    if (!profiles[storageKey].createdAt) profiles[storageKey].createdAt = new Date().toISOString();
     saveHumanProfiles(profiles);
-    return profiles[key];
+    return profiles[storageKey];
 }
 function getHumanProfileByWallet(walletAddress) {
     try {
@@ -603,6 +608,11 @@ function getHumanProfileByWallet(walletAddress) {
     } catch {
         return null;
     }
+}
+
+function getHumanProfileByUserId(userId) {
+    const key = `user:${userId}`;
+    return loadHumanProfiles()[key] || null;
 }
 function getHumanProfileById(id) {
     const profiles = loadHumanProfiles();
@@ -613,7 +623,9 @@ function getHumanProfileById(id) {
     try {
         return profiles[ethers.getAddress(String(id)).toLowerCase()] || null;
     } catch {
-        return null;
+        // Also try user: prefix
+        const userKey = `user:${String(id)}`;
+        return profiles[userKey] || null;
     }
 }
 
@@ -1217,8 +1229,18 @@ async function fetchEthosScore(walletAddress) {
 function buildHumanRegistrationFile(profile) {
     const walletAddress = profile.walletAddress;
     const tokenId = profile.tokenId ?? null;
+    const userId = profile.userId;
     const services = sanitizePrincipalServices(profile.services, profile.services, profile.contact || {});
-    if (!services.web) services.web = { url: tokenId !== null ? `https://helixa.xyz/h/${tokenId}` : `https://helixa.xyz/h/${walletAddress}` };
+    // Determine public URL for the profile
+    let publicUrl = null;
+    if (tokenId !== null) {
+        publicUrl = `https://helixa.xyz/h/${tokenId}`;
+    } else if (walletAddress) {
+        publicUrl = `https://helixa.xyz/h/${walletAddress}`;
+    } else if (userId) {
+        publicUrl = `https://helixa.xyz/h/${userId}`;
+    }
+    if (!services.web && publicUrl) services.web = { url: publicUrl };
     const metadata = sanitizePrincipalMetadata(
         profile.metadata,
         profile.metadata,
@@ -1231,9 +1253,12 @@ function buildHumanRegistrationFile(profile) {
         },
         { services, fallbackChannels: ['email', 'telegram', 'web'] },
     );
+    const fallbackName = walletAddress
+        ? `Human ${walletAddress.slice(0, 6)}`
+        : (userId ? `Human ${userId.slice(0, 8)}` : 'Human');
     return {
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
-        name: profile.name || `Human ${walletAddress.slice(0, 6)}`,
+        name: profile.name || fallbackName,
         description: profile.description || 'Human principal in the Helixa network.',
         image: profile.image || null,
         active: profile.active !== false,
@@ -1254,31 +1279,55 @@ function buildHumanRegistrationFile(profile) {
 }
 
 async function computeHumanCred(profile) {
-    const walletAddress = ethers.getAddress(profile.walletAddress);
-    const [coinbase, talentScore, ethosScore, txCount] = await Promise.all([
-        fetchCoinbaseAttestationStatus(walletAddress),
-        fetchTalentScore(walletAddress),
-        fetchEthosScore(walletAddress),
-        readProvider.getTransactionCount(walletAddress).catch(() => 0),
-    ]);
+    const walletAddress = profile.walletAddress ? ethers.getAddress(profile.walletAddress) : null;
+    const hasWallet = Boolean(walletAddress);
+    
+    const [coinbase, talentScore, ethosScore, txCount] = hasWallet
+        ? await Promise.all([
+            fetchCoinbaseAttestationStatus(walletAddress),
+            fetchTalentScore(walletAddress),
+            fetchEthosScore(walletAddress),
+            readProvider.getTransactionCount(walletAddress).catch(() => 0),
+        ])
+        : [null, null, null, 0];
 
-    const weights = {
-        verifiedIdentity: 20,
-        builderReputation: 20,
-        socialReputation: 15,
-        onchainHistory: 10,
-        workHistory: 15,
-        networkEndorsements: 10,
-        profileCompleteness: 5,
-        longevity: 5,
-    };
+    const weights = hasWallet
+        ? {
+            verifiedIdentity: 20,
+            builderReputation: 20,
+            socialReputation: 15,
+            onchainHistory: 10,
+            workHistory: 15,
+            networkEndorsements: 10,
+            profileCompleteness: 5,
+            longevity: 5,
+        }
+        : {
+            // Rebalance for non‑wallet humans: emphasize profile completeness and work
+            verifiedIdentity: 0,
+            builderReputation: 0,
+            socialReputation: 25,  // external social links still matter
+            onchainHistory: 0,
+            workHistory: 30,
+            networkEndorsements: 20,
+            profileCompleteness: 15,
+            longevity: 10,
+        };
 
     const linkedAccounts = profile.linkedAccounts || {};
     const hasEnsLike = Boolean(linkedAccounts.ens || linkedAccounts.basename);
-    const identityRaw = Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0));
-    const builderRaw = Math.max(0, Math.min(100, Math.round((Number(talentScore || 0) / 400) * 100)));
-    const socialRaw = Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)));
-    const onchainRaw = Math.max(0, Math.min(100, Math.round(Math.log10(Number(txCount || 0) + 1) * 45)));
+    const identityRaw = hasWallet
+        ? Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0))
+        : (hasEnsLike ? 30 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0);
+    const builderRaw = hasWallet
+        ? Math.max(0, Math.min(100, Math.round((Number(talentScore || 0) / 400) * 100)))
+        : 0;
+    const socialRaw = hasWallet
+        ? Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)))
+        : (Object.keys(linkedAccounts).length > 0 ? 40 : 0);  // non‑wallet social score based on linked accounts
+    const onchainRaw = hasWallet
+        ? Math.max(0, Math.min(100, Math.round(Math.log10(Number(txCount || 0) + 1) * 45)))
+        : 0;
 
     const work = profile.workHistory || {};
     const workRaw = Math.max(0, Math.min(100,
@@ -1353,7 +1402,7 @@ async function formatHumanPrincipal(profile, options = {}) {
         channels: notificationPreferences.channels,
     };
     return {
-        id: profile.tokenId ?? profile.walletAddress,
+        id: profile.tokenId ?? profile.walletAddress ?? profile.userId,
         walletAddress: cred.walletAddress,
         tokenId: profile.tokenId ?? null,
         entityType: 'human',
@@ -1389,10 +1438,10 @@ app.get(['/', '/api/v2'], (req, res) => {
         contractDeployed: isContractDeployed(),
         network: 'Base (8453)',
         auth: {
-            type: 'SIWA (Sign-In With Agent)',
-            header: 'Authorization: Bearer {address}:{timestamp}:{signature}',
-            message: `Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
-            expiry: '1 hour',
+            type: 'SIWA (Sign-In With Agent) or Privy access token',
+            header: 'Authorization: Bearer {address}:{timestamp}:{signature} (SIWA) or Bearer {access-token} (Privy)',
+            message: `SIWA: Sign-In With Agent: ${SIWA_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
+            expiry: '1 hour (SIWA) / as per token (Privy)',
         },
         endpoints: {
             public: {
@@ -1405,7 +1454,7 @@ app.get(['/', '/api/v2'], (req, res) => {
             },
             authenticated: {
                 'POST /api/v2/mint': 'Register new agent (SIWA required, free Phase 1)',
-                'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWA required)',
+                'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWA or Privy access token)',
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWA required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
@@ -2877,8 +2926,10 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
 });
 
 // POST /api/v2/principals/human/register — Register a human principal, optionally minting on HelixaV2
-app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
-    const caller = req.agent.address;
+app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res) => {
+    const auth = req.humanAuth;
+    const callerWallet = auth.type === 'siwa' ? auth.walletAddress : null;
+    const callerUserId = auth.type === 'privy' ? auth.userId : null;
     const {
         tokenId: requestedTokenId,
         mintOnchain,
@@ -2911,7 +2962,10 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             return res.status(400).json({ error: 'Provide either tokenId or mintOnchain, not both' });
         }
 
-        const existing = getHumanProfileByWallet(caller);
+        // Determine identity key for profile lookup
+        const existing = callerWallet
+            ? getHumanProfileByWallet(callerWallet)
+            : (callerUserId ? getHumanProfileByUserId(callerUserId) : null);
         const displayName = clamp(name || existing?.name || '', 64);
         if (!displayName) return res.status(400).json({ error: 'name required' });
         const normalizedContact = sanitizeHumanContact(contact, existing?.contact || {});
@@ -2934,20 +2988,28 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             normalizedContact,
         );
 
-        if (tokenId !== null) {
+        // Token ownership check only applies if caller has a wallet
+        if (tokenId !== null && callerWallet) {
             if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
             const owner = await readContract.ownerOf(tokenId);
-            if (owner.toLowerCase() !== caller.toLowerCase()) {
+            if (owner.toLowerCase() !== callerWallet.toLowerCase()) {
                 return res.status(403).json({ error: 'Caller must own tokenId to bind it as a human principal' });
             }
+        }
+        // If tokenId is provided but caller has no wallet, reject (cannot bind token)
+        if (tokenId !== null && !callerWallet) {
+            return res.status(403).json({ error: 'Token binding requires wallet authentication (SIWA)' });
         }
 
         let mintTxHash = null;
         if (mintOnchain) {
+            if (!callerWallet) {
+                return res.status(403).json({ error: 'On‑chain mint requires wallet authentication (SIWA)' });
+            }
             if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
             const tx = await contract.mintFor(
-                caller,
-                caller,
+                callerWallet,
+                callerWallet,
                 displayName,
                 clamp(framework || 'human', 32) || 'human',
                 soulbound === true,
@@ -2967,7 +3029,7 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             if (tokenId === null) return res.status(500).json({ error: 'Human mint succeeded but tokenId could not be recovered' });
         }
 
-        const normalizedProfile = saveHumanProfile(caller, {
+        const profileData = {
             tokenId,
             name: displayName,
             description: clamp(description || existing?.description || '', 512),
@@ -2986,7 +3048,10 @@ app.post('/api/v2/principals/human/register', requireSIWA, async (req, res) => {
             active: true,
             entityType: 'human',
             principalType: 'human',
-        });
+        };
+        // Include userId for non‑wallet profiles
+        if (callerUserId) profileData.userId = callerUserId;
+        const normalizedProfile = saveHumanProfile(callerWallet || callerUserId, profileData);
 
         if (tokenId !== null && isContractDeployed()) {
             try {

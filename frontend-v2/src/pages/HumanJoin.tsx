@@ -227,7 +227,7 @@ function SummaryRow({ label, value }: { label: string, value: string }) {
 export function HumanJoin() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { ready, authenticated, login, user } = usePrivy();
+  const { ready, authenticated, login, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
   const [draft, setDraft] = useState<HumanJoinDraft>(readStoredDraft);
@@ -245,7 +245,7 @@ export function HumanJoin() {
   }, [draft]);
 
   const walletAddress = wallet?.address || user?.wallet?.address || '';
-  const publicProfilePath = walletAddress ? `/h/${walletAddress}` : '/h/{wallet-address}';
+  const publicProfilePath = walletAddress ? `/h/${walletAddress}` : '/h/{profile-id}';
 
   const updateDraft = (patch: Partial<HumanJoinDraft>) => {
     setDraft(prev => ({ ...prev, ...patch }));
@@ -302,15 +302,27 @@ export function HumanJoin() {
       return;
     }
 
-    if (!wallet) {
-      setSubmitError('Signed in, but wallet is not ready yet. Give it a second and try again.');
+    const linkedAgentTokenId = parseLinkedAgentTokenId(draft.linkedAgent);
+    // If linking an agent, we need wallet proof (SIWA). If no linked agent, we can use Privy access token.
+    if (linkedAgentTokenId !== null && !wallet) {
+      setSubmitError('Linking an agent requires wallet authentication. Please connect a wallet or remove the linked agent.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const authToken = await buildSiwaToken(wallet);
-      const linkedAgentTokenId = parseLinkedAgentTokenId(draft.linkedAgent);
+      let authToken = '';
+      if (linkedAgentTokenId !== null && wallet) {
+        // Wallet proof required for linking
+        authToken = await buildSiwaToken(wallet);
+      } else {
+        // No linked agent → use Privy access token (email/social)
+        const token = await getAccessToken();
+        if (!token) {
+          throw new Error('Could not obtain Privy access token. Try signing in again.');
+        }
+        authToken = token;
+      }
       const linkedAccounts = compactObject({
         x: draft.x.replace(/^@/, '').trim(),
         github: draft.github.trim(),
