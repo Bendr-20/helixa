@@ -90,7 +90,7 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 - GET /health — Health check
 
 ## Authentication
-SIWA (Sign-In With Agent): Authorization: Bearer {address}:{timestamp}:{signature}
+Agent auth uses SIWA (Sign-In With Agent): Authorization: Bearer {address}:{timestamp}:{signature}
 
 ## Payments
 x402 protocol — USDC or $CRED on Base (chain 8453). 20% discount with $CRED.
@@ -389,7 +389,7 @@ Sitemap: https://helixa.xyz/sitemap.xml`
 <h1>Privacy Policy</h1>
 <p>Last updated: March 2026</p>
 <h2>Data We Collect</h2>
-<p>Helixa processes only publicly available onchain data (wallet addresses, transaction history, smart contract interactions) to generate Cred Scores. We do not collect personal data, emails, or off-chain identifiers unless voluntarily provided through SIWA authentication.</p>
+<p>Helixa processes only publicly available onchain data (wallet addresses, transaction history, smart contract interactions) to generate Cred Scores. We do not collect personal data, emails, or off-chain identifiers unless voluntarily provided through SIWE wallet auth or Privy authentication.</p>
 <h2>Data Processing</h2>
 <p>All agent data is derived from public blockchain state on Base (Chain ID 8453). Cred Scores are computed algorithmically and stored in our database. On-chain attestations are written to the CredOracle contract.</p>
 <h2>Your Rights</h2>

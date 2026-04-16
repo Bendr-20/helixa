@@ -2944,7 +2944,7 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
 // POST /api/v2/principals/human/register — Register a human principal, optionally minting on HelixaV2
 app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res) => {
     const auth = req.humanAuth;
-    const callerWallet = auth.type === 'siwa' ? auth.walletAddress : null;
+    const callerWallet = auth.walletAddress || null;
     const callerUserId = auth.type === 'privy' ? auth.userId : null;
     const {
         tokenId: requestedTokenId,

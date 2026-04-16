@@ -30,6 +30,10 @@ const HQ_IMAGE = path.resolve(__dirname, '..', '..', 'doppel-hq.png');
 const HQ_IMAGE_TYPE = 'image/png';
 const LOCAL_AGENTS_DB = path.resolve(__dirname, '..', 'data', 'agents.db');
 const SPA_ENTRY_ROUTES = new Set([
+  '/dashboard',
+  '/directory',
+  '/docs',
+  '/join/human',
   '/mint',
   '/manage',
   '/stake',
@@ -37,8 +41,23 @@ const SPA_ENTRY_ROUTES = new Set([
   '/agents',
   '/jobs',
   '/soul',
+  '/soul-handshake',
+  '/soul-keeper',
   '/token',
+  '/cred-report',
+  '/analytics',
 ]);
+const SPA_ENTRY_PREFIXES = [
+  '/join/human/',
+  '/h/',
+  '/agent/',
+  '/report/',
+  '/card/',
+];
+
+function isSpaEntryPath(pathname) {
+  return SPA_ENTRY_ROUTES.has(pathname) || SPA_ENTRY_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
 const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.gif': 'image/gif',
@@ -527,7 +546,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (SPA_ENTRY_ROUTES.has(pathname)) {
+    if (isSpaEntryPath(pathname)) {
       sendFile(res, DOCS_INDEX_HTML);
       return;
     }
