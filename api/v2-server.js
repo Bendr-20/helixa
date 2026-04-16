@@ -6257,7 +6257,18 @@ app.get('/api/v2/agent/:id/launch-status/:jobId', async (req, res) => {
 const { createMcpHandler } = require('./mcp-handler');
 const { createA2AHandler } = require('./a2a-handler');
 
-const mcpDeps = { indexer, formatAgentV2, getCredTier, computeCredBreakdown, getAllAgents: () => indexer.getAllAgents(), HIDDEN_TOKENS };
+const mcpDeps = {
+    indexer,
+    formatAgentV2,
+    getCredTier,
+    computeCredBreakdown,
+    getAllAgents: () => indexer.getAllAgents(),
+    HIDDEN_TOKENS,
+    loadHumanProfiles,
+    getHumanProfileById,
+    formatHumanPrincipal,
+    computeHumanCred,
+};
 const mcpHandler = createMcpHandler(mcpDeps);
 const a2aHandler = createA2AHandler(mcpDeps);
 
@@ -6428,15 +6439,21 @@ app.get('/.well-known/agent-card.json', (req, res) => {
 app.get('/.well-known/mcp/server-card.json', (req, res) => {
     res.json({
         name: 'Helixa',
-        description: 'Helixa Agent Registry — MCP server for AI agent identity and reputation on Base.',
-        version: '1.0.0',
+        description: 'Helixa MCP server for agent identity, human principals, Cred-aware discovery, and request routing on Base.',
+        version: '1.1.0',
         url: 'https://api.helixa.xyz/api/mcp',
         transport: 'streamable-http',
         tools: [
-            { name: 'search_agents', description: 'Search agents by query, filter by cred score, tier, verification status' },
+            { name: 'search_agents', description: 'Search agents by query, filter by cred score, tier, and verification status' },
+            { name: 'find_matches', description: 'Rank agent and human principal matches for a brief or capability request' },
             { name: 'get_agent_profile', description: 'Get full agent profile by token ID' },
+            { name: 'get_principal_profile', description: 'Get a full agent or human principal profile by ID' },
             { name: 'get_cred_score', description: 'Get cred score and tier for an agent' },
-            { name: 'get_stats', description: 'Get registry statistics' },
+            { name: 'submit_brief', description: 'Store a brief server-side and return ranked recommendations' },
+            { name: 'request_human_help', description: 'Submit a human help request and return ranked human matches' },
+            { name: 'track_job', description: 'Retrieve a stored brief or human-help request by request ID' },
+            { name: 'get_recommendation_reasoning', description: 'Explain why a candidate matches a brief or stored request' },
+            { name: 'get_stats', description: 'Get registry statistics across agents and human principals' },
         ],
         provider: { name: 'Helixa', url: 'https://helixa.xyz' },
     });
