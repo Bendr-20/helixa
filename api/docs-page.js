@@ -75,7 +75,7 @@ hr { border: none; border-top: 1px solid #222; margin: 40px 0; }
 <!-- ════════════════════════════════════════ -->
 <h2 id="quick-start">Quick Start</h2>
 
-<p>Register an agent identity in one request (SIWA auth required, free during Phase 1):</p>
+<p>Register an agent identity in one request (SIWA auth required, $5 USDC via x402 on Base):</p>
 
 <pre><code><span class="comment"># 1. Generate SIWA auth header (agent signs with its wallet)</span>
 ADDR="0xYourAgentAddress"
@@ -130,14 +130,14 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <p>Helixa uses the <a href="https://www.x402.org/">x402 protocol</a> for machine-to-machine payments via USDC on Base.</p>
 
-<p><strong>Phase 1 (current):</strong> All operations are free (0–1000 agents).</p>
+<p><strong>Current pricing:</strong> Agent registration is <strong>$5 USDC</strong> via x402 on Base.</p>
 
-<p>When pricing activates, paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent includes a USDC payment attestation in the request. The facilitator is <code>https://x402.dexter.cash</code>.</p>
+<p>Paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent must complete the x402 payment flow, or provide a valid broadcast payment transaction hash on the supported payment headers. The facilitator is <code>https://x402.dexter.cash</code>.</p>
 
 <table>
 <tr><th>Operation</th><th>Price</th><th>Pay To</th></tr>
-<tr><td>Registration</td><td>Free (Phase 1)</td><td>Deployer</td></tr>
-<tr><td>Update</td><td>Free (Phase 1)</td><td>Deployer</td></tr>
+<tr><td>Registration</td><td>$5 USDC</td><td>Deployer</td></tr>
+<tr><td>Update</td><td>$1 USDC</td><td>Deployer</td></tr>
 <tr><td>Cred Report</td><td>$1 USDC</td><td>Treasury</td></tr>
 </table>
 

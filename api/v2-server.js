@@ -1764,7 +1764,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
-                'POST /api/v2/mint': 'Register new agent (SIWA required, free Phase 1)',
+                'POST /api/v2/mint': `Register new agent (SIWA required, $${PRICING.agentMint} USDC via x402)`,
                 'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWE or Privy access token)',
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
@@ -1784,7 +1784,7 @@ app.get(['/', '/api/v2'], (req, res) => {
             ],
             pricing: {
                 phase: 1,
-                note: 'All operations free during Phase 1 (0-1000 agents)',
+                note: `Agent registration costs $${PRICING.agentMint} USDC via x402 on Base. Additional endpoints may have separate pricing.`,
                 agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
                 update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
             },
@@ -7748,7 +7748,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
         console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
         console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
         console.log(`   Auth: SIWA (Sign-In With Agent)`);
-        console.log(`   Payments: x402 (Phase 1 — all free)`);
+        console.log(`   Payments: x402 ($${PRICING.agentMint} USDC mint, Base)`);
         console.log(`   RPC: ${RPC_URL}`);
         console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
         console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
