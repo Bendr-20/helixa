@@ -5,6 +5,14 @@ import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
 import { useHuman } from '../hooks/useAgents';
 import { EXPLORER_URL } from '../lib/constants';
 
+type SocialMetric = {
+  followersCount?: number;
+  followingCount?: number;
+  fid?: number | null;
+  username?: string;
+  handle?: string;
+};
+
 function humanize(value: string) {
   return value
     .split('-')
@@ -34,14 +42,22 @@ function buildTelegramUrl(handle?: string) {
   return normalized ? `https://t.me/${normalized}` : '';
 }
 
-function renderLinkedAccount(key: string, value: string) {
+function formatCompactCount(value?: number) {
+  if (!value || value < 0) return '';
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1).replace(/\.0$/, '')}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, '')}K`;
+  return String(value);
+}
+
+function renderLinkedAccount(key: string, value: string, metric?: SocialMetric | null) {
   const normalized = normalizeHandle(value);
   const actionStyle = { maxWidth: '100%', justifyContent: 'flex-start' as const, ...wrapAnywhereStyle };
+  const followerSuffix = metric?.followersCount ? ` • ${formatCompactCount(metric.followersCount)} followers` : '';
 
   if (key === 'x') {
     return (
       <a href={`https://x.com/${normalized}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm" style={actionStyle}>
-        <XLogo className="w-4 h-4" /> @{normalized}
+        <XLogo className="w-4 h-4" /> @{normalized}{followerSuffix}
       </a>
     );
   }
@@ -57,7 +73,7 @@ function renderLinkedAccount(key: string, value: string) {
   if (key === 'farcaster') {
     return (
       <a href={`https://warpcast.com/${normalized}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm" style={actionStyle}>
-        <FarcasterLogo className="w-4 h-4" /> {normalized}
+        <FarcasterLogo className="w-4 h-4" /> {normalized}{followerSuffix}
       </a>
     );
   }
@@ -97,10 +113,33 @@ export function HumanProfile() {
   const { id } = useParams<{ id: string }>();
   const { data: human, isLoading, error, refetch, isFetching } = useHuman(id);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  const [socialMetrics, setSocialMetrics] = useState<Record<string, SocialMetric>>({});
 
   useEffect(() => {
     setAvatarLoadFailed(false);
   }, [human?.image, human?.linkedAccounts?.ens, human?.externalIds?.ens, human?.services?.ens?.name]);
+
+  useEffect(() => {
+    const xHandle = human?.linkedAccounts?.x ? normalizeHandle(human.linkedAccounts.x) : '';
+    const farcasterHandle = human?.linkedAccounts?.farcaster ? normalizeHandle(human.linkedAccounts.farcaster) : '';
+
+    setSocialMetrics({});
+    if (!xHandle && !farcasterHandle) return;
+
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (xHandle) params.set('x', xHandle);
+    if (farcasterHandle) params.set('farcaster', farcasterHandle);
+
+    fetch(`/api/v2/social-metrics?${params.toString()}`, { signal: controller.signal })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data && typeof data === 'object') setSocialMetrics(data);
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [human?.linkedAccounts?.x, human?.linkedAccounts?.farcaster]);
 
   if (isLoading) {
     return (
@@ -288,7 +327,7 @@ export function HumanProfile() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-muted text-sm mb-2">Service Categories</div>
+                  <div className="text-muted text-sm mb-2">Service Categories</div>
                     <div className="flex flex-wrap gap-2 min-w-0">
                       {serviceCategories.length > 0 ? serviceCategories.map((item: string) => (
                         <span key={item} className="badge">{humanize(item)}</span>
@@ -318,7 +357,7 @@ export function HumanProfile() {
                 <h2 className="font-heading font-semibold mb-4" style={sectionTitleStyle}>Links & Presence</h2>
                 <div className="flex flex-wrap gap-3 mb-4 min-w-0">
                   {linkedAccounts.length > 0 ? linkedAccounts.map(([key, value]) => (
-                    <div key={key} style={{ maxWidth: '100%' }}>{renderLinkedAccount(key, value)}</div>
+                    <div key={key} style={{ maxWidth: '100%' }}>{renderLinkedAccount(key, value, socialMetrics[key])}</div>
                   )) : <span className="text-muted text-sm">No linked accounts added yet.</span>}
                 </div>
                 <div className="grid gap-3 sm:flex sm:flex-wrap min-w-0">

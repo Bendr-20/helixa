@@ -131,6 +131,91 @@ async function persistHumanProfileImage(imageInput) {
     return `${PUBLIC_BASE_URL}/uploads/humans/${filename}`;
 }
 
+const SOCIAL_METRICS_TTL_MS = 6 * 60 * 60 * 1000;
+const SOCIAL_METRICS_ERROR_TTL_MS = 15 * 60 * 1000;
+const socialMetricsCache = new Map();
+
+function normalizeSocialHandle(value) {
+    return String(value || '').replace(/^@/, '').trim().toLowerCase();
+}
+
+function buildSocialCacheKey(platform, handle) {
+    return `${platform}:${normalizeSocialHandle(handle)}`;
+}
+
+async function getCachedSocialMetrics(platform, handle, loader) {
+    const normalized = normalizeSocialHandle(handle);
+    if (!normalized) return null;
+
+    const key = buildSocialCacheKey(platform, normalized);
+    const cached = socialMetricsCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    try {
+        const value = await loader(normalized);
+        socialMetricsCache.set(key, {
+            value,
+            expiresAt: Date.now() + (value ? SOCIAL_METRICS_TTL_MS : SOCIAL_METRICS_ERROR_TTL_MS),
+        });
+        return value;
+    } catch (error) {
+        console.warn(`[SOCIAL METRICS] ${platform} lookup failed for ${normalized}:`, error.message);
+        socialMetricsCache.set(key, {
+            value: null,
+            expiresAt: Date.now() + SOCIAL_METRICS_ERROR_TTL_MS,
+        });
+        return null;
+    }
+}
+
+async function fetchXSocialMetrics(handle) {
+    const bearer = process.env.X_BEARER_TOKEN || '';
+    if (!bearer) return null;
+
+    const resp = await fetch(
+        `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
+        {
+            headers: { Authorization: `Bearer ${bearer}` },
+            signal: AbortSignal.timeout(2500),
+        }
+    );
+
+    if (!resp.ok) return null;
+
+    const data = await resp.json().catch(() => null);
+    const metrics = data?.data?.public_metrics;
+    if (!metrics) return null;
+
+    return {
+        handle,
+        followersCount: Number(metrics.followers_count || 0),
+        followingCount: Number(metrics.following_count || 0),
+    };
+}
+
+async function fetchFarcasterSocialMetrics(handle) {
+    const resp = await fetch(
+        `https://client.warpcast.com/v2/user-by-username?username=${encodeURIComponent(handle)}`,
+        {
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HelixaBot/1.0)' },
+            signal: AbortSignal.timeout(2500),
+        }
+    );
+
+    if (!resp.ok) return null;
+
+    const data = await resp.json().catch(() => null);
+    const user = data?.result?.user;
+    if (!user) return null;
+
+    return {
+        username: user.username || handle,
+        fid: user.fid || null,
+        followersCount: Number(user.followerCount || 0),
+        followingCount: Number(user.followingCount || 0),
+    };
+}
+
 // ─── Express App ────────────────────────────────────────────────
 const PORT = process.env.V2_API_PORT || 3457;
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://api.helixa.xyz';
@@ -1874,6 +1959,28 @@ app.get('/api/v2/human/:id/cred', async (req, res) => {
         res.json(await computeHumanCred(profile));
     } catch (e) {
         res.status(500).json({ error: 'Failed to compute Human Cred', detail: e.message.slice(0, 200) });
+    }
+});
+
+// GET /api/v2/social-metrics?x=<handle>&farcaster=<handle>
+app.get('/api/v2/social-metrics', async (req, res) => {
+    try {
+        const xHandle = normalizeSocialHandle(req.query.x);
+        const farcasterHandle = normalizeSocialHandle(req.query.farcaster);
+        const result = {};
+
+        const [xMetrics, farcasterMetrics] = await Promise.all([
+            xHandle ? getCachedSocialMetrics('x', xHandle, fetchXSocialMetrics) : Promise.resolve(null),
+            farcasterHandle ? getCachedSocialMetrics('farcaster', farcasterHandle, fetchFarcasterSocialMetrics) : Promise.resolve(null),
+        ]);
+
+        if (xMetrics) result.x = xMetrics;
+        if (farcasterMetrics) result.farcaster = farcasterMetrics;
+
+        res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load social metrics', detail: e.message.slice(0, 200) });
     }
 });
 
