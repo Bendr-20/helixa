@@ -17,6 +17,18 @@ if (fs.existsSync(envPath)) {
 
 const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
 const READ_RPC_URL = process.env.READ_RPC_URL || 'https://mainnet.base.org';
+const DEFAULT_READ_RPC_FALLBACK_URLS = [
+    'https://base-rpc.publicnode.com',
+    'https://1rpc.io/base',
+];
+const READ_RPC_URLS = [
+    READ_RPC_URL,
+    ...(process.env.READ_RPC_FALLBACK_URLS
+        ? process.env.READ_RPC_FALLBACK_URLS.split(',').map(url => url.trim())
+        : DEFAULT_READ_RPC_FALLBACK_URLS),
+]
+    .filter(Boolean)
+    .filter((url, index, arr) => arr.indexOf(url) === index);
 let DEPLOYER_KEY = process.env.DEPLOYER_KEY;
 let DEPLOYER_ADDRESS = process.env.DEPLOYER_ADDRESS || '0x97cf081780D71F2189889ce86941cF1837997873';
 const V2_CONTRACT_ADDRESS = process.env.V2_CONTRACT || '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
@@ -66,7 +78,18 @@ try {
 // ─── Providers & Wallet ─────────────────────────────────────────
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
-const readProvider = new ethers.JsonRpcProvider(READ_RPC_URL, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
+const readProvider = READ_RPC_URLS.length === 1
+    ? new ethers.JsonRpcProvider(READ_RPC_URLS[0], CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 })
+    : new ethers.FallbackProvider(
+        READ_RPC_URLS.map((url, index) => ({
+            provider: new ethers.JsonRpcProvider(url, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 }),
+            priority: index + 1,
+            weight: 1,
+            stallTimeout: 900,
+        })),
+        CHAIN_ID,
+        { quorum: 1 },
+    );
 const wallet = DEPLOYER_KEY ? new ethers.Wallet(DEPLOYER_KEY, provider) : null;
 const rawContract = wallet ? new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet) : null;
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);
@@ -158,6 +181,6 @@ module.exports = {
     V2_ABI, V2_CONTRACT_ADDRESS, DEPLOYER_KEY, DEPLOYER_ADDRESS,
     USDC_ADDRESS, USDC_ABI, ERC8004_REGISTRY, ERC8004_REGISTRY_ABI,
     COINBASE_INDEXER, COINBASE_INDEXER_ABI, COINBASE_VERIFIED_ACCOUNT_SCHEMA,
-    EAS_CONTRACT, EAS_ABI, TREASURY_ADDRESS, CHAIN_ID, RPC_URL,
+    EAS_CONTRACT, EAS_ABI, TREASURY_ADDRESS, CHAIN_ID, RPC_URL, READ_RPC_URL, READ_RPC_URLS,
     isContractDeployed, initDeployerKey,
 };
