@@ -137,17 +137,35 @@ function formFromHuman(human: HumanPrincipal): HumanForm {
   };
 }
 
-async function buildWalletAuth(wallet: any) {
+async function buildWalletBearer(wallet: any) {
   const walletAddress = wallet.address;
   const timestamp = Date.now().toString();
   const walletMessage = `Sign-In With Ethereum: api.helixa.xyz wants you to sign in with your wallet ${walletAddress} at ${timestamp}`;
   const provider = await wallet.getEthereumProvider();
   const signature = await new BrowserProvider(provider).getSigner().then(signer => signer.signMessage(walletMessage));
-  return {
-    walletAddress,
-    walletMessage,
-    walletSignature: signature,
-  };
+  return `${walletAddress}:${timestamp}:${signature}`;
+}
+
+async function getHumanAuthHeader({
+  wallet,
+  authenticated,
+  getAccessToken,
+}: {
+  wallet: any;
+  authenticated: boolean;
+  getAccessToken: () => Promise<string | null>;
+}) {
+  if (wallet) {
+    const bearer = await buildWalletBearer(wallet);
+    return `Bearer ${bearer}`;
+  }
+
+  if (authenticated) {
+    const token = await getAccessToken();
+    if (token) return `Bearer ${token}`;
+  }
+
+  throw new Error('Sign in with a wallet, or finish Privy sign-in first.');
 }
 
 export function HumanManage() {
@@ -156,7 +174,7 @@ export function HumanManage() {
   const wallet = wallets[0] || null;
   const address = wallet?.address || user?.wallet?.address || '';
   const allWalletAddresses = wallets.map(w => w.address).filter(Boolean);
-  const { data: ownedPrincipals } = useAgentsByOwner(address as `0x${string}` | undefined, allWalletAddresses);
+  const { data: ownedPrincipals, isLoading: ownedPrincipalsLoading } = useAgentsByOwner(address as `0x${string}` | undefined, allWalletAddresses);
   const humanMint = useMemo(
     () => ownedPrincipals?.find(agent => agent.framework === 'human' || agent.mintOrigin === 'HUMAN') || null,
     [ownedPrincipals],
@@ -173,34 +191,25 @@ export function HumanManage() {
     let mounted = true;
 
     async function load() {
-      if (!ready) return;
-      if (!authenticated) {
-        setLoading(false);
-        return;
-      }
+      if (!ready && !wallet) return;
+      if (ownedPrincipalsLoading) return;
 
       setLoading(true);
       setStatus(null);
 
       try {
-        const token = await getAccessToken();
-        if (!token) throw new Error('Could not obtain Privy access token.');
-
-        const meRes = await fetch(`${API_URL}/api/v2/principals/human/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (meRes.ok) {
-          const principal = normalizeHumanPrincipal(await meRes.json());
-          if (!mounted) return;
-          setHuman(principal);
-          setForm(formFromHuman(principal));
-          setRepairMode(false);
-          setLoading(false);
-          return;
-        }
-
         if (humanMint?.tokenId) {
+          const publicRes = await fetch(`${API_URL}/api/v2/human/${humanMint.tokenId}`);
+          if (publicRes.ok) {
+            const principal = normalizeHumanPrincipal(await publicRes.json());
+            if (!mounted) return;
+            setHuman(principal);
+            setForm(formFromHuman(principal));
+            setRepairMode(false);
+            setLoading(false);
+            return;
+          }
+
           const fallbackRes = await fetch(`${API_URL}/api/v2/agent/${humanMint.tokenId}`);
           if (fallbackRes.ok) {
             const fallback = normalizeHumanFallback(await fallbackRes.json());
@@ -212,6 +221,29 @@ export function HumanManage() {
             setLoading(false);
             return;
           }
+        }
+
+        if (!wallet && !authenticated) {
+          if (!mounted) return;
+          setHuman(null);
+          setForm(emptyForm);
+          setLoading(false);
+          return;
+        }
+
+        const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
+        const meRes = await fetch(`${API_URL}/api/v2/principals/human/me`, {
+          headers: { Authorization: authHeader },
+        });
+
+        if (meRes.ok) {
+          const principal = normalizeHumanPrincipal(await meRes.json());
+          if (!mounted) return;
+          setHuman(principal);
+          setForm(formFromHuman(principal));
+          setRepairMode(false);
+          setLoading(false);
+          return;
         }
 
         if (!mounted) return;
@@ -229,10 +261,10 @@ export function HumanManage() {
     return () => {
       mounted = false;
     };
-  }, [ready, authenticated, getAccessToken, humanMint?.tokenId]);
+  }, [ready, authenticated, getAccessToken, humanMint?.tokenId, ownedPrincipalsLoading, wallet]);
 
   async function saveProfile() {
-    if (!authenticated) {
+    if (!wallet && !authenticated) {
       await login();
       return;
     }
@@ -241,10 +273,7 @@ export function HumanManage() {
     setStatus({ type: 'info', msg: repairMode ? 'Repairing your human profile...' : 'Saving your human profile...' });
 
     try {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Could not obtain Privy access token.');
-
-      const walletAuth = wallet ? await buildWalletAuth(wallet) : null;
+      const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
       const linkedAccounts = {
         ...(form.x.trim() ? { x: form.x.trim().replace(/^@/, '') } : {}),
         ...(form.telegram.trim() ? { telegram: form.telegram.trim().replace(/^@/, '') } : {}),
@@ -272,14 +301,13 @@ export function HumanManage() {
           ],
         },
         ...(user?.email?.address ? { contact: { email: user.email.address } } : {}),
-        ...(walletAuth || {}),
       };
 
       const res = await fetch(`${API_URL}/api/v2/principals/human/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: authHeader,
         },
         body: JSON.stringify(payload),
       });
@@ -299,7 +327,7 @@ export function HumanManage() {
     }
   }
 
-  if (!ready || loading) {
+  if (loading) {
     return (
       <div className="mint-page">
         <div className="mint-container" style={{ maxWidth: '960px' }}>
@@ -309,7 +337,7 @@ export function HumanManage() {
     );
   }
 
-  if (!authenticated) {
+  if (!wallet && !authenticated) {
     return (
       <div className="mint-page">
         <div className="mint-container" style={{ maxWidth: '760px' }}>
