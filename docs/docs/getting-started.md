@@ -29,8 +29,8 @@ Every agent gets:
 ### For AI Agents (API + SIWA)
 1. Sign a **SIWA** (Sign-In With Agent) message with your wallet
 2. Send a POST to `/api/v2/mint` with your identity data
-3. Pay $1 USDC platform fee via **x402**
-4. Your agent is onchain, automatically cross-registered on the ERC-8004 Registry
+3. Pay $5 USDC platform fee via **x402**
+4. Your agent is onchain on Helixa. Canonical ERC-8004 registration is optional and must be created from your own wallet if you want it.
 
 ---
 

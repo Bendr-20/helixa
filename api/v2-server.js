@@ -1769,7 +1769,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
-                'POST /api/v2/agent/:id/crossreg': 'Cross-register on canonical 8004 Registry (SIWA required)',
+                'POST /api/v2/agent/:id/crossreg': 'Prepare manual canonical 8004 registration payload (SIWA required)',
                 'POST /api/v2/register/solana': 'Register a Solana agent on Base (no SIWA needed)',
                 'GET /api/v2/auth/solana/challenge': 'Get SIWS challenge message to sign',
                 'POST /api/v2/auth/solana/verify': 'Verify a Solana signature (test endpoint)',
@@ -2595,38 +2595,11 @@ async function mintHandler(req, res) {
             console.error(`[V2 MINT] tokenURI failed: ${e.message}`);
         }
         
-        // ─── Cross-register on canonical ERC-8004 Registry ────────
-        let crossRegId = null;
-        let crossRegTx = null;
-        try {
-            const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
-            
-            const registrationFile = build8004RegistrationFile(tokenId, name, fw, req.body.narrative, {
-                credScore: 40, // Base score for fresh mint
-                credTier: 'MARGINAL',
-                hasSiwa: true, // Just authenticated via SIWA
-            });
-            const dataURI = registrationFileToDataURI(registrationFile);
-            
-            const regTx = await registryContract['register(string)'](dataURI);
-            console.log(`[8004 XREG] TX: ${regTx.hash}`);
-            const regReceipt = await regTx.wait();
-            crossRegTx = regTx.hash;
-            
-            // Extract agentId from Transfer event (mint: from=0x0)
-            const transferSig = ethers.id('Transfer(address,address,uint256)');
-            for (const log of regReceipt.logs) {
-                if (log.address.toLowerCase() === ERC8004_REGISTRY.toLowerCase() && log.topics[0] === transferSig) {
-                    crossRegId = Number(BigInt(log.topics[3]));
-                    break;
-                }
-            }
-            
-            console.log(`[8004 XREG] ✓ Cross-registered as 8004 Registry ID #${crossRegId}`);
-        } catch (e) {
-            // Non-fatal — Helixa mint succeeded, cross-reg is bonus
-            console.error(`[8004 XREG] Cross-registration failed (non-fatal): ${e.message}`);
-        }
+        const canonical8004 = {
+            status: 'manual_required',
+            registry: ERC8004_REGISTRY,
+            note: 'Canonical 8004 identities must be created from the owner wallet. Helixa does not auto-cross-register on the canonical registry.',
+        };
         
         // ─── Helixa Agent Terminal: merge/upgrade existing entry ────────
         try {
@@ -2735,12 +2708,7 @@ async function mintHandler(req, res) {
                 soulbound: agentData.soulbound,
                 owner: agentData.owner,
             } : null,
-            crossRegistration: crossRegId !== null ? {
-                registry: ERC8004_REGISTRY,
-                agentId: crossRegId,
-                txHash: crossRegTx,
-                explorer: `https://basescan.org/tx/${crossRegTx}`,
-            } : null,
+            canonical8004,
             yourReferralCode: newRefCode,
             yourReferralLink: `https://helixa.xyz/mint?ref=${newRefCode}`,
             og: ogApplied ? { v1Name: ogInfo.name, bonusPoints: OG_BONUS_POINTS, trait: 'V1 OG' } : null,
@@ -3149,24 +3117,14 @@ app.post('/api/v2/agent/:id/update', requireSIWA, async (req, res) => {
                     }
                 }
             }
-            // ─── Sync to 8004 Registry (non-fatal) ─────────────────
+            // ─── Canonical 8004 sync is manual-only ─────────────────
             let registrySync = null;
             if (updated.length > 0) {
-                try {
-                    const agent = await readContract.getAgent(tokenId);
-                    const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
-                    const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
-                    const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
-                    const regFile = build8004RegistrationFile(tokenId, agent.name, agent.framework, narrative);
-                    const dataURI = registrationFileToDataURI(regFile);
-                    const regTx = await registryContract['register(string)'](dataURI);
-                    await regTx.wait();
-                    registrySync = { status: 'synced', txHash: regTx.hash };
-                    console.log(`[8004 SYNC] ✓ Agent #${tokenId} registry synced`);
-                } catch (e) {
-                    registrySync = { status: 'failed', error: e.message.slice(0, 100) };
-                    console.error(`[8004 SYNC] Failed for #${tokenId}: ${e.message}`);
-                }
+                registrySync = {
+                    status: 'manual_required',
+                    registry: ERC8004_REGISTRY,
+                    note: 'Canonical 8004 identity updates must be submitted from the owner wallet. Helixa no longer syncs to the canonical registry server-side.',
+                };
             }
             // Refresh cred score in SQLite after onchain update
             try {
@@ -3590,7 +3548,7 @@ app.post('/api/v2/agent/:id/human-update', async (req, res) => {
     }
 });
 
-// POST /api/v2/agent/:id/crossreg — Cross-register on canonical 8004 Registry
+// POST /api/v2/agent/:id/crossreg — Prepare manual canonical 8004 registration payload
 app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
     const tokenId = parseInt(req.params.id);
     
@@ -3612,8 +3570,6 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
         }
         
         const agent = await readContract.getAgent(tokenId);
-        const registryContract = new ethers.Contract(ERC8004_REGISTRY, ERC8004_REGISTRY_ABI, wallet);
-        
         const narrativeData = await readContract.getNarrative(tokenId).catch(() => null);
         const narrative = narrativeData ? { origin: narrativeData[0], mission: narrativeData[1], lore: narrativeData[2] } : null;
         
@@ -3634,34 +3590,21 @@ app.post('/api/v2/agent/:id/crossreg', requireSIWA, async (req, res) => {
             hasSiwa: hasTrait('siwa-verified'),
         });
         const dataURI = registrationFileToDataURI(registrationFile);
-        const regTx = await registryContract['register(string)'](dataURI);
-        const regReceipt = await regTx.wait();
-        
-        let crossRegId = null;
-        for (const log of regReceipt.logs) {
-            try {
-                const parsed = registryContract.interface.parseLog(log);
-                if (parsed?.name === 'Registered') {
-                    crossRegId = Number(parsed.args.agentId);
-                    break;
-                }
-            } catch {}
-        }
-        
-        console.log(`[8004 XREG] ✓ Agent #${tokenId} cross-registered as 8004 ID #${crossRegId}`);
         
         res.json({
             success: true,
             tokenId,
-            crossRegistration: {
+            manualRequired: true,
+            canonicalRegistration: {
                 registry: ERC8004_REGISTRY,
-                agentId: crossRegId,
-                txHash: regTx.hash,
-                explorer: `https://basescan.org/tx/${regTx.hash}`,
+                method: 'register(string)',
+                ownerMustBeCaller: true,
+                dataURI,
+                note: 'Submit register(string) from the wallet that should own the canonical 8004 identity. Helixa no longer executes canonical registration server-side.',
             },
         });
     } catch (e) {
-        res.status(500).json({ error: 'Cross-registration failed: ' + e.message.slice(0, 200) });
+        res.status(500).json({ error: 'Cross-registration preparation failed: ' + e.message.slice(0, 200) });
     }
 });
 
@@ -7750,7 +7693,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
         console.log(`   Auth: SIWA (Sign-In With Agent)`);
         console.log(`   Payments: x402 ($${PRICING.agentMint} USDC mint, Base)`);
         console.log(`   RPC: ${RPC_URL}`);
-        console.log(`   8004 Registry: ${ERC8004_REGISTRY} (cross-reg enabled)`);
+        console.log(`   8004 Registry: ${ERC8004_REGISTRY} (manual owner-wallet registration only)`);
         console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
         // Start $CRED oracle after server is listening (non-blocking)
         try { credOracle.startBackgroundRefresh(); } catch (e) { console.warn('[CRED ORACLE] Start failed:', e.message); }

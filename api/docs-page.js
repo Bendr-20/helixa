@@ -157,7 +157,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"network"</span>: <span class="string">"Base (8453)"</span>,
   <span class="key">"auth"</span>: { <span class="key">"type"</span>: <span class="string">"SIWA"</span>, ... },
   <span class="key">"endpoints"</span>: { ... },
-  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="number">1</span>, <span class="key">"agentMint"</span>: <span class="string">"free"</span> }
+  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="number">1</span>, <span class="key">"agentMint"</span>: <span class="string">"$5 USDC"</span> }
 }</code></pre>
 
 <!-- GET /health -->
@@ -380,8 +380,8 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <p>All require <code>Authorization: Bearer {address}:{timestamp}:{signature}</code> (SIWA).</p>
 
 <!-- POST /api/v2/mint -->
-<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> <span class="badge free">free (Phase 1)</span></h3>
-<p>Register a new agent identity. Auto cross-registers on the canonical ERC-8004 Registry.</p>
+<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> <span class="badge paid">$5 USDC</span></h3>
+<p>Register a new Helixa agent identity. Canonical ERC-8004 registration is manual and must be created from the owner wallet if desired.</p>
 
 <h4>Request Body</h4>
 <table>
@@ -401,13 +401,16 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"txHash"</span>: <span class="string">"0x..."</span>,
   <span class="key">"mintOrigin"</span>: <span class="string">"AGENT_SIWA"</span>,
   <span class="key">"explorer"</span>: <span class="string">"https://basescan.org/tx/..."</span>,
-  <span class="key">"crossRegistration"</span>: { <span class="key">"registry"</span>: <span class="string">"0x..."</span>, <span class="key">"agentId"</span>: <span class="number">42</span> },
+  <span class="key">"canonical8004"</span>: {
+    <span class="key">"status"</span>: <span class="string">"manual_required"</span>,
+    <span class="key">"registry"</span>: <span class="string">"0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"</span>
+  },
   <span class="key">"yourReferralCode"</span>: <span class="string">"myagent"</span>,
   <span class="key">"yourReferralLink"</span>: <span class="string">"https://helixa.xyz/mint?ref=myagent"</span>
 }</code></pre>
 
 <!-- POST /api/v2/agent/:id/update -->
-<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/update</span> <span class="badge auth">SIWA</span> <span class="badge free">free (Phase 1)</span></h3>
+<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/update</span> <span class="badge auth">SIWA</span> <span class="badge paid">$1 USDC</span></h3>
 <p>Update agent personality, narrative, and traits. Default: off-chain storage (no gas). Add <code>?onchain=true</code> to force onchain writes.</p>
 
 <h4>Request Body</h4>
@@ -461,10 +464,16 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <!-- POST /api/v2/agent/:id/crossreg -->
 <h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/crossreg</span> <span class="badge auth">SIWA</span></h3>
-<p>Cross-register agent on the canonical ERC-8004 Registry (usually auto-done at registration).</p>
+<p>Prepare a canonical ERC-8004 registration payload. The actual <code>register(string)</code> transaction must be submitted from the wallet that should own the canonical identity.</p>
 <pre><code>{
   <span class="key">"success"</span>: true,
-  <span class="key">"crossRegistration"</span>: { <span class="key">"registry"</span>: <span class="string">"0x..."</span>, <span class="key">"agentId"</span>: <span class="number">42</span>, <span class="key">"txHash"</span>: <span class="string">"0x..."</span> }
+  <span class="key">"manualRequired"</span>: true,
+  <span class="key">"canonicalRegistration"</span>: {
+    <span class="key">"registry"</span>: <span class="string">"0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"</span>,
+    <span class="key">"method"</span>: <span class="string">"register(string)"</span>,
+    <span class="key">"ownerMustBeCaller"</span>: true,
+    <span class="key">"dataURI"</span>: <span class="string">"data:application/json;base64,..."</span>
+  }
 }</code></pre>
 
 <!-- POST /api/v2/agent/:id/link-token -->

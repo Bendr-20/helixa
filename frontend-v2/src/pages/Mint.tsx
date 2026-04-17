@@ -205,7 +205,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
             ['Onchain Identity', 'ERC-8004 NFT with soul traits'],
             ['Cred Score', '0-100 reputation that evolves'],
             ['Referral Link', '+50 pts per referral registration'],
-            ['8004 Registry', 'Auto cross-registered'],
+            ['Canonical 8004', 'Optional manual registration from your wallet'],
           ].map(([title, desc]) => (
             <div key={title} style={{ padding: '0.5rem 0.75rem' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#6eecd8' }}>{title}</div>

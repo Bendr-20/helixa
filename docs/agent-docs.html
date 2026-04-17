@@ -155,7 +155,7 @@
   <tr><td>Base URL</td><td><code>https://api.helixa.xyz</code></td></tr>
   <tr><td>Network</td><td>Base (chain 8453)</td></tr>
   <tr><td>Contract</td><td><code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code></td></tr>
-  <tr><td>Payment</td><td>$1 USDC via x402 or direct transfer</td></tr>
+  <tr><td>Payment</td><td>$5 USDC via x402 or direct transfer</td></tr>
   <tr><td>Auth</td><td>SIWA (Sign-In With Agent) — wallet signature</td></tr>
   <tr><td>Facilitator</td><td><code>x402.dexter.cash</code></td></tr>
 </table>
@@ -201,7 +201,7 @@
 <pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
 <span class="keyword">import</span> { wrapFetch } <span class="keyword">from</span> <span class="string">'@x402/fetch'</span>;
 
-<span class="comment">// Your agent's wallet (must hold ≥$1 USDC on Base)</span>
+<span class="comment">// Your agent's wallet (must hold ≥$5 USDC on Base)</span>
 <span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY);
 
 <span class="comment">// Wrap fetch with x402 — automatically handles 402 responses</span>
@@ -212,7 +212,7 @@
 <span class="keyword">const</span> message = <span class="string">`Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${</span>wallet.address<span class="string">} at ${</span>timestamp<span class="string">}`</span>;
 <span class="keyword">const</span> signature = <span class="keyword">await</span> wallet.signMessage(message);
 
-<span class="comment">// Mint your agent — x402 handles the $1 USDC payment automatically</span>
+<span class="comment">// Mint your agent — x402 handles the $5 USDC payment automatically</span>
 <span class="keyword">const</span> response = <span class="keyword">await</span> x402Fetch(<span class="string">'https://api.helixa.xyz/api/v2/mint'</span>, {
   method: <span class="string">'POST'</span>,
   headers: {
@@ -267,7 +267,7 @@ console.log(result);
 
 <h3>Steps</h3>
 <ol style="padding-left: 20px; margin-bottom: 16px;">
-  <li style="margin-bottom: 8px;">Send <strong>$1 USDC</strong> on Base to the deployer address: <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></li>
+  <li style="margin-bottom: 8px;">Send <strong>$5 USDC</strong> on Base to the deployer address: <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></li>
   <li style="margin-bottom: 8px;">Wait for the transaction to confirm onchain</li>
   <li style="margin-bottom: 8px;">POST to <code>/api/v2/mint-with-tx</code> with the <code>paymentTx</code> hash in the body</li>
 </ol>
@@ -278,7 +278,7 @@ console.log(result);
 <span class="keyword">const</span> provider = <span class="keyword">new</span> ethers.JsonRpcProvider(<span class="string">'https://mainnet.base.org'</span>);
 <span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY, provider);
 
-<span class="comment">// Step 1: Send $1 USDC to deployer</span>
+<span class="comment">// Step 1: Send $5 USDC to deployer</span>
 <span class="keyword">const</span> USDC = <span class="keyword">new</span> ethers.Contract(
   <span class="string">'0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'</span>,  <span class="comment">// USDC on Base</span>
   [<span class="string">'function transfer(address to, uint256 amount) returns (bool)'</span>],
@@ -286,7 +286,7 @@ console.log(result);
 );
 <span class="keyword">const</span> paymentTx = <span class="keyword">await</span> USDC.transfer(
   <span class="string">'0x339559A2d1CD15059365FC7bD36b3047BbA480E0'</span>,
-  ethers.parseUnits(<span class="string">'1'</span>, <span class="number">6</span>)  <span class="comment">// $1 USDC (6 decimals)</span>
+  ethers.parseUnits(<span class="string">'5'</span>, <span class="number">6</span>)  <span class="comment">// $5 USDC (6 decimals)</span>
 );
 <span class="keyword">await</span> paymentTx.wait();
 
@@ -368,28 +368,28 @@ console.log(result.tokenId, result.agent);</code></pre>
   },
   <span class="key">"yourReferralCode"</span>: <span class="string">"myagent"</span>,
   <span class="key">"yourReferralLink"</span>: <span class="string">"https://helixa.xyz/mint?ref=myagent"</span>,
-  <span class="key">"crossRegistration"</span>: { <span class="key">"registry"</span>: <span class="string">"0x..."</span>, <span class="key">"agentId"</span>: <span class="number">7</span>, ... }
+  <span class="key">"canonical8004"</span>: { <span class="key">"status"</span>: <span class="string">"manual_required"</span>, <span class="key">"registry"</span>: <span class="string">"0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"</span>, ... }
 }</code></pre>
 
 <!-- ── POST /api/v2/mint-with-tx ── -->
 <div class="endpoint-title" id="ep-mint-tx">
   <span class="badge badge-post">POST</span>
-  <span class="badge badge-paid">$1 USDC TX</span>
+  <span class="badge badge-paid">$5 USDC TX</span>
   <span class="badge badge-auth">SIWA</span>
   /api/v2/mint-with-tx
 </div>
-<p>Alternative mint flow: send $1 USDC to deployer first, then provide the TX hash. Same request/response as <code>/api/v2/mint</code> but with an additional <code>paymentTx</code> field.</p>
+<p>Alternative mint flow: send $5 USDC to deployer first, then provide the TX hash. Same request/response as <code>/api/v2/mint</code> but with an additional <code>paymentTx</code> field.</p>
 
 <h4>Additional Field</h4>
 <table>
   <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
-  <tr><td><code>paymentTx</code></td><td>string</td><td>Yes</td><td>Transaction hash of $1 USDC transfer to <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></td></tr>
+  <tr><td><code>paymentTx</code></td><td>string</td><td>Yes</td><td>Transaction hash of $5 USDC transfer to <code>0x339559A2d1CD15059365FC7bD36b3047BbA480E0</code></td></tr>
 </table>
 
 <h4>Error (402 — Payment Verification Failed)</h4>
 <pre><code>{
   <span class="key">"error"</span>: <span class="string">"Payment verification failed: No matching USDC transfer found"</span>,
-  <span class="key">"hint"</span>: <span class="string">"Send $1 USDC to the payment address, then include the TX hash"</span>,
+  <span class="key">"hint"</span>: <span class="string">"Send $5 USDC to the payment address, then include the TX hash"</span>,
   <span class="key">"payTo"</span>: <span class="string">"0x339559A2d1CD15059365FC7bD36b3047BbA480E0"</span>,
   <span class="key">"amount"</span>: <span class="string">"1 USDC"</span>,
   <span class="key">"network"</span>: <span class="string">"Base (chain 8453)"</span>

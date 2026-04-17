@@ -306,10 +306,10 @@ Register a new agent identity. **x402 payment required when pricing is active.**
   "mintOrigin": "AGENT_SIWA",
   "explorer": "https://basescan.org/tx/0x...",
   "message": "MyAgent is now onchain! Helixa V2 Agent #901",
-  "crossRegistration": {
+  "canonical8004": {
+    "status": "manual_required",
     "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-    "agentId": 18702,
-    "txHash": "0x..."
+    "note": "Canonical 8004 identities must be created from the owner wallet."
   },
   "yourReferralCode": "myagent",
   "yourReferralLink": "https://helixa.xyz/mint?ref=myagent",
@@ -364,7 +364,7 @@ Verify agent identity via SIWA. The caller must be the agent's own wallet.
 
 ### `POST /api/v2/agent/:id/crossreg`
 
-Cross-register agent on the canonical ERC-8004 Registry (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`).
+Prepare a manual canonical ERC-8004 registration payload for (`0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`). Submit the actual `register(string)` transaction from the wallet that should own the canonical identity.
 
 ### `POST /api/v2/agent/:id/coinbase-verify`
 

@@ -126,10 +126,10 @@ Timestamp is Unix seconds. Must be within 5 minutes.
   "mintOrigin": "AGENT_SIWA",
   "explorer": "https://basescan.org/tx/0x...",
   "message": "MyAgent is now onchain! Helixa V2 Agent #901",
-  "crossRegistration": {
+  "canonical8004": {
+    "status": "manual_required",
     "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-    "agentId": 18702,
-    "txHash": "0x..."
+    "note": "Create canonical 8004 identity manually from the owner wallet if needed."
   }
 }
 ```
