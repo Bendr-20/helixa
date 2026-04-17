@@ -134,6 +134,15 @@ async function persistHumanProfileImage(imageInput) {
 const SOCIAL_METRICS_TTL_MS = 6 * 60 * 60 * 1000;
 const SOCIAL_METRICS_ERROR_TTL_MS = 15 * 60 * 1000;
 const socialMetricsCache = new Map();
+const HUMAN_CRED_TTL_MS = 10 * 60 * 1000;
+const humanCredCache = new Map();
+
+function withTimeout(promise, ms, fallback = null) {
+    return Promise.race([
+        Promise.resolve(promise),
+        new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
+    ]);
+}
 
 function normalizeSocialHandle(value) {
     return String(value || '').replace(/^@/, '').trim().toLowerCase();
@@ -1412,13 +1421,16 @@ function buildHumanRegistrationFile(profile) {
 async function computeHumanCred(profile) {
     const walletAddress = profile.walletAddress ? ethers.getAddress(profile.walletAddress) : null;
     const hasWallet = Boolean(walletAddress);
+    const cacheKey = String(profile.tokenId ?? walletAddress ?? profile.userId ?? 'unknown');
+    const cached = humanCredCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
     
     const [coinbase, talentScore, ethosScore, txCount] = hasWallet
         ? await Promise.all([
-            fetchCoinbaseAttestationStatus(walletAddress),
-            fetchTalentScore(walletAddress),
-            fetchEthosScore(walletAddress),
-            readProvider.getTransactionCount(walletAddress).catch(() => 0),
+            withTimeout(fetchCoinbaseAttestationStatus(walletAddress), 1200, { verified: false, attestationUid: null }),
+            withTimeout(fetchTalentScore(walletAddress), 1200, null),
+            withTimeout(fetchEthosScore(walletAddress), 1200, null),
+            withTimeout(readProvider.getTransactionCount(walletAddress).catch(() => 0), 1200, 0),
         ])
         : [null, null, null, 0];
 
@@ -1497,7 +1509,7 @@ async function computeHumanCred(profile) {
     };
 
     const score = Object.values(weighted).reduce((a, b) => a + b, 0);
-    return {
+    const result = {
         score: Math.max(0, Math.min(100, score)),
         tier: getCredTier(Math.max(0, Math.min(100, score))),
         walletAddress,
@@ -1520,6 +1532,13 @@ async function computeHumanCred(profile) {
             longevity: { weight: weights.longevity, raw: longevityRaw, contribution: weighted.longevity },
         },
     };
+
+    humanCredCache.set(cacheKey, {
+        value: result,
+        expiresAt: Date.now() + HUMAN_CRED_TTL_MS,
+    });
+
+    return result;
 }
 
 async function formatHumanPrincipal(profile, options = {}) {
