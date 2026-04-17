@@ -21,6 +21,9 @@ let db;
 let readContract;
 let readProvider;
 let pollTimer = null;
+let scoreTimer = null;
+let syncInFlight = false;
+let scoreRefreshInFlight = false;
 
 // ─── DB Setup ───────────────────────────────────────────────────
 
@@ -352,6 +355,12 @@ async function syncEvents(fromBlock, toBlock) {
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function runSync() {
+    if (syncInFlight) {
+        console.log('[INDEXER] Sync skipped, previous run still in flight');
+        return 0;
+    }
+
+    syncInFlight = true;
     try {
         const lastBlock = getLastSyncedBlock();
         const currentBlock = await readProvider.getBlockNumber();
@@ -372,6 +381,8 @@ async function runSync() {
     } catch (e) {
         console.error('[INDEXER] Sync error:', e.message);
         return 0;
+    } finally {
+        syncInFlight = false;
     }
 }
 
@@ -445,34 +456,49 @@ async function startIndexer(provider, contract, cachePath) {
     await runSync();
 
     // Poll every 30 seconds
-    pollTimer = setInterval(runSync, POLL_INTERVAL_MS);
+    pollTimer = setInterval(() => {
+        runSync().catch(e => console.error('[INDEXER] Poll sync error:', e.message));
+    }, POLL_INTERVAL_MS);
     // Refresh cred scores every 10 minutes
-    setInterval(() => refreshScores().catch(e => console.error('[INDEXER] Score refresh error:', e.message)), 600_000);
+    scoreTimer = setInterval(() => {
+        refreshScores().catch(e => console.error('[INDEXER] Score refresh error:', e.message));
+    }, 600_000);
     console.log(`[INDEXER] Polling every ${POLL_INTERVAL_MS / 1000}s, scores every 600s`);
 }
 
 async function refreshScores() {
-    if (!db || !readContract) return;
-    const rows = db.prepare('SELECT tokenId FROM agents ORDER BY tokenId ASC').all();
-    console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
-    let updated = 0;
-    for (const row of rows) {
-        try {
-            let credScore = 0, points = 0;
-            try { credScore = Number(await readContract.getCredScore(row.tokenId)); } catch {}
-            try { points = Number(await readContract.points(row.tokenId)); } catch {}
-            if (credScore > 0 || points > 0) {
-                db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?')
-                    .run(credScore, points, Date.now(), row.tokenId);
-                updated++;
-            }
-        } catch {}
+    if (scoreRefreshInFlight) {
+        console.log('[INDEXER] Score refresh skipped, previous run still in flight');
+        return;
     }
-    console.log(`[INDEXER] Score refresh done: ${updated} agents updated`);
+    if (!db || !readContract) return;
+
+    scoreRefreshInFlight = true;
+    try {
+        const rows = db.prepare('SELECT tokenId FROM agents ORDER BY tokenId ASC').all();
+        console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
+        let updated = 0;
+        for (const row of rows) {
+            try {
+                let credScore = 0, points = 0;
+                try { credScore = Number(await readContract.getCredScore(row.tokenId)); } catch {}
+                try { points = Number(await readContract.points(row.tokenId)); } catch {}
+                if (credScore > 0 || points > 0) {
+                    db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?')
+                        .run(credScore, points, Date.now(), row.tokenId);
+                    updated++;
+                }
+            } catch {}
+        }
+        console.log(`[INDEXER] Score refresh done: ${updated} agents updated`);
+    } finally {
+        scoreRefreshInFlight = false;
+    }
 }
 
 function stopIndexer() {
     if (pollTimer) clearInterval(pollTimer);
+    if (scoreTimer) clearInterval(scoreTimer);
 }
 
 module.exports = {
