@@ -135,7 +135,9 @@ const SOCIAL_METRICS_TTL_MS = 6 * 60 * 60 * 1000;
 const SOCIAL_METRICS_ERROR_TTL_MS = 15 * 60 * 1000;
 const socialMetricsCache = new Map();
 const HUMAN_CRED_TTL_MS = 10 * 60 * 1000;
+const HUMAN_CRED_SNAPSHOT_TTL_MS = 12 * 60 * 60 * 1000;
 const humanCredCache = new Map();
+const humanCredRefreshInFlight = new Map();
 
 function withTimeout(promise, ms, fallback = null) {
     return Promise.race([
@@ -723,13 +725,38 @@ function loadHumanProfiles() {
 function saveHumanProfiles(profiles) {
     fs.writeFileSync(HUMAN_PROFILES_PATH, JSON.stringify(profiles, null, 2));
 }
+
+function resolveStoredHumanProfileKey(profiles, walletAddress, data = {}) {
+    const normalizedWallet = walletAddress && ethers.isAddress(walletAddress)
+        ? ethers.getAddress(walletAddress).toLowerCase()
+        : null;
+    const userKey = data.userId ? `user:${data.userId}` : null;
+    const tokenId = data.tokenId != null ? Number(data.tokenId) : null;
+
+    if (normalizedWallet && profiles[normalizedWallet]) return normalizedWallet;
+    if (userKey && profiles[userKey]) return userKey;
+
+    for (const [key, profile] of Object.entries(profiles)) {
+        try {
+            if (normalizedWallet && profile?.walletAddress && ethers.isAddress(profile.walletAddress)) {
+                if (ethers.getAddress(profile.walletAddress).toLowerCase() === normalizedWallet) return key;
+            }
+        } catch {}
+
+        if (userKey && profile?.userId && `user:${profile.userId}` === userKey) return key;
+        if (Number.isInteger(tokenId) && Number(profile?.tokenId) === tokenId) return key;
+    }
+
+    return normalizedWallet || userKey || null;
+}
+
 function saveHumanProfile(walletAddress, data) {
     const key = walletAddress && ethers.isAddress(walletAddress)
         ? ethers.getAddress(walletAddress).toLowerCase()
         : null;
     const profiles = loadHumanProfiles();
     // If wallet is provided, store under wallet key; otherwise use userId if present.
-    const storageKey = key || (data.userId ? `user:${data.userId}` : null);
+    const storageKey = resolveStoredHumanProfileKey(profiles, walletAddress, data);
     if (!storageKey) throw new Error('saveHumanProfile requires either walletAddress or userId');
     profiles[storageKey] = {
         ...(profiles[storageKey] || {}),
@@ -743,8 +770,10 @@ function saveHumanProfile(walletAddress, data) {
 }
 function getHumanProfileByWallet(walletAddress) {
     try {
-        const key = ethers.getAddress(walletAddress).toLowerCase();
-        return loadHumanProfiles()[key] || null;
+        const profiles = loadHumanProfiles();
+        const key = resolveStoredHumanProfileKey(profiles, walletAddress);
+        if (!key) return null;
+        return profiles[key] || null;
     } catch {
         return null;
     }
@@ -767,6 +796,69 @@ function getHumanProfileById(id) {
         const userKey = `user:${String(id)}`;
         return profiles[userKey] || null;
     }
+}
+
+function getHumanProfileStorageKey(profile) {
+    return resolveStoredHumanProfileKey(loadHumanProfiles(), profile?.walletAddress, profile);
+}
+
+function normalizeHumanCredSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return null;
+    const score = Number(snapshot.score);
+    const updatedAt = typeof snapshot.updatedAt === 'string' ? snapshot.updatedAt : null;
+    if (!Number.isFinite(score) || !updatedAt) return null;
+    return {
+        ...snapshot,
+        score: Math.max(0, Math.min(100, score)),
+        updatedAt,
+    };
+}
+
+function getStoredHumanCredSnapshot(profile) {
+    return normalizeHumanCredSnapshot(profile?.humanCredSnapshot);
+}
+
+function isHumanCredSnapshotFresh(snapshot) {
+    if (!snapshot?.updatedAt) return false;
+    const updatedAtMs = Date.parse(snapshot.updatedAt);
+    if (!Number.isFinite(updatedAtMs)) return false;
+    return (Date.now() - updatedAtMs) < HUMAN_CRED_SNAPSHOT_TTL_MS;
+}
+
+function shouldKeepExistingHumanCredSnapshot(previous, next) {
+    if (!previous || !next) return false;
+    const prevSources = previous.sources || {};
+    const nextSources = next.sources || {};
+    const scoreDropped = Number(next.score || 0) < Number(previous.score || 0);
+    if (!scoreDropped) return false;
+
+    return (
+        (prevSources.coinbaseVerified === true && nextSources.coinbaseVerified !== true) ||
+        (prevSources.talentScore != null && nextSources.talentScore == null) ||
+        (prevSources.ethosScore != null && nextSources.ethosScore == null) ||
+        (Number(prevSources.txCount || 0) > 0 && Number(nextSources.txCount || 0) === 0)
+    );
+}
+
+function persistHumanCredSnapshot(profile, cred) {
+    const storageKey = getHumanProfileStorageKey(profile);
+    if (!storageKey || !cred) return null;
+
+    const profiles = loadHumanProfiles();
+    if (!profiles[storageKey]) return null;
+
+    const snapshot = {
+        ...cred,
+        updatedAt: new Date().toISOString(),
+    };
+
+    profiles[storageKey] = {
+        ...profiles[storageKey],
+        humanCredSnapshot: snapshot,
+    };
+
+    saveHumanProfiles(profiles);
+    return snapshot;
 }
 
 function clampList(input, maxItems = 24, maxChars = 64) {
@@ -1431,12 +1523,13 @@ function deriveBuilderFallback(profile) {
     return fallback;
 }
 
-async function computeHumanCred(profile) {
+async function computeHumanCred(profile, options = {}) {
+    const { bypassCache = false } = options;
     const walletAddress = profile.walletAddress ? ethers.getAddress(profile.walletAddress) : null;
     const hasWallet = Boolean(walletAddress);
     const cacheKey = String(profile.tokenId ?? walletAddress ?? profile.userId ?? 'unknown');
     const cached = humanCredCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) return cached.value;
+    if (!bypassCache && cached && cached.expiresAt > Date.now()) return cached.value;
     
     const [coinbase, talentScore, ethosScore, txCount] = hasWallet
         ? await Promise.all([
@@ -1556,10 +1649,55 @@ async function computeHumanCred(profile) {
     return result;
 }
 
+async function refreshHumanCredSnapshot(profile, options = {}) {
+    const storageKey = getHumanProfileStorageKey(profile);
+    if (!storageKey) return null;
+
+    const latestProfile = loadHumanProfiles()[storageKey] || profile;
+    const previousSnapshot = getStoredHumanCredSnapshot(latestProfile);
+    const nextCred = await computeHumanCred(latestProfile, { bypassCache: options.bypassCache === true });
+
+    if (shouldKeepExistingHumanCredSnapshot(previousSnapshot, nextCred)) {
+        return previousSnapshot;
+    }
+
+    return persistHumanCredSnapshot(latestProfile, nextCred) || nextCred;
+}
+
+function scheduleHumanCredSnapshotRefresh(profile, options = {}) {
+    const storageKey = getHumanProfileStorageKey(profile);
+    if (!storageKey) return Promise.resolve(null);
+    if (humanCredRefreshInFlight.has(storageKey)) return humanCredRefreshInFlight.get(storageKey);
+
+    const refreshPromise = refreshHumanCredSnapshot(profile, options)
+        .catch((error) => {
+            console.error(`[HUMAN CRED] Snapshot refresh failed for ${storageKey}: ${error.message}`);
+            return getStoredHumanCredSnapshot(profile);
+        })
+        .finally(() => {
+            humanCredRefreshInFlight.delete(storageKey);
+        });
+
+    humanCredRefreshInFlight.set(storageKey, refreshPromise);
+    return refreshPromise;
+}
+
+async function getHumanCredForResponse(profile) {
+    const snapshot = getStoredHumanCredSnapshot(profile);
+    if (snapshot) {
+        if (!isHumanCredSnapshotFresh(snapshot)) {
+            scheduleHumanCredSnapshotRefresh(profile, { bypassCache: true });
+        }
+        return snapshot;
+    }
+
+    return await scheduleHumanCredSnapshotRefresh(profile, { bypassCache: true }) || await computeHumanCred(profile);
+}
+
 async function formatHumanPrincipal(profile, options = {}) {
     const { includePrivate = false } = options;
     const registration = buildHumanRegistrationFile(profile);
-    const cred = await computeHumanCred(profile);
+    const cred = await getHumanCredForResponse(profile);
     const notificationPreferences = sanitizeHumanNotificationPreferences(profile.notificationPreferences, profile.notificationPreferences, profile.contact || {});
     const publicContact = {
         hasEmail: Boolean(profile.contact?.email),
@@ -1990,7 +2128,7 @@ app.get('/api/v2/human/:id/cred', async (req, res) => {
     try {
         const profile = getHumanProfileById(req.params.id);
         if (!profile) return res.status(404).json({ error: 'Human principal not found' });
-        res.json(await computeHumanCred(profile));
+        res.json(await getHumanCredForResponse(profile));
     } catch (e) {
         res.status(500).json({ error: 'Failed to compute Human Cred', detail: e.message.slice(0, 200) });
     }
@@ -3265,6 +3403,10 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
         // Include userId for non‑wallet profiles
         if (callerUserId) profileData.userId = callerUserId;
         const normalizedProfile = saveHumanProfile(callerWallet || callerUserId, profileData);
+        const refreshedHumanCred = await refreshHumanCredSnapshot(normalizedProfile, { bypassCache: true });
+        const responseProfile = refreshedHumanCred
+            ? { ...normalizedProfile, humanCredSnapshot: refreshedHumanCred }
+            : normalizedProfile;
 
         if (tokenId !== null && isContractDeployed()) {
             try {
@@ -3276,7 +3418,7 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
             }
         }
 
-        const formatted = await formatHumanPrincipal(normalizedProfile, { includePrivate: true });
+        const formatted = await formatHumanPrincipal(responseProfile, { includePrivate: true });
         res.json({
             success: true,
             principal: formatted,
@@ -3314,7 +3456,11 @@ app.post('/api/v2/human/:id/link-agent', requireHumanWalletAuth, async (req, res
 
         const linked = [...new Set([...(profile.linkedAgents || []), String(tokenId)])];
         const updated = saveHumanProfile(caller, { linkedAgents: linked });
-        res.json({ success: true, principal: await formatHumanPrincipal(updated, { includePrivate: true }) });
+        const refreshedHumanCred = await refreshHumanCredSnapshot(updated, { bypassCache: true });
+        const responseProfile = refreshedHumanCred
+            ? { ...updated, humanCredSnapshot: refreshedHumanCred }
+            : updated;
+        res.json({ success: true, principal: await formatHumanPrincipal(responseProfile, { includePrivate: true }) });
     } catch (e) {
         res.status(500).json({ error: 'Agent link failed: ' + e.message.slice(0, 200) });
     }
