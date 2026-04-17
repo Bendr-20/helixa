@@ -127,18 +127,39 @@ export function HumanProfile() {
     if (!xHandle && !farcasterHandle) return;
 
     const controller = new AbortController();
+    let idleHandle: number | undefined;
+    let timeoutHandle: number | undefined;
     const params = new URLSearchParams();
     if (xHandle) params.set('x', xHandle);
     if (farcasterHandle) params.set('farcaster', farcasterHandle);
 
-    fetch(`/api/v2/social-metrics?${params.toString()}`, { signal: controller.signal })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        if (data && typeof data === 'object') setSocialMetrics(data);
-      })
-      .catch(() => {});
+    const loadMetrics = () => {
+      fetch(`/api/v2/social-metrics?${params.toString()}`, { signal: controller.signal })
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          if (data && typeof data === 'object') setSocialMetrics(data);
+        })
+        .catch(() => {});
+    };
 
-    return () => controller.abort();
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+
+    if (typeof window !== 'undefined' && typeof idleWindow.requestIdleCallback === 'function') {
+      idleHandle = idleWindow.requestIdleCallback(() => {
+        timeoutHandle = window.setTimeout(loadMetrics, 300);
+      }, { timeout: 1200 });
+    } else {
+      timeoutHandle = window.setTimeout(loadMetrics, 700);
+    }
+
+    return () => {
+      controller.abort();
+      if (idleHandle && typeof idleWindow.cancelIdleCallback === 'function') idleWindow.cancelIdleCallback(idleHandle);
+      if (timeoutHandle) window.clearTimeout(timeoutHandle);
+    };
   }, [human?.linkedAccounts?.x, human?.linkedAccounts?.farcaster]);
 
   if (isLoading) {

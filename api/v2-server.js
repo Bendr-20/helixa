@@ -176,7 +176,7 @@ async function fetchXSocialMetrics(handle) {
         `https://api.x.com/2/users/by/username/${encodeURIComponent(handle)}?user.fields=public_metrics`,
         {
             headers: { Authorization: `Bearer ${bearer}` },
-            signal: AbortSignal.timeout(2500),
+            signal: AbortSignal.timeout(1200),
         }
     );
 
@@ -198,7 +198,7 @@ async function fetchFarcasterSocialMetrics(handle) {
         `https://client.warpcast.com/v2/user-by-username?username=${encodeURIComponent(handle)}`,
         {
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HelixaBot/1.0)' },
-            signal: AbortSignal.timeout(2500),
+            signal: AbortSignal.timeout(1200),
         }
     );
 
