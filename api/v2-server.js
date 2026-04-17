@@ -1877,6 +1877,22 @@ app.get('/api/v2/human/:id/cred', async (req, res) => {
     }
 });
 
+// GET /api/v2/principals/human/me
+app.get('/api/v2/principals/human/me', requireHumanAuth, async (req, res) => {
+    try {
+        const auth = req.humanAuth;
+        const profile = auth.walletAddress
+            ? getHumanProfileByWallet(auth.walletAddress)
+            : (auth.userId ? getHumanProfileByUserId(auth.userId) : null);
+
+        if (!profile) return res.status(404).json({ error: 'Human principal not found' });
+
+        res.json(await formatHumanPrincipal(profile, { includePrivate: true }));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load current human principal', detail: e.message.slice(0, 200) });
+    }
+});
+
 // GET /api/v2/metadata/:id — OpenSea-compatible metadata
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {
