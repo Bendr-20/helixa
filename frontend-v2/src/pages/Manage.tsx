@@ -789,8 +789,8 @@ export function Manage() {
                     <Link to="/manage/human" style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Manage Human">
                       Manage
                     </Link>
-                    <Link to={`/agent/${human.tokenId}`} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Open Public Token View">
-                      Token
+                    <Link to={`/h/${human.tokenId}`} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Open Public Human Profile">
+                      Profile
                     </Link>
                   </div>
                 </div>
@@ -813,7 +813,7 @@ export function Manage() {
             <div style={s.agentsGrid}>
               {ownedAgents.map((agent) => (
                 <div key={agent.tokenId} style={s.agentWrapper}>
-                  <AgentCard agent={agent} />
+                  <AgentCard agent={agent} clickable={false} />
                   <div style={s.agentOverlay}>
                     <Link to={`/agent/${agent.tokenId}`} style={s.overlayBtn} title="View Profile">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>

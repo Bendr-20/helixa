@@ -38,6 +38,7 @@ interface Agent {
 interface AgentCardProps {
   agent: Agent;
   className?: string;
+  clickable?: boolean;
 }
 
 const auraData = (agent: Agent) => ({
@@ -60,24 +61,11 @@ const auraData = (agent: Agent) => ({
   credScore: agent.credScore,
 });
 
-export function AgentCard({ agent, className = '' }: AgentCardProps) {
+export function AgentCard({ agent, className = '', clickable = true }: AgentCardProps) {
   const verifiedTraits = agent.traits?.filter((t: any) => t.category === 'verification') || [];
 
-  return (
-    <Link
-      to={`/agent/${agent.tokenId}`}
-      className={`agent-card ${className}`}
-      style={{
-        display: 'block',
-        textDecoration: 'none',
-        color: 'inherit',
-        background: 'rgba(10,10,20,0.9)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '14px',
-        padding: '1.25rem',
-        transition: 'border-color 0.3s, transform 0.3s, box-shadow 0.3s',
-      }}
-    >
+  const cardContent = (
+    <>
       {/* Desktop: vertical layout */}
       <div className="agent-card-desktop">
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
@@ -146,8 +134,25 @@ export function AgentCard({ agent, className = '' }: AgentCardProps) {
           </div>
         </div>
       </div>
-    </Link>
+    </>
   );
+
+  const cardStyle: React.CSSProperties = {
+    display: 'block',
+    textDecoration: 'none',
+    color: 'inherit',
+    background: 'rgba(10,10,20,0.9)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    borderRadius: '14px',
+    padding: '1.25rem',
+    transition: 'border-color 0.3s, transform 0.3s, box-shadow 0.3s',
+  };
+
+  if (!clickable) {
+    return <div className={`agent-card ${className}`} style={cardStyle}>{cardContent}</div>;
+  }
+
+  return <Link to={`/agent/${agent.tokenId}`} className={`agent-card ${className}`} style={cardStyle}>{cardContent}</Link>;
 }
 
 export function AgentCardSkeleton({ className = '' }: { className?: string }) {
