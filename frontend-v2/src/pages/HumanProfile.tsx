@@ -95,7 +95,7 @@ const sectionTitleStyle = {
 
 export function HumanProfile() {
   const { id } = useParams<{ id: string }>();
-  const { data: human, isLoading, error } = useHuman(id);
+  const { data: human, isLoading, error, refetch, isFetching } = useHuman(id);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -130,14 +130,27 @@ export function HumanProfile() {
   }
 
   if (error || !human) {
+    const status = typeof error === 'object' && error && 'status' in error ? (error as { status?: number }).status : undefined;
+    const isMissing = status === 404;
     return (
       <div className="py-8">
         <div className="container">
           <div className="max-w-2xl mx-auto text-center">
             <div className="card bg-red-900/20 border-red-700 py-12">
-              <h3 className="text-lg font-semibold text-red-400 mb-2">Human Profile Not Found</h3>
-              <p className="text-red-300 mb-6">That human principal does not exist or could not be loaded.</p>
-              <Link to="/join/human" className="btn btn-secondary">Create Human Profile</Link>
+              <h3 className="text-lg font-semibold text-red-400 mb-2">{isMissing ? 'Human Profile Not Found' : 'Human Profile Failed to Load'}</h3>
+              <p className="text-red-300 mb-6">
+                {isMissing
+                  ? 'That human principal does not exist.'
+                  : 'The profile is real, but this page hit a loading failure. Retry it instead of creating a new one.'}
+              </p>
+              <div className="grid gap-3 sm:flex sm:justify-center">
+                {!isMissing && (
+                  <button type="button" className="btn btn-secondary" onClick={() => refetch()} disabled={isFetching}>
+                    {isFetching ? 'Retrying...' : 'Retry Loading Profile'}
+                  </button>
+                )}
+                <Link to="/join/human" className="btn btn-ghost">Create Human Profile</Link>
+              </div>
             </div>
           </div>
         </div>

@@ -69,6 +69,16 @@ export interface HumanData {
   updatedAt?: string;
 }
 
+interface HumanQueryError extends Error {
+  status?: number;
+}
+
+function makeHumanQueryError(message: string, status?: number) {
+  const error = new Error(message) as HumanQueryError;
+  if (status != null) error.status = status;
+  return error;
+}
+
 function normalizeAgent(raw: any): AgentData {
   return {
     id: raw.tokenId ?? raw.id,
@@ -154,12 +164,44 @@ export function useHuman(id: number | string | undefined) {
   return useQuery({
     queryKey: ['v2-human', id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(id))}`);
-      if (!res.ok) throw new Error('Human principal not found');
-      return await res.json() as HumanData;
+      const encodedId = encodeURIComponent(String(id));
+      const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+      const candidates = Array.from(new Set([
+        `${API_URL}/api/v2/human/${encodedId}`,
+        browserOrigin ? `${browserOrigin}/api/v2/human/${encodedId}` : '',
+      ].filter(Boolean)));
+
+      let sawNotFound = false;
+      let sawTransientFailure = false;
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json() as HumanData;
+          if (res.status === 404) {
+            sawNotFound = true;
+            continue;
+          }
+          sawTransientFailure = true;
+        } catch (error: any) {
+          if (error?.name === 'AbortError') {
+            sawTransientFailure = true;
+            continue;
+          }
+          sawTransientFailure = true;
+        }
+      }
+
+      if (sawNotFound && !sawTransientFailure) {
+        throw makeHumanQueryError('Human principal not found', 404);
+      }
+
+      throw makeHumanQueryError('Failed to load human profile');
     },
     enabled: id !== undefined && id !== null && String(id).trim().length > 0,
     staleTime: 15_000,
+    retry: (failureCount, error: HumanQueryError) => error?.status !== 404 && failureCount < 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 4000),
   });
 }
 
