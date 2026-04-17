@@ -9,6 +9,7 @@ const pageImports = {
   home: () => import('./pages/Home').then(m => ({ default: m.Home })),
   mint: () => import('./pages/Mint').then(m => ({ default: m.Mint })),
   humanJoin: () => import('./pages/HumanJoin').then(m => ({ default: m.HumanJoin })),
+  humanManage: () => import('./pages/HumanManage').then(m => ({ default: m.HumanManage })),
   humanProfile: () => import('./pages/HumanProfile').then(m => ({ default: m.HumanProfile })),
   directory: () => import('./pages/Directory').then(m => ({ default: m.Directory })),
   agentProfile: () => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })),
@@ -33,6 +34,7 @@ const Dashboard = lazy(pageImports.dashboard);
 const Home = lazy(pageImports.home);
 const Mint = lazy(pageImports.mint);
 const HumanJoin = lazy(pageImports.humanJoin);
+const HumanManage = lazy(pageImports.humanManage);
 const HumanProfile = lazy(pageImports.humanProfile);
 const Directory = lazy(pageImports.directory);
 const AgentProfile = lazy(pageImports.agentProfile);
@@ -67,6 +69,7 @@ export const preloadMap: Record<string, () => void> = {
   '/': pageImports.dashboard,
   '/mint': pageImports.mint,
   '/join/human': pageImports.humanJoin,
+  '/manage/human': pageImports.humanManage,
   '/agents': pageImports.directory,
   '/directory': pageImports.directory,
   // '/leaderboard': pageImports.leaderboard,
@@ -133,6 +136,7 @@ function AnimatedRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/mint" element={<Mint />} />
           <Route path="/join/human/*" element={<HumanJoin />} />
+          <Route path="/manage/human" element={<HumanManage />} />
           <Route path="/h/:id" element={<HumanProfile />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/directory" element={<Directory />} />

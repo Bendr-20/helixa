@@ -679,6 +679,8 @@ export function Manage() {
   const allWalletAddresses = wallets.map(w => w.address).filter(Boolean);
   const isConnected = authenticated && !!address;
   const { data: userAgents, isLoading } = useAgentsByOwner(address, allWalletAddresses);
+  const humanPrincipals = userAgents?.filter(agent => agent.framework === 'human' || agent.mintOrigin === 'HUMAN') || [];
+  const ownedAgents = userAgents?.filter(agent => agent.framework !== 'human' && agent.mintOrigin !== 'HUMAN') || [];
   const [editingTokenId, setEditingTokenId] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
   const [agentNameInput, setAgentNameInput] = useState('');
@@ -753,11 +755,49 @@ export function Manage() {
               <div style={s.accountAddr}>{address}</div>
             </div>
             <div>
-              <div style={s.countNum}>{isLoading ? '...' : userAgents?.length || 0}</div>
+              <div style={s.countNum}>{isLoading ? '...' : ownedAgents.length}</div>
               <div style={s.countLabel}>Agents Owned</div>
             </div>
           </div>
         </div>
+
+        {!isLoading && humanPrincipals.length > 0 && (
+          <div style={{ ...s.card, marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ ...s.sectionTitle, marginBottom: '0.35rem' }}>Your Human Profile</h2>
+                <p style={{ color: '#a39bb9', fontSize: '0.92rem', margin: 0 }}>
+                  Your human record should live separately from the agent grid.
+                </p>
+              </div>
+              <Link to="/manage/human" style={s.mintBtn}>Manage Human Profile</Link>
+            </div>
+
+            <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+              {humanPrincipals.map((human) => (
+                <div key={human.tokenId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(110,236,216,0.15)', borderRadius: '14px', padding: '1rem 1.1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <div style={{ color: '#f3f0ff', fontWeight: 700, fontSize: '1.05rem' }}>{human.name}</div>
+                      <div style={{ color: '#8d87a1', fontSize: '0.82rem' }}>Human token #{human.tokenId}</div>
+                    </div>
+                    <span style={{ display: 'inline-flex', padding: '0.35rem 0.7rem', borderRadius: '999px', background: 'rgba(110,236,216,0.12)', border: '1px solid rgba(110,236,216,0.2)', color: '#6eecd8', fontSize: '0.78rem', fontWeight: 700 }}>
+                      human
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <Link to="/manage/human" style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Manage Human">
+                      Manage
+                    </Link>
+                    <Link to={`/agent/${human.tokenId}`} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Open Public Token View">
+                      Token
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* User's Agents */}
         {isLoading ? (
@@ -767,11 +807,11 @@ export function Manage() {
               {Array.from({ length: 3 }).map((_, i) => <AgentCardSkeleton key={i} />)}
             </div>
           </div>
-        ) : userAgents && userAgents.length > 0 ? (
+        ) : ownedAgents.length > 0 ? (
           <div>
-            <h2 style={s.sectionTitle}>Your Agents ({userAgents.length})</h2>
+            <h2 style={s.sectionTitle}>Your Agents ({ownedAgents.length})</h2>
             <div style={s.agentsGrid}>
-              {userAgents.map((agent) => (
+              {ownedAgents.map((agent) => (
                 <div key={agent.tokenId} style={s.agentWrapper}>
                   <AgentCard agent={agent} />
                   <div style={s.agentOverlay}>
@@ -800,7 +840,7 @@ export function Manage() {
         )}
 
         {/* Agent Naming (only if agents exist) */}
-        {!isLoading && userAgents && userAgents.length > 0 && (
+        {!isLoading && ownedAgents.length > 0 && (
           <div style={s.namingCard}>
             <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem' }}>
               Agent Name
