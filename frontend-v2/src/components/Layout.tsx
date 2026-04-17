@@ -8,16 +8,12 @@ const primaryLinks = [
   { href: '/', label: 'Dashboard' },
   { href: '/agents', label: 'Agents' },
   { href: '/jobs', label: 'Jobs' },
-  { href: '/stake', label: 'Stake' },
   { href: '/manage', label: 'Manage' },
-  { href: '/soul', label: 'Soul' },
 ];
 
 const moreLinks = [
   { href: '/mint', label: 'Register' },
   { href: '/token', label: '$CRED' },
-  { href: '/terminal', label: 'Terminal', external: true },
-  { href: '/messages', label: 'Messages' },
   { href: '/docs', label: 'Docs' },
 ];
 
