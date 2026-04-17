@@ -25,8 +25,17 @@ function buildEnsAvatarUrl(name?: string) {
   return `https://metadata.ens.domains/mainnet/avatar/${encodeURIComponent(normalized)}`;
 }
 
+function normalizeHandle(value: string) {
+  return value.replace(/^@/, '').trim();
+}
+
+function buildTelegramUrl(handle?: string) {
+  const normalized = normalizeHandle(handle || '');
+  return normalized ? `https://t.me/${normalized}` : '';
+}
+
 function renderLinkedAccount(key: string, value: string) {
-  const normalized = value.replace(/^@/, '');
+  const normalized = normalizeHandle(value);
   const actionStyle = { maxWidth: '100%', justifyContent: 'flex-start' as const, ...wrapAnywhereStyle };
 
   if (key === 'x') {
@@ -49,6 +58,14 @@ function renderLinkedAccount(key: string, value: string) {
     return (
       <a href={`https://warpcast.com/${normalized}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm" style={actionStyle}>
         <FarcasterLogo className="w-4 h-4" /> {normalized}
+      </a>
+    );
+  }
+
+  if (key === 'telegram') {
+    return (
+      <a href={buildTelegramUrl(normalized)} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm" style={actionStyle}>
+        Telegram: @{normalized}
       </a>
     );
   }
@@ -155,6 +172,7 @@ export function HumanProfile() {
     buildExternalLink('EAS', human.services?.eas?.url || human.externalIds?.eas),
   ].filter(Boolean) as Array<{ label: string; url: string }>;
   const manageHref = human.tokenId != null ? `/manage/human?tokenId=${human.tokenId}` : '/manage/human';
+  const telegramHandle = human.services?.telegram?.handle ? normalizeHandle(String(human.services.telegram.handle)) : '';
 
   return (
     <div className="py-8">
@@ -319,8 +337,22 @@ export function HumanProfile() {
                     <div className="text-muted text-sm mb-2">Public Services</div>
                     <div className="space-y-2 text-sm" style={wrapAnywhereStyle}>
                       {human.services?.email?.address && <div style={wrapAnywhereStyle}>Email: {human.services.email.address}</div>}
-                      {human.services?.telegram?.handle && <div style={wrapAnywhereStyle}>Telegram: @{String(human.services.telegram.handle).replace(/^@/, '')}</div>}
-                      {human.services?.web?.url && <div style={wrapAnywhereStyle}>Web: {human.services.web.url}</div>}
+                      {telegramHandle && (
+                        <div style={wrapAnywhereStyle}>
+                          Telegram:{' '}
+                          <a href={buildTelegramUrl(telegramHandle)} target="_blank" rel="noopener noreferrer" className="text-accent-cyan" style={wrapAnywhereStyle}>
+                            @{telegramHandle}
+                          </a>
+                        </div>
+                      )}
+                      {human.services?.web?.url && (
+                        <div style={wrapAnywhereStyle}>
+                          Web:{' '}
+                          <a href={human.services.web.url} target="_blank" rel="noopener noreferrer" className="text-accent-cyan" style={wrapAnywhereStyle}>
+                            {human.services.web.url}
+                          </a>
+                        </div>
+                      )}
                       {!human.services?.email?.address && !human.services?.telegram?.handle && !human.services?.web?.url && (
                         <div className="text-muted">No public services listed.</div>
                       )}
