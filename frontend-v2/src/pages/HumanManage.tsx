@@ -46,6 +46,7 @@ type HumanDraft = {
   ens: string;
   basename: string;
   website: string;
+  gitlawb: string;
   talentProtocol: string;
   ethos: string;
   eas: string;
@@ -72,6 +73,7 @@ const defaultDraft: HumanDraft = {
   ens: '',
   basename: '',
   website: '',
+  gitlawb: '',
   talentProtocol: '',
   ethos: '',
   eas: '',
@@ -308,6 +310,7 @@ function draftFromHuman(human: HumanPrincipal): HumanDraft {
     ens: String(linkedAccounts.ens || externalIds.ens || human.services?.ens?.name || ''),
     basename: String(linkedAccounts.basename || externalIds.basename || ''),
     website: String(human.services?.web?.url || ''),
+    gitlawb: String(externalIds.gitlawb || human.services?.gitlawb?.url || linkedAccounts.gitlawb || ''),
     talentProtocol: String(externalIds.talentProtocol || human.services?.talentProtocol?.url || ''),
     ethos: String(externalIds.ethos || human.services?.ethos?.url || ''),
     eas: String(externalIds.eas || human.services?.eas?.url || ''),
@@ -489,6 +492,7 @@ export function HumanManage() {
     draft.ens && `ENS: ${draft.ens}`,
     draft.basename && `Basename: ${draft.basename}`,
     draft.telegram && `Telegram: ${draft.telegram}`,
+    draft.gitlawb && `GitLawb: ${draft.gitlawb}`,
     draft.talentProtocol && `Talent Protocol: ${draft.talentProtocol}`,
     draft.ethos && `Ethos: ${draft.ethos}`,
     draft.eas && `EAS: ${draft.eas}`,
@@ -564,6 +568,7 @@ export function HumanManage() {
         github: draft.github.trim(),
         farcaster: draft.farcaster.trim(),
         telegram: draft.telegram.replace(/^@/, '').trim(),
+        gitlawb: draft.gitlawb.trim(),
         ens: draft.ens.trim(),
         basename: draft.basename.trim(),
       });
@@ -574,6 +579,7 @@ export function HumanManage() {
         telegram: draft.telegram.replace(/^@/, '').trim(),
         ens: draft.ens.trim(),
         basename: draft.basename.trim(),
+        gitlawb: draft.gitlawb.trim(),
         talentProtocol: draft.talentProtocol.trim(),
         ethos: draft.ethos.trim(),
         eas: draft.eas.trim(),
@@ -599,6 +605,7 @@ export function HumanManage() {
         services: {
           ...(draft.website.trim() ? { web: { url: draft.website.trim() } } : {}),
           ...(draft.telegram.trim() ? { telegram: { handle: draft.telegram.trim().replace(/^@/, '') } } : {}),
+          ...(draft.gitlawb.trim() ? { gitlawb: { url: draft.gitlawb.trim() } } : {}),
           ...(draft.ens.trim() ? { ens: { name: draft.ens.trim() } } : {}),
           ...(draft.talentProtocol.trim() ? { talentProtocol: { url: draft.talentProtocol.trim() } } : {}),
           ...(draft.ethos.trim() ? { ethos: { url: draft.ethos.trim() } } : {}),
@@ -892,35 +899,43 @@ export function HumanManage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
+                  <label style={fieldLabelStyle}>GitLawb</label>
+                  <input value={draft.gitlawb} onChange={e => updateDraft({ gitlawb: e.target.value })} placeholder="https://gitlawb.com/..." style={inputStyle} />
+                </div>
+                <div>
                   <label style={fieldLabelStyle}>Website</label>
                   <input value={draft.website} onChange={e => updateDraft({ website: e.target.value })} placeholder="https://..." style={inputStyle} />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>ENS</label>
                   <input value={draft.ens} onChange={e => updateDraft({ ens: e.target.value })} placeholder="name.eth" style={inputStyle} />
                 </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Basename</label>
                   <input value={draft.basename} onChange={e => updateDraft({ basename: e.target.value })} placeholder="name.base.eth" style={inputStyle} />
                 </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Talent Protocol (optional)</label>
                   <input value={draft.talentProtocol} onChange={e => updateDraft({ talentProtocol: e.target.value })} placeholder="https://talent.app/..." style={inputStyle} />
+                </div>
+                <div>
+                  <label style={fieldLabelStyle}>Ethos (optional)</label>
+                  <input value={draft.ethos} onChange={e => updateDraft({ ethos: e.target.value })} placeholder="https://ethos.network/..." style={inputStyle} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={fieldLabelStyle}>Ethos (optional)</label>
-                  <input value={draft.ethos} onChange={e => updateDraft({ ethos: e.target.value })} placeholder="https://ethos.network/..." style={inputStyle} />
-                </div>
-                <div>
                   <label style={fieldLabelStyle}>EAS (optional)</label>
                   <input value={draft.eas} onChange={e => updateDraft({ eas: e.target.value })} placeholder="https://easscan.org/..." style={inputStyle} />
                 </div>
+                <div></div>
               </div>
 
               <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>

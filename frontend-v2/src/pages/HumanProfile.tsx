@@ -37,6 +37,14 @@ function normalizeHandle(value: string) {
   return value.replace(/^@/, '').trim();
 }
 
+function resolveGitLawbUrl(value?: string) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const normalized = trimmed.replace(/^@/, '').replace(/^gitlawb\.com\//i, '');
+  return `https://gitlawb.com/${normalized}`;
+}
+
 function buildTelegramUrl(handle?: string) {
   const normalized = normalizeHandle(handle || '');
   return normalized ? `https://t.me/${normalized}` : '';
@@ -86,6 +94,16 @@ function renderLinkedAccount(key: string, value: string, metric?: SocialMetric |
     );
   }
 
+  if (key === 'gitlawb') {
+    const href = resolveGitLawbUrl(value);
+    const label = value.replace(/^https?:\/\//, '');
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="btn btn-ghost text-sm" style={actionStyle}>
+        GitLawb {label}
+      </a>
+    );
+  }
+
   if (key === 'ens' || key === 'basename') {
     return <span className="badge" style={wrapAnywhereStyle}>{value}</span>;
   }
@@ -95,7 +113,7 @@ function renderLinkedAccount(key: string, value: string, metric?: SocialMetric |
 
 function buildExternalLink(label: string, url?: string) {
   if (!url) return null;
-  return { label, url };
+  return { label, url: label === 'GitLawb' ? resolveGitLawbUrl(url) : url };
 }
 
 const wrapAnywhereStyle = {
@@ -240,6 +258,7 @@ export function HumanProfile() {
   );
   const resolvedAvatar = avatarLoadFailed ? '' : (human.image || ensAvatar);
   const externalProofLinks = [
+    buildExternalLink('GitLawb', human.services?.gitlawb?.url || human.externalIds?.gitlawb || human.linkedAccounts?.gitlawb),
     buildExternalLink('Talent Protocol', human.services?.talentProtocol?.url || human.externalIds?.talentProtocol),
     buildExternalLink('Ethos', human.services?.ethos?.url || human.externalIds?.ethos),
     buildExternalLink('EAS', human.services?.eas?.url || human.externalIds?.eas),
