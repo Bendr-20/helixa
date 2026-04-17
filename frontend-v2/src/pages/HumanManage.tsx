@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { BrowserProvider } from 'ethers';
 import { API_URL } from '../lib/constants';
@@ -368,6 +368,7 @@ function SummaryRow({ label, value }: { label: string, value: string }) {
 }
 
 export function HumanManage() {
+  const [searchParams] = useSearchParams();
   const { ready, authenticated, login, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0] || null;
@@ -378,6 +379,15 @@ export function HumanManage() {
     () => ownedPrincipals?.find(agent => agent.framework === 'human' || agent.mintOrigin === 'HUMAN') || null,
     [ownedPrincipals],
   );
+  const tokenIdFromQuery = useMemo(() => {
+    const raw = searchParams.get('tokenId') || searchParams.get('id') || '';
+    return /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : null;
+  }, [searchParams]);
+  const walletFromQuery = useMemo(() => {
+    const raw = (searchParams.get('wallet') || '').trim();
+    return /^0x[a-fA-F0-9]{40}$/.test(raw) ? raw : '';
+  }, [searchParams]);
+  const publicLookupId = humanMint?.tokenId ?? tokenIdFromQuery ?? (walletFromQuery || null);
 
   const [currentStep, setCurrentStep] = useState<HumanManageStep>('profile');
   const [loading, setLoading] = useState(true);
@@ -398,8 +408,8 @@ export function HumanManage() {
       setStatus(null);
 
       try {
-        if (humanMint?.tokenId) {
-          const publicRes = await fetch(`${API_URL}/api/v2/human/${humanMint.tokenId}`);
+        if (publicLookupId) {
+          const publicRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(publicLookupId))}`);
           if (publicRes.ok) {
             const principal = normalizeHumanPrincipal(await publicRes.json());
             if (!mounted) return;
@@ -410,8 +420,10 @@ export function HumanManage() {
             return;
           }
 
-          const fallbackRes = await fetch(`${API_URL}/api/v2/agent/${humanMint.tokenId}`);
-          if (fallbackRes.ok) {
+          const fallbackRes = typeof publicLookupId === 'number'
+            ? await fetch(`${API_URL}/api/v2/agent/${publicLookupId}`)
+            : null;
+          if (fallbackRes?.ok) {
             const fallback = normalizeHumanFallback(await fallbackRes.json());
             if (!mounted) return;
             setHuman(fallback);
@@ -461,7 +473,7 @@ export function HumanManage() {
     return () => {
       mounted = false;
     };
-  }, [ready, authenticated, getAccessToken, humanMint?.tokenId, ownedPrincipalsLoading, wallet]);
+  }, [ready, authenticated, getAccessToken, humanMint?.tokenId, ownedPrincipalsLoading, publicLookupId, wallet]);
 
   const currentIndex = stepOrder.indexOf(currentStep);
   const walletAddress = wallet?.address || user?.wallet?.address || human?.walletAddress || '';
