@@ -1418,6 +1418,19 @@ function buildHumanRegistrationFile(profile) {
     };
 }
 
+function deriveBuilderFallback(profile) {
+    const linkedAccounts = profile.linkedAccounts || {};
+    const externalIds = profile.externalIds || {};
+    const services = profile.services || {};
+    let fallback = 0;
+
+    if (externalIds.talentProtocol || services.talentProtocol?.url) fallback = Math.max(fallback, 65);
+    if (linkedAccounts.github || externalIds.github) fallback = Math.max(fallback, 50);
+    if (Array.isArray(profile.linkedAgents) && profile.linkedAgents.length > 0) fallback = Math.max(fallback, 40);
+
+    return fallback;
+}
+
 async function computeHumanCred(profile) {
     const walletAddress = profile.walletAddress ? ethers.getAddress(profile.walletAddress) : null;
     const hasWallet = Boolean(walletAddress);
@@ -1463,7 +1476,9 @@ async function computeHumanCred(profile) {
         ? Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0))
         : (hasEnsLike ? 30 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0);
     const builderRaw = hasWallet
-        ? Math.max(0, Math.min(100, Math.round((Number(talentScore || 0) / 400) * 100)))
+        ? (talentScore != null
+            ? Math.max(0, Math.min(100, Math.round((Number(talentScore || 0) / 400) * 100)))
+            : deriveBuilderFallback(profile))
         : 0;
     const socialRaw = hasWallet
         ? Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)))
