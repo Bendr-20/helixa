@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { BarChart3, Lock, RefreshCw, CheckCircle, XCircle, Bot } from 'lucide-react';
+import { BarChart3, Lock, RefreshCw, CheckCircle, XCircle, Bot, Globe } from 'lucide-react';
 import { AuraPreview } from '../components/AuraPreview';
 import { CredBadge } from '../components/CredBadge';
 import { XLogo, GitHubLogo, FarcasterLogo } from '../components/Icons';
@@ -8,6 +8,27 @@ import { useAgent } from '../hooks/useAgents';
 import { ORIGIN_DISPLAY, EXPLORER_URL, CONTRACT_ADDRESS } from '../lib/constants';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz';
+
+function normalizeGitLawbUrl(value?: string | null) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://gitlawb.com/${trimmed.replace(/^@/, '').replace(/^gitlawb\.com\//i, '')}`;
+}
+
+function normalizeGitHubUrl(value?: string | null) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://github.com/${trimmed.replace(/^@/, '')}`;
+}
+
+function normalizeXUrl(value?: string | null) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://x.com/${trimmed.replace(/^@/, '')}`;
+}
 
 export function AgentProfile() {
   const { id } = useParams<{ id: string }>();
@@ -395,6 +416,39 @@ export function AgentProfile() {
                         <h3 className="font-medium text-yellow-400 mb-1">Manifesto</h3>
                         <p className="text-muted leading-relaxed">{agent.narrative.manifesto}</p>
                       </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Public Links */}
+              {agent.socials && Object.keys(agent.socials).length > 0 && (
+                <div className="card">
+                  <h2 className="text-xl font-semibold mb-4">Links</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {agent.socials.x && (
+                      <a href={normalizeXUrl(agent.socials.x)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: 'rgba(29, 161, 242, 0.12)', border: '1px solid rgba(29, 161, 242, 0.28)', color: '#1DA1F2' }}>
+                        <XLogo className="w-5 h-5" style={{ color: '#1DA1F2' }} />
+                        <span className="font-medium">X</span>
+                      </a>
+                    )}
+                    {agent.socials.github && (
+                      <a href={normalizeGitHubUrl(agent.socials.github)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.12)', border: '1px solid rgba(139, 92, 246, 0.28)', color: '#8b5cf6' }}>
+                        <GitHubLogo className="w-5 h-5" style={{ color: '#8b5cf6' }} />
+                        <span className="font-medium">GitHub</span>
+                      </a>
+                    )}
+                    {agent.socials.gitlawb && (
+                      <a href={normalizeGitLawbUrl(agent.socials.gitlawb)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: 'rgba(110, 236, 216, 0.12)', border: '1px solid rgba(110, 236, 216, 0.28)', color: '#6eecd8' }}>
+                        <Globe className="w-5 h-5" style={{ color: '#6eecd8' }} />
+                        <span className="font-medium">GitLawb</span>
+                      </a>
+                    )}
+                    {agent.socials.website && (
+                      <a href={agent.socials.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-lg" style={{ background: 'rgba(128, 208, 255, 0.12)', border: '1px solid rgba(128, 208, 255, 0.28)', color: '#80d0ff' }}>
+                        <Globe className="w-5 h-5" style={{ color: '#80d0ff' }} />
+                        <span className="font-medium">Website</span>
+                      </a>
                     )}
                   </div>
                 </div>

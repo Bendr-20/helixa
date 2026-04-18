@@ -88,9 +88,10 @@ interface EditForm {
   twitter: string;
   website: string;
   github: string;
+  gitlawb: string;
 }
 
-const emptyForm: EditForm = { name: '', framework: '', version: '', personality: '', values: '', origin: '', mission: '', lore: '', twitter: '', website: '', github: '' };
+const emptyForm: EditForm = { name: '', framework: '', version: '', personality: '', values: '', origin: '', mission: '', lore: '', twitter: '', website: '', github: '', gitlawb: '' };
 
 const frameworks = ['', 'openclaw', 'eliza', 'langchain', 'autogpt', 'crewai', 'agentkit', 'based', 'custom', 'other'];
 
@@ -461,6 +462,7 @@ function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void })
           twitter: getAttr(data, 'social-twitter') || getAttr(data, 'twitter'),
           website: getAttr(data, 'social-website') || getAttr(data, 'website'),
           github: getAttr(data, 'social-github') || getAttr(data, 'github'),
+          gitlawb: getAttr(data, 'social-gitlawb') || getAttr(data, 'gitlawb'),
         });
         setLoading(false);
       })
@@ -488,7 +490,7 @@ function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void })
       const body: any = { signature, message };
       if (form.personality || form.values) body.personality = { quirks: form.personality, values: form.values };
       if (form.origin || form.mission || form.lore) body.narrative = { origin: form.origin || undefined, mission: form.mission || undefined, lore: form.lore || undefined };
-      if (form.twitter || form.website || form.github) body.social = { twitter: form.twitter || undefined, website: form.website || undefined, github: form.github || undefined };
+      if (form.twitter || form.website || form.github || form.gitlawb) body.social = { twitter: form.twitter || undefined, website: form.website || undefined, github: form.github || undefined, gitlawb: form.gitlawb || undefined };
 
       const resp = await fetch(`${API}/agent/${tokenId}/human-update`, {
         method: 'POST',
@@ -595,6 +597,8 @@ function EditPanel({ tokenId, onBack }: { tokenId: number; onBack: () => void })
         <input style={s.input} value={form.website} onChange={set('website')} placeholder="https://..." />
         <label style={s.label}>GitHub</label>
         <input style={s.input} value={form.github} onChange={set('github')} placeholder="username or repo URL" />
+        <label style={s.label}>GitLawb</label>
+        <input style={s.input} value={form.gitlawb} onChange={set('gitlawb')} placeholder="username or https://gitlawb.com/..." />
       </div>
 
       {/* Cred Score Breakdown */}

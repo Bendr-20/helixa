@@ -27,6 +27,7 @@ interface AgentData {
   agentName: string | null;
   ethosScore: number | null;
   linkedToken: any;
+  socials?: Record<string, string>;
 }
 
 export interface HumanData {
@@ -102,6 +103,7 @@ function normalizeAgent(raw: any): AgentData {
     agentName: raw.agentName || null,
     ethosScore: raw.ethosScore || null,
     linkedToken: raw.linkedToken || null,
+    socials: raw.socials || {},
   };
 }
 

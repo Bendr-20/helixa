@@ -1043,16 +1043,34 @@ function sanitizeHumanNotificationPreferences(input, existing = {}, contact = {}
 
 function getAgentSocials(tokenId) {
     try {
-        const sdb = getSoulDb();
-        const row = sdb.prepare('SELECT x, github, website, telegram, email FROM agent_socials WHERE tokenId = ?').get(tokenId);
-        sdb.close();
-        if (!row) return {};
         const socials = {};
-        if (row.x) socials.x = row.x;
-        if (row.github) socials.github = row.github;
-        if (row.website) socials.website = row.website;
-        if (row.telegram) socials.telegram = row.telegram;
-        if (row.email) socials.email = row.email;
+
+        try {
+            const sdb = getSoulDb();
+            const row = sdb.prepare('SELECT x, github, gitlawb, website, telegram, email FROM agent_socials WHERE tokenId = ?').get(tokenId);
+            sdb.close();
+            if (row) {
+                if (row.x) socials.x = row.x;
+                if (row.github) socials.github = row.github;
+                if (row.gitlawb) socials.gitlawb = row.gitlawb;
+                if (row.website) socials.website = row.website;
+                if (row.telegram) socials.telegram = row.telegram;
+                if (row.email) socials.email = row.email;
+            }
+        } catch {}
+
+        try {
+            const socialPath = path.join(__dirname, '..', 'data', 'social-links.json');
+            const allSocial = JSON.parse(fs.readFileSync(socialPath, 'utf8'));
+            const stored = allSocial?.[tokenId] || allSocial?.[String(tokenId)];
+            if (stored) {
+                if (stored.twitter && !socials.x) socials.x = stored.twitter;
+                if (stored.github && !socials.github) socials.github = stored.github;
+                if (stored.gitlawb && !socials.gitlawb) socials.gitlawb = stored.gitlawb;
+                if (stored.website && !socials.website) socials.website = stored.website;
+            }
+        } catch {}
+
         return socials;
     } catch {
         return {};
@@ -1514,11 +1532,15 @@ function deriveBuilderFallback(profile) {
     const linkedAccounts = profile.linkedAccounts || {};
     const externalIds = profile.externalIds || {};
     const services = profile.services || {};
+    const hasGitLawb = Boolean(linkedAccounts.gitlawb || externalIds.gitlawb || services.gitlawb?.url);
     let fallback = 0;
 
     if (externalIds.talentProtocol || services.talentProtocol?.url) fallback = Math.max(fallback, 65);
+    if (hasGitLawb) fallback = Math.max(fallback, 60);
     if (linkedAccounts.github || externalIds.github) fallback = Math.max(fallback, 50);
-    if (Array.isArray(profile.linkedAgents) && profile.linkedAgents.length > 0) fallback = Math.max(fallback, 40);
+    if (Array.isArray(profile.linkedAgents) && profile.linkedAgents.length > 0) {
+        fallback = Math.max(fallback, hasGitLawb ? 70 : 40);
+    }
 
     return fallback;
 }
@@ -1564,6 +1586,9 @@ async function computeHumanCred(profile, options = {}) {
         };
 
     const linkedAccounts = profile.linkedAccounts || {};
+    const externalIds = profile.externalIds || {};
+    const services = profile.services || {};
+    const hasGitLawb = Boolean(linkedAccounts.gitlawb || externalIds.gitlawb || services.gitlawb?.url);
     const hasEnsLike = Boolean(linkedAccounts.ens || linkedAccounts.basename);
     const identityRaw = hasWallet
         ? Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0))
@@ -1575,7 +1600,7 @@ async function computeHumanCred(profile, options = {}) {
         : 0;
     const socialRaw = hasWallet
         ? Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)))
-        : (Object.keys(linkedAccounts).length > 0 ? 40 : 0);  // non‑wallet social score based on linked accounts
+        : (hasGitLawb ? 55 : (Object.keys(linkedAccounts).length > 0 ? 40 : 0));  // non-wallet social score based on linked accounts and GitLawb presence
     const onchainRaw = hasWallet
         ? Math.max(0, Math.min(100, Math.round(Math.log10(Number(txCount || 0) + 1) * 45)))
         : 0;
@@ -1598,7 +1623,7 @@ async function computeHumanCred(profile, options = {}) {
     if (profile.description) completenessChecks++;
     if (Array.isArray(profile.skills) && profile.skills.length) completenessChecks++;
     if (Array.isArray(profile.domains) && profile.domains.length) completenessChecks++;
-    if (Object.keys(linkedAccounts).length) completenessChecks++;
+    if (Object.keys(linkedAccounts).length || hasGitLawb) completenessChecks++;
     const profileRaw = Math.round((completenessChecks / 5) * 100);
 
     const createdAt = profile.createdAt ? Date.parse(profile.createdAt) : Date.now();
@@ -2222,6 +2247,7 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
                 if (s.twitter) attributes.push({ trait_type: 'social-twitter', value: s.twitter });
                 if (s.website) attributes.push({ trait_type: 'social-website', value: s.website });
                 if (s.github) attributes.push({ trait_type: 'social-github', value: s.github });
+                if (s.gitlawb) attributes.push({ trait_type: 'social-gitlawb', value: s.gitlawb });
             }
         } catch {}
         
@@ -3537,6 +3563,7 @@ app.post('/api/v2/agent/:id/human-update', async (req, res) => {
             if (social.twitter) { allSocial[tokenId].twitter = social.twitter; updated.push('social.twitter'); }
             if (social.website) { allSocial[tokenId].website = social.website; updated.push('social.website'); }
             if (social.github) { allSocial[tokenId].github = social.github; updated.push('social.github'); }
+            if (social.gitlawb) { allSocial[tokenId].gitlawb = social.gitlawb; updated.push('social.gitlawb'); }
             fs.writeFileSync(socialPath, JSON.stringify(allSocial, null, 2));
         }
         
@@ -7521,11 +7548,16 @@ app.get('/api/v2/trust-graph', (req, res) => {
             tokenId INTEGER PRIMARY KEY,
             x TEXT,
             github TEXT,
+            gitlawb TEXT,
             website TEXT,
             telegram TEXT,
             email TEXT,
             updatedAt INTEGER
         )`);
+        const columns = sdb.prepare(`PRAGMA table_info(agent_socials)`).all();
+        if (!columns.some(c => c.name === 'gitlawb')) {
+            sdb.exec(`ALTER TABLE agent_socials ADD COLUMN gitlawb TEXT`);
+        }
         sdb.close();
     } catch (e) {
         console.error('[AGENT CARDS] Failed to init agent_socials table:', e.message);
@@ -7596,13 +7628,13 @@ app.put('/api/v2/agent/:id/card/socials', requireSIWA, async (req, res) => {
             return res.status(403).json({ error: 'Not the owner of this agent' });
         }
 
-        const { x, github, website, telegram, email } = req.body;
+        const { x, github, gitlawb, website, telegram, email } = req.body;
         const sdb = getSoulDb();
-        sdb.prepare(`INSERT OR REPLACE INTO agent_socials (tokenId, x, github, website, telegram, email, updatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`).run(tokenId, x || null, github || null, website || null, telegram || null, email || null, Date.now());
+        sdb.prepare(`INSERT OR REPLACE INTO agent_socials (tokenId, x, github, gitlawb, website, telegram, email, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(tokenId, x || null, github || null, gitlawb || null, website || null, telegram || null, email || null, Date.now());
         sdb.close();
 
-        res.json({ success: true, socials: { x, github, website, telegram, email } });
+        res.json({ success: true, socials: { x, github, gitlawb, website, telegram, email } });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
