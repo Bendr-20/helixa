@@ -32,7 +32,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           accentColor: '#6eecd8',
           logo: 'https://helixa.xyz/helixa-logo.jpg',
         },
-        loginMethods: ['email', 'wallet', 'google', 'twitter', 'discord', 'apple'],
+        loginMethods: ['email', 'wallet'],
         embeddedWallets: {
           ethereum: {
             createOnLogin: 'users-without-wallets',

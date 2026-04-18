@@ -4,6 +4,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { BrowserProvider } from 'ethers';
 import { API_URL } from '../lib/constants';
 import { useAgentsByOwner } from '../hooks/useAgents';
+import { HumanAuthButtons } from '../components/HumanAuthButtons';
 
 type RelationshipType = 'owner' | 'operator' | 'creator' | 'contributor';
 type HumanManageStep = 'profile' | 'work' | 'links' | 'review';
@@ -372,7 +373,7 @@ function SummaryRow({ label, value }: { label: string, value: string }) {
 
 export function HumanManage() {
   const [searchParams] = useSearchParams();
-  const { ready, authenticated, login, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0] || null;
   const address = wallet?.address || user?.wallet?.address || '';
@@ -547,7 +548,7 @@ export function HumanManage() {
 
   async function saveProfile() {
     if (!wallet && !authenticated) {
-      await login();
+      setStatus({ type: 'error', msg: 'Choose a sign-in method first, then save once the redirect returns.' });
       return;
     }
 
@@ -695,8 +696,7 @@ export function HumanManage() {
         <div className="mint-container" style={{ maxWidth: '760px' }}>
           <div style={pageCardStyle}>
             <h1 style={{ marginTop: 0, fontSize: '2rem' }}>Manage Human Profile</h1>
-            <p style={{ color: '#a39bb9', lineHeight: 1.6, marginBottom: '1.5rem' }}>Sign in first. Then I can load or repair your full human profile cleanly.</p>
-            <button type="button" className="btn-hero primary" onClick={() => login()}>Sign In</button>
+            <HumanAuthButtons intro="Sign in first, then I can load or repair your full human profile cleanly. Email and wallet work here now. I removed X from this flow because Privy is rejecting Twitter auth for this app." />
           </div>
         </div>
       </div>

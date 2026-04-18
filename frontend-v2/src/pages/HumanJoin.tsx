@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { API_URL } from '../lib/constants';
+import { HumanAuthButtons } from '../components/HumanAuthButtons';
 
 type HumanJoinStep = 'intro' | 'profile' | 'work' | 'links' | 'review';
 type AuthMethod = 'email' | 'wallet' | 'social';
@@ -288,7 +289,7 @@ function SummaryRow({ label, value }: { label: string, value: string }) {
 export function HumanJoin() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { ready, authenticated, login, user, getAccessToken } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
   const [draft, setDraft] = useState<HumanJoinDraft>(readStoredDraft);
@@ -383,8 +384,7 @@ export function HumanJoin() {
     }
 
     if (!authenticated) {
-      await login();
-      setSubmitError('Sign-in opened. Once it completes, click publish again.');
+      setSubmitError('Choose a sign-in method below first, then publish once the redirect returns.');
       return;
     }
 
@@ -945,14 +945,16 @@ export function HumanJoin() {
                 background: authenticated ? 'rgba(180,144,255,0.08)' : 'rgba(255,255,255,0.03)',
                 border: authenticated ? '1px solid rgba(180,144,255,0.16)' : '1px solid rgba(255,255,255,0.08)',
               }}>
-                <div style={{ color: '#f3f0ff', fontWeight: 600, marginBottom: '0.35rem' }}>
+                <div style={{ color: '#f3f0ff', fontWeight: 600, marginBottom: authenticated ? '0.35rem' : '0.75rem' }}>
                   {authenticated ? 'Signed in and ready to publish' : 'Sign in required to publish'}
                 </div>
-                <div style={{ color: '#9a94af', lineHeight: 1.5, fontSize: '0.92rem' }}>
-                  {authenticated
-                    ? (user?.email?.address || walletAddress || 'Your connected identity will be used to create this profile.')
-                    : 'Privy can sign in with email, social, or wallet. Human wallet auth uses SIWE, not agent auth.'}
-                </div>
+                {authenticated ? (
+                  <div style={{ color: '#9a94af', lineHeight: 1.5, fontSize: '0.92rem' }}>
+                    {user?.email?.address || walletAddress || 'Your connected identity will be used to create this profile.'}
+                  </div>
+                ) : (
+                  <HumanAuthButtons intro="Email and wallet login work here now. I removed X from this flow because Privy is rejecting Twitter auth for this app." />
+                )}
               </div>
 
               {submitError && (
@@ -971,8 +973,8 @@ export function HumanJoin() {
                 <button type="button" className="btn-hero secondary" onClick={previousStep}>Back</button>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <button type="button" className="btn-hero secondary" onClick={saveDraftLocally}>Save Draft</button>
-                  <button type="button" className="btn-hero primary" onClick={publishProfile} disabled={isSubmitting || !profileReady} style={{ opacity: isSubmitting || !profileReady ? 0.6 : 1 }}>
-                    {isSubmitting ? 'Publishing...' : authenticated ? 'Publish Human Profile' : 'Sign In to Publish'}
+                  <button type="button" className="btn-hero primary" onClick={publishProfile} disabled={isSubmitting || !profileReady || !authenticated} style={{ opacity: isSubmitting || !profileReady || !authenticated ? 0.6 : 1 }}>
+                    {isSubmitting ? 'Publishing...' : 'Publish Human Profile'}
                   </button>
                 </div>
               </div>
