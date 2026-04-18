@@ -141,7 +141,7 @@ const humanCredRefreshInFlight = new Map();
 
 function withTimeout(promise, ms, fallback = null) {
     return Promise.race([
-        Promise.resolve(promise),
+        Promise.resolve(promise).catch(() => fallback),
         new Promise(resolve => setTimeout(() => resolve(fallback), ms)),
     ]);
 }
@@ -1085,17 +1085,14 @@ function getLocalAuraAgentRow(tokenId) {
     try {
         const Database = require('better-sqlite3');
         const db = new Database(path.join(__dirname, '..', 'data', 'agents.db'), { readonly: true, fileMustExist: true });
-        const row = db.prepare(`
-            SELECT tokenId, name, agentAddress, framework, verified, soulbound, credScore, points, owner, operator
-            FROM agents
-            WHERE tokenId = ?
-        `).get(Number(tokenId));
+        const row = db.prepare(`SELECT * FROM agents WHERE tokenId = ?`).get(Number(tokenId));
         db.close();
         return row || null;
     } catch {
         return null;
     }
 }
+
 
 function isStaleAuraPending(entry) {
     return Boolean(entry?.pending && entry?.pendingStartedAt && (Date.now() - entry.pendingStartedAt > AURA_PENDING_STALE_MS));
@@ -1272,44 +1269,55 @@ async function formatAgentV2(tokenId) {
     if (credRes) credScore = Number(credRes);
     if (nameRes) agentName = nameRes;
 
-    // Fetch Ethos score for owner AND operator (best score wins, per whitepaper)
-    // "Agents can link a human wallet to inherit their human operator's external reputation scores"
+    // Fetch Ethos and Talent scores for owner/operator in parallel.
+    // These are best-effort enrichments and should never be able to stall the full profile response.
     let ethosScore = null;
     const operatorAddr = (() => { try { const Database = require('better-sqlite3'); const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db')); const row = sdb.prepare('SELECT operator FROM agents WHERE tokenId = ?').get(Number(tokenId)); sdb.close(); return row?.operator || null; } catch { return null; } })();
-    const ethosWallets = [owner, operatorAddr].filter(Boolean);
-    for (const wallet of ethosWallets) {
-        try {
-            const ethosResp = await fetch(`https://api.ethos.network/api/v1/score/address:${wallet}`, { signal: AbortSignal.timeout(3000) });
-            if (ethosResp.ok) {
-                const ethosData = await ethosResp.json();
-                if (ethosData.ok && ethosData.data?.score && (!ethosScore || ethosData.data.score > ethosScore)) {
-                    ethosScore = ethosData.data.score;
-                }
-            }
-        } catch {}
-    }
+    const reputationWallets = [...new Set([owner, operatorAddr].filter(Boolean))];
 
-    // Fetch Talent Protocol builder score for owner AND operator (best score wins)
-    let talentScore = null;
-    try {
-        const talentKey = process.env.TALENT_API_KEY || require(require('os').homedir() + '/.config/talent-protocol/config.json').apiKey;
-        if (talentKey) {
-            for (const wallet of ethosWallets) {
-                try {
+    const ethosPromise = Promise.allSettled(
+        reputationWallets.map(async (wallet) => {
+            const ethosResp = await fetch(`https://api.ethos.network/api/v1/score/address:${wallet}`, { signal: AbortSignal.timeout(1200) });
+            if (!ethosResp.ok) return null;
+            const ethosData = await ethosResp.json();
+            return ethosData.ok && ethosData.data?.score ? Number(ethosData.data.score) : null;
+        })
+    ).then(results => {
+        const scores = results
+            .filter(r => r.status === 'fulfilled')
+            .map(r => r.value)
+            .filter(v => Number.isFinite(v));
+        return scores.length ? Math.max(...scores) : null;
+    }).catch(() => null);
+
+    const talentPromise = (async () => {
+        try {
+            const talentKey = process.env.TALENT_API_KEY || require(require('os').homedir() + '/.config/talent-protocol/config.json').apiKey;
+            if (!talentKey || reputationWallets.length === 0) return null;
+            const results = await Promise.allSettled(
+                reputationWallets.map(async (wallet) => {
                     const talentResp = await fetch(`https://api.talentprotocol.com/score?id=${wallet}`, {
                         headers: { 'X-API-KEY': talentKey, 'Accept': 'application/json' },
-                        signal: AbortSignal.timeout(3000)
+                        signal: AbortSignal.timeout(1200),
                     });
-                    if (talentResp.ok) {
-                        const talentData = await talentResp.json();
-                        if (talentData.score?.points && (!talentScore || talentData.score.points > talentScore)) {
-                            talentScore = talentData.score.points;
-                        }
-                    }
-                } catch {}
-            }
+                    if (!talentResp.ok) return null;
+                    const talentData = await talentResp.json();
+                    return talentData.score?.points ? Number(talentData.score.points) : null;
+                })
+            );
+            const scores = results
+                .filter(r => r.status === 'fulfilled')
+                .map(r => r.value)
+                .filter(v => Number.isFinite(v));
+            return scores.length ? Math.max(...scores) : null;
+        } catch {
+            return null;
         }
-    } catch {}
+    })();
+
+    const [resolvedEthosScore, resolvedTalentScore] = await Promise.all([ethosPromise, talentPromise]);
+    ethosScore = resolvedEthosScore;
+    let talentScore = resolvedTalentScore;
 
     // Extract linked token from traits
     const linkedTokenTraits = {};
@@ -1497,9 +1505,141 @@ async function formatAgentV2(tokenId) {
     return result;
 }
 
-async function getAgentForResponse(tokenId, { timeoutMs = 2500 } = {}) {
+async function formatAgentPublicFast(tokenId) {
+    const profile = getProfile(tokenId) || {};
+    const localRow = getLocalAuraAgentRow(tokenId);
+    const socials = getAgentSocials(Number(tokenId));
+
+    if (!isContractDeployed()) {
+        const snapshot = getIndexedAgentSnapshot(tokenId);
+        if (snapshot) return snapshot;
+        throw new Error('V2 contract not yet deployed');
+    }
+
+    const [agent, owner, personalityRes, narrativeRes, traitsRes, ptsRes, credRes, nameRes] = await Promise.all([
+        withTimeout(readContract.getAgent(tokenId), 1800, null),
+        withTimeout(readContract.ownerOf(tokenId), 1800, null),
+        withTimeout(readContract.getPersonality(tokenId), 1800, null),
+        withTimeout(readContract.getNarrative(tokenId), 1800, null),
+        withTimeout(readContract.getTraits(tokenId), 1800, []),
+        withTimeout(readContract.points(tokenId), 1800, null),
+        withTimeout(readContract.getCredScore(tokenId), 1800, null),
+        withTimeout(readContract.nameOf(tokenId), 1800, ''),
+    ]);
+
+    if (!agent && localRow) {
+        const snapshot = getIndexedAgentSnapshot(tokenId);
+        if (snapshot) return snapshot;
+    }
+    if (!agent && !localRow) throw new Error('Agent not found');
+
+    let personality = personalityRes ? {
+        quirks: personalityRes[0],
+        communicationStyle: personalityRes[1],
+        values: personalityRes[2],
+        humor: personalityRes[3],
+        riskTolerance: Number(personalityRes[4]),
+        autonomyLevel: Number(personalityRes[5]),
+    } : null;
+
+    let narrative = narrativeRes ? {
+        origin: narrativeRes.origin,
+        mission: narrativeRes.mission,
+        lore: narrativeRes.lore,
+        manifesto: narrativeRes.manifesto,
+    } : null;
+
+    if (profile.personality) personality = { ...(personality || {}), ...profile.personality };
+    if (profile.narrative) narrative = { ...(narrative || {}), ...profile.narrative };
+
+    const LINKED_TOKEN_KEYS = ['linked-token', 'linked-token-chain', 'linked-token-symbol', 'linked-token-name'];
+    const onchainTraits = Array.isArray(traitsRes)
+        ? traitsRes
+            .filter(t => t && !LINKED_TOKEN_KEYS.includes(t.name))
+            .map(t => ({
+                name: t.name,
+                category: t.category,
+                addedAt: t.addedAt ? new Date(Number(t.addedAt) * 1000).toISOString() : null,
+            }))
+        : [];
+    const traits = [...onchainTraits];
+    const existingNames = new Set(traits.map(t => t.name));
+    if (Array.isArray(profile.traits)) {
+        for (const t of profile.traits) {
+            if (!t?.name || existingNames.has(t.name)) continue;
+            traits.push(t);
+            existingNames.add(t.name);
+        }
+    }
+
+    const linkedToken = {};
+    if (Array.isArray(traitsRes)) {
+        for (const t of traitsRes) {
+            if (!t?.name) continue;
+            if (t.name === 'linked-token') linkedToken.contractAddress = t.category;
+            else if (t.name === 'linked-token-chain') linkedToken.chain = t.category;
+            else if (t.name === 'linked-token-symbol') linkedToken.symbol = t.category;
+            else if (t.name === 'linked-token-name') linkedToken.name = t.category;
+        }
+    }
+
+    const defaultServices = {
+        web: { url: `https://helixa.xyz/agent/${tokenId}` },
+        ...(socials.email ? { email: { address: socials.email } } : {}),
+        ...(socials.telegram ? { telegram: { handle: socials.telegram } } : {}),
+        mcp: { url: 'https://api.helixa.xyz/api/mcp' },
+        a2a: { url: 'https://api.helixa.xyz/api/a2a' },
+    };
+
+    const result = {
+        tokenId: Number(tokenId),
+        agentAddress: agent?.agentAddress || localRow?.agentAddress || localRow?.owner || localRow?.operator || owner || '0x0000',
+        name: nameRes || agent?.name || localRow?.name || `Agent #${tokenId}`,
+        framework: agent?.framework || localRow?.framework || 'custom',
+        mintedAt: agent?.mintedAt ? new Date(Number(agent.mintedAt) * 1000).toISOString() : (localRow?.mintedAt || null),
+        verified: typeof agent?.verified === 'boolean' ? agent.verified : Boolean(localRow?.verified),
+        soulbound: Boolean(agent?.soulbound || localRow?.soulbound || Number(tokenId) === 1),
+        mintOrigin: agent
+            ? (['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || localRow?.mintOrigin || 'UNKNOWN')
+            : (localRow?.mintOrigin || 'UNKNOWN'),
+        generation: Number(agent?.generation ?? localRow?.generation ?? 0),
+        version: Number(agent?.currentVersion ?? localRow?.currentVersion ?? 0),
+        mutationCount: Number(agent?.mutationCount ?? localRow?.mutationCount ?? 0),
+        points: Number(ptsRes ?? localRow?.points ?? 0),
+        credScore: Number(credRes ?? localRow?.credScore ?? 0),
+        ethosScore: null,
+        talentScore: null,
+        owner: owner || localRow?.owner || agent?.agentAddress || localRow?.agentAddress || '0x0000',
+        operator: localRow?.operator || null,
+        agentName: nameRes || localRow?.agentName || null,
+        socials,
+        skills: clampList(profile.skills || [], 24, 64),
+        domains: clampList(profile.domains || [], 24, 64),
+        services: sanitizePrincipalServices(profile.services, defaultServices, { email: socials.email, telegram: socials.telegram }),
+        metadata: sanitizePrincipalMetadata(
+            profile.metadata,
+            {},
+            { entityType: 'agent', principalType: 'agent', framework: agent?.framework || localRow?.framework || 'custom' },
+            { services: defaultServices, fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+        ),
+        linkedToken: linkedToken.contractAddress ? linkedToken : null,
+        personality,
+        narrative,
+        traits,
+        explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
+    };
+
+    try {
+        const { computedScore } = computeCredBreakdown(result);
+        if (computedScore > result.credScore) result.credScore = computedScore;
+    } catch {}
+
+    return result;
+}
+
+async function getAgentForResponse(tokenId, { timeoutMs = 5000 } = {}) {
     const outcome = await Promise.race([
-        formatAgentV2(tokenId)
+        formatAgentPublicFast(tokenId)
             .then(agent => ({ ok: true, agent }))
             .catch(error => ({ ok: false, error })),
         new Promise(resolve => setTimeout(() => resolve({ ok: false, timeout: true }), timeoutMs)),
@@ -2212,7 +2352,7 @@ app.get('/api/v2/agents', async (req, res) => {
 // GET /api/v2/agent/:id
 app.get('/api/v2/agent/:id', async (req, res) => {
     try {
-        const agent = await getAgentForResponse(parseInt(req.params.id), { timeoutMs: 2500 });
+        const agent = await getAgentForResponse(parseInt(req.params.id), { timeoutMs: 5000 });
         res.json(agent);
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
@@ -7650,7 +7790,7 @@ app.get('/api/v2/trust-graph', (req, res) => {
 app.get('/api/v2/agent/:id/card', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await getAgentForResponse(tokenId, { timeoutMs: 2500 });
+        const agent = await getAgentForResponse(tokenId, { timeoutMs: 5000 });
 
         // Soul lock status
         let soulLocked = false, soulVersion = 0;

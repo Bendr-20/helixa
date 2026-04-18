@@ -184,6 +184,17 @@ export function useAgent(tokenId: number | string | undefined) {
       const encodedId = encodeURIComponent(String(tokenId));
       const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
 
+      const detailCandidates = Array.from(new Set([
+        browserOrigin ? `${browserOrigin}/api/v2/agent/${encodedId}` : '',
+        `${API_URL}/api/v2/agent/${encodedId}`,
+      ].filter(Boolean)));
+
+      for (const url of detailCandidates) {
+        try {
+          return normalizeAgent(await fetchJsonWithTimeout(url, 2500));
+        } catch {}
+      }
+
       const listCandidates = Array.from(new Set([
         browserOrigin ? `${browserOrigin}/api/v2/agents?limit=1000&page=1` : '',
         browserOrigin ? `${browserOrigin}/api/v2/agents?limit=1000&page=2` : '',
@@ -193,17 +204,6 @@ export function useAgent(tokenId: number | string | undefined) {
 
       const listMatch = await fetchAgentFromListCandidates(tokenId!, listCandidates);
       if (listMatch) return listMatch;
-
-      const detailCandidates = Array.from(new Set([
-        browserOrigin ? `${browserOrigin}/api/v2/agent/${encodedId}` : '',
-        `${API_URL}/api/v2/agent/${encodedId}`,
-      ].filter(Boolean)));
-
-      for (const url of detailCandidates) {
-        try {
-          return normalizeAgent(await fetchJsonWithTimeout(url, 2000));
-        } catch {}
-      }
 
       throw new Error('Agent not found');
     },
