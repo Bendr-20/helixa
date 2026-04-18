@@ -12,7 +12,7 @@
   - `INTERNAL_API_KEY_PREVIOUS` (optional rollover window)
   - `RECEIPT_HMAC_SECRET`
   - `RECEIPT_HMAC_SECRET_PREVIOUS` (optional receipt verification rollover window)
-  - on this box, `helixa-api.service` reads `/home/ubuntu/.openclaw/workspace/agentdna/.env`
+  - on this box, runtime secrets now live in `/home/ubuntu/.config/helixa/agentdna-api.env`, with `/home/ubuntu/.openclaw/workspace/agentdna/.env` kept as the non-secret repo fallback
 - external trusted callers
   - Bankr/x402 proxy or any service that sends `x-internal-key`
   - current workspace caller paths use `HELIXA_INTERNAL_KEY`:
@@ -62,7 +62,7 @@
   - `GET /api/v2/internal/agent/:id/cred-report`
 - During the overlap window, both old and new internal keys work.
 - After removing `INTERNAL_API_KEY_PREVIOUS`, the old internal key returns `403`.
-- `POST /api/v2/cred-report/verify-receipt` validates receipts signed by both current and rollover secrets during the overlap window.
+- `POST /api/v2/cred-report/verify-receipt` validates receipts signed by both current and rollover secrets during the overlap window, but is internal-only unless `RECEIPT_VERIFY_PUBLIC=true` is explicitly enabled.
 
 ## Rollback
 1. Restore the previous values as primary secrets.
@@ -76,4 +76,4 @@
 - Run `npm run test:internal-auth` from `api/`.
 - Confirm there is no fallback secret logic in `api/v2-server.js`.
 - Treat backup files as archival only, never as deployment source.
-- Keep `.env` gitignored and avoid using the repo copy as the source of truth for production secrets.
+- Keep `.env` gitignored and avoid using the repo copy as the source of truth for production secrets. Use `/home/ubuntu/.config/helixa/agentdna-api.env` for live secret material on this box.

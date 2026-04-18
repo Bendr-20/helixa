@@ -551,7 +551,7 @@ Cred Scores range 0-100 and are computed from 13 weighted components:
 
 ### `POST /api/v2/cred-report/verify-receipt`
 
-Verify a paid Cred Report receipt.
+Verify a paid Cred Report receipt. Internal-only by default. Public verification stays off unless `RECEIPT_VERIFY_PUBLIC=true` is explicitly enabled.
 
 **Body:** `{ "payload": "...", "signature": "..." }`
 **Response:** `{ "valid": true, "report": { ... } }`

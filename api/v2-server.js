@@ -18,6 +18,7 @@ const {
     getSingleHeaderValue,
     verifyHmacSignature,
 } = require('./internal-auth');
+const { getXBearerToken } = require('./services/runtime-secrets');
 
 // ─── Services ───────────────────────────────────────────────────
 const svc = require('./services/contract');
@@ -187,7 +188,7 @@ async function getCachedSocialMetrics(platform, handle, loader) {
 }
 
 async function fetchXSocialMetrics(handle) {
-    const bearer = process.env.X_BEARER_TOKEN || '';
+    const bearer = await getXBearerToken();
     if (!bearer) return null;
 
     const resp = await fetch(
@@ -314,6 +315,7 @@ const INTERNAL_API_KEY = internalAuth.internalApiKey;
 const INTERNAL_API_KEY_PREVIOUS = internalAuth.previousInternalApiKey;
 const RECEIPT_HMAC_SECRET = internalAuth.receiptHmacSecret;
 const RECEIPT_HMAC_SECRET_PREVIOUS = internalAuth.previousReceiptHmacSecret;
+const RECEIPT_VERIFY_PUBLIC = process.env.RECEIPT_VERIFY_PUBLIC === 'true';
 
 function hasValidInternalKey(req) {
     return hasValidInternalKeyFromConfig(req, internalAuth);
@@ -4546,7 +4548,7 @@ app.post('/api/v2/agent/:id/verify/x', requireSIWA, async (req, res) => {
         let found = false;
         try {
             // Primary: X API v2 with bearer token
-            const X_BEARER = process.env.X_BEARER_TOKEN || '';
+            const X_BEARER = await getXBearerToken();
             if (X_BEARER) {
                 const xResp = await fetch(`https://api.x.com/2/users/by/username/${cleanHandle}?user.fields=description`, {
                     headers: { 'Authorization': `Bearer ${X_BEARER}` },
@@ -5474,7 +5476,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
                 payload: receiptPayload,
                 signature: receiptSignature,
                 algorithm: 'HMAC-SHA256',
-                verifyEndpoint: '/api/v2/cred-report/verify-receipt',
+                ...(RECEIPT_VERIFY_PUBLIC ? { verifyEndpoint: '/api/v2/cred-report/verify-receipt' } : {}),
             },
 
             explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
@@ -5529,11 +5531,18 @@ Recommendations: ${recommendations.map(r => r.action).join(', ')}`;
     }
 });
 
-// Receipt verification endpoint (free)
+// Receipt verification endpoint (internal-only by default)
 app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
+    if (!RECEIPT_VERIFY_PUBLIC && !hasValidInternalKey(req)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const { payload, signature } = req.body;
-    if (!payload || !signature) {
+    if (typeof payload !== 'string' || typeof signature !== 'string') {
         return res.status(400).json({ error: 'payload and signature required' });
+    }
+    if (payload.length > 4096 || signature.length > 512) {
+        return res.status(400).json({ error: 'payload or signature too large' });
     }
     const valid = verifyHmacSignature(payload, signature, internalAuth.receiptSecrets);
     let parsed = null;

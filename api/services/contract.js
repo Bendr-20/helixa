@@ -4,16 +4,26 @@
 
 const { ethers } = require('ethers');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-// ─── Environment ────────────────────────────────────────────────
-const envPath = path.join(__dirname, '..', '..', '.env');
-if (fs.existsSync(envPath)) {
-    fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+function loadEnvFile(filePath) {
+    if (!filePath || !fs.existsSync(filePath)) return;
+
+    fs.readFileSync(filePath, 'utf8').split('\n').forEach(line => {
         const [key, ...val] = line.split('=');
-        if (key && val.length) process.env[key.trim()] = val.join('=').trim();
+        const trimmedKey = key?.trim();
+        if (!trimmedKey || !val.length || trimmedKey.startsWith('#')) return;
+        if (process.env[trimmedKey]) return;
+        process.env[trimmedKey] = val.join('=').trim();
     });
 }
+
+// ─── Environment ────────────────────────────────────────────────
+const secureEnvPath = process.env.HELIXA_API_ENV_FILE || path.join(os.homedir(), '.config', 'helixa', 'agentdna-api.env');
+const envPath = path.join(__dirname, '..', '..', '.env');
+loadEnvFile(secureEnvPath);
+loadEnvFile(envPath);
 
 const RPC_URL = process.env.RPC_URL || 'https://mainnet.base.org';
 const READ_RPC_URL = process.env.READ_RPC_URL || 'https://mainnet.base.org';

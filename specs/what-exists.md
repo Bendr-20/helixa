@@ -60,7 +60,7 @@
 | POST | `/api/v2/messages/groups/:id/send` | Send message (cred-gated) |
 | POST | `/api/v2/messages/groups/:id/join` | Join group |
 | POST | `/api/v2/messages/groups` | Create group |
-| POST | `/api/v2/cred-report/verify-receipt` | Verify payment receipt |
+| POST | `/api/v2/cred-report/verify-receipt` | Verify payment receipt (internal-only by default) |
 
 ## Pricing Config (v2-server.js line 400)
 ```
