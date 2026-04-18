@@ -11,6 +11,13 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const indexer = require('./indexer');
+const {
+    createInternalAuthConfig,
+    hasValidInternalKey: hasValidInternalKeyFromConfig,
+    createHmacSignature,
+    getSingleHeaderValue,
+    verifyHmacSignature,
+} = require('./internal-auth');
 
 // ─── Services ───────────────────────────────────────────────────
 const svc = require('./services/contract');
@@ -302,28 +309,14 @@ const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402Resour
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
 
-function getRequiredSecret(name, { minLength = 1 } = {}) {
-    const value = typeof process.env[name] === 'string' ? process.env[name].trim() : '';
-    if (!value) {
-        throw new Error(`[config] Missing required environment variable: ${name}`);
-    }
-    if (value.length < minLength) {
-        throw new Error(`[config] Environment variable ${name} must be at least ${minLength} characters`);
-    }
-    return value;
-}
-
-function getSingleHeaderValue(value) {
-    if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
-    return typeof value === 'string' ? value : '';
-}
-
-const INTERNAL_API_KEY = getRequiredSecret('INTERNAL_API_KEY', { minLength: 32 });
-const RECEIPT_HMAC_SECRET = getRequiredSecret('RECEIPT_HMAC_SECRET', { minLength: 32 });
+const internalAuth = createInternalAuthConfig(process.env);
+const INTERNAL_API_KEY = internalAuth.internalApiKey;
+const INTERNAL_API_KEY_PREVIOUS = internalAuth.previousInternalApiKey;
+const RECEIPT_HMAC_SECRET = internalAuth.receiptHmacSecret;
+const RECEIPT_HMAC_SECRET_PREVIOUS = internalAuth.previousReceiptHmacSecret;
 
 function hasValidInternalKey(req) {
-    const internalKey = getSingleHeaderValue(req.headers['x-internal-key']);
-    return !!internalKey && internalKey === INTERNAL_API_KEY;
+    return hasValidInternalKeyFromConfig(req, internalAuth);
 }
 
 const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
@@ -5385,8 +5378,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             paidAmount: `$${PRICING.credReport} USDC`,
             network: 'eip155:8453',
         });
-        const receiptSignature = crypto.createHmac('sha256', RECEIPT_HMAC_SECRET)
-            .update(receiptPayload).digest('hex');
+        const receiptSignature = createHmacSignature(receiptPayload, RECEIPT_HMAC_SECRET);
 
         // Ethos score
         let ethosScore = agent.ethosScore || null;
@@ -5543,9 +5535,7 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
     if (!payload || !signature) {
         return res.status(400).json({ error: 'payload and signature required' });
     }
-    const expected = crypto.createHmac('sha256', RECEIPT_HMAC_SECRET)
-        .update(payload).digest('hex');
-    const valid = expected === signature;
+    const valid = verifyHmacSignature(payload, signature, internalAuth.receiptSecrets);
     let parsed = null;
     try { parsed = JSON.parse(payload); } catch {}
     res.json({ valid, report: parsed });

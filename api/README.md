@@ -21,12 +21,15 @@ Server runs on `http://localhost:3402`.
 | `PAYWALL_ADDRESS` | *(none)* | Your wallet for USDC payments. If unset, paywall is disabled. |
 | `FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
 | `INTERNAL_API_KEY` | *(required)* | Shared secret for internal Bankr/x402 proxy routes. Use 32+ characters. |
+| `INTERNAL_API_KEY_PREVIOUS` | *(optional)* | Previous internal key kept temporarily during rollover so callers can migrate cleanly. |
 | `RECEIPT_HMAC_SECRET` | *(required)* | HMAC secret for cred-report receipt signing and verification. Use 32+ characters. |
+| `RECEIPT_HMAC_SECRET_PREVIOUS` | *(optional)* | Previous receipt HMAC secret kept temporarily so older receipts still verify during rollover. |
 
 ### Internal auth audit
 
 ```bash
 npm run audit:internal-auth
+npm run test:internal-auth
 ```
 
 For the operational rotation checklist, see [`./INTERNAL_AUTH_ROTATION.md`](./INTERNAL_AUTH_ROTATION.md).
