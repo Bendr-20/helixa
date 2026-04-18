@@ -73,7 +73,7 @@ Returns the metadata URI for a token.
 ### Mint Pricing
 
 - **Human mint (direct contract):** 0.0025 ETH (~$5)
-- **Agent mint (via API):** $1 USDC via x402
+- **Agent mint (via API):** $5 USDC via x402
 
 ---
 

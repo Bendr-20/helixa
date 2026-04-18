@@ -14,6 +14,12 @@
  */
 
 const { ethers } = require('ethers');
+const { createWalletClient, http } = require('viem');
+const { privateKeyToAccount } = require('viem/accounts');
+const { base } = require('viem/chains');
+const { wrapFetchWithPayment, x402Client } = require('@x402/fetch');
+const { ExactEvmScheme } = require('@x402/evm/exact/client');
+const { toClientEvmSigner } = require('@x402/evm');
 
 async function generateSIWA(privateKey) {
   const wallet = new ethers.Wallet(privateKey);
@@ -31,16 +37,31 @@ async function main() {
     process.exit(1);
   }
 
+  const normalizedPrivateKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+
   const name = process.argv[2] || 'MyAgent';
   const framework = process.argv[3] || 'openclaw';
+  const apiBaseUrl = process.env.HELIXA_API_URL || 'https://api.helixa.xyz';
 
-  const authHeader = await generateSIWA(privateKey);
+  const authHeader = await generateSIWA(normalizedPrivateKey);
 
-  // For x402 payment support, use wrapFetchWithPayment from @x402/fetch
-  // See SKILL.md for full x402 setup
+  const account = privateKeyToAccount(normalizedPrivateKey);
+  const walletClient = createWalletClient({
+    account,
+    chain: base,
+    transport: http('https://mainnet.base.org'),
+  });
+  const signer = toClientEvmSigner(walletClient);
+  signer.address = walletClient.account.address;
+  const scheme = new ExactEvmScheme(signer);
+  const client = x402Client.fromConfig({
+    schemes: [{ client: scheme, network: 'eip155:8453' }],
+  });
+  const paidFetch = wrapFetchWithPayment(globalThis.fetch, client);
+
   let res;
   try {
-    res = await fetch('https://api.helixa.xyz/api/v2/mint', {
+    res = await paidFetch(`${apiBaseUrl}/api/v2/mint`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -49,14 +70,15 @@ async function main() {
       body: JSON.stringify({ name, framework }),
     });
   } catch (err) {
-    console.error('Network error during mint request:', err.message);
-    console.error('If using x402, check your wallet balance to verify whether payment was sent before retrying.');
+    console.error('Mint request failed:', err.message);
+    console.error('Check whether the x402 payment already settled before retrying.');
     process.exit(1);
   }
 
   if (res.status === 402) {
-    console.log('Payment required — integrate @x402/fetch for automatic payment handling.');
-    console.log('See SKILL.md for x402 setup instructions.');
+    const body = await res.text().catch(() => '');
+    console.error('Mint still returned HTTP 402 after x402 payment handling.');
+    if (body) console.error(body);
     process.exit(1);
   }
 

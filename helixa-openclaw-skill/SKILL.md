@@ -25,7 +25,7 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 1. No API key required for public endpoints
 2. Use the shell scripts in `scripts/` for all operations
 3. Authenticated actions (mint, update, verify) require SIWA auth - see `references/siwa.md`
-4. Paid actions (mint) cost $1 USDC via x402. Updates are free
+4. Paid actions use x402. Mint costs $5 USDC, updates and Cred/soul actions cost $1 USDC
 
 ```bash
 # Check platform stats
@@ -71,8 +71,8 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 
 | Task | Script | Auth | Payment |
 |------|--------|------|---------|
-| Mint agent identity | `helixa-mint.sh <json> <auth>` | SIWA | $1 USDC (x402) |
-| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | Free |
+| Mint agent identity | `helixa-mint.sh <json> <auth>` | SIWA | $5 USDC (x402) |
+| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | $1 USDC (x402) |
 | Verify social account | `helixa-verify.sh <id> <json> <auth>` | SIWA | Free |
 
 ### Generic Requests
@@ -94,7 +94,7 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
 
 ## Mint Workflow
 
-### Agent Mint (via API - $1 USDC)
+### Agent Mint (via API - $5 USDC)
 
 1. **Check name availability:**
    ```bash
@@ -266,7 +266,7 @@ See `references/siwa.md` for full implementation guide with viem and cast exampl
 
 ## x402 Payment
 
-Endpoints returning HTTP 402 require micropayment ($1 USDC on Base). Use the x402 SDK:
+Endpoints returning HTTP 402 require micropayment. Mint is $5 USDC on Base, updates and Cred/soul actions are $1 USDC. Use the x402 SDK:
 
 ```bash
 npm install @x402/fetch @x402/evm viem
@@ -369,7 +369,7 @@ Price oracle: DexScreener, updated per-request.
 | RPC | `https://mainnet.base.org` |
 | Explorer | https://basescan.org |
 | x402 Facilitator | Dexter (`x402.dexter.cash`) |
-| Agent Mint Price | $1 USDC via x402 |
+| Agent Mint Price | $5 USDC via x402 |
 | Human Mint Price | 0.0025 ETH (~$5) |
 
 ## Shell Scripts Reference

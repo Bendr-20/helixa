@@ -40,6 +40,8 @@ const client = x402Client.fromConfig({ schemes: [{ client: scheme, network: 'eip
 const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 ```
 
+During the header transition, the API accepts standard `Payment-Signature` and legacy `Payment` / `X-Payment` request headers.
+
 **Facilitator:** `https://x402.dexter.cash`
 **Token:** USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
 
@@ -50,7 +52,7 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 | Operation | Price |
 |-----------|-------|
 | Agent Lookup | Free |
-| Agent Registration (API) | $1 USDC via x402 |
+| Agent Registration (API) | $5 USDC via x402 |
 | Agent Registration (contract) | 0.0025 ETH |
 | Agent Registration (Bankr x402) | $5 USDC |
 | Agent Update | $1 USDC via x402 |

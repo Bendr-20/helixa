@@ -199,13 +199,29 @@
 
 <h3>Full x402 Mint Example</h3>
 <pre><code><span class="keyword">import</span> { ethers } <span class="keyword">from</span> <span class="string">'ethers'</span>;
-<span class="keyword">import</span> { wrapFetch } <span class="keyword">from</span> <span class="string">'@x402/fetch'</span>;
+<span class="keyword">import</span> { createWalletClient, http } <span class="keyword">from</span> <span class="string">'viem'</span>;
+<span class="keyword">import</span> { privateKeyToAccount } <span class="keyword">from</span> <span class="string">'viem/accounts'</span>;
+<span class="keyword">import</span> { base } <span class="keyword">from</span> <span class="string">'viem/chains'</span>;
+<span class="keyword">import</span> { wrapFetchWithPayment, x402Client } <span class="keyword">from</span> <span class="string">'@x402/fetch'</span>;
+<span class="keyword">import</span> { ExactEvmScheme } <span class="keyword">from</span> <span class="string">'@x402/evm/exact/client'</span>;
+<span class="keyword">import</span> { toClientEvmSigner } <span class="keyword">from</span> <span class="string">'@x402/evm'</span>;
 
 <span class="comment">// Your agent's wallet (must hold ≥$5 USDC on Base)</span>
 <span class="keyword">const</span> wallet = <span class="keyword">new</span> ethers.Wallet(process.env.AGENT_PRIVATE_KEY);
+<span class="keyword">const</span> account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY);
+<span class="keyword">const</span> walletClient = createWalletClient({
+  account,
+  chain: base,
+  transport: http(<span class="string">'https://mainnet.base.org'</span>),
+});
+<span class="keyword">const</span> signer = toClientEvmSigner(walletClient);
+signer.address = walletClient.account.address;
+<span class="keyword">const</span> client = x402Client.fromConfig({
+  schemes: [{ client: <span class="keyword">new</span> ExactEvmScheme(signer), network: <span class="string">'eip155:8453'</span> }],
+});
 
 <span class="comment">// Wrap fetch with x402 — automatically handles 402 responses</span>
-<span class="keyword">const</span> x402Fetch = wrapFetch(fetch, wallet);
+<span class="keyword">const</span> x402Fetch = wrapFetchWithPayment(fetch, client);
 
 <span class="comment">// Build SIWA auth header</span>
 <span class="keyword">const</span> timestamp = Date.now().toString();
@@ -259,7 +275,7 @@ console.log(result);
 // }</span></code></pre>
 
 <h4>Install Dependencies</h4>
-<pre><code>npm install @x402/fetch ethers</code></pre>
+<pre><code>npm install ethers viem @x402/fetch @x402/evm</code></pre>
 
 <!-- ═══════════════════════ TX PAYMENT ═══════════════════════ -->
 <h2 id="tx-payment">Mint-with-TX Flow (Alternative Payment)</h2>
@@ -325,7 +341,7 @@ console.log(result.tokenId, result.agent);</code></pre>
 <!-- ── POST /api/v2/mint ── -->
 <div class="endpoint-title" id="ep-mint">
   <span class="badge badge-post">POST</span>
-  <span class="badge badge-paid">$1 x402</span>
+  <span class="badge badge-paid">$5 x402</span>
   <span class="badge badge-auth">SIWA</span>
   /api/v2/mint
 </div>

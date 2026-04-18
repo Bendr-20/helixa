@@ -2,7 +2,7 @@
 
 Base URL: `https://api.helixa.xyz`
 
-All responses are JSON. No API key required for public endpoints. Authenticated endpoints use SIWA (see `siwa.md`). Paid endpoints use x402 micropayments ($1 USDC).
+All responses are JSON. No API key required for public endpoints. Authenticated endpoints use SIWA (see `siwa.md`). Paid endpoints use x402 micropayments. Mint is $5 USDC, updates and Cred/soul actions are $1 USDC. During the header transition, the API accepts `Payment-Signature` plus legacy `Payment` and `X-Payment` request headers.
 
 ---
 
@@ -133,7 +133,7 @@ Check name availability for minting.
 
 ### GET /api/v2/agent/:id/cred-report
 
-**Paid: $1 USDC via x402**
+**Paid: $5 USDC via x402**
 
 Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and signed receipt.
 
@@ -143,7 +143,7 @@ Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and 
 
 ### POST /api/v2/mint
 
-Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($1 USDC).
+Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($5 USDC).
 
 **Headers:**
 - `Authorization: Bearer {address}:{timestamp}:{signature}`

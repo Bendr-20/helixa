@@ -302,6 +302,30 @@ const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402Resour
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
 
+function getRequiredSecret(name, { minLength = 1 } = {}) {
+    const value = typeof process.env[name] === 'string' ? process.env[name].trim() : '';
+    if (!value) {
+        throw new Error(`[config] Missing required environment variable: ${name}`);
+    }
+    if (value.length < minLength) {
+        throw new Error(`[config] Environment variable ${name} must be at least ${minLength} characters`);
+    }
+    return value;
+}
+
+function getSingleHeaderValue(value) {
+    if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
+    return typeof value === 'string' ? value : '';
+}
+
+const INTERNAL_API_KEY = getRequiredSecret('INTERNAL_API_KEY', { minLength: 32 });
+const RECEIPT_HMAC_SECRET = getRequiredSecret('RECEIPT_HMAC_SECRET', { minLength: 32 });
+
+function hasValidInternalKey(req) {
+    const internalKey = getSingleHeaderValue(req.headers['x-internal-key']);
+    return !!internalKey && internalKey === INTERNAL_API_KEY;
+}
+
 const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
@@ -549,10 +573,20 @@ function paymentGate(priceUSD, recipient) {
 
 // Mount: Internal key bypass → TX hash bypass → x402 SDK
 if (Object.keys(x402Routes).length > 0) {
+    // Header normalization during x402 client transition.
+    // Accept legacy Payment / X-Payment request headers and map them to PAYMENT-SIGNATURE.
+    app.use((req, res, next) => {
+        const paymentSignature = getSingleHeaderValue(req.headers['payment-signature']);
+        const paymentAlias = getSingleHeaderValue(req.headers['payment']) || getSingleHeaderValue(req.headers['x-payment']);
+        if (!paymentSignature && paymentAlias) {
+            req.headers['payment-signature'] = paymentAlias;
+        }
+        return next();
+    });
+
     // Internal API key bypass (for Bankr x402 Cloud proxy)
     app.use((req, res, next) => {
-        const internalKey = req.headers['x-internal-key'];
-        if (internalKey && internalKey === (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+        if (hasValidInternalKey(req)) {
             req.paymentVerified = { method: 'internal-key' };
         }
         return next();
@@ -5247,8 +5281,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
 
 // INTERNAL: Full Cred Report (for Bankr x402 Cloud proxy - bypasses x402 gate)
 app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
-    const internalKey = req.headers['x-internal-key'];
-    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+    if (!hasValidInternalKey(req)) {
         return res.status(403).json({ error: 'Forbidden' });
     }
     req.paymentVerified = { method: 'internal-key' };
@@ -5352,8 +5385,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             paidAmount: `$${PRICING.credReport} USDC`,
             network: 'eip155:8453',
         });
-        const hmacSecret = process.env.RECEIPT_HMAC_SECRET || (DEPLOYER_KEY ? DEPLOYER_KEY.slice(0, 32) : 'helixa-default-hmac-key-fallback');
-        const receiptSignature = crypto.createHmac('sha256', hmacSecret)
+        const receiptSignature = crypto.createHmac('sha256', RECEIPT_HMAC_SECRET)
             .update(receiptPayload).digest('hex');
 
         // Ethos score
@@ -5511,8 +5543,7 @@ app.post('/api/v2/cred-report/verify-receipt', (req, res) => {
     if (!payload || !signature) {
         return res.status(400).json({ error: 'payload and signature required' });
     }
-    const hmacSecret2 = process.env.RECEIPT_HMAC_SECRET || (DEPLOYER_KEY ? DEPLOYER_KEY.slice(0, 32) : 'helixa-default-hmac-key-fallback');
-    const expected = crypto.createHmac('sha256', hmacSecret2)
+    const expected = crypto.createHmac('sha256', RECEIPT_HMAC_SECRET)
         .update(payload).digest('hex');
     const valid = expected === signature;
     let parsed = null;
@@ -5531,8 +5562,7 @@ const MINTGATE_ADDRESS = process.env.MINTGATE_ADDRESS || '0xb0E21642FEDb808BF49E
 
 // Generate a mint signature (internal endpoint, called by Bankr x402 handler)
 app.post('/api/v2/internal/mint-signature', async (req, res) => {
-    const internalKey = req.headers['x-internal-key'];
-    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+    if (!hasValidInternalKey(req)) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -5582,8 +5612,7 @@ app.post('/api/v2/internal/mint-signature', async (req, res) => {
 // POST /api/v2/internal/mint — Direct mint via mintFree() for x402/Bankr payments
 // No SIWA needed — payment already verified by x402 layer
 app.post('/api/v2/internal/mint', async (req, res) => {
-    const internalKey = req.headers['x-internal-key'];
-    if (!internalKey || internalKey !== (process.env.INTERNAL_API_KEY || '095eae17f5b386cf3037d936ade389a5bff382a8c2cf7a5b7fed240fa6602837')) {
+    if (!hasValidInternalKey(req)) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
