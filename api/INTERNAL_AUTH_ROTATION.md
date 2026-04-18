@@ -10,8 +10,15 @@
 - deployment env
   - `INTERNAL_API_KEY`
   - `RECEIPT_HMAC_SECRET`
+  - on this box, `helixa-api.service` reads `/home/ubuntu/.openclaw/workspace/agentdna/.env`
 - external trusted callers
   - Bankr/x402 proxy or any service that sends `x-internal-key`
+  - current workspace caller paths use `HELIXA_INTERNAL_KEY`:
+    - `/home/ubuntu/.openclaw/workspace/x402/mint/index.ts`
+    - `/home/ubuntu/.openclaw/workspace/x402/cred-report/index.ts`
+    - `/home/ubuntu/.openclaw/workspace/x402/agent-update/index.ts`
+    - `/home/ubuntu/.openclaw/workspace/x402/soul-lock/index.ts`
+    - `/home/ubuntu/.openclaw/workspace/x402/soul-share/index.ts`
 - docs
   - `docs/api-reference.md`
 
