@@ -107,6 +107,34 @@ function normalizeAgent(raw: any): AgentData {
   };
 }
 
+async function fetchJsonWithTimeout(url: string, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!contentType.includes('application/json')) throw new Error('Non-JSON response');
+    return await res.json();
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function fetchAgentFromListCandidates(tokenId: number | string, candidates: string[]) {
+  const results = await Promise.allSettled(
+    candidates.map(url => fetchJsonWithTimeout(url, 2000))
+  );
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue;
+    const match = (result.value?.agents || []).find((agent: any) => String(agent.tokenId ?? agent.id) === String(tokenId));
+    if (match) return normalizeAgent(match);
+  }
+
+  return null;
+}
+
 // Fetch ALL agents from V2 API (paginates automatically, no agent left behind)
 function useAgentsFromAPI() {
   return useQuery({
@@ -153,12 +181,35 @@ export function useAgent(tokenId: number | string | undefined) {
   return useQuery({
     queryKey: ['v2-agent', tokenId],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v2/agent/${tokenId}`);
-      if (!res.ok) throw new Error('Agent not found');
-      return normalizeAgent(await res.json());
+      const encodedId = encodeURIComponent(String(tokenId));
+      const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+      const listCandidates = Array.from(new Set([
+        browserOrigin ? `${browserOrigin}/api/v2/agents?limit=1000&page=1` : '',
+        browserOrigin ? `${browserOrigin}/api/v2/agents?limit=1000&page=2` : '',
+        `${API_URL}/api/v2/agents?limit=1000&page=1`,
+        `${API_URL}/api/v2/agents?limit=1000&page=2`,
+      ].filter(Boolean)));
+
+      const listMatch = await fetchAgentFromListCandidates(tokenId!, listCandidates);
+      if (listMatch) return listMatch;
+
+      const detailCandidates = Array.from(new Set([
+        browserOrigin ? `${browserOrigin}/api/v2/agent/${encodedId}` : '',
+        `${API_URL}/api/v2/agent/${encodedId}`,
+      ].filter(Boolean)));
+
+      for (const url of detailCandidates) {
+        try {
+          return normalizeAgent(await fetchJsonWithTimeout(url, 2000));
+        } catch {}
+      }
+
+      throw new Error('Agent not found');
     },
     enabled: tokenId !== undefined,
     staleTime: 15_000,
+    retry: false,
   });
 }
 

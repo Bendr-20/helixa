@@ -26,7 +26,9 @@ async function fetchWorkStats(address) {
     }
 
     try {
-        const resp = await fetch(`${WORK_STATS_API}/${address}/work-stats?window=all`);
+        const resp = await fetch(`${WORK_STATS_API}/${address}/work-stats?window=all`, {
+            signal: AbortSignal.timeout(1500),
+        });
         if (!resp.ok) return null;
         const data = await resp.json();
         

@@ -1188,6 +1188,65 @@ async function formatAgentAuraSource(tokenId) {
     };
 }
 
+function getIndexedAgentSnapshot(tokenId) {
+    try {
+        const Database = require('better-sqlite3');
+        const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'), { readonly: true });
+        const row = sdb.prepare('SELECT * FROM agents WHERE tokenId = ?').get(Number(tokenId));
+        sdb.close();
+        if (!row) return null;
+
+        const profile = getProfile(Number(tokenId)) || {};
+        const socials = getAgentSocials(Number(tokenId));
+        const defaultServices = {
+            web: { url: `https://helixa.xyz/agent/${tokenId}` },
+            ...(socials.email ? { email: { address: socials.email } } : {}),
+            ...(socials.telegram ? { telegram: { handle: socials.telegram } } : {}),
+            mcp: { url: 'https://api.helixa.xyz/api/mcp' },
+            a2a: { url: 'https://api.helixa.xyz/api/a2a' },
+        };
+
+        return {
+            tokenId: Number(row.tokenId),
+            agentAddress: row.agentAddress,
+            name: row.name,
+            framework: row.framework,
+            mintedAt: row.mintedAt,
+            verified: !!row.verified,
+            soulbound: !!row.soulbound,
+            mintOrigin: row.mintOrigin || 'UNKNOWN',
+            generation: Number(row.generation || 0),
+            version: Number(row.currentVersion || 0),
+            mutationCount: Number(row.mutationCount || 0),
+            points: Number(row.points || 0),
+            credScore: Number(row.credScore || 0),
+            ethosScore: null,
+            talentScore: null,
+            owner: row.owner || row.agentAddress,
+            operator: row.operator || null,
+            agentName: row.agentName || null,
+            socials,
+            skills: clampList(profile.skills || [], 24, 64),
+            domains: clampList(profile.domains || [], 24, 64),
+            services: sanitizePrincipalServices(profile.services, defaultServices, { email: socials.email, telegram: socials.telegram }),
+            metadata: sanitizePrincipalMetadata(
+                profile.metadata,
+                {},
+                { entityType: 'agent', principalType: 'agent', framework: row.framework },
+                { services: defaultServices, fallbackChannels: ['email', 'telegram', 'web', 'mcp', 'a2a'] },
+            ),
+            linkedToken: null,
+            personality: profile.personality || null,
+            narrative: profile.narrative || null,
+            traits: Array.isArray(profile.traits) ? profile.traits : [],
+            explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
+            _snapshot: true,
+        };
+    } catch {
+        return null;
+    }
+}
+
 async function formatAgentV2(tokenId) {
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
     
@@ -1384,7 +1443,10 @@ async function formatAgentV2(tokenId) {
     // Fetch 0xWork stats (non-blocking, best-effort)
     try {
         const { fetchWorkStats } = require('./services/work-stats');
-        const workStats = await fetchWorkStats(result.agentAddress);
+        const workStats = await Promise.race([
+            fetchWorkStats(result.agentAddress),
+            new Promise(resolve => setTimeout(() => resolve(null), 1800)),
+        ]);
         if (workStats) result._workStats = workStats;
     } catch {}
 
@@ -1395,7 +1457,9 @@ async function formatAgentV2(tokenId) {
             // Check DexScreener for market cap
             const tokenAddr = linkedToken.category || linkedToken.value;
             if (tokenAddr) {
-                const dxRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddr}`);
+                const dxRes = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${tokenAddr}`, {
+                    signal: AbortSignal.timeout(1500),
+                });
                 if (dxRes.ok) {
                     const dxData = await dxRes.json();
                     const pair = dxData.pairs?.[0];
@@ -1408,7 +1472,8 @@ async function formatAgentV2(tokenId) {
             const bankrKey = process.env.BANKR_LLM_KEY || process.env.BANKR_API_KEY;
             if (bankrKey) {
                 const bRes = await fetch('https://api.bankr.bot/agent/profile', {
-                    headers: { 'X-API-Key': bankrKey }
+                    headers: { 'X-API-Key': bankrKey },
+                    signal: AbortSignal.timeout(1500),
                 });
                 if (bRes.ok) {
                     const profile = await bRes.json();
@@ -1430,6 +1495,23 @@ async function formatAgentV2(tokenId) {
     } catch {}
 
     return result;
+}
+
+async function getAgentForResponse(tokenId, { timeoutMs = 2500 } = {}) {
+    const outcome = await Promise.race([
+        formatAgentV2(tokenId)
+            .then(agent => ({ ok: true, agent }))
+            .catch(error => ({ ok: false, error })),
+        new Promise(resolve => setTimeout(() => resolve({ ok: false, timeout: true }), timeoutMs)),
+    ]);
+
+    if (outcome?.ok && outcome.agent) return outcome.agent;
+
+    const snapshot = getIndexedAgentSnapshot(tokenId);
+    if (snapshot) return snapshot;
+
+    if (outcome?.error) throw outcome.error;
+    throw new Error('Agent lookup timed out');
 }
 
 async function fetchCoinbaseAttestationStatus(walletAddress) {
@@ -2130,7 +2212,7 @@ app.get('/api/v2/agents', async (req, res) => {
 // GET /api/v2/agent/:id
 app.get('/api/v2/agent/:id', async (req, res) => {
     try {
-        const agent = await formatAgentV2(parseInt(req.params.id));
+        const agent = await getAgentForResponse(parseInt(req.params.id), { timeoutMs: 2500 });
         res.json(agent);
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
@@ -7568,7 +7650,7 @@ app.get('/api/v2/trust-graph', (req, res) => {
 app.get('/api/v2/agent/:id/card', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentV2(tokenId);
+        const agent = await getAgentForResponse(tokenId, { timeoutMs: 2500 });
 
         // Soul lock status
         let soulLocked = false, soulVersion = 0;
