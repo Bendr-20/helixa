@@ -20,6 +20,16 @@ Server runs on `http://localhost:3402`.
 | `CONTRACT_ADDRESS` | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | HelixaV2 contract |
 | `PAYWALL_ADDRESS` | *(none)* | Your wallet for USDC payments. If unset, paywall is disabled. |
 | `FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
+| `INTERNAL_API_KEY` | *(required)* | Shared secret for internal Bankr/x402 proxy routes. Use 32+ characters. |
+| `RECEIPT_HMAC_SECRET` | *(required)* | HMAC secret for cred-report receipt signing and verification. Use 32+ characters. |
+
+### Internal auth audit
+
+```bash
+npm run audit:internal-auth
+```
+
+For the operational rotation checklist, see [`./INTERNAL_AUTH_ROTATION.md`](./INTERNAL_AUTH_ROTATION.md).
 
 ## Endpoints
 
