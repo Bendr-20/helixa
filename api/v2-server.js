@@ -367,8 +367,23 @@ if (PRICING.agentMint > 0) {
 const USDC_DECIMALS = 6;
 const CRED_TOKEN_ADDRESS = credOracle.CRED_ADDRESS;
 const CRED_TOKEN_DECIMALS = credOracle.CRED_DECIMALS;
-const usedPaymentTxs = new Set(); // prevent replay
 const mintInFlightAddresses = new Set();
+
+function normalizePaymentTx(txHash) {
+    return typeof txHash === 'string' ? txHash.toLowerCase() : '';
+}
+
+function hasUsedPaymentTx(txHash) {
+    const normalized = normalizePaymentTx(txHash);
+    return !!normalized && usedPayments.has(normalized);
+}
+
+function markPaymentTxUsed(txHash) {
+    const normalized = normalizePaymentTx(txHash);
+    if (!normalized) return;
+    usedPayments.add(normalized);
+    saveUsedPayments();
+}
 
 function getValidatedSIWAAddress(req) {
     const parsed = parseSIWA(req.headers.authorization);
@@ -495,13 +510,13 @@ function txHashPaymentMiddleware(routePatterns) {
         const priceUSD = parseFloat(priceStr.replace('$', ''));
         const recipient = matched.accepts?.[0]?.payTo || DEPLOYER_ADDRESS;
 
-        if (usedPaymentTxs.has(txHash.toLowerCase())) {
+        if (hasUsedPaymentTx(txHash)) {
             return res.status(400).json({ error: 'Payment TX already used' });
         }
 
         try {
             const result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
-            usedPaymentTxs.add(txHash.toLowerCase());
+            markPaymentTxUsed(txHash);
             req.paymentVerified = { method: 'tx-hash', txHash, ...result };
             console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
             return next(); // paymentVerified flag set — x402 wrapper will skip
@@ -525,7 +540,7 @@ function paymentGate(priceUSD, recipient) {
                        req.headers['x-payment-tx'];
         
         if (txHash && typeof txHash === 'string') {
-            if (usedPaymentTxs.has(txHash.toLowerCase())) {
+            if (hasUsedPaymentTx(txHash)) {
                 return res.status(400).json({ error: 'Payment TX already used' });
             }
             
@@ -542,7 +557,7 @@ function paymentGate(priceUSD, recipient) {
                     result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
                     console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
                 }
-                usedPaymentTxs.add(txHash.toLowerCase());
+                markPaymentTxUsed(txHash);
                 req.paymentVerified = { method: isCredPayment ? 'cred-tx' : 'tx-hash', txHash, ...result };
                 return next();
             } catch (e) {
@@ -628,7 +643,7 @@ if (Object.keys(x402Routes).length > 0) {
         const priceUSD = parseFloat(priceStr.replace('$', ''));
         const recipient = matched.accepts?.[0]?.payTo || DEPLOYER_ADDRESS;
         
-        if (usedPaymentTxs.has(txHash.toLowerCase())) {
+        if (hasUsedPaymentTx(txHash)) {
             return res.status(400).json({ error: 'Payment TX already used' });
         }
         
@@ -644,7 +659,7 @@ if (Object.keys(x402Routes).length > 0) {
                 result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
                 console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
             }
-            usedPaymentTxs.add(txHash.toLowerCase());
+            markPaymentTxUsed(txHash);
             req.paymentVerified = { method: isCredPayment ? 'cred-tx' : 'tx-hash', txHash, ...result };
             return next();
         } catch (e) {
@@ -714,12 +729,12 @@ async function verifyPaymentFromRequest(req, priceUSD, recipient) {
                    req.headers['x-payment-tx'];
     if (!txHash || typeof txHash !== 'string') return null;
     
-    if (usedPaymentTxs.has(txHash.toLowerCase())) {
+    if (hasUsedPaymentTx(txHash)) {
         throw new Error('Payment TX already used');
     }
-    
+
     const result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
-    usedPaymentTxs.add(txHash.toLowerCase());
+    markPaymentTxUsed(txHash);
     console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
     return { method: 'tx-hash', txHash, ...result };
 }
@@ -3011,12 +3026,12 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
         const hasMinted = await readContract.hasMinted(req.agent.address);
         if (hasMinted) return res.status(409).json({ error: 'This address already has an agent' });
     } catch {}
-    if (usedPaymentTxs.has(paymentTx.toLowerCase())) return res.status(400).json({ error: 'Payment TX already used' });
+    if (hasUsedPaymentTx(paymentTx)) return res.status(400).json({ error: 'Payment TX already used' });
     
     try {
         const mintPrice = resolvePrice('agentMint', req);
         const result = await verifyUSDCTransfer(paymentTx, mintPrice, DEPLOYER_ADDRESS);
-        usedPaymentTxs.add(paymentTx.toLowerCase());
+        markPaymentTxUsed(paymentTx);
         req.paymentVerified = result;
         const partnerId = (req.get('X-Partner-ID') || req.query?.partner || '').toLowerCase().trim();
         console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${paymentTx.slice(0,10)}...)${partnerId ? ` [partner: ${partnerId}, price: $${mintPrice}]` : ''}`);

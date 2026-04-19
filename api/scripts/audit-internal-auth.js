@@ -93,17 +93,7 @@ if (exists(docsPath)) {
 
 const advisoryPath = 'api/v2-server.js.dual-token-backup';
 if (exists(advisoryPath)) {
-  const advisory = readText(advisoryPath);
-  const riskyAdvisoryPatterns = [
-    /process\.env\.INTERNAL_API_KEY\s*\|\|/,
-    /process\.env\.RECEIPT_HMAC_SECRET\s*\|\|/,
-    /helixa-default-hmac-key-fallback/
-  ];
-  if (riskyAdvisoryPatterns.some((regex) => regex.test(advisory))) {
-    report('WARN', `${advisoryPath} still contains old fallback patterns, treat it as archival only`);
-  } else {
-    report('INFO', `${advisoryPath} has no fallback markers`);
-  }
+  report('WARN', `${advisoryPath} still exists, remove it to avoid stale secret-handling code hanging around`);
 }
 
 console.log('');

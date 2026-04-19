@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const log = require('../utils/logger');
 
 // Constants
@@ -43,7 +44,7 @@ for (const [addr, info] of Object.entries(V1_OG_WALLETS)) {
     referralRegistry[info.code] = { wallet: addr, name: info.name, tokenId: null };
 }
 
-// Track referral usage (in-memory for now, persist to file later)
+// Track referral usage
 const referralStats = {}; // code → { mints: 0, pointsEarned: 0 }
 
 // Persist referral registry to disk
@@ -83,16 +84,13 @@ function resolveReferralCode(code) {
 }
 
 function generateReferralCode(name) {
-    // Sanitize: lowercase, alphanumeric + hyphens only, max 20 chars
-    let code = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 20);
-    if (!code) code = 'agent';
-    // Deduplicate
-    if (!referralRegistry[code]) return code;
-    for (let i = 2; i < 100; i++) {
-        const candidate = `${code.slice(0, 17)}-${i}`;
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 14) || 'agent';
+    for (let i = 0; i < 8; i++) {
+        const suffix = crypto.randomBytes(3).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4);
+        const candidate = `${base.slice(0, 15)}-${suffix || Date.now().toString(36).slice(-4)}`;
         if (!referralRegistry[candidate]) return candidate;
     }
-    return `${code}-${Date.now().toString(36).slice(-4)}`;
+    return `${base.slice(0, 13)}-${Date.now().toString(36).slice(-6)}`;
 }
 
 function registerReferralCode(code, wallet, name, tokenId) {
