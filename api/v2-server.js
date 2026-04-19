@@ -749,6 +749,7 @@ function loadProfiles() {
     try { return JSON.parse(fs.readFileSync(PROFILES_PATH, 'utf8')); } catch { return {}; }
 }
 function saveProfiles(profiles) {
+    fs.mkdirSync(path.dirname(PROFILES_PATH), { recursive: true });
     fs.writeFileSync(PROFILES_PATH, JSON.stringify(profiles, null, 2));
 }
 function getProfile(tokenId) {
@@ -767,6 +768,7 @@ function loadHumanProfiles() {
     try { return JSON.parse(fs.readFileSync(HUMAN_PROFILES_PATH, 'utf8')); } catch { return {}; }
 }
 function saveHumanProfiles(profiles) {
+    fs.mkdirSync(path.dirname(HUMAN_PROFILES_PATH), { recursive: true });
     fs.writeFileSync(HUMAN_PROFILES_PATH, JSON.stringify(profiles, null, 2));
 }
 

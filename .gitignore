@@ -21,6 +21,14 @@ Thumbs.db
 *.pem
 api/public/video/
 
+# Runtime data
+api/public/uploads/
+data/*
+!data/.gitkeep
+
+# Local backups
+*.bak
+
 # Internal — not for public repo
 archive/
 research/
@@ -29,7 +37,6 @@ team/
 content/
 renders/
 integrations/
-data/
 scripts/x-credit-log.json
 scripts/x-post.py
 scripts/thread-hunting-strategy.md
