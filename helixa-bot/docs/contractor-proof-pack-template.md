@@ -34,11 +34,9 @@ This letter confirms that **[DEGENEER LEGAL NAME OR ENTITY]** has been engaged b
 
 The scope of services includes:
 
-- smart contract and security audit support
-- technical review
-- backend support
-- frontend support
-- related implementation and advisory work
+- smart contract audit support
+- technical review and consultation
+- related advisory work directly connected to the audit / review
 
 The engagement period is from **[START DATE]** through **[END DATE]**, unless extended in writing by the parties.
 
@@ -70,7 +68,7 @@ To Whom It May Concern,
 
 This letter confirms that **[DEGENEER FULL NAME]** is currently providing consulting services to **Invoica, [INVOICA LEGAL ENTITY NAME]** as an independent contractor.
 
-Services include audits, technical review, and backend / frontend support for a one month engagement beginning **[START DATE]**.
+Services include smart contract audit support and technical review / consultation for a one month engagement beginning **[START DATE]**.
 
 This letter is issued solely to confirm the existence and nature of the contractor relationship for documentation purposes. This engagement is not an employment relationship unless separately documented by the parties.
 
@@ -94,11 +92,9 @@ Invoica
 
 Contractor will provide:
 
-- audit support
-- technical review
-- backend development / support
-- frontend development / support
-- related consulting and implementation assistance
+- smart contract audit support
+- technical review and consultation
+- related advisory work directly connected to the audit / review
 
 ### Compensation
 
