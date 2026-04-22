@@ -27,3 +27,8 @@ Agent report card bot for Helixa protocol.
 - `/whois <0x address>` — wallet lookup
 - `/cred <id>` — quick cred score
 - Natural language: `@HelixaReportBot who is agent 81?`
+
+## Design Notes
+
+- `docs/contractor-proof-pack-template.md` — clean contractor proof pack templates
+- `docs/contractor-proof-pack-feature-spec.md` — proposed Telegram flow for generating those docs inside the bot
