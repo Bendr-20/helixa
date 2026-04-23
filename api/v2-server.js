@@ -1916,8 +1916,8 @@ async function computeHumanCred(profile, options = {}) {
         walletAddress,
         tokenId: profile.tokenId ?? null,
         sources: {
-            coinbaseVerified: coinbase.verified,
-            coinbaseAttestationUid: coinbase.attestationUid,
+            coinbaseVerified: Boolean(coinbase?.verified),
+            coinbaseAttestationUid: coinbase?.attestationUid || null,
             talentScore,
             ethosScore,
             txCount,
