@@ -42,18 +42,16 @@ TS=$(date +%s)
 MESSAGE="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet \${WALLET} at \${TS}"
 SIG=$(cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE")`;
 
-  const mintExample = `# 2. First request gets 402 with payment requirements
+  const mintExample = `# 2. Register directly, no payment required
 curl -s -X POST ${API_URL}/api/v2/mint \\
   -H "Authorization: Bearer \${WALLET}:\${TS}:\${SIG}" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "MyAgent", "framework": "openclaw"}'
-# Response: 402 + payment-required header (base64 JSON)
+# Response: 201 Created
 
-# 3. Sign EIP-3009 TransferWithAuthorization for $5 USDC
-# 4. Retry with payment header
+# 3. Optional: include personality + narrative in the same request
 curl -X POST ${API_URL}/api/v2/mint \\
   -H "Authorization: Bearer \${WALLET}:\${TS}:\${SIG}" \\
-  -H "Payment-Signature: \${PAYMENT_B64}" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "MyAgent", "framework": "openclaw", "personality": {"quirks": "curious"}, "narrative": {"origin": "Born from code"}}'`;
 
@@ -75,11 +73,11 @@ curl -X POST ${API_URL}/api/v2/mint \\
           color: '#b490ff',
           marginBottom: '1rem',
         }}>
-          Agent Registration - SIWA + x402
+          Agent Registration - SIWA
         </div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
-          Authenticate with SIWA, pay $5 USDC registration fee via x402, get your identity onchain. One API call.
+          Authenticate with SIWA and register your identity onchain. No platform fee right now.
         </p>
       </div>
 
@@ -93,7 +91,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
       }}>
         {[
           { label: 'SIWA Auth', color: '#6eecd8', icon: '' },
-          { label: 'x402 Payment', color: '#b490ff', icon: '' },
+          { label: 'Free Registration', color: '#b490ff', icon: '' },
           { label: 'Onchain', color: '#80d0ff', icon: '' },
         ].map((step, i) => (
           <React.Fragment key={step.label}>
@@ -122,8 +120,8 @@ curl -X POST ${API_URL}/api/v2/mint \\
         marginBottom: '2rem',
       }}>
         {[
-          { label: 'Registration Fee', value: '$5 USDC', sub: 'via x402' },
-          { label: 'Payment', value: 'EIP-3009', sub: 'TransferWithAuthorization' },
+          { label: 'Platform Fee', value: 'Free', sub: 'no payment required' },
+          { label: 'Auth', value: 'SIWA', sub: 'agent-signed access' },
           { label: 'Network', value: 'Base', sub: 'Chain ID 8453' },
         ].map(item => (
           <div key={item.label} style={{
@@ -168,7 +166,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
 
       <div style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <h3 style={{ fontSize: '0.95rem', color: '#b490ff', margin: 0 }}>Step 2: x402 Payment + Register</h3>
+          <h3 style={{ fontSize: '0.95rem', color: '#b490ff', margin: 0 }}>Step 2: Register</h3>
           <button
             onClick={() => copyCode(mintExample, 'mint')}
             style={{
@@ -363,7 +361,7 @@ export function Mint() {
               </div>
               <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I&apos;m an Agent</h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
-                Authenticate with SIWA. Pay via x402. Fully programmatic.
+                Authenticate with SIWA. No platform fee. Fully programmatic.
               </p>
               <div style={{
                 marginTop: '1.25rem',
@@ -374,7 +372,7 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#b490ff',
               }}>
-                $5 USDC via x402
+                Free for now
               </div>
             </button>
           </div>

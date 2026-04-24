@@ -1,14 +1,15 @@
-# Helixa x402 Agent Registration Guide
+# Helixa Agent Registration Guide
 
-Register an AI agent identity on Helixa using SIWA (Sign-In With Agent) and x402 payment.
+Register an AI agent identity on Helixa using SIWA (Sign-In With Agent).
+
+Helixa registration is currently free. No x402 payment is required.
 
 ## Prerequisites
 
-- A wallet with USDC on Base (minimum $1)
 - Node.js 18+
 
 ```bash
-npm install @x402/fetch @x402/evm viem
+npm install viem
 ```
 
 ## Working Example
@@ -17,10 +18,6 @@ npm install @x402/fetch @x402/evm viem
 const { createWalletClient, http, publicActions } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
 const { base } = require('viem/chains');
-const { wrapFetchWithPayment, x402Client } = require('@x402/fetch');
-const { ExactEvmScheme } = require('@x402/evm/exact/client');
-const { toClientEvmSigner } = require('@x402/evm');
-
 const API = 'https://api.helixa.xyz/api/v2/mint';
 
 async function mint(privateKey, agentData) {
@@ -32,23 +29,14 @@ async function mint(privateKey, agentData) {
     transport: http('https://mainnet.base.org'),
   }).extend(publicActions);
 
-  // 2. Set up x402 payment client
-  const signer = toClientEvmSigner(walletClient);
-  signer.address = walletClient.account.address; // Required for viem compat
-  const scheme = new ExactEvmScheme(signer);
-  const client = x402Client.fromConfig({
-    schemes: [{ client: scheme, network: 'eip155:8453' }],
-  });
-  const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
-
-  // 3. Build SIWA auth
+  // 2. Build SIWA auth
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${account.address} at ${timestamp}`;
   const signature = await account.signMessage({ message });
   const auth = `Bearer ${account.address}:${timestamp}:${signature}`;
 
-  // 4. Mint — x402Fetch handles 402 + USDC payment automatically
-  const res = await x402Fetch(API, {
+  // 3. Mint directly
+  const res = await fetch(API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,24 +65,18 @@ mint('0xYOUR_PRIVATE_KEY', {
 
 ## How It Works
 
-1. Your request hits the API without payment → returns HTTP 402
-2. `@x402/fetch` reads the `payment-required` header automatically
-3. SDK signs an EIP-3009 TransferWithAuthorization for $1 USDC
-4. Payment is verified and settled via the Dexter facilitator
-5. Agent is registered onchain on Base
-6. Agent is auto-registered on the ERC-8004 registry
+1. Your request hits the API with SIWA auth
+2. Helixa validates the signature
+3. Agent is registered onchain on Base
+4. Agent is auto-registered on the ERC-8004 registry when applicable
 
-**Do NOT hand-roll EIP-3009 signatures.** Use `@x402/fetch` — it handles the payment proof format, facilitator negotiation, and header construction.
-
-## Payment Details
+## Pricing
 
 | Field | Value |
 |-------|-------|
-| Amount | $1 USDC (Phase 1 pricing) |
+| Registration fee | Free |
+| API fee | Free |
 | Chain | Base (chain ID 8453) |
-| Token | USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
-| Facilitator | Dexter `https://x402.dexter.cash` |
-| Protocol | x402 v2 ([docs.x402.org](https://docs.x402.org)) |
 
 ## SIWA Auth Format
 
@@ -137,12 +119,10 @@ Timestamp is Unix seconds. Must be within 5 minutes.
 ## Links
 
 - **API**: https://api.helixa.xyz/api/v2
-- **x402 Docs**: https://docs.x402.org
-- **Packages**: `@x402/fetch`, `@x402/evm`, `viem`
+- **Packages**: `viem`
 - **Helixa**: https://helixa.xyz
-- **Bankr x402 Marketplace**: https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/
 - **OpenClaw Skill**: https://github.com/Bendr-20/helixa-mint-skill
 
 ## Note on MintGate
 
-The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the x402 flow bypasses it. Minting goes direct via `mintFor()` on the HelixaV2 contract, which is signature-gated to authorized minters. This provides a cleaner payment flow for x402 transactions.
+The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the current registration flow bypasses it. Minting goes direct via `mintFor()` on the HelixaV2 contract, which is signature-gated to authorized minters.

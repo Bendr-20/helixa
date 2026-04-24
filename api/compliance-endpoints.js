@@ -5,8 +5,6 @@
 
 const DEPLOYER = '0x339559A2d1CD15059365FC7bD36b3047BbA480E0';
 const BENDR_WALLET = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
-const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const CRED_TOKEN = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
 const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 
 module.exports = function mountCompliance(app) {
@@ -15,49 +13,28 @@ module.exports = function mountCompliance(app) {
   // x402 discovery
   app.get('/.well-known/x402.json', (req, res) => {
     res.json({
-      accepts: [
-        {
-          scheme: 'exact',
-          network: 'base',
-          maxAmountRequired: '5000000',
-          resource: 'https://api.helixa.xyz/api/v2/',
-          payTo: BENDR_WALLET,
-          asset: USDC_BASE,
-          extra: { name: 'USDC', version: '1.0' }
-        },
-        {
-          scheme: 'exact',
-          network: 'base',
-          maxAmountRequired: '10000000000000000000',
-          resource: 'https://api.helixa.xyz/api/v2/',
-          payTo: BENDR_WALLET,
-          asset: CRED_TOKEN,
-          extra: { name: '$CRED', version: '1.0', discount: '20%' }
-        }
-      ],
-      facilitator: 'https://facilitator.x402.org'
+      accepts: [],
+      facilitator: null,
+      pricing: {
+        enabled: false,
+        status: 'free',
+        message: 'Helixa API endpoints are currently free. No x402 payment is required.'
+      }
     });
   });
 
   // x402 payment gate on a discoverable GET endpoint
   // Probe checks for 402 responses - our existing gates are on POST endpoints which it doesn't test
   app.get('/api/v2/premium/agents', (req, res, next) => {
-    // Check for x402 payment header
-    if (req.headers['x-payment'] || req.headers['x-payment-proof'] || req.headers['x-payment-tx']) {
-      return next();
-    }
-    res.status(402).json({
-      error: 'Payment Required',
-      accepts: [{
-        scheme: 'exact',
-        network: 'base',
-        maxAmountRequired: '1000000',
-        resource: 'https://api.helixa.xyz/api/v2/premium/agents',
-        payTo: BENDR_WALLET,
-        asset: USDC_BASE,
-        extra: { name: 'USDC', version: '1.0' }
-      }],
-      description: 'Premium agent directory with full analytics. Pay with USDC or $CRED on Base.'
+    res.json({
+      free: true,
+      description: 'Premium agent directory access is currently open. No payment required.',
+      resource: 'https://api.helixa.xyz/api/v2/premium/agents',
+      pricing: {
+        enabled: false,
+        amount: 0,
+      },
+      note: 'Route kept for compatibility while fees are disabled.'
     });
   });
 
@@ -92,8 +69,8 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 ## Authentication
 Agent auth uses SIWA (Sign-In With Agent): Authorization: Bearer {address}:{timestamp}:{signature}
 
-## Payments
-x402 protocol — USDC or $CRED on Base (chain 8453). 20% discount with $CRED.
+## Pricing
+All public API endpoints are currently free. No x402 payment required.
 
 ## Contract
 Base mainnet: ${CONTRACT}
@@ -409,8 +386,8 @@ Sitemap: https://helixa.xyz/sitemap.xml`
 <p>Helixa provides onchain identity infrastructure and credibility scoring for AI agents on Base. The API is provided as-is during the current phase.</p>
 <h2>Acceptable Use</h2>
 <p>You may not use the API to manipulate Cred Scores, impersonate other agents, or conduct automated attacks against the service.</p>
-<h2>Payments</h2>
-<p>Certain operations require payment via x402 (USDC or $CRED on Base). Pricing is displayed at the API root endpoint.</p>
+<h2>Pricing</h2>
+<p>Helixa services are currently free while the platform is in growth mode.</p>
 <h2>Liability</h2>
 <p>Helixa is experimental software. We make no guarantees about uptime, score accuracy, or financial outcomes.</p>
 <h2>Contact</h2>

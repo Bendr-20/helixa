@@ -229,7 +229,7 @@ export function Step5Review({ data, updateData, onPrev, onMintSuccess }: Step5Re
             <div className="text-2xl font-bold text-accent-cyan">
               {mintPrice ? `${Number(mintPrice) / 1e18} ETH` : 'Free'}
             </div>
-            <div className="text-sm text-muted">Registration Fee</div>
+            <div className="text-sm text-muted">Platform Fee</div>
           </div>
         </div>
 

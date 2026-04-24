@@ -1,5 +1,8 @@
 /**
- * x402 Payment Verification & Middleware
+ * Payment compatibility helpers.
+ *
+ * Fees are currently disabled platform-wide, but we keep the helpers around so
+ * old integrations do not crash if they still import them.
  */
 
 const fs = require('fs');
@@ -55,115 +58,45 @@ async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
 const FACILITATOR_URL = 'https://x402.dexter.cash';
 
 function requirePayment(amountUSDC) {
-    if (amountUSDC <= 0) return (req, res, next) => next();
-    return async (req, res, next) => {
-        const paymentHeader = req.get('X-PAYMENT') || req.get('Payment') || req.get('x-payment');
-        if (!paymentHeader) {
-            return res.status(402).json({
-                error: 'Payment Required',
-                'x-payment-required': {
-                    scheme: 'exact',
-                    network: 'eip155:8453',
-                    maxAmountRequired: String(amountUSDC * 1_000_000),
-                    resource: req.originalUrl || req.url,
-                    description: `${amountUSDC} USDC payment required`,
-                    mimeType: 'application/json',
-                    payTo: DEPLOYER_ADDRESS,
-                    maxTimeoutSeconds: 300,
-                    asset: USDC_ADDRESS,
-                    extra: { name: 'Helixa Agent Mint', facilitatorUrl: FACILITATOR_URL },
-                },
-                hint: 'Send x402 payment via X-PAYMENT header.',
-            });
-        }
-        try {
-            const fetch = (await import('node-fetch')).default;
-            const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    payment: paymentHeader, payTo: DEPLOYER_ADDRESS,
-                    maxAmountRequired: String(amountUSDC * 1_000_000),
-                    network: 'eip155:8453', asset: USDC_ADDRESS,
-                    resource: req.originalUrl || req.url,
-                }),
-                signal: AbortSignal.timeout(15000),
-            });
-            if (!verifyRes.ok) {
-                const err = await verifyRes.text();
-                return res.status(402).json({ error: 'Payment verification failed', detail: err });
-            }
-            const settleRes = await fetch(`${FACILITATOR_URL}/settle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    payment: paymentHeader, payTo: DEPLOYER_ADDRESS,
-                    maxAmountRequired: String(amountUSDC * 1_000_000),
-                    network: 'eip155:8453', asset: USDC_ADDRESS,
-                    resource: req.originalUrl || req.url,
-                }),
-                signal: AbortSignal.timeout(30000),
-            });
-            if (!settleRes.ok) {
-                const err = await settleRes.text();
-                return res.status(402).json({ error: 'Payment settlement failed', detail: err });
-            }
-            req.payment = { amount: amountUSDC, verified: true, x402: true };
-            next();
-        } catch (err) {
-            return res.status(500).json({ error: 'Payment processing error', message: err.message });
-        }
+    return (req, res, next) => {
+        req.payment = {
+            amount: 0,
+            verified: true,
+            x402: false,
+            waived: true,
+            feeDisabled: true,
+            requestedAmountUSDC: amountUSDC,
+        };
+        next();
     };
 }
 
 function requirePaymentLegacy(amountUSDC) {
-    return async (req, res, next) => {
-        if (amountUSDC <= 0) return next();
-        const txHash = req.headers['x-payment-proof'];
-        if (!txHash) {
-            return res.status(402).json({
-                error: 'Payment Required',
-                x402: {
-                    protocol: 'x402', version: '1.0', amount: amountUSDC,
-                    asset: 'USDC', assetAddress: USDC_ADDRESS,
-                    recipient: DEPLOYER_ADDRESS, chain: 'base', chainId: 8453, network: 'eip155:8453',
-                },
-                hint: 'Send USDC to recipient, then retry with header X-Payment-Proof: {txHash}',
-            });
-        }
-        if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
-            return res.status(400).json({ error: 'Invalid X-Payment-Proof tx hash' });
-        }
-        const verified = await verifyUSDCPayment(txHash, amountUSDC);
-        if (!verified) {
-            return res.status(402).json({
-                error: 'Payment not verified',
-                detail: 'USDC transfer not found or insufficient amount',
-            });
-        }
-        req.payment = { txHash, amount: amountUSDC, verified: true };
+    return (req, res, next) => {
+        req.payment = {
+            amount: 0,
+            verified: true,
+            waived: true,
+            feeDisabled: true,
+            requestedAmountUSDC: amountUSDC,
+        };
         next();
     };
 }
 
 const PRICING = {
-    agentMint: 5,
-    update: 1,
+    agentMint: 0,
+    update: 0,
     verify: 0,
-    credReport: 1,
-    soulLock: 1,
-    soulHandshake: 1,
+    credReport: 0,
+    soulLock: 0,
+    soulHandshake: 0,
 };
 
 // Partner discounts — flat rate overrides for specific integrators
 // Key: lowercase wallet address or API identifier
 // Value: { agentMint, update, ... } — only override what's discounted
-const PARTNER_PRICING = {
-    '0xwork': { agentMint: 2.50 },
-    'moltx':  { credReport: 0, agentMint: 2.50 },
-    'mogra':  { credReport: 0, agentMint: 2.50 },
-    // Add more partners as needed
-};
+const PARTNER_PRICING = {};
 
 /**
  * Resolve price for an endpoint, checking partner discounts first.

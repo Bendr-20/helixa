@@ -2029,7 +2029,7 @@ app.get(['/', '/api/v2'], (req, res) => {
     res.json({
         name: 'Helixa V2 API',
         version: '2.0.0',
-        description: 'Agent identity infrastructure with SIWA for agents, SIWE for humans, plus x402 and MPP payments',
+        description: 'Agent identity infrastructure with SIWA for agents, SIWE for humans, and free public API access during the current growth phase',
         contract: V2_CONTRACT_ADDRESS,
         contractDeployed: isContractDeployed(),
         network: 'Base (8453)',
@@ -2057,7 +2057,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
-                'POST /api/v2/mint': `Register new agent (SIWA required, $${PRICING.agentMint} USDC via x402)`,
+                'POST /api/v2/mint': 'Register new agent (SIWA required, currently free)',
                 'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWE or Privy access token)',
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
@@ -2071,15 +2071,18 @@ app.get(['/', '/api/v2'], (req, res) => {
         },
         payments: {
             methods: [
-                { protocol: 'x402', status: 'active', chain: 'Base (8453)', currency: 'USDC' },
-                { protocol: 'x402', status: 'active', chain: 'Base (8453)', currency: '$CRED', discount: '20%', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3' },
-                ...(mppServer ? [{ protocol: 'MPP', status: 'active', chain: 'Tempo (4217)', currency: 'USDC.e', spec: 'https://mpp.dev' }] : []),
+                { protocol: 'x402', status: 'disabled', chain: 'Base (8453)', currency: 'USDC' },
+                { protocol: 'x402', status: 'disabled', chain: 'Base (8453)', currency: '$CRED', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3' },
+                ...(mppServer ? [{ protocol: 'MPP', status: 'available', chain: 'Tempo (4217)', currency: 'USDC.e', spec: 'https://mpp.dev' }] : []),
             ],
             pricing: {
-                phase: 1,
-                note: `Agent registration costs $${PRICING.agentMint} USDC via x402 on Base. Additional endpoints may have separate pricing.`,
-                agentMint: PRICING.agentMint === 0 ? 'free' : `$${PRICING.agentMint} USDC`,
-                update: PRICING.update === 0 ? 'free' : `$${PRICING.update} USDC`,
+                phase: 'growth',
+                note: 'Helixa platform fees are currently waived.',
+                agentMint: 'free',
+                update: 'free',
+                credReport: 'free',
+                soulLock: 'free',
+                soulHandshake: 'free',
             },
         },
     });
@@ -2539,7 +2542,7 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
                 { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
                 { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
             ],
-            x402Support: true,
+            x402Support: false,
             active: true,
             registrations: [
                 {
@@ -3014,13 +3017,12 @@ async function mintHandler(req, res) {
     }
 }
 
-// x402-gated mint (standard flow)
+// Standard mint flow
 app.post('/api/v2/mint', requireSIWA, mintHandler);
 
-// TX-hash payment mint (alternative for agents that can't use x402 SDK)
+// Compatibility mint route for older clients that used paymentTx.
 app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
     const { paymentTx } = req.body;
-    if (!paymentTx) return res.status(400).json({ error: 'paymentTx required (USDC transfer TX hash)' });
     if (!acquireMintRequestLock(req, res, req.agent?.address)) {
         return res.status(409).json({ error: 'Mint already in progress for this address' });
     }
@@ -3028,10 +3030,22 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
         const hasMinted = await readContract.hasMinted(req.agent.address);
         if (hasMinted) return res.status(409).json({ error: 'This address already has an agent' });
     } catch {}
+    const mintPrice = resolvePrice('agentMint', req);
+    if (mintPrice <= 0) {
+        req.paymentVerified = {
+            waived: true,
+            feeDisabled: true,
+            amount: 0,
+            from: req.agent?.address,
+            txHash: paymentTx || null,
+        };
+        return mintHandler(req, res);
+    }
+
+    if (!paymentTx) return res.status(400).json({ error: 'paymentTx required (USDC transfer TX hash)' });
     if (hasUsedPaymentTx(paymentTx)) return res.status(400).json({ error: 'Payment TX already used' });
     
     try {
-        const mintPrice = resolvePrice('agentMint', req);
         const result = await verifyUSDCTransfer(paymentTx, mintPrice, DEPLOYER_ADDRESS);
         markPaymentTxUsed(paymentTx);
         req.paymentVerified = result;
@@ -3291,7 +3305,7 @@ function build8004RegistrationFile(tokenId, name, framework, narrative, opts = {
             framework: framework || 'unknown',
             credScore: opts.credScore ?? null,
             credTier: opts.credTier ?? null,
-            x402Support: true,
+            x402Support: false,
             capabilities,
             verifications: [
                 ...(opts.hasX ? ['x'] : []),
@@ -4089,7 +4103,7 @@ app.get('/.well-known/agent.json', (req, res) => {
                     traits: { type: 'object', required: false, description: 'Agent soul traits (personality, values, capabilities)' },
                 },
                 returns: { type: 'object', description: 'Minted agent token ID, transaction hash, and metadata URI' },
-                price: { amount: PRICING.agentMint, currency: 'USDC', model: 'per_call' },
+                price: { amount: 0, currency: 'USD', model: 'free' },
             },
             {
                 name: 'get_agent',
@@ -4126,19 +4140,19 @@ app.get('/.well-known/agent.json', (req, res) => {
             },
             {
                 name: 'full_cred_report',
-                description: 'Detailed credibility report with full scoring breakdown across all weighted components. Paid endpoint via x402.',
+                description: 'Detailed credibility report with full scoring breakdown across all weighted components. Currently free.',
                 endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/cred-report',
                 method: 'GET',
                 parameters: {
                     id: { type: 'integer', required: true, description: 'Agent token ID' },
                 },
                 returns: { type: 'object', description: 'Full scoring breakdown with all CRED_WEIGHTS components and recommendations' },
-                price: { amount: PRICING.credReport, currency: 'USDC', model: 'per_call' },
-                payments: { x402: { direct_price: PRICING.credReport } },
+                price: { amount: 0, currency: 'USD', model: 'free' },
+                payments: { x402: { direct_price: 0, enabled: false } },
             },
             {
                 name: 'update_agent',
-                description: 'Update an agent\'s traits and metadata. Requires SIWA authentication as the agent. Paid via x402.',
+                description: 'Update an agent\'s traits and metadata. Requires SIWA authentication as the agent. Currently free.',
                 endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/update',
                 method: 'POST',
                 parameters: {
@@ -4146,20 +4160,20 @@ app.get('/.well-known/agent.json', (req, res) => {
                     traits: { type: 'object', required: true, description: 'Updated soul traits' },
                 },
                 returns: { type: 'object', description: 'Updated agent profile' },
-                price: { amount: PRICING.update, currency: 'USDC', model: 'per_call' },
-                payments: { x402: { direct_price: PRICING.update } },
+                price: { amount: 0, currency: 'USD', model: 'free' },
+                payments: { x402: { direct_price: 0, enabled: false } },
             },
             {
                 name: 'lock_soul',
-                description: 'Lock an agent\'s soul on-chain via the Chain of Identity protocol. Creates an immutable, versioned hash of the agent\'s soul state on the SoulSovereign contract. Paid via x402.',
+                description: 'Lock an agent\'s soul on-chain via the Chain of Identity protocol. Creates an immutable, versioned hash of the agent\'s soul state on the SoulSovereign contract. Currently free.',
                 endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/soul/lock',
                 method: 'POST',
                 parameters: {
                     id: { type: 'integer', required: true, description: 'Agent token ID' },
                 },
                 returns: { type: 'object', description: 'Soul lock transaction hash, version number, and timestamp' },
-                price: { amount: PRICING.soulLock, currency: 'USDC', model: 'per_call' },
-                payments: { x402: { direct_price: PRICING.soulLock } },
+                price: { amount: 0, currency: 'USD', model: 'free' },
+                payments: { x402: { direct_price: 0, enabled: false } },
             },
             {
                 name: 'verify_soul',
@@ -4190,7 +4204,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
     res.json({
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name: 'Helixa',
-        description: 'Onchain identity and reputation infrastructure for AI agents on Base. 1,000+ agents, 11-factor Cred Scores, SIWA auth, x402 payments.',
+        description: 'Onchain identity and reputation infrastructure for AI agents on Base. 1,000+ agents, 11-factor Cred Scores, SIWA auth, and free public access during the current growth phase.',
         image: 'https://api.helixa.xyz/api/v2/aura/1.png',
         services: [
             { name: 'web', endpoint: 'https://helixa.xyz' },
@@ -4198,7 +4212,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
             { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
             { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
         ],
-        x402Support: true,
+        x402Support: false,
         active: true,
         capabilities: ['agent-search', 'cred-scoring', 'identity-verification', 'agent-profiles', 'cross-registration'],
         registrations: [
@@ -4216,7 +4230,7 @@ app.get('/.well-known/agent-registry', (req, res) => {
         chain: 'base',
         chainId: 8453,
         contract: V2_CONTRACT_ADDRESS,
-        standards: ['ERC-8004', 'x402', 'SIWA'],
+        standards: ['ERC-8004', 'SIWA'],
         capabilities: [
             'agent-identity',
             'cred-score',
@@ -4237,11 +4251,11 @@ app.get('/.well-known/agent-registry', (req, res) => {
             docs: 'https://helixa.xyz/docs/getting-started',
         },
         pricing: {
-            mint: PRICING.agentMint === 0 ? 'free' : `${PRICING.agentMint} USDC`,
-            update: PRICING.update === 0 ? 'free' : `${PRICING.update} USDC`,
-            soulLock: PRICING.soulLock === 0 ? 'free' : `${PRICING.soulLock} USDC`,
-            soulHandshake: PRICING.soulHandshake === 0 ? 'free' : `${PRICING.soulHandshake} USDC`,
-            protocol: 'x402',
+            mint: 'free',
+            update: 'free',
+            soulLock: 'free',
+            soulHandshake: 'free',
+            protocol: 'disabled',
         },
         auth: {
             type: 'SIWA',
@@ -4262,7 +4276,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
         info: {
             title: 'Helixa V2 API',
             version: '2.0.0',
-            description: 'Onchain identity and reputation for AI agents. Register identities, set personality traits, build Cred Scores, and verify agents — all via API with SIWA auth and x402 payments.',
+            description: 'Onchain identity and reputation for AI agents. Register identities, set personality traits, build Cred Scores, and verify agents via API with SIWA auth. Platform fees are currently waived.',
             contact: { url: 'https://helixa.xyz' },
         },
         servers: [{ url: 'https://api.helixa.xyz', description: 'Production (Base Mainnet)' }],
@@ -4357,7 +4371,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
             '/api/v2/mint': {
                 post: {
                     summary: 'Register a new agent identity',
-                    description: 'Requires SIWA authentication. Optionally accepts x402 payment. Creates onchain identity with name, framework, personality, narrative, and traits.',
+                    description: 'Requires SIWA authentication. Creates onchain identity with name, framework, personality, narrative, and traits. No platform fee required right now.',
                     security: [{ siwa: [] }],
                     requestBody: {
                         required: true,
@@ -5284,7 +5298,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
             scale: { junk: '0-25', marginal: '26-50', qualified: '51-75', prime: '76-90', preferred: '91-100' },
             fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
             fullReportPrice: `$${PRICING.credReport} USDC`,
-            hint: 'Full report with breakdown, recommendations, and signed receipt available via x402 payment.',
+            hint: 'Full report with breakdown, recommendations, and signed receipt available for free.',
         });
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
@@ -5352,7 +5366,7 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
     }
 });
 
-// PAID: Full Cred Report ($1 USDC via x402)
+// Full Cred Report
 app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
@@ -5394,8 +5408,9 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             credScore: agent.credScore,
             tier: tierInfo.tier,
             generatedAt: reportTimestamp,
-            paidAmount: `$${PRICING.credReport} USDC`,
+            paidAmount: '$0',
             network: 'eip155:8453',
+            feeStatus: 'waived',
         });
         const receiptSignature = createHmacSignature(receiptPayload, RECEIPT_HMAC_SECRET);
 
@@ -5421,8 +5436,12 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
         const report = {
             reportId,
             generatedAt: reportTimestamp,
-            paidReport: true,
-            price: `$${PRICING.credReport} USDC`,
+            paidReport: false,
+            price: '$0',
+            pricing: {
+                enabled: false,
+                waived: true,
+            },
 
             // Agent identity
             agent: {
@@ -5487,7 +5506,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
                 { tier: 'PREFERRED', range: '91-100', description: 'Elite, fully verified, deeply established' },
             ],
 
-            // Signed receipt (proof of payment)
+            // Signed receipt (proof of report generation)
             receipt: {
                 reportId,
                 payload: receiptPayload,
@@ -7990,7 +8009,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
         console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
         console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
         console.log(`   Auth: SIWA (Sign-In With Agent)`);
-        console.log(`   Payments: x402 ($${PRICING.agentMint} USDC mint, Base)`);
+        console.log('   Payments: platform fees disabled');
         console.log(`   RPC: ${RPC_URL}`);
         console.log(`   8004 Registry: ${ERC8004_REGISTRY} (manual owner-wallet registration only)`);
         console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);

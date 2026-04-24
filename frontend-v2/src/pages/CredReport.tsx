@@ -255,8 +255,7 @@ export function CredReport() {
     await typeLine(`   RECOMMENDATION: ${rec}`, 30, 'crt-highlight');
     addLine('');
 
-    // Paywall
-    const paywall = [
+    const reportInfo = [
       '╔══════════════════════════════════════╗',
       '║  FULL DETAILED REPORT AVAILABLE      ║',
       '║                                      ║',
@@ -265,16 +264,16 @@ export function CredReport() {
       '║  • Personalized recommendations       ║',
       '║  • Narrative analysis                 ║',
       '║  • Percentile ranking                 ║',
-      '║  • Signed payment receipt             ║',
+      '║  • Signed report receipt              ║',
       '║                                      ║',
-      '║  Price: $1 USDC via x402 (Base)       ║',
+      '║  Price: FREE                          ║',
       '╚══════════════════════════════════════╝',
     ];
-    paywall.forEach(l => addLine(l));
+    reportInfo.forEach(l => addLine(l));
     addLine('');
     await typeLine(`  API: GET /api/v2/agent/${agentId}/cred-report`, 25, 'crt-highlight');
-    await typeLine('  Requires x402 payment header.', 25);
-    await typeLine('  See docs.x402.org for client SDKs.', 25);
+    await typeLine('  No payment header required.', 25);
+    await typeLine('  Free while Helixa is in growth mode.', 25);
     addLine('');
 
     // Action buttons
