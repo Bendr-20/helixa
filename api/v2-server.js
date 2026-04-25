@@ -1149,7 +1149,7 @@ async function formatAgentAuraSource(tokenId) {
     const localRow = getLocalAuraAgentRow(tokenId);
 
     if (localRow) {
-        return {
+        const localAgent = {
             tokenId: Number(tokenId),
             name: localRow.name || `Agent #${tokenId}`,
             framework: localRow.framework || 'custom',
@@ -1159,10 +1159,19 @@ async function formatAgentAuraSource(tokenId) {
             soulbound: Boolean(localRow.soulbound),
             points: Number(localRow.points || 0),
             generation: 0,
+            mintedAt: localRow.mintedAt || null,
+            mintOrigin: localRow.mintOrigin || 'UNKNOWN',
             personality: profile?.personality || null,
             narrative: profile?.narrative || null,
             credScore: Number(localRow.credScore || 0),
         };
+
+        try {
+            const { computedScore } = computeCredBreakdown(localAgent);
+            if (computedScore > localAgent.credScore) localAgent.credScore = computedScore;
+        } catch {}
+
+        return localAgent;
     }
 
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
@@ -1215,7 +1224,7 @@ async function formatAgentAuraSource(tokenId) {
         }
     }
 
-    return {
+    const resolvedAgent = {
         tokenId: Number(tokenId),
         name: nameRes || agent.name || `Agent #${tokenId}`,
         framework: agent.framework || 'custom',
@@ -1225,10 +1234,19 @@ async function formatAgentAuraSource(tokenId) {
         soulbound: Boolean(agent.soulbound),
         points: Number(ptsRes || 0),
         generation: Number(agent.generation || 0),
+        mintedAt: agent.mintedAt ? new Date(Number(agent.mintedAt) * 1000).toISOString() : null,
+        mintOrigin: ['HUMAN', 'AGENT_SIWA', 'API', 'OWNER'][Number(agent.origin)] || 'UNKNOWN',
         personality,
         narrative,
         credScore: Number(credRes || 0),
     };
+
+    try {
+        const { computedScore } = computeCredBreakdown(resolvedAgent);
+        if (computedScore > resolvedAgent.credScore) resolvedAgent.credScore = computedScore;
+    } catch {}
+
+    return resolvedAgent;
 }
 
 function getIndexedAgentSnapshot(tokenId) {
@@ -1249,7 +1267,7 @@ function getIndexedAgentSnapshot(tokenId) {
             a2a: { url: 'https://api.helixa.xyz/api/a2a' },
         };
 
-        return {
+        const snapshot = {
             tokenId: Number(row.tokenId),
             agentAddress: row.agentAddress,
             name: row.name,
@@ -1285,6 +1303,13 @@ function getIndexedAgentSnapshot(tokenId) {
             explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
             _snapshot: true,
         };
+
+        try {
+            const { computedScore } = computeCredBreakdown(snapshot);
+            if (computedScore > snapshot.credScore) snapshot.credScore = computedScore;
+        } catch {}
+
+        return snapshot;
     } catch {
         return null;
     }
