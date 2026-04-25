@@ -166,6 +166,11 @@ export function AgentProfile() {
                 {agent.agentName && (
                   <p className="text-accent-cyan mb-1">{agent.agentName}.agent</p>
                 )}
+                {agent.metadata?.organization && (
+                  <Link to={`/o/${encodeURIComponent(String(agent.metadata.organization).toLowerCase())}`} className="text-accent-cyan mb-1 inline-flex hover:underline">
+                    {agent.metadata.organization}
+                  </Link>
+                )}
                 <p className="text-muted mb-4">Token #{agent.tokenId}</p>
 
                 <div className="mb-6">

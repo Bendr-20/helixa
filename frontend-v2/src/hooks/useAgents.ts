@@ -28,6 +28,10 @@ interface AgentData {
   ethosScore: number | null;
   linkedToken: any;
   socials?: Record<string, string>;
+  services?: Record<string, any>;
+  metadata?: Record<string, any>;
+  skills?: string[];
+  domains?: string[];
 }
 
 export interface HumanData {
@@ -70,6 +74,51 @@ export interface HumanData {
   updatedAt?: string;
 }
 
+export interface OrganizationData {
+  id: string | number;
+  tokenId: number | null;
+  walletAddress: string | null;
+  entityType: 'organization';
+  principalType: 'organization';
+  organizationType: string | null;
+  displayName: string;
+  slug: string | null;
+  description: string | null;
+  image: string | null;
+  bannerImage: string | null;
+  active: boolean;
+  roles: string[];
+  operatorModel: string | null;
+  capacityStatus: string | null;
+  verificationStatus: string | null;
+  serviceCategories: string[];
+  skills: string[];
+  domains: string[];
+  timezone: string | null;
+  region: string | null;
+  acceptedPayments: string[];
+  preferredCommunicationChannels: string[];
+  links: Record<string, any>;
+  services?: Record<string, any>;
+  badges?: string[];
+  affiliations?: string[];
+  highlights?: string[];
+  memberIdentityIds?: string[];
+  members?: Array<Record<string, any>>;
+  relationships?: Record<string, string[]>;
+  relationshipSummary?: {
+    humanCount: number;
+    agentCount: number;
+    teamCount: number;
+    businessCount: number;
+  };
+  contact?: Record<string, any>;
+  metadata?: Record<string, any>;
+  registration?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface HumanQueryError extends Error {
   status?: number;
 }
@@ -104,6 +153,10 @@ function normalizeAgent(raw: any): AgentData {
     ethosScore: raw.ethosScore || null,
     linkedToken: raw.linkedToken || null,
     socials: raw.socials || {},
+    services: raw.services || {},
+    metadata: raw.metadata || {},
+    skills: raw.skills || [],
+    domains: raw.domains || [],
   };
 }
 
@@ -250,6 +303,51 @@ export function useHuman(id: number | string | undefined) {
       }
 
       throw makeHumanQueryError('Failed to load human profile');
+    },
+    enabled: id !== undefined && id !== null && String(id).trim().length > 0,
+    staleTime: 15_000,
+    retry: (failureCount, error: HumanQueryError) => error?.status !== 404 && failureCount < 2,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 4000),
+  });
+}
+
+export function useOrganization(id: number | string | undefined) {
+  return useQuery({
+    queryKey: ['v2-organization', id],
+    queryFn: async () => {
+      const encodedId = encodeURIComponent(String(id));
+      const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+      const candidates = Array.from(new Set([
+        `${API_URL}/api/v2/org/${encodedId}`,
+        browserOrigin ? `${browserOrigin}/api/v2/org/${encodedId}` : '',
+      ].filter(Boolean)));
+
+      let sawNotFound = false;
+      let sawTransientFailure = false;
+
+      for (const url of candidates) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return await res.json() as OrganizationData;
+          if (res.status === 404) {
+            sawNotFound = true;
+            continue;
+          }
+          sawTransientFailure = true;
+        } catch (error: any) {
+          if (error?.name === 'AbortError') {
+            sawTransientFailure = true;
+            continue;
+          }
+          sawTransientFailure = true;
+        }
+      }
+
+      if (sawNotFound && !sawTransientFailure) {
+        throw makeHumanQueryError('Organization principal not found', 404);
+      }
+
+      throw makeHumanQueryError('Failed to load organization profile');
     },
     enabled: id !== undefined && id !== null && String(id).trim().length > 0,
     staleTime: 15_000,

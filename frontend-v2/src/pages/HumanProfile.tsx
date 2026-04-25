@@ -310,7 +310,11 @@ export function HumanProfile() {
                 <h1 className="font-heading font-bold mb-1" style={{ fontSize: 'clamp(2rem, 9vw, 3.5rem)', lineHeight: 0.95, ...wrapAnywhereStyle }}>
                   {human.name}
                 </h1>
-                {human.organization && <p className="text-accent-cyan mb-1">{human.organization}</p>}
+                {human.organization && (
+                  <Link to={`/o/${encodeURIComponent(human.organization.toLowerCase())}`} className="text-accent-cyan mb-1 inline-flex hover:underline">
+                    {human.organization}
+                  </Link>
+                )}
                 <p className="text-muted mb-4">{human.tokenId != null ? `Human #${human.tokenId}` : 'Offchain human principal'}</p>
 
                 <div className="mb-6 flex justify-center">

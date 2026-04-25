@@ -398,8 +398,9 @@ export function HumanJoin() {
     setIsSubmitting(true);
     try {
       let authToken = '';
-      if (linkedAgentTokenId !== null && wallet) {
-        // Wallet proof required for linking
+      const shouldUseWalletAuth = Boolean(wallet) && (linkedAgentTokenId !== null || draft.authMethod === 'wallet');
+      if (shouldUseWalletAuth) {
+        // Wallet proof required for linking and preferred for onchain minting
         authToken = await buildSiweToken(wallet);
       } else {
         // No linked agent → use Privy access token (email/social)
@@ -436,6 +437,7 @@ export function HumanJoin() {
 
       const payload = {
         name: draft.displayName.trim(),
+        mintOnchain: shouldUseWalletAuth,
         description: draft.bio.trim(),
         image: draft.profileImage.trim() || undefined,
         skills: draft.skills,
@@ -567,7 +569,7 @@ export function HumanJoin() {
               }}>
                 {[
                   { key: 'email', title: 'Start with Email', body: 'Best for consultants, operators, and service providers who want a clean profile setup.' },
-                  { key: 'wallet', title: 'Start with Wallet', body: 'Good if you already have an onchain identity and want to link it later.' },
+                  { key: 'wallet', title: 'Start with Wallet', body: 'Best path. Wallet sign-in now pushes your human profile onchain so it can be discovered through Helixa and 8004 flows.' },
                   { key: 'social', title: 'Start with Social', body: 'Useful when your public reputation already lives on X, GitHub, or Farcaster.' },
                 ].map(option => (
                   <button
@@ -600,7 +602,7 @@ export function HumanJoin() {
                 marginBottom: '2rem',
               }}>
                 {[
-                  ['No gas required', 'Start offchain, publish later'],
+                  ['Wallet-first minting', 'If you connect a wallet, Helixa now pushes your human profile onchain by default'], 
                   ['Human-first profile', 'Bio, timezone, skills, service categories'],
                   ['Optional agent link', 'Connect the people behind the work'],
                 ].map(([title, body]) => (

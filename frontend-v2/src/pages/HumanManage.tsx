@@ -595,6 +595,7 @@ export function HumanManage() {
 
       const payload: any = {
         tokenId: human?.tokenId ?? undefined,
+        mintOnchain: Boolean(wallet) && !human?.tokenId,
         name: draft.displayName.trim() || human?.name || 'Human',
         description: draft.bio.trim(),
         image: draft.profileImage.trim() || undefined,

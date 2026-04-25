@@ -11,6 +11,7 @@ const pageImports = {
   humanJoin: () => import('./pages/HumanJoin').then(m => ({ default: m.HumanJoin })),
   humanManage: () => import('./pages/HumanManage').then(m => ({ default: m.HumanManage })),
   humanProfile: () => import('./pages/HumanProfile').then(m => ({ default: m.HumanProfile })),
+  organizationProfile: () => import('./pages/OrganizationProfile').then(m => ({ default: m.OrganizationProfile })),
   directory: () => import('./pages/Directory').then(m => ({ default: m.Directory })),
   agentProfile: () => import('./pages/AgentProfile').then(m => ({ default: m.AgentProfile })),
   leaderboard: () => import('./pages/Leaderboard').then(m => ({ default: m.Leaderboard })),
@@ -36,6 +37,7 @@ const Mint = lazy(pageImports.mint);
 const HumanJoin = lazy(pageImports.humanJoin);
 const HumanManage = lazy(pageImports.humanManage);
 const HumanProfile = lazy(pageImports.humanProfile);
+const OrganizationProfile = lazy(pageImports.organizationProfile);
 const Directory = lazy(pageImports.directory);
 const AgentProfile = lazy(pageImports.agentProfile);
 const Leaderboard = lazy(pageImports.leaderboard);
@@ -70,6 +72,7 @@ export const preloadMap: Record<string, () => void> = {
   '/mint': pageImports.mint,
   '/join/human': pageImports.humanJoin,
   '/manage/human': pageImports.humanManage,
+  '/o': pageImports.organizationProfile,
   '/agents': pageImports.directory,
   '/directory': pageImports.directory,
   // '/leaderboard': pageImports.leaderboard,
@@ -138,6 +141,7 @@ function AnimatedRoutes() {
           <Route path="/join/human/*" element={<HumanJoin />} />
           <Route path="/manage/human" element={<HumanManage />} />
           <Route path="/h/:id" element={<HumanProfile />} />
+          <Route path="/o/:id" element={<OrganizationProfile />} />
           <Route path="/agents" element={<Directory />} />
           <Route path="/directory" element={<Directory />} />
           <Route path="/agent/:id" element={<AgentProfile />} />

@@ -764,12 +764,83 @@ function saveProfile(tokenId, data) {
 }
 
 const HUMAN_PROFILES_PATH = path.join(__dirname, '..', 'data', 'human-profiles.json');
+
+function getCanonicalHumanProfileKey(key, profile = {}) {
+    try {
+        if (profile?.walletAddress && ethers.isAddress(profile.walletAddress)) {
+            return ethers.getAddress(profile.walletAddress).toLowerCase();
+        }
+    } catch {}
+    if (profile?.userId) return `user:${profile.userId}`;
+    return String(key);
+}
+
 function loadHumanProfiles() {
-    try { return JSON.parse(fs.readFileSync(HUMAN_PROFILES_PATH, 'utf8')); } catch { return {}; }
+    try {
+        const raw = JSON.parse(fs.readFileSync(HUMAN_PROFILES_PATH, 'utf8'));
+        const normalized = {};
+        let changed = false;
+
+        for (const [key, profile] of Object.entries(raw || {})) {
+            const canonicalKey = getCanonicalHumanProfileKey(key, profile);
+            if (canonicalKey !== key) changed = true;
+            normalized[canonicalKey] = {
+                ...(normalized[canonicalKey] || {}),
+                ...(profile || {}),
+            };
+        }
+
+        if (changed) saveHumanProfiles(normalized);
+        return normalized;
+    } catch {
+        return {};
+    }
 }
 function saveHumanProfiles(profiles) {
     fs.mkdirSync(path.dirname(HUMAN_PROFILES_PATH), { recursive: true });
     fs.writeFileSync(HUMAN_PROFILES_PATH, JSON.stringify(profiles, null, 2));
+}
+
+const ORGANIZATION_PROFILES_PATH = path.join(__dirname, '..', 'data', 'organization-profiles.json');
+
+function getCanonicalOrganizationProfileKey(key, profile = {}) {
+    const slug = typeof profile?.slug === 'string' ? profile.slug.trim().toLowerCase() : '';
+    if (slug) return slug;
+    try {
+        if (profile?.walletAddress && ethers.isAddress(profile.walletAddress)) {
+            return ethers.getAddress(profile.walletAddress).toLowerCase();
+        }
+    } catch {}
+    if (profile?.userId) return `user:${profile.userId}`;
+    if (profile?.tokenId != null && Number.isInteger(Number(profile.tokenId))) return `token:${Number(profile.tokenId)}`;
+    return String(key).trim().toLowerCase();
+}
+
+function loadOrganizationProfiles() {
+    try {
+        const raw = JSON.parse(fs.readFileSync(ORGANIZATION_PROFILES_PATH, 'utf8'));
+        const normalized = {};
+        let changed = false;
+
+        for (const [key, profile] of Object.entries(raw || {})) {
+            const canonicalKey = getCanonicalOrganizationProfileKey(key, profile);
+            if (canonicalKey !== key) changed = true;
+            normalized[canonicalKey] = {
+                ...(normalized[canonicalKey] || {}),
+                ...(profile || {}),
+            };
+        }
+
+        if (changed) saveOrganizationProfiles(normalized);
+        return normalized;
+    } catch {
+        return {};
+    }
+}
+
+function saveOrganizationProfiles(profiles) {
+    fs.mkdirSync(path.dirname(ORGANIZATION_PROFILES_PATH), { recursive: true });
+    fs.writeFileSync(ORGANIZATION_PROFILES_PATH, JSON.stringify(profiles, null, 2));
 }
 
 function resolveStoredHumanProfileKey(profiles, walletAddress, data = {}) {
@@ -842,6 +913,73 @@ function getHumanProfileById(id) {
         const userKey = `user:${String(id)}`;
         return profiles[userKey] || null;
     }
+}
+
+function resolveStoredOrganizationProfileKey(profiles, identity, data = {}) {
+    const normalizedSlug = typeof data.slug === 'string' && data.slug.trim()
+        ? data.slug.trim().toLowerCase()
+        : (typeof identity === 'string' && !ethers.isAddress(identity) && !/^\d+$/.test(identity.trim())
+            ? identity.trim().toLowerCase()
+            : null);
+    const normalizedWallet = identity && typeof identity === 'string' && ethers.isAddress(identity)
+        ? ethers.getAddress(identity).toLowerCase()
+        : (data.walletAddress && ethers.isAddress(data.walletAddress)
+            ? ethers.getAddress(data.walletAddress).toLowerCase()
+            : null);
+    const userKey = data.userId ? `user:${data.userId}` : null;
+    const tokenId = data.tokenId != null ? Number(data.tokenId) : (/^\d+$/.test(String(identity || '')) ? Number(identity) : null);
+
+    if (normalizedSlug && profiles[normalizedSlug]) return normalizedSlug;
+    if (normalizedWallet && profiles[normalizedWallet]) return normalizedWallet;
+    if (userKey && profiles[userKey]) return userKey;
+    if (Number.isInteger(tokenId) && profiles[`token:${tokenId}`]) return `token:${tokenId}`;
+
+    for (const [key, profile] of Object.entries(profiles)) {
+        if (normalizedSlug && typeof profile?.slug === 'string' && profile.slug.trim().toLowerCase() === normalizedSlug) return key;
+        try {
+            if (normalizedWallet && profile?.walletAddress && ethers.isAddress(profile.walletAddress)) {
+                if (ethers.getAddress(profile.walletAddress).toLowerCase() === normalizedWallet) return key;
+            }
+        } catch {}
+        if (userKey && profile?.userId && `user:${profile.userId}` === userKey) return key;
+        if (Number.isInteger(tokenId) && Number(profile?.tokenId) === tokenId) return key;
+    }
+
+    if (normalizedSlug) return normalizedSlug;
+    if (normalizedWallet) return normalizedWallet;
+    if (userKey) return userKey;
+    if (Number.isInteger(tokenId)) return `token:${tokenId}`;
+    return null;
+}
+
+function saveOrganizationProfile(identity, data) {
+    const profiles = loadOrganizationProfiles();
+    const storageKey = resolveStoredOrganizationProfileKey(profiles, identity, data);
+    if (!storageKey) throw new Error('saveOrganizationProfile requires slug, walletAddress, userId, or tokenId');
+    const walletAddress = data.walletAddress && ethers.isAddress(data.walletAddress)
+        ? ethers.getAddress(data.walletAddress)
+        : null;
+    profiles[storageKey] = {
+        ...(profiles[storageKey] || {}),
+        ...data,
+        slug: typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : (profiles[storageKey]?.slug || null),
+        walletAddress,
+        updatedAt: new Date().toISOString(),
+    };
+    if (!profiles[storageKey].createdAt) profiles[storageKey].createdAt = new Date().toISOString();
+    saveOrganizationProfiles(profiles);
+    return profiles[storageKey];
+}
+
+function getOrganizationProfileById(id) {
+    const profiles = loadOrganizationProfiles();
+    const key = resolveStoredOrganizationProfileKey(profiles, String(id || '').trim(), {});
+    if (key && profiles[key]) return profiles[key] || null;
+    return null;
+}
+
+function listOrganizationProfiles() {
+    return Object.values(loadOrganizationProfiles());
 }
 
 function getHumanProfileStorageKey(profile) {
@@ -1821,6 +1959,145 @@ function buildHumanRegistrationFile(profile) {
     };
 }
 
+function buildOrganizationRegistrationFile(profile) {
+    const slug = typeof profile.slug === 'string' ? profile.slug.trim().toLowerCase() : '';
+    const walletAddress = profile.walletAddress || null;
+    const tokenId = profile.tokenId ?? null;
+    const userId = profile.userId || null;
+    const services = sanitizePrincipalServices(profile.links || profile.services, profile.links || profile.services, profile.contact || {});
+
+    let publicUrl = null;
+    if (slug) publicUrl = `https://helixa.xyz/o/${slug}`;
+    else if (tokenId !== null) publicUrl = `https://helixa.xyz/o/${tokenId}`;
+    else if (walletAddress) publicUrl = `https://helixa.xyz/o/${walletAddress}`;
+    else if (userId) publicUrl = `https://helixa.xyz/o/${userId}`;
+    if (!services.web && publicUrl) services.web = { url: publicUrl };
+
+    const metadata = sanitizePrincipalMetadata(
+        profile.metadata,
+        profile.metadata,
+        {
+            entityType: 'organization',
+            principalType: 'organization',
+            organization: profile.displayName || profile.name || slug || 'organization',
+        },
+        { services, fallbackChannels: ['email', 'telegram', 'web'] },
+    );
+
+    const members = Array.isArray(profile.members) ? profile.members : [];
+
+    return {
+        type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+        name: profile.displayName || profile.name || slug || 'Organization',
+        description: profile.description || 'Organization principal in the Helixa network.',
+        image: profile.image || null,
+        active: profile.active !== false,
+        services,
+        supportedTrust: Array.isArray(profile.supportedTrust) && profile.supportedTrust.length ? profile.supportedTrust : ['reputation'],
+        skills: profile.skills || [],
+        domains: profile.domains || [],
+        metadata: {
+            ...metadata,
+            organizationType: profile.organizationType || null,
+            roles: Array.isArray(profile.roles) ? profile.roles : [],
+            operatorModel: profile.operatorModel || null,
+            capacityStatus: profile.capacityStatus || null,
+            verificationStatus: profile.verificationStatus || null,
+            relationships: {
+                humans: members.filter(member => member?.entityType === 'human').map(member => member.id).filter(Boolean),
+                agents: members.filter(member => member?.entityType === 'agent').map(member => member.id).filter(Boolean),
+                organizations: members.filter(member => member?.entityType === 'organization').map(member => member.id).filter(Boolean),
+            },
+            members,
+            badges: clampList(profile.badges || [], 16, 64),
+            affiliations: clampList(profile.affiliations || [], 16, 64),
+            products: clampList(profile.products || profile.metadata?.products || [], 16, 64),
+            protocol: typeof (profile.protocol || profile.metadata?.protocol) === 'string' ? (profile.protocol || profile.metadata?.protocol).trim().slice(0, 128) : null,
+            token: typeof (profile.token || profile.metadata?.token) === 'string' ? (profile.token || profile.metadata?.token).trim().slice(0, 128) : null,
+            notes: clampList(profile.notes || profile.metadata?.notes || [], 24, 256),
+        },
+    };
+}
+
+async function formatOrganizationPrincipal(profile, options = {}) {
+    const { includePrivate = false } = options;
+    const registration = buildOrganizationRegistrationFile(profile);
+    const members = Array.isArray(profile.members) ? profile.members : [];
+    const contact = profile.contact && typeof profile.contact === 'object' ? profile.contact : {};
+    const rawLinks = profile.links && typeof profile.links === 'object' ? profile.links : {};
+    const publicLinks = {
+        ...rawLinks,
+        ...registration.services,
+    };
+    const publicContact = {
+        hasEmail: Boolean(contact.email || contact.publicEmail),
+        hasTelegram: Boolean(contact.telegram || contact.publicTelegram),
+        preferredChannel: contact.preferredChannel || null,
+        contactFormEnabled: contact.contactFormEnabled !== false,
+    };
+
+    return {
+        id: profile.tokenId ?? profile.slug ?? profile.walletAddress ?? profile.userId,
+        tokenId: profile.tokenId ?? null,
+        walletAddress: profile.walletAddress || null,
+        userId: profile.userId || null,
+        entityType: 'organization',
+        principalType: 'organization',
+        organizationType: profile.organizationType || null,
+        displayName: profile.displayName || profile.name || profile.slug || 'Organization',
+        slug: profile.slug || null,
+        description: profile.description || null,
+        image: profile.image || null,
+        bannerImage: profile.bannerImage || null,
+        active: profile.active !== false,
+        roles: Array.isArray(profile.roles) ? profile.roles : [],
+        operatorModel: profile.operatorModel || null,
+        capacityStatus: profile.capacityStatus || null,
+        verificationStatus: profile.verificationStatus || null,
+        serviceCategories: registration.metadata?.serviceCategories || [],
+        skills: profile.skills || [],
+        domains: profile.domains || [],
+        timezone: registration.metadata?.timezone || null,
+        region: registration.metadata?.region || null,
+        acceptedPayments: registration.metadata?.acceptedPayments || [],
+        preferredCommunicationChannels: registration.metadata?.preferredCommunicationChannels || [],
+        links: publicLinks,
+        services: registration.services,
+        badges: registration.metadata?.badges || [],
+        affiliations: registration.metadata?.affiliations || [],
+        highlights: clampList(profile.highlights || [], 12, 180),
+        contact: includePrivate ? contact : publicContact,
+        memberIdentityIds: members.map(member => member?.id).filter(Boolean),
+        members,
+        relationships: registration.metadata?.relationships || { humans: [], agents: [], organizations: [] },
+        relationshipSummary: {
+            humanCount: members.filter(member => member?.entityType === 'human').length,
+            agentCount: members.filter(member => member?.entityType === 'agent').length,
+            teamCount: members.length,
+            businessCount: members.filter(member => member?.entityType === 'organization').length,
+        },
+        metadata: {
+            ...registration.metadata,
+            primaryDomain: profile.primaryDomain || profile.metadata?.primaryDomain || null,
+            legalEntityName: profile.legalEntityName || profile.metadata?.legalEntityName || null,
+            billingEmail: profile.billingEmail || profile.metadata?.billingEmail || null,
+            invoiceMethods: clampList(profile.invoiceMethods || profile.metadata?.invoiceMethods || [], 8, 24),
+            representativeIdentityIds: clampList(profile.representativeIdentityIds || profile.metadata?.representativeIdentityIds || [], 12, 128),
+            brand: profile.brand || profile.metadata?.brand || (profile.displayName || profile.name || null),
+            protocol: profile.protocol || profile.metadata?.protocol || null,
+            token: profile.token || profile.metadata?.token || null,
+            positioning: profile.positioning || profile.metadata?.positioning || null,
+            publicOffer: profile.publicOffer || profile.metadata?.publicOffer || null,
+            products: clampList(profile.products || profile.metadata?.products || [], 16, 64),
+            members,
+            notes: clampList(profile.notes || profile.metadata?.notes || [], 24, 256),
+        },
+        registration,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+    };
+}
+
 function deriveBuilderFallback(profile) {
     const linkedAccounts = profile.linkedAccounts || {};
     const externalIds = profile.externalIds || {};
@@ -2078,12 +2355,15 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/agents': 'Agent directory (paginated)',
                 'GET /api/v2/agent/:id': 'Single agent profile',
                 'GET /api/v2/human/:id': 'Single human principal profile',
+                'GET /api/v2/organizations': 'Organization directory',
+                'GET /api/v2/org/:id': 'Single organization principal profile',
                 'GET /api/v2/human/:id/cred': 'Human Cred score and breakdown',
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
                 'POST /api/v2/mint': 'Register new agent (SIWA required, currently free)',
                 'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWE or Privy access token)',
+                'POST /api/v2/principals/organization/register': 'Register or mint an organization principal profile (SIWE or Privy access token)',
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
                 'POST /api/v2/agent/:id/update': 'Update agent (SIWA required)',
                 'POST /api/v2/agent/:id/verify': 'Verify agent identity (SIWA required)',
@@ -2248,6 +2528,8 @@ app.get('/api/v2/stats', async (req, res) => {
         
         // Compute extra stats from indexer
         let totalCredScore = 0, soulboundCount = 0, frameworkSet = new Set();
+        const totalHumans = Object.keys(loadHumanProfiles()).length;
+        const totalOrganizations = Object.keys(loadOrganizationProfiles()).length;
         try {
             const all = indexer.getAllAgents();
             for (const a of all) {
@@ -2262,6 +2544,8 @@ app.get('/api/v2/stats', async (req, res) => {
             totalCredScore,
             frameworks: frameworkSet.size,
             soulboundCount,
+            totalHumans,
+            totalOrganizations,
             mintPrice: ethers.formatEther(price),
             network: 'Base',
             chainId: 8453,
@@ -2441,6 +2725,35 @@ app.get('/api/v2/human/:id', async (req, res) => {
         res.json(await formatHumanPrincipal(profile, { includePrivate: false }));
     } catch (e) {
         res.status(500).json({ error: 'Failed to load human principal', detail: e.message.slice(0, 200) });
+    }
+});
+
+// GET /api/v2/organizations
+app.get('/api/v2/organizations', async (req, res) => {
+    try {
+        const organizations = await Promise.all(
+            listOrganizationProfiles()
+                .filter(profile => profile?.active !== false)
+                .map(profile => formatOrganizationPrincipal(profile, { includePrivate: false }))
+        );
+        organizations.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+        res.json({
+            total: organizations.length,
+            organizations,
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load organizations', detail: e.message.slice(0, 200) });
+    }
+});
+
+// GET /api/v2/org/:id
+app.get('/api/v2/org/:id', async (req, res) => {
+    try {
+        const profile = getOrganizationProfileById(req.params.id);
+        if (!profile) return res.status(404).json({ error: 'Organization principal not found' });
+        res.json(await formatOrganizationPrincipal(profile, { includePrivate: false }));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load organization principal', detail: e.message.slice(0, 200) });
     }
 });
 
@@ -3722,6 +4035,175 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
     } catch (e) {
         console.error('[HUMAN REGISTER] Error:', e.message);
         res.status(500).json({ error: 'Human register failed: ' + e.message.slice(0, 200) });
+    }
+});
+
+// POST /api/v2/principals/organization/register — Register an organization principal, optionally minting on HelixaV2
+app.post('/api/v2/principals/organization/register', requireHumanAuth, async (req, res) => {
+    const auth = req.humanAuth;
+    const callerWallet = auth.walletAddress || null;
+    const callerUserId = auth.type === 'privy' ? auth.userId : null;
+    const {
+        tokenId: requestedTokenId,
+        mintOnchain,
+        soulbound,
+        framework,
+        displayName,
+        name,
+        slug,
+        description,
+        image,
+        bannerImage,
+        organizationType,
+        roles,
+        operatorModel,
+        capacityStatus,
+        verificationStatus,
+        skills,
+        domains,
+        links,
+        services,
+        contact,
+        supportedTrust,
+        members,
+        metadata,
+    } = req.body || {};
+
+    const clamp = (s, max = 256) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
+    const normalizedSlug = clampIdLike(slug || '', 64).toLowerCase();
+
+    try {
+        let tokenId = requestedTokenId != null ? Number(requestedTokenId) : null;
+        if (requestedTokenId != null && !Number.isInteger(tokenId)) {
+            return res.status(400).json({ error: 'tokenId must be an integer when provided' });
+        }
+        if (mintOnchain && tokenId !== null) {
+            return res.status(400).json({ error: 'Provide either tokenId or mintOnchain, not both' });
+        }
+
+        const existing = getOrganizationProfileById(normalizedSlug || tokenId || callerWallet || callerUserId || '');
+        const resolvedName = clamp(displayName || name || existing?.displayName || existing?.name || '', 64);
+        if (!resolvedName) return res.status(400).json({ error: 'displayName required' });
+
+        const normalizedContact = sanitizeHumanContact(contact, existing?.contact || {});
+        const normalizedLinks = sanitizePrincipalServices(links || services, existing?.links || existing?.services || {}, normalizedContact);
+        const normalizedMetadata = sanitizePrincipalMetadata(
+            metadata,
+            existing?.metadata || {},
+            {
+                entityType: 'organization',
+                principalType: 'organization',
+                organization: resolvedName,
+            },
+            { services: normalizedLinks, fallbackChannels: ['email', 'telegram', 'web'] },
+        );
+
+        if (tokenId !== null && callerWallet) {
+            if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+            const owner = await readContract.ownerOf(tokenId);
+            if (owner.toLowerCase() !== callerWallet.toLowerCase()) {
+                return res.status(403).json({ error: 'Caller must own tokenId to bind it as an organization principal' });
+            }
+        }
+        if (tokenId !== null && !callerWallet) {
+            return res.status(403).json({ error: 'Token binding requires wallet authentication (SIWE)' });
+        }
+
+        let mintTxHash = null;
+        if (mintOnchain) {
+            if (!callerWallet) {
+                return res.status(403).json({ error: 'On-chain mint requires wallet authentication (SIWE)' });
+            }
+            if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
+            const tx = await contract.mintFor(
+                callerWallet,
+                callerWallet,
+                resolvedName,
+                clamp(framework || 'organization', 32) || 'organization',
+                soulbound === true,
+                0,
+            );
+            const receipt = await tx.wait();
+            mintTxHash = tx.hash;
+            for (const log of receipt.logs) {
+                try {
+                    const parsed = contract.interface.parseLog(log);
+                    if (parsed?.name === 'AgentRegistered') {
+                        tokenId = Number(parsed.args.tokenId);
+                        break;
+                    }
+                } catch {}
+            }
+            if (tokenId === null) return res.status(500).json({ error: 'Organization mint succeeded but tokenId could not be recovered' });
+        }
+
+        const profileData = {
+            tokenId,
+            walletAddress: callerWallet,
+            userId: callerUserId || undefined,
+            displayName: resolvedName,
+            name: resolvedName,
+            slug: normalizedSlug || existing?.slug || clampIdLike(resolvedName, 64).toLowerCase(),
+            description: clamp(description || existing?.description || '', 512),
+            image: clamp(image || existing?.image || '', 512),
+            bannerImage: clamp(bannerImage || existing?.bannerImage || '', 512),
+            organizationType: clamp(organizationType || existing?.organizationType || 'platform', 64) || 'platform',
+            roles: clampList(roles ?? existing?.roles ?? ['provider'], 8, 32),
+            operatorModel: clamp(operatorModel || existing?.operatorModel || 'hybrid', 32) || 'hybrid',
+            capacityStatus: clamp(capacityStatus || existing?.capacityStatus || 'available-soon', 64) || 'available-soon',
+            verificationStatus: clamp(verificationStatus || existing?.verificationStatus || 'self-asserted', 64) || 'self-asserted',
+            skills: clampList(skills ?? existing?.skills ?? [], 24, 64),
+            domains: clampList(domains ?? existing?.domains ?? [], 24, 64),
+            links: normalizedLinks,
+            services: normalizedLinks,
+            contact: normalizedContact,
+            supportedTrust: clampList(supportedTrust ?? existing?.supportedTrust ?? ['reputation'], 8, 32),
+            members: Array.isArray(members) ? members.slice(0, 32) : (existing?.members || []),
+            metadata: normalizedMetadata,
+            active: true,
+            entityType: 'organization',
+            principalType: 'organization',
+            primaryDomain: clamp((metadata && metadata.primaryDomain) || existing?.primaryDomain || '', 128),
+            legalEntityName: clamp((metadata && metadata.legalEntityName) || existing?.legalEntityName || '', 128),
+            billingEmail: clamp((metadata && metadata.billingEmail) || existing?.billingEmail || '', 128),
+            invoiceMethods: clampList((metadata && metadata.invoiceMethods) || existing?.invoiceMethods || [], 8, 24),
+            representativeIdentityIds: clampList((metadata && metadata.representativeIdentityIds) || existing?.representativeIdentityIds || [], 12, 128),
+            brand: clamp((metadata && metadata.brand) || existing?.brand || resolvedName, 128),
+            protocol: clamp((metadata && metadata.protocol) || existing?.protocol || '', 128),
+            token: clamp((metadata && metadata.token) || existing?.token || '', 128),
+            positioning: clamp((metadata && metadata.positioning) || existing?.positioning || '', 512),
+            publicOffer: clamp((metadata && metadata.publicOffer) || existing?.publicOffer || '', 256),
+            products: clampList((metadata && metadata.products) || existing?.products || [], 16, 64),
+            badges: clampList((metadata && metadata.badges) || existing?.badges || [], 16, 64),
+            affiliations: clampList((metadata && metadata.affiliations) || existing?.affiliations || [], 16, 64),
+            notes: clampList((metadata && metadata.notes) || existing?.notes || [], 24, 256),
+            highlights: clampList((metadata && metadata.highlights) || existing?.highlights || [], 12, 180),
+        };
+
+        const normalizedProfile = saveOrganizationProfile(profileData.slug || callerWallet || callerUserId || tokenId, profileData);
+
+        if (tokenId !== null && isContractDeployed()) {
+            try {
+                const dataURI = registrationFileToDataURI(buildOrganizationRegistrationFile(normalizedProfile));
+                const metaTx = await contract.setMetadata(tokenId, dataURI);
+                await metaTx.wait();
+            } catch (e) {
+                console.error(`[ORG REGISTER] Metadata sync failed for #${tokenId}: ${e.message}`);
+            }
+        }
+
+        res.json({
+            success: true,
+            principal: await formatOrganizationPrincipal(normalizedProfile, { includePrivate: true }),
+            mintedOnchain: Boolean(mintOnchain),
+            txHash: mintTxHash,
+            message: tokenId !== null
+                ? `Organization principal ${resolvedName} registered${mintOnchain ? ' and minted on HelixaV2' : ''}`
+                : `Organization principal ${resolvedName} registered offchain`,
+        });
+    } catch (e) {
+        console.error('[ORG REGISTER] Error:', e.message);
+        res.status(500).json({ error: 'Organization register failed: ' + e.message.slice(0, 200) });
     }
 });
 
@@ -7104,7 +7586,52 @@ app.get('/api/v2/search', async (req, res) => {
 
         mappedHumans.sort((a, b) => (b.credScore || 0) - (a.credScore || 0));
         const limitedHumans = mappedHumans.slice(0, limit);
-        const principals = [...mappedAgents, ...limitedHumans]
+        const mappedOrganizations = (await Promise.all(
+            listOrganizationProfiles()
+                .filter(profile => profile?.active !== false)
+                .map(profile => formatOrganizationPrincipal(profile, { includePrivate: false }))
+        ))
+            .filter(org => {
+                const haystack = [
+                    org.displayName,
+                    org.description,
+                    ...(org.skills || []),
+                    ...(org.domains || []),
+                    ...(org.serviceCategories || []),
+                    ...(org.acceptedPayments || []),
+                ].filter(Boolean).join(' ').toLowerCase();
+                if (qLower && !haystack.includes(qLower)) return false;
+                if (capabilityLower) {
+                    const capabilityMatch = [
+                        ...(org.skills || []),
+                        ...(org.domains || []),
+                        ...(org.serviceCategories || []),
+                    ].some(value => String(value).toLowerCase() === capabilityLower);
+                    if (!capabilityMatch) return false;
+                }
+                return true;
+            })
+            .map(org => ({
+                entityType: 'organization',
+                id: org.slug || String(org.tokenId || org.id),
+                tokenId: org.tokenId,
+                walletAddress: org.walletAddress,
+                name: org.displayName,
+                description: org.description || '',
+                credScore: 0,
+                tier: 'UNSCORED',
+                tierLabel: 'Unscored',
+                verified: Boolean(org.walletAddress),
+                verifications: org.walletAddress ? ['wallet'] : [],
+                skills: org.skills || [],
+                serviceCategories: org.serviceCategories || [],
+                suggested_actions: {
+                    profile: `https://api.helixa.xyz/api/v2/org/${org.slug || org.tokenId || org.id}`,
+                    publicProfile: `https://helixa.xyz/o/${org.slug || org.tokenId || org.id}`,
+                },
+            }));
+        const limitedOrganizations = mappedOrganizations.slice(0, limit);
+        const principals = [...mappedAgents, ...limitedHumans, ...limitedOrganizations]
             .sort((a, b) => (b.credScore || 0) - (a.credScore || 0))
             .slice(0, limit);
 
@@ -7112,10 +7639,12 @@ app.get('/api/v2/search', async (req, res) => {
             query: q,
             total: mappedAgents.length,
             humanTotal: limitedHumans.length,
+            organizationTotal: limitedOrganizations.length,
             principalTotal: principals.length,
             filters: { minCred, tier: tierFilter || null, verified: verifiedOnly, capability: capability || null },
             agents: mappedAgents,
             humans: limitedHumans,
+            organizations: limitedOrganizations,
             principals,
         });
     } catch (e) {
