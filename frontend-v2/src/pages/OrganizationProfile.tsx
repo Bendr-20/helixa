@@ -97,9 +97,17 @@ export function OrganizationProfile() {
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-1">
               <div className="card sticky top-8 text-center">
-                <div className="w-28 h-28 rounded-3xl bg-accent-cyan/10 border border-white/10 mx-auto mb-4 flex items-center justify-center text-4xl font-heading">
-                  {organization.displayName.slice(0, 2).toUpperCase()}
-                </div>
+                {organization.image ? (
+                  <img
+                    src={organization.image}
+                    alt={`${organization.displayName} logo`}
+                    className="w-28 h-28 rounded-3xl object-cover bg-accent-cyan/10 border border-white/10 mx-auto mb-4"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-3xl bg-accent-cyan/10 border border-white/10 mx-auto mb-4 flex items-center justify-center text-4xl font-heading">
+                    {organization.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <h1 className="text-3xl font-heading font-bold mb-1">{organization.displayName}</h1>
                 {organization.slug && <p className="text-accent-cyan mb-1">/{organization.slug}</p>}
                 <p className="text-muted mb-4">{organization.organizationType || 'organization'}</p>

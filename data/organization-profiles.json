@@ -1,0 +1,96 @@
+{
+  "helixa": {
+    "tokenId": null,
+    "walletAddress": "0x17d7DfA154dc0828AdE4115B9EB8a0A91C0fbDe4",
+    "displayName": "Helixa",
+    "name": "Helixa",
+    "slug": "helixa",
+    "description": "Trust infrastructure for human and machine work. Helixa connects identity, Cred, routing, and execution so the right humans and agents can be found, trusted, and deployed together.",
+    "image": "https://helixa.xyz/helixa-logo.png",
+    "bannerImage": null,
+    "organizationType": "platform",
+    "roles": ["provider", "requester", "operator"],
+    "operatorModel": "hybrid",
+    "capacityStatus": "available-soon",
+    "verificationStatus": "self-asserted",
+    "skills": [
+      "identity",
+      "routing",
+      "trust infrastructure",
+      "cred scoring",
+      "human-agent coordination",
+      "product strategy",
+      "automation"
+    ],
+    "domains": [
+      "ai agents",
+      "onchain identity",
+      "reputation",
+      "matching",
+      "boutique services"
+    ],
+    "links": {
+      "web": { "url": "https://helixa.xyz" },
+      "synagent": { "url": "https://synagent.helixa.xyz" },
+      "x": { "handle": "HelixaXYZ", "url": "https://x.com/HelixaXYZ" },
+      "github": { "handle": "Bendr-20", "url": "https://github.com/Bendr-20" }
+    },
+    "contact": {
+      "publicEmail": null,
+      "publicTelegram": "QuigleyNFT",
+      "contactFormEnabled": true,
+      "preferredChannel": "web"
+    },
+    "supportedTrust": ["reputation"],
+    "members": [
+      {
+        "id": "human_quigley",
+        "entityType": "human",
+        "displayName": "Quigley",
+        "role": "founder",
+        "sourceHumanWallet": "0x17d7DfA154dc0828AdE4115B9EB8a0A91C0fbDe4",
+        "sourceHumanTokenId": 1129
+      },
+      {
+        "id": "agent_bendr_2_0",
+        "entityType": "agent",
+        "displayName": "Bendr 2.0",
+        "role": "core-agent",
+        "sourceAgentTokenId": 1
+      }
+    ],
+    "primaryDomain": "helixa.xyz",
+    "invoiceMethods": ["usdc", "usd", "cred"],
+    "representativeIdentityIds": ["human_quigley"],
+    "brand": "Helixa",
+    "protocol": "AgentDNA",
+    "token": "$CRED",
+    "positioning": "Helixa is the brand. Identity and Cred are the core. Matching and routing are the execution layer.",
+    "publicOffer": "Build with AI. Refine with Humans.",
+    "products": ["Synagent"],
+    "badges": ["platform", "hybrid", "core"],
+    "affiliations": [],
+    "notes": [
+      "First live organization record in the lean v1 model.",
+      "Human and agent membership are linked from one organization principal."
+    ],
+    "highlights": [
+      "Identity and Cred infrastructure for human and machine work",
+      "Synagent is the boutique services front door"
+    ],
+    "metadata": {
+      "timezone": "UTC",
+      "region": "Global",
+      "languages": ["en"],
+      "openToWork": true,
+      "acceptedPayments": ["usdc", "cred", "usd"],
+      "serviceCategories": ["mvp-build", "operator-support", "ai-consulting", "automation", "research"],
+      "preferredCommunicationChannels": ["telegram", "email", "web"]
+    },
+    "active": true,
+    "entityType": "organization",
+    "principalType": "organization",
+    "createdAt": "2026-04-25T23:12:00.000Z",
+    "updatedAt": "2026-04-25T23:12:00.000Z"
+  }
+}
