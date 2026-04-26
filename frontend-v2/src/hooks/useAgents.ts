@@ -164,7 +164,7 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 2500) {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
     const contentType = res.headers.get('content-type') || '';
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     if (!contentType.includes('application/json')) throw new Error('Non-JSON response');
@@ -197,7 +197,7 @@ function useAgentsFromAPI() {
       let page = 1;
       const limit = 1000;
       while (true) {
-        const res = await fetch(`${API_URL}/api/v2/agents?limit=${limit}&page=${page}`);
+        const res = await fetch(`${API_URL}/api/v2/agents?limit=${limit}&page=${page}`, { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch agents');
         const data = await res.json();
         const agents = data.agents || [];
@@ -220,7 +220,7 @@ function useStatsFromAPI() {
   return useQuery({
     queryKey: ['v2-stats'],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/v2/stats`);
+      const res = await fetch(`${API_URL}/api/v2/stats`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },

@@ -1453,6 +1453,55 @@ function getIndexedAgentSnapshot(tokenId) {
     }
 }
 
+function applyComputedCredFloor(agent) {
+    if (!agent || typeof agent !== 'object') return agent;
+
+    const profile = Number.isFinite(Number(agent.tokenId)) ? (getProfile(Number(agent.tokenId)) || {}) : {};
+    const traits = Array.isArray(agent.traits) && agent.traits.length > 0
+        ? agent.traits
+        : (Array.isArray(profile.traits) ? profile.traits : []);
+    const narrative = agent.narrative && Object.keys(agent.narrative || {}).length > 0
+        ? agent.narrative
+        : (profile.narrative || {});
+    const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
+    const ageDays = mintDate && !Number.isNaN(mintDate.getTime())
+        ? Math.floor((Date.now() - mintDate.getTime()) / 86400000)
+        : 0;
+    const hasVerif = (name) => traits.some((t) => (typeof t === 'string' ? t : t?.name) === name);
+    const verifCount = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
+        .filter(hasVerif).length;
+    const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
+
+    const computedScore = Math.round(
+        Math.min(100, Number(agent.points || 0) * 2) * CRED_WEIGHTS.activity.weight +
+        0 * CRED_WEIGHTS.external.weight +
+        Math.min(100, verifCount * 25) * CRED_WEIGHTS.verify.weight +
+        (hasVerif('coinbase-verified') ? 100 : 0) * CRED_WEIGHTS.coinbase.weight +
+        Math.min(100, ageDays * 5) * CRED_WEIGHTS.age.weight +
+        Math.min(100, traits.length * 12) * CRED_WEIGHTS.traits.weight +
+        Math.min(100, narrativeFields.length * 25) * CRED_WEIGHTS.narrative.weight +
+        ((agent.mintOrigin === 'AGENT_SIWA' || hasVerif('siwa-verified')) ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50) * CRED_WEIGHTS.origin.weight +
+        (agent.soulbound ? 100 : 0) * CRED_WEIGHTS.soulbound.weight
+    );
+
+    if (!Array.isArray(agent.traits) || agent.traits.length === 0) {
+        agent.traits = traits;
+        agent.traitCount = Array.isArray(traits) ? traits.length : 0;
+    } else if (!Number.isFinite(Number(agent.traitCount))) {
+        agent.traitCount = agent.traits.length;
+    }
+
+    if ((!agent.narrative || Object.keys(agent.narrative || {}).length === 0) && narrativeFields.length > 0) {
+        agent.narrative = narrative;
+    }
+
+    if (computedScore > Number(agent.credScore || 0)) {
+        agent.credScore = computedScore;
+    }
+
+    return agent;
+}
+
 async function formatAgentV2(tokenId) {
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
     
@@ -2500,9 +2549,17 @@ app.get('/api/v2/analytics', (req, res) => {
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+function setNoStore(res) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+}
+
 // GET /api/v2/stats
 app.get('/api/v2/stats', async (req, res) => {
     try {
+        setNoStore(res);
         if (!isContractDeployed()) {
             return res.json({
                 totalAgents: 0,
@@ -2683,6 +2740,7 @@ setTimeout(() => {
 // GET /api/v2/agents — now powered by SQLite
 app.get('/api/v2/agents', async (req, res) => {
     try {
+        setNoStore(res);
         if (!isContractDeployed()) {
             return res.json({ total: 0, page: 1, agents: [], contractDeployed: false });
         }
@@ -2701,6 +2759,8 @@ app.get('/api/v2/agents', async (req, res) => {
             showSpam,
         });
 
+        result.agents = (result.agents || []).map((agent) => applyComputedCredFloor(agent));
+
         res.json(result);
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -2710,6 +2770,7 @@ app.get('/api/v2/agents', async (req, res) => {
 // GET /api/v2/agent/:id
 app.get('/api/v2/agent/:id', async (req, res) => {
     try {
+        setNoStore(res);
         const agent = await getAgentForResponse(parseInt(req.params.id), { timeoutMs: 5000 });
         res.json(agent);
     } catch (e) {
@@ -2720,6 +2781,7 @@ app.get('/api/v2/agent/:id', async (req, res) => {
 // GET /api/v2/human/:id
 app.get('/api/v2/human/:id', async (req, res) => {
     try {
+        setNoStore(res);
         const profile = getHumanProfileById(req.params.id);
         if (!profile) return res.status(404).json({ error: 'Human principal not found' });
         res.json(await formatHumanPrincipal(profile, { includePrivate: false }));
@@ -2731,6 +2793,7 @@ app.get('/api/v2/human/:id', async (req, res) => {
 // GET /api/v2/organizations
 app.get('/api/v2/organizations', async (req, res) => {
     try {
+        setNoStore(res);
         const organizations = await Promise.all(
             listOrganizationProfiles()
                 .filter(profile => profile?.active !== false)
@@ -2749,6 +2812,7 @@ app.get('/api/v2/organizations', async (req, res) => {
 // GET /api/v2/org/:id
 app.get('/api/v2/org/:id', async (req, res) => {
     try {
+        setNoStore(res);
         const profile = getOrganizationProfileById(req.params.id);
         if (!profile) return res.status(404).json({ error: 'Organization principal not found' });
         res.json(await formatOrganizationPrincipal(profile, { includePrivate: false }));

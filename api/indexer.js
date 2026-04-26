@@ -475,21 +475,39 @@ async function refreshScores() {
 
     scoreRefreshInFlight = true;
     try {
-        const rows = db.prepare('SELECT tokenId FROM agents ORDER BY tokenId ASC').all();
+        const rows = db.prepare('SELECT tokenId, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC').all();
         console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
+
+        const updateStmt = db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?');
+        const CONCURRENCY = 12;
         let updated = 0;
-        for (const row of rows) {
-            try {
-                let credScore = 0, points = 0;
-                try { credScore = Number(await readContract.getCredScore(row.tokenId)); } catch {}
-                try { points = Number(await readContract.points(row.tokenId)); } catch {}
-                if (credScore > 0 || points > 0) {
-                    db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?')
-                        .run(credScore, points, Date.now(), row.tokenId);
-                    updated++;
+
+        for (let i = 0; i < rows.length; i += CONCURRENCY) {
+            const batch = rows.slice(i, i + CONCURRENCY);
+            const results = await Promise.all(batch.map(async (row) => {
+                try {
+                    const [credRes, pointsRes] = await Promise.all([
+                        readContract.getCredScore(row.tokenId).catch(() => 0),
+                        readContract.points(row.tokenId).catch(() => 0),
+                    ]);
+                    return {
+                        tokenId: row.tokenId,
+                        credScore: Number(credRes || 0),
+                        points: Number(pointsRes || 0),
+                    };
+                } catch {
+                    return null;
                 }
-            } catch {}
+            }));
+
+            const now = Date.now();
+            for (const result of results) {
+                if (!result) continue;
+                updateStmt.run(result.credScore, result.points, now, result.tokenId);
+                updated++;
+            }
         }
+
         console.log(`[INDEXER] Score refresh done: ${updated} agents updated`);
     } finally {
         scoreRefreshInFlight = false;
