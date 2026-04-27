@@ -36,7 +36,7 @@ interface AgentData {
 
 export interface HumanData {
   id: string;
-  walletAddress: string;
+  walletAddress: string | null;
   tokenId: number | null;
   entityType: 'human';
   name: string;
@@ -119,6 +119,28 @@ export interface OrganizationData {
   updatedAt?: string;
 }
 
+export interface DirectoryPrincipal {
+  entityType: 'agent' | 'human' | 'organization';
+  id: string;
+  name: string;
+  description?: string | null;
+  credScore: number;
+  verified: boolean;
+  publicPath: string;
+  sortKey: number;
+  framework?: string;
+  soulbound?: boolean;
+  points?: number;
+  traitCount?: number;
+  humanOrganization?: string | null;
+  skills?: string[];
+  serviceCategories?: string[];
+  walletAddress?: string | null;
+  tokenId?: number | null;
+  badgeLabel?: string | null;
+  raw: AgentData | HumanData | OrganizationData;
+}
+
 interface HumanQueryError extends Error {
   status?: number;
 }
@@ -174,6 +196,74 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 2500) {
   }
 }
 
+function normalizeHuman(raw: any): HumanData {
+  return {
+    id: String(raw.id ?? raw.tokenId ?? raw.walletAddress ?? ''),
+    walletAddress: raw.walletAddress || null,
+    tokenId: raw.tokenId ?? null,
+    entityType: 'human',
+    name: raw.name || 'Unknown Human',
+    description: raw.description || null,
+    image: raw.image || null,
+    organization: raw.organization || null,
+    skills: raw.skills || [],
+    domains: raw.domains || [],
+    linkedAccounts: raw.linkedAccounts || {},
+    linkedAgents: raw.linkedAgents || [],
+    externalIds: raw.externalIds || {},
+    services: raw.services || {},
+    contact: raw.contact || {},
+    notificationPreferences: raw.notificationPreferences,
+    metadata: raw.metadata || {},
+    humanCred: raw.humanCred,
+    registration: raw.registration,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
+function normalizeOrganization(raw: any): OrganizationData {
+  return {
+    id: raw.id,
+    tokenId: raw.tokenId ?? null,
+    walletAddress: raw.walletAddress || null,
+    entityType: 'organization',
+    principalType: 'organization',
+    organizationType: raw.organizationType || null,
+    displayName: raw.displayName || raw.name || 'Unknown Organization',
+    slug: raw.slug || null,
+    description: raw.description || null,
+    image: raw.image || null,
+    bannerImage: raw.bannerImage || null,
+    active: raw.active !== false,
+    roles: raw.roles || [],
+    operatorModel: raw.operatorModel || null,
+    capacityStatus: raw.capacityStatus || null,
+    verificationStatus: raw.verificationStatus || null,
+    serviceCategories: raw.serviceCategories || [],
+    skills: raw.skills || [],
+    domains: raw.domains || [],
+    timezone: raw.timezone || null,
+    region: raw.region || null,
+    acceptedPayments: raw.acceptedPayments || [],
+    preferredCommunicationChannels: raw.preferredCommunicationChannels || [],
+    links: raw.links || {},
+    services: raw.services || {},
+    badges: raw.badges || [],
+    affiliations: raw.affiliations || [],
+    highlights: raw.highlights || [],
+    memberIdentityIds: raw.memberIdentityIds || [],
+    members: raw.members || [],
+    relationships: raw.relationships || {},
+    relationshipSummary: raw.relationshipSummary,
+    contact: raw.contact || {},
+    metadata: raw.metadata || {},
+    registration: raw.registration,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+}
+
 async function fetchAgentFromListCandidates(tokenId: number | string, candidates: string[]) {
   const results = await Promise.allSettled(
     candidates.map(url => fetchJsonWithTimeout(url, 2000))
@@ -208,6 +298,42 @@ function useAgentsFromAPI() {
       return {
         total: allAgents.length,
         agents: allAgents.map(normalizeAgent),
+      };
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+// Fetch humans from V2 API
+function useHumansFromAPI() {
+  return useQuery({
+    queryKey: ['v2-humans'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/v2/humans`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch humans');
+      const data = await res.json();
+      return {
+        total: data.total || 0,
+        humans: (data.humans || []).map(normalizeHuman),
+      };
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+}
+
+// Fetch organizations from V2 API
+function useOrganizationsFromAPI() {
+  return useQuery({
+    queryKey: ['v2-organizations'],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/api/v2/organizations`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to fetch organizations');
+      const data = await res.json();
+      return {
+        total: data.total || 0,
+        organizations: (data.organizations || []).map(normalizeOrganization),
       };
     },
     staleTime: 30_000,
@@ -381,6 +507,9 @@ export function useAgentStats() {
     data: apiStats
       ? {
           totalAgents: apiStats.totalAgents || 0,
+          totalHumans: apiStats.totalHumans || 0,
+          totalOrganizations: apiStats.totalOrganizations || 0,
+          totalPrincipals: (apiStats.totalAgents || 0) + (apiStats.totalHumans || 0) + (apiStats.totalOrganizations || 0),
           totalCredScore: agents?.agents?.reduce((s: number, a: AgentData) => s + a.credScore, 0) || 0,
           frameworks: agents?.agents ? new Set(agents.agents.map((a: AgentData) => a.framework).filter(Boolean)).size : 0,
           soulboundCount: agents?.agents?.filter((a: AgentData) => a.soulbound).length || 0,
@@ -388,6 +517,82 @@ export function useAgentStats() {
           gasBalance: apiStats.gasBalance || '0',
         }
       : undefined,
+  };
+}
+
+export function useHelixaDirectory() {
+  const agentsQuery = useAgentsFromAPI();
+  const humansQuery = useHumansFromAPI();
+  const organizationsQuery = useOrganizationsFromAPI();
+
+  const data = (() => {
+    const agents = (agentsQuery.data?.agents || [])
+      .filter((agent) => agent.name && agent.name.length > 0)
+      .map<DirectoryPrincipal>((agent) => ({
+        entityType: 'agent',
+        id: String(agent.tokenId),
+        name: agent.name,
+        description: agent.narrative?.backstory || agent.narrative?.origin || agent.metadata?.description || null,
+        credScore: agent.credScore || 0,
+        verified: agent.verified || false,
+        publicPath: `/agent/${agent.tokenId}`,
+        sortKey: agent.tokenId || 0,
+        framework: agent.framework,
+        soulbound: agent.soulbound,
+        points: agent.points,
+        traitCount: agent.traitCount || agent.traits?.length || 0,
+        tokenId: agent.tokenId,
+        badgeLabel: agent.framework,
+        raw: agent,
+      }));
+
+    const humans = (humansQuery.data?.humans || [])
+      .filter((human) => human.name && human.id)
+      .map<DirectoryPrincipal>((human) => ({
+        entityType: 'human',
+        id: human.id,
+        name: human.name,
+        description: human.description || null,
+        credScore: human.humanCred?.score || 0,
+        verified: Boolean(human.walletAddress),
+        publicPath: `/h/${encodeURIComponent(human.id)}`,
+        sortKey: human.tokenId || 0,
+        humanOrganization: human.organization,
+        skills: human.skills || [],
+        serviceCategories: human.metadata?.serviceCategories || [],
+        walletAddress: human.walletAddress,
+        tokenId: human.tokenId,
+        badgeLabel: human.organization || 'Human',
+        raw: human,
+      }));
+
+    const organizations = (organizationsQuery.data?.organizations || [])
+      .filter((organization) => organization.displayName && organization.id != null)
+      .map<DirectoryPrincipal>((organization) => ({
+        entityType: 'organization',
+        id: String(organization.id),
+        name: organization.displayName,
+        description: organization.description || null,
+        credScore: 0,
+        verified: Boolean(organization.walletAddress),
+        publicPath: `/o/${encodeURIComponent(String(organization.slug || organization.tokenId || organization.id))}`,
+        sortKey: organization.tokenId || 0,
+        skills: organization.skills || [],
+        serviceCategories: organization.serviceCategories || [],
+        walletAddress: organization.walletAddress,
+        tokenId: organization.tokenId,
+        badgeLabel: organization.organizationType || 'Organization',
+        raw: organization,
+      }));
+
+    return [...agents, ...humans, ...organizations];
+  })();
+
+  return {
+    data,
+    isLoading: agentsQuery.isLoading || humansQuery.isLoading || organizationsQuery.isLoading,
+    isFetching: agentsQuery.isFetching || humansQuery.isFetching || organizationsQuery.isFetching,
+    error: agentsQuery.error || humansQuery.error || organizationsQuery.error,
   };
 }
 

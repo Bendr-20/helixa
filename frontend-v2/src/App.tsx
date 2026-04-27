@@ -191,7 +191,7 @@ function NotFound() {
           <p className="text-muted mb-8">The page you're looking for doesn't exist or has been moved.</p>
           <div className="flex gap-4 justify-center">
             <a href="/" className="btn btn-primary">Go Home</a>
-            <a href="/agents" className="btn btn-secondary">Browse Agents</a>
+            <a href="/agents" className="btn btn-secondary">Browse Directory</a>
           </div>
         </div>
       </div>

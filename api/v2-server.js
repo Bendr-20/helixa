@@ -2193,10 +2193,10 @@ async function computeHumanCred(profile, options = {}) {
             longevity: 5,
         }
         : {
-            // Rebalance for non‑wallet humans: emphasize profile completeness and work
+            // Rebalance for non-wallet humans: emphasize offchain proof instead of punishing missing wallet linkage
             verifiedIdentity: 0,
             builderReputation: 0,
-            socialReputation: 25,  // external social links still matter
+            socialReputation: 25,
             onchainHistory: 0,
             workHistory: 30,
             networkEndorsements: 20,
@@ -2209,6 +2209,7 @@ async function computeHumanCred(profile, options = {}) {
     const services = profile.services || {};
     const hasGitLawb = Boolean(linkedAccounts.gitlawb || externalIds.gitlawb || services.gitlawb?.url);
     const hasEnsLike = Boolean(linkedAccounts.ens || linkedAccounts.basename);
+    const hasLinkedIdentity = Object.keys(linkedAccounts).length > 0 || Object.keys(externalIds).length > 0;
     const identityRaw = hasWallet
         ? Math.min(100, (coinbase.verified ? 70 : 0) + (hasEnsLike ? 20 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0))
         : (hasEnsLike ? 30 : 0) + (Object.keys(linkedAccounts).length > 0 ? 10 : 0);
@@ -2219,12 +2220,13 @@ async function computeHumanCred(profile, options = {}) {
         : 0;
     const socialRaw = hasWallet
         ? Math.max(0, Math.min(100, Math.round((Number(ethosScore || 0) / 2600) * 100)))
-        : (hasGitLawb ? 55 : (Object.keys(linkedAccounts).length > 0 ? 40 : 0));  // non-wallet social score based on linked accounts and GitLawb presence
+        : (hasGitLawb ? 55 : (hasLinkedIdentity ? 40 : 0));
     const onchainRaw = hasWallet
         ? Math.max(0, Math.min(100, Math.round(Math.log10(Number(txCount || 0) + 1) * 45)))
         : 0;
 
     const work = profile.workHistory || {};
+    const hasWorkSignal = Number(work.completedJobs || 0) > 0 || Number(work.repeatClients || 0) > 0 || Number(work.referrals || 0) > 0;
     const workRaw = Math.max(0, Math.min(100,
         (Math.min(Number(work.completedJobs || 0), 10) * 6) +
         (Math.min(Number(work.repeatClients || 0), 5) * 8) +
@@ -2248,6 +2250,7 @@ async function computeHumanCred(profile, options = {}) {
     const createdAt = profile.createdAt ? Date.parse(profile.createdAt) : Date.now();
     const ageDays = Math.max(0, Math.floor((Date.now() - createdAt) / 86400000));
     const longevityRaw = Math.min(100, Math.round((ageDays / 365) * 100));
+    const hasServiceSignal = Array.isArray(profile?.metadata?.serviceCategories) && profile.metadata.serviceCategories.length > 0;
 
     const weighted = {
         verifiedIdentity: Math.round(identityRaw * weights.verifiedIdentity / 100),
@@ -2260,10 +2263,22 @@ async function computeHumanCred(profile, options = {}) {
         longevity: Math.round(longevityRaw * weights.longevity / 100),
     };
 
-    const score = Object.values(weighted).reduce((a, b) => a + b, 0);
+    const rawScore = Object.values(weighted).reduce((a, b) => a + b, 0);
+    const offchainBaseline = hasWallet
+        ? 0
+        : Math.min(45,
+            (profile.name ? 12 : 0) +
+            (profile.description ? 6 : 0) +
+            ((Array.isArray(profile.skills) && profile.skills.length > 0) ? 5 : 0) +
+            (hasLinkedIdentity ? 8 : 0) +
+            ((profile.organization || hasServiceSignal || (Array.isArray(profile.domains) && profile.domains.length > 0)) ? 4 : 0) +
+            (hasWorkSignal ? 6 : 0) +
+            (ageDays >= 30 ? 4 : 0)
+        );
+    const score = Math.max(0, Math.min(100, hasWallet ? rawScore : Math.max(rawScore, offchainBaseline)));
     const result = {
-        score: Math.max(0, Math.min(100, score)),
-        tier: getCredTier(Math.max(0, Math.min(100, score))),
+        score,
+        tier: getHumanCredTier(score, { hasWallet }),
         walletAddress,
         tokenId: profile.tokenId ?? null,
         sources: {
@@ -2282,6 +2297,7 @@ async function computeHumanCred(profile, options = {}) {
             networkEndorsements: { weight: weights.networkEndorsements, raw: endorsementRaw, contribution: weighted.networkEndorsements },
             profileCompleteness: { weight: weights.profileCompleteness, raw: profileRaw, contribution: weighted.profileCompleteness },
             longevity: { weight: weights.longevity, raw: longevityRaw, contribution: weighted.longevity },
+            offchainBaseline: hasWallet ? null : { weight: 0, raw: offchainBaseline, contribution: Math.max(0, score - rawScore) },
         },
     };
 
@@ -2775,6 +2791,25 @@ app.get('/api/v2/agent/:id', async (req, res) => {
         res.json(agent);
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
+    }
+});
+
+// GET /api/v2/humans
+app.get('/api/v2/humans', async (req, res) => {
+    try {
+        setNoStore(res);
+        const humans = await Promise.all(
+            Object.values(loadHumanProfiles())
+                .filter(profile => profile?.active !== false)
+                .map(profile => formatHumanPrincipal(profile, { includePrivate: false }))
+        );
+        humans.sort((a, b) => (b?.humanCred?.score || 0) - (a?.humanCred?.score || 0));
+        res.json({
+            total: humans.length,
+            humans,
+        });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to load humans', detail: e.message.slice(0, 200) });
     }
 });
 
@@ -5807,6 +5842,15 @@ function getCredTier(score) {
     return { tier: 'JUNK', label: 'Junk', color: '#ff4444' };
 }
 
+function getHumanCredTier(score, options = {}) {
+    if (options.hasWallet) return getCredTier(score);
+    if (score >= 91) return { tier: 'PREFERRED', label: 'Preferred', color: '#b490ff' };
+    if (score >= 76) return { tier: 'PRIME', label: 'Prime', color: '#33ff33' };
+    if (score >= 51) return { tier: 'QUALIFIED', label: 'Qualified', color: '#ffd93d' };
+    if (score >= 26) return { tier: 'MARGINAL', label: 'Early', color: '#ffaa00' };
+    return { tier: 'JUNK', label: 'Unproven', color: '#ff7a59' };
+}
+
 function getCredRecommendations(agent, breakdown) {
     const recs = [];
     const traits = agent.traits || [];
@@ -7597,7 +7641,7 @@ app.get('/api/v2/search', async (req, res) => {
         for (const profile of humanProfiles) {
             const formatted = await formatHumanPrincipal(profile, { includePrivate: false });
             const score = formatted?.humanCred?.score || 0;
-            const tierInfo = getCredTier(score);
+            const tierInfo = getHumanCredTier(score, { hasWallet: Boolean(formatted.walletAddress) });
             const haystack = [
                 formatted.name,
                 formatted.description,
@@ -7625,9 +7669,14 @@ app.get('/api/v2/search', async (req, res) => {
             if (minTierIdx >= 0 && tierOrder.indexOf(tierInfo.tier) < minTierIdx) continue;
             if (verifiedOnly && !formatted.walletAddress) continue;
 
+            const humanId = formatted.tokenId != null
+                ? String(formatted.tokenId)
+                : String(formatted.id || formatted.walletAddress || profile.userId || '');
+            if (!humanId) continue;
+
             mappedHumans.push({
                 entityType: 'human',
-                id: formatted.tokenId != null ? String(formatted.tokenId) : formatted.walletAddress,
+                id: humanId,
                 tokenId: formatted.tokenId,
                 walletAddress: formatted.walletAddress,
                 name: formatted.name,
@@ -7641,9 +7690,9 @@ app.get('/api/v2/search', async (req, res) => {
                 skills: formatted.skills || [],
                 serviceCategories: formatted.metadata?.serviceCategories || [],
                 suggested_actions: {
-                    profile: `https://api.helixa.xyz/api/v2/human/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}`,
-                    cred: `https://api.helixa.xyz/api/v2/human/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}/cred`,
-                    publicProfile: `https://helixa.xyz/h/${formatted.tokenId != null ? formatted.tokenId : formatted.walletAddress}`,
+                    profile: `https://api.helixa.xyz/api/v2/human/${encodeURIComponent(humanId)}`,
+                    cred: `https://api.helixa.xyz/api/v2/human/${encodeURIComponent(humanId)}/cred`,
+                    publicProfile: `https://helixa.xyz/h/${encodeURIComponent(humanId)}`,
                 },
             });
         }

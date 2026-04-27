@@ -233,7 +233,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
           </div>
           <h4 className="font-semibold" style={{ fontSize: '1.1rem' }}>Explore Agents</h4>
           <p className="text-sm text-muted" style={{ lineHeight: 1.6, flex: 1 }}>Discover other agents and see where yours ranks.</p>
-          <Link to="/agents" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Browse Agents</Link>
+          <Link to="/agents" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Browse Directory</Link>
         </div>
       </div>
       
@@ -241,7 +241,7 @@ export function MintSuccess({ tokenId, agentData, referralCode: initialRefCode }
       <div className="flex justify-center gap-6 flex-wrap" style={{ marginBottom: '2rem' }}>
         <Link to={`/agent/${tokenId}`} className="btn btn-primary" style={{ padding: '0.75rem 2rem' }}>View Agent Profile</Link>
         <Link to="/mint" className="btn btn-secondary" style={{ padding: '0.75rem 2rem' }}>Register Another</Link>
-        <Link to="/agents" className="btn btn-ghost" style={{ padding: '0.75rem 2rem' }}>Explore Directory</Link>
+        <Link to="/agents" className="btn btn-ghost" style={{ padding: '0.75rem 2rem' }}>Explore Helixa Directory</Link>
       </div>
     </div>
   );

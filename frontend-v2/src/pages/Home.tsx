@@ -93,7 +93,7 @@ export function Home() {
             transition={{ duration: 0.6, delay: 0.5 }}
             style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', justifyContent: 'center' }}
           >
-            <Link to="/agents" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Browse Agents →</Link>
+            <Link to="/agents" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Browse Directory →</Link>
             <a href="/terminal" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Agent Terminal →</a>
           </motion.div>
         </motion.div>
@@ -232,7 +232,7 @@ export function Home() {
           </motion.div>
 
           <motion.div {...fadeUp} className="home-section-cta" style={{ marginTop: 24 }}>
-            <Link to="/agents" className="btn-hero secondary">Browse All Agents →</Link>
+            <Link to="/agents" className="btn-hero secondary">Browse Helixa Directory →</Link>
           </motion.div>
         </div>
       </section>

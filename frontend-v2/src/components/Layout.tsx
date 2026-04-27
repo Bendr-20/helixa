@@ -6,7 +6,7 @@ import { preloadMap } from '../App';
 
 const primaryLinks = [
   { href: '/', label: 'Dashboard' },
-  { href: '/agents', label: 'Agents' },
+  { href: '/agents', label: 'Directory' },
   { href: '/jobs', label: 'Jobs' },
   { href: '/manage', label: 'Manage' },
 ];
