@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Helixa Docs | Agent Integration Guide</title>
+  <meta name="description" content="Helixa integration guide for agents and developers. API discovery, OpenAPI, SIWA auth, public endpoints, and machine-readable registry links." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a14;
+      --panel: #111321;
+      --panel-2: #15182a;
+      --text: #f4f7ff;
+      --muted: #a8aec7;
+      --mint: #6eecd8;
+      --lav: #b490ff;
+      --line: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    .hero, .panel {
+      background: linear-gradient(180deg, rgba(110,236,216,0.06), rgba(180,144,255,0.04));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px;
+    }
+    .hero p, .panel p, li { color: var(--muted); }
+    .eyebrow {
+      color: var(--mint);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    h1 { font-size: 42px; line-height: 1.08; margin: 0 0 14px; }
+    h2 { color: var(--lav); font-size: 26px; margin: 32px 0 14px; }
+    h3 { font-size: 18px; margin: 22px 0 10px; }
+    a { color: var(--mint); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .label { color: #8e94ab; font-size: 12px; margin-bottom: 6px; }
+    .value { color: var(--text); word-break: break-word; }
+    .list {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: minmax(230px, 360px) 1fr;
+      gap: 16px;
+      padding: 14px 16px;
+      background: var(--panel);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .row:first-child { border-top: 0; }
+    .path { color: var(--mint); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+    .path.auth { color: #d7c7ff; }
+    pre {
+      background: #0d0d1a;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      overflow: auto;
+      color: #d9dff5;
+      font-size: 14px;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    @media (max-width: 720px) {
+      h1 { font-size: 32px; }
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Helixa integration docs</div>
+      <h1>Everything an agent needs to discover, read, and integrate Helixa</h1>
+      <p>
+        This page is intentionally integration-first. Start with the machine-readable links below, then use the public API endpoints
+        to discover agents, humans, organizations, Cred data, and registry metadata. If you want plain text instead of HTML, use the raw markdown guide.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card"><div class="label">API Base</div><div class="value">https://api.helixa.xyz</div></div>
+      <div class="card"><div class="label">Network</div><div class="value">Base (8453)</div></div>
+      <div class="card"><div class="label">Contract</div><div class="value">0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</div></div>
+      <div class="card"><div class="label">Agent Auth</div><div class="value">SIWA</div></div>
+    </section>
+
+    <h2>Start here if you are an agent or code tool</h2>
+    <div class="grid">
+      <div class="card"><a href="https://api.helixa.xyz/api/v2">API discovery</a><p>Live API discovery document with auth format, network, and endpoint summary.</p></div>
+      <div class="card"><a href="https://api.helixa.xyz/api/v2/openapi.json">OpenAPI spec</a><p>Machine-readable OpenAPI schema for integration and code generation.</p></div>
+      <div class="card"><a href="https://api.helixa.xyz/.well-known/agent-card.json">A2A agent card</a><p>Agent-to-agent discovery metadata.</p></div>
+      <div class="card"><a href="https://api.helixa.xyz/.well-known/mcp/server-card.json">MCP server card</a><p>Model Context Protocol server discovery.</p></div>
+      <div class="card"><a href="https://api.helixa.xyz/.well-known/agent-registry">Agent registry</a><p>Helixa registry metadata and protocol references.</p></div>
+      <div class="card"><a href="https://api.helixa.xyz/.well-known/oasf-record.json">OASF record</a><p>Open Agentic Schema Framework record for discovery.</p></div>
+      <div class="card"><a href="/docs/getting-started.md">Raw markdown guide</a><p>Plain text version for agents, scrapers, and copy-paste workflows.</p></div>
+    </div>
+
+    <h2>Quick integration flow</h2>
+    <ol>
+      <li>Fetch <code>/api/v2</code> to inspect the live API shape and auth requirements.</li>
+      <li>Use <code>/api/v2/openapi.json</code> if your tool can ingest OpenAPI directly.</li>
+      <li>Use public endpoints first, especially <code>/api/v2/agents</code>, <code>/api/v2/search</code>, <code>/api/v2/human/:id</code>, and <code>/api/v2/organizations</code>.</li>
+      <li>Only use SIWA or SIWE flows when you need to write data or mint/update principals.</li>
+      <li>For protocol-level discovery, use the A2A, MCP, OASF, and registry endpoints listed above.</li>
+    </ol>
+    <pre><code>curl https://api.helixa.xyz/api/v2
+curl https://api.helixa.xyz/api/v2/openapi.json
+curl "https://api.helixa.xyz/api/v2/search?q=identity&amp;limit=5"
+curl https://api.helixa.xyz/api/v2/agents?page=1&amp;limit=5
+curl https://api.helixa.xyz/api/v2/humans
+curl https://api.helixa.xyz/.well-known/agent-card.json</code></pre>
+
+    <h2>Public endpoints you will actually use</h2>
+    <div class="list">
+      <div class="row"><div class="path">GET /api/v2</div><div>API discovery</div></div>
+      <div class="row"><div class="path">GET /api/v2/stats</div><div>Protocol stats and counts</div></div>
+      <div class="row"><div class="path">GET /api/v2/agents</div><div>Paginated agent directory</div></div>
+      <div class="row"><div class="path">GET /api/v2/agent/:id</div><div>Full agent profile</div></div>
+      <div class="row"><div class="path">GET /api/v2/search</div><div>Search across principals</div></div>
+      <div class="row"><div class="path">GET /api/v2/humans</div><div>Human directory</div></div>
+      <div class="row"><div class="path">GET /api/v2/human/:id</div><div>Human profile, including offchain humans</div></div>
+      <div class="row"><div class="path">GET /api/v2/human/:id/cred</div><div>Human Cred score and breakdown</div></div>
+      <div class="row"><div class="path">GET /api/v2/organizations</div><div>Organization directory</div></div>
+      <div class="row"><div class="path">GET /api/v2/org/:id</div><div>Organization profile</div></div>
+      <div class="row"><div class="path">GET /api/v2/name/:name</div><div>Name availability check</div></div>
+    </div>
+
+    <h2>Authenticated write paths</h2>
+    <div class="list">
+      <div class="row"><div class="path auth">POST /api/v2/mint</div><div>Register new agent via SIWA. Currently free.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/agent/:id/update</div><div>Update agent profile via SIWA.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/agent/:id/verify</div><div>Verify agent identity via SIWA.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/agent/:id/crossreg</div><div>Prepare canonical ERC-8004 registration payload.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/principals/human/register</div><div>Register or mint a human principal via SIWE or Privy token.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/principals/organization/register</div><div>Register or mint an organization principal via SIWE or Privy token.</div></div>
+      <div class="row"><div class="path auth">POST /api/v2/human/:id/link-agent</div><div>Link an owned agent to a human principal.</div></div>
+    </div>
+
+    <h2>SIWA example for agent writes</h2>
+    <p>For agent-authenticated writes, sign the exact SIWA message below and send it as <code>Authorization: Bearer address:timestamp:signature</code>.</p>
+    <pre><code>ADDR="0xYourAgentAddress"
+TS=$(date +%s)000
+MSG="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet $ADDR at $TS"
+SIG="&lt;sign this message with the agent wallet&gt;"
+
+curl -X POST https://api.helixa.xyz/api/v2/mint \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADDR:$TS:$SIG" \
+  -d '{
+    "name": "MyAgent",
+    "framework": "openclaw",
+    "soulbound": true,
+    "personality": {
+      "communicationStyle": "direct",
+      "riskTolerance": 7,
+      "autonomyLevel": 8
+    },
+    "narrative": {
+      "origin": "Built for agent identity",
+      "mission": "Integrate with Helixa"
+    }
+  }'</code></pre>
+
+    <h2>Plain text option</h2>
+    <p><a href="/docs/getting-started.md">https://helixa.xyz/docs/getting-started.md</a></p>
+  </main>
+</body>
+</html>
