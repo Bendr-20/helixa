@@ -2266,14 +2266,14 @@ async function computeHumanCred(profile, options = {}) {
     const rawScore = Object.values(weighted).reduce((a, b) => a + b, 0);
     const offchainBaseline = hasWallet
         ? 0
-        : Math.min(45,
-            (profile.name ? 12 : 0) +
-            (profile.description ? 6 : 0) +
-            ((Array.isArray(profile.skills) && profile.skills.length > 0) ? 5 : 0) +
-            (hasLinkedIdentity ? 8 : 0) +
-            ((profile.organization || hasServiceSignal || (Array.isArray(profile.domains) && profile.domains.length > 0)) ? 4 : 0) +
-            (hasWorkSignal ? 6 : 0) +
-            (ageDays >= 30 ? 4 : 0)
+        : Math.min(50,
+            (profile.name ? 14 : 0) +
+            (profile.description ? 8 : 0) +
+            ((Array.isArray(profile.skills) && profile.skills.length > 0) ? 6 : 0) +
+            (hasLinkedIdentity ? 10 : 0) +
+            ((profile.organization || hasServiceSignal || (Array.isArray(profile.domains) && profile.domains.length > 0)) ? 5 : 0) +
+            (hasWorkSignal ? 7 : 0) +
+            (ageDays >= 30 ? 5 : 0)
         );
     const score = Math.max(0, Math.min(100, hasWallet ? rawScore : Math.max(rawScore, offchainBaseline)));
     const result = {
