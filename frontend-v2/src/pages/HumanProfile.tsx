@@ -265,6 +265,8 @@ export function HumanProfile() {
   ].filter(Boolean) as Array<{ label: string; url: string }>;
   const manageHref = human.tokenId != null ? `/manage/human?tokenId=${human.tokenId}` : '/manage/human';
   const telegramHandle = human.services?.telegram?.handle ? normalizeHandle(String(human.services.telegram.handle)) : '';
+  const hasWallet = typeof human.walletAddress === 'string' && human.walletAddress.trim().length > 0;
+  const shortWallet = hasWallet ? `${human.walletAddress.slice(0, 6)}...${human.walletAddress.slice(-4)}` : '';
 
   return (
     <div className="py-8">
@@ -336,20 +338,25 @@ export function HumanProfile() {
 
                 <div className="glass-card p-4 text-left overflow-hidden">
                   <div className="text-muted text-xs mb-2 uppercase tracking-wider">Identity</div>
-                  <div className="text-sm mb-2" style={wrapAnywhereStyle}><span className="text-muted">Wallet:</span> <code>{human.walletAddress.slice(0, 6)}...{human.walletAddress.slice(-4)}</code></div>
+                  <div className="text-sm mb-2" style={wrapAnywhereStyle}>
+                    <span className="text-muted">Wallet:</span>{' '}
+                    {hasWallet ? <code>{shortWallet}</code> : <span>Not linked yet</span>}
+                  </div>
                   <div className="text-sm mb-2"><span className="text-muted">Created:</span> {formatDate(human.createdAt)}</div>
                   <div className="text-sm"><span className="text-muted">Updated:</span> {formatDate(human.updatedAt)}</div>
                 </div>
 
-                <a
-                  href={`${EXPLORER_URL}/address/${human.walletAddress}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-ghost text-xs mt-4 w-full"
-                  style={{ minHeight: '44px', textAlign: 'center' }}
-                >
-                  View Wallet on BaseScan
-                </a>
+                {hasWallet && (
+                  <a
+                    href={`${EXPLORER_URL}/address/${human.walletAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost text-xs mt-4 w-full"
+                    style={{ minHeight: '44px', textAlign: 'center' }}
+                  >
+                    View Wallet on BaseScan
+                  </a>
+                )}
               </div>
             </div>
 
