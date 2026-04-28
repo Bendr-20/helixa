@@ -217,7 +217,7 @@ export function Layout({ children }: LayoutProps) {
       
       {/* Footer */}
       <footer>
-        <div className="container" style={{ padding: '1.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+        <div className="container site-footer-links" style={{ padding: '1.5rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ color: '#555', fontSize: '0.75rem' }}>Helixa Protocol</span>
           <span style={{ color: '#333', fontSize: '0.6rem' }}>·</span>
           <a href="https://github.com/Bendr-20/helixa" target="_blank" rel="noopener noreferrer">GitHub</a>

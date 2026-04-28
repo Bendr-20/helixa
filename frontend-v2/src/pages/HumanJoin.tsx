@@ -537,7 +537,7 @@ export function HumanJoin() {
           </Link>
         </div>
 
-        <div style={pageCardStyle}>
+        <div className="human-join-card" style={{ ...pageCardStyle, maxWidth: '100%', overflow: 'hidden' }}>
           <div style={{ marginBottom: '2rem' }}>
             <div className="section-label">Human Principal Onboarding</div>
             <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', lineHeight: 1.05, marginBottom: '0.75rem' }}>
@@ -546,7 +546,7 @@ export function HumanJoin() {
             <p style={{ color: '#9a94af', fontSize: '1rem', maxWidth: '700px', lineHeight: 1.6, marginBottom: '1rem' }}>
               Build your human profile around identity, discoverability, and real work context. This is where people show who they are, what they do, and how they plug into Helixa.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="human-join-steps" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {stepOrder.map((step, index) => (
                 <StepPill
                   key={step}
@@ -561,7 +561,7 @@ export function HumanJoin() {
 
           {currentStep === 'intro' && (
             <div>
-              <div style={{
+              <div className="human-join-auth-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                 gap: '1rem',
@@ -595,7 +595,7 @@ export function HumanJoin() {
                 ))}
               </div>
 
-              <div style={{
+              <div className="human-join-highlights-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '0.9rem',
@@ -618,7 +618,7 @@ export function HumanJoin() {
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <div className="human-join-actions" style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                 <button type="button" className="btn-hero primary" onClick={() => goToStep('profile')}>
                   Start Human Profile
                 </button>
@@ -631,7 +631,7 @@ export function HumanJoin() {
 
           {currentStep === 'profile' && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Display Name</label>
                   <input
@@ -652,7 +652,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Region</label>
                   <input
@@ -685,7 +685,7 @@ export function HumanJoin() {
 
               <div style={{ marginBottom: '2rem' }}>
                 <label style={fieldLabelStyle}>Profile Photo (optional)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
+                <div className="human-join-photo-grid" style={{ display: 'grid', gridTemplateColumns: '140px minmax(0, 1fr)', gap: '1rem', alignItems: 'start' }}>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     {profilePreview ? (
                       <img
@@ -748,7 +748,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div className="human-join-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button type="button" className="btn-hero secondary" onClick={previousStep}>Back</button>
                 <button type="button" className="btn-hero primary" onClick={nextStep} disabled={!profileReady} style={{ opacity: profileReady ? 1 : 0.55 }}>
                   Continue to Work
@@ -820,7 +820,7 @@ export function HumanJoin() {
                 Open to work right now
               </label>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <div className="human-join-actions" style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button type="button" className="btn-hero secondary" onClick={previousStep}>Back</button>
                 <button type="button" className="btn-hero primary" onClick={nextStep}>Continue to Links</button>
               </div>
@@ -829,7 +829,7 @@ export function HumanJoin() {
 
           {currentStep === 'links' && (
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>X</label>
                   <input value={draft.x} onChange={e => updateDraft({ x: e.target.value })} placeholder="QuigleyNFT" style={inputStyle} />
@@ -840,7 +840,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Farcaster</label>
                   <input value={draft.farcaster} onChange={e => updateDraft({ farcaster: e.target.value })} placeholder="quigley" style={inputStyle} />
@@ -851,7 +851,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>ENS</label>
                   <input value={draft.ens} onChange={e => updateDraft({ ens: e.target.value })} placeholder="name.eth" style={inputStyle} />
@@ -862,7 +862,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Talent Protocol (optional)</label>
                   <input value={draft.talentProtocol} onChange={e => updateDraft({ talentProtocol: e.target.value })} placeholder="https://talentprotocol.com/..." style={inputStyle} />
@@ -878,7 +878,7 @@ export function HumanJoin() {
                 <input value={draft.eas} onChange={e => updateDraft({ eas: e.target.value })} placeholder="https://easscan.org/..." style={inputStyle} />
               </div>
 
-              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="human-join-inline-actions" style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button type="button" className="btn-hero secondary" onClick={importEnsAvatar} disabled={!draft.ens.trim()} style={{ opacity: draft.ens.trim() ? 1 : 0.55 }}>
                   Use ENS Avatar
                 </button>
@@ -887,7 +887,7 @@ export function HumanJoin() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+              <div className="human-join-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
                 <div>
                   <label style={fieldLabelStyle}>Linked Agent (optional)</label>
                   <input value={draft.linkedAgent} onChange={e => updateDraft({ linkedAgent: e.target.value })} placeholder="8453:1" style={inputStyle} />

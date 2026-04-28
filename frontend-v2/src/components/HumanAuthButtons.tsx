@@ -27,6 +27,24 @@ function isLikelyInAppBrowser(userAgent: string) {
   ].some(token => ua.includes(token));
 }
 
+function getAuthErrorMessage(err: any, method: 'email' | 'wallet') {
+  const code = err?.code;
+  const message = [err?.message, err?.error?.message]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (code === 4001 || code === 'ACTION_REJECTED' || message.includes('user rejected') || message.includes('rejected the request')) {
+    return method === 'wallet'
+      ? 'Wallet sign-in was cancelled. Try again when you are ready.'
+      : 'Sign-in was cancelled. Try again when you are ready.';
+  }
+
+  return method === 'wallet'
+    ? 'Wallet sign-in did not open. Try again.'
+    : 'Email sign-in did not open. Try again.';
+}
+
 export function HumanAuthButtons({ intro }: HumanAuthButtonsProps) {
   const { login } = usePrivy();
   const [error, setError] = useState('');
@@ -40,7 +58,7 @@ export function HumanAuthButtons({ intro }: HumanAuthButtonsProps) {
     try {
       await login({ loginMethods: ['email'] });
     } catch (err: any) {
-      setError(err?.message || 'Email sign-in did not open.');
+      setError(getAuthErrorMessage(err, 'email'));
     }
   };
 
@@ -49,7 +67,7 @@ export function HumanAuthButtons({ intro }: HumanAuthButtonsProps) {
     try {
       await login({ loginMethods: ['wallet'] });
     } catch (err: any) {
-      setError(err?.message || 'Wallet sign-in did not open.');
+      setError(getAuthErrorMessage(err, 'wallet'));
     }
   };
 

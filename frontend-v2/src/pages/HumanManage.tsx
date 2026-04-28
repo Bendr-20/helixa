@@ -217,6 +217,30 @@ async function buildWalletBearer(wallet: any) {
   return `${walletAddress}:${timestamp}:${signature}`;
 }
 
+function isWalletRejection(error: any) {
+  const code = error?.code;
+  const message = [error?.message, error?.shortMessage, error?.reason, error?.info?.error?.message]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return code === 4001
+    || code === 'ACTION_REJECTED'
+    || message.includes('user rejected')
+    || message.includes('rejected the request')
+    || message.includes('action_rejected');
+}
+
+function getWalletStatusMessage(error: any, context: 'load' | 'save' | 'link' = 'save') {
+  if (isWalletRejection(error)) {
+    if (context === 'load') return 'Wallet signature cancelled. Sign when you are ready to load your human profile.';
+    if (context === 'link') return 'Wallet signature cancelled. Your agent link was not changed.';
+    return 'Wallet signature cancelled. Nothing was changed.';
+  }
+
+  return error?.message || 'Something went wrong with wallet authentication.';
+}
+
 async function getHumanAuthHeader({
   wallet,
   authenticated,
@@ -447,7 +471,10 @@ export function HumanManage() {
           return;
         }
 
-        const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
+        const accessToken = authenticated ? await getAccessToken().catch(() => null) : null;
+        const authHeader = accessToken
+          ? `Bearer ${accessToken}`
+          : await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
         const meRes = await fetch(`${API_URL}/api/v2/principals/human/me`, {
           headers: { Authorization: authHeader },
         });
@@ -467,7 +494,11 @@ export function HumanManage() {
         setDraft(defaultDraft);
       } catch (error: any) {
         if (!mounted) return;
-        setStatus({ type: 'error', msg: error?.message || 'Failed to load your human profile.' });
+        const rejected = isWalletRejection(error);
+        setStatus({
+          type: rejected ? 'info' : 'error',
+          msg: rejected ? getWalletStatusMessage(error, 'load') : (error?.message || 'Failed to load your human profile.'),
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -675,7 +706,10 @@ export function HumanManage() {
       setStatus({ type: 'success', msg: registerData?.message || 'Human profile saved.' });
       setCurrentStep('review');
     } catch (error: any) {
-      setStatus({ type: 'error', msg: error?.message || 'Failed to save human profile.' });
+      setStatus({
+        type: isWalletRejection(error) ? 'info' : 'error',
+        msg: isWalletRejection(error) ? getWalletStatusMessage(error, linkedAgentTokenId !== null ? 'link' : 'save') : (error?.message || 'Failed to save human profile.'),
+      });
     } finally {
       setIsSubmitting(false);
     }
