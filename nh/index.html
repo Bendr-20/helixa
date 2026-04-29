@@ -4,55 +4,616 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nh.helixa.xyz</title>
+    <meta name="description" content="Helixa staging and build area." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;700&display=swap" rel="stylesheet" />
     <style>
       :root {
         color-scheme: dark;
+        --bg-0: #070b1d;
+        --bg-1: #0b1f46;
+        --bg-2: #311050;
+        --bg-3: #6d1c72;
+        --bg-4: #d04ba8;
+        --bg-5: #8c40f2;
+        --text: #f7f5ff;
+        --muted: rgba(235, 232, 255, 0.72);
+        --line: rgba(255, 255, 255, 0.12);
+        --glass: rgba(13, 16, 34, 0.34);
+        --glass-strong: rgba(18, 22, 44, 0.5);
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+        --accent: #d95bc5;
+        --accent-2: #4db8ff;
       }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+      }
+
       body {
-        margin: 0;
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: radial-gradient(circle at top, #111827 0%, #050816 55%, #02030a 100%);
-        color: #e5e7eb;
         font-family: Inter, Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at 12% 28%, rgba(77, 184, 255, 0.34), transparent 0 28%),
+          radial-gradient(circle at 78% 24%, rgba(217, 91, 197, 0.28), transparent 0 25%),
+          radial-gradient(circle at 52% 62%, rgba(140, 64, 242, 0.22), transparent 0 28%),
+          linear-gradient(135deg, var(--bg-1), var(--bg-2) 34%, var(--bg-3) 68%, var(--bg-0));
+        background-size: 160% 160%, 150% 150%, 170% 170%, 180% 180%;
+        animation: driftOne 24s ease-in-out infinite alternate;
+        overflow-x: hidden;
       }
-      .card {
-        width: min(680px, calc(100vw - 32px));
-        padding: 32px;
-        border: 1px solid rgba(110, 236, 216, 0.2);
-        border-radius: 20px;
-        background: rgba(10, 15, 28, 0.72);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
       }
-      .eyebrow {
-        color: #6eecd8;
-        font-size: 12px;
+
+      body::before {
+        background:
+          radial-gradient(circle at 18% 46%, rgba(77, 184, 255, 0.18), transparent 0 20%),
+          radial-gradient(circle at 48% 54%, rgba(194, 76, 230, 0.18), transparent 0 22%),
+          radial-gradient(circle at 86% 36%, rgba(255, 122, 211, 0.2), transparent 0 20%);
+        filter: blur(18px);
+        animation: driftTwo 34s ease-in-out infinite alternate;
+      }
+
+      body::after {
+        background-image: radial-gradient(rgba(255,255,255,0.18) 0.8px, transparent 0.9px);
+        background-size: 10px 10px;
+        mask-image: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.95), rgba(255,255,255,0.2) 42%, transparent 74%);
+        opacity: 0.22;
+        transform: scale(1.15);
+        animation: pulseMesh 18s ease-in-out infinite alternate;
+      }
+
+      @keyframes driftOne {
+        0% {
+          background-position: 0% 50%, 100% 20%, 50% 100%, 0% 50%;
+        }
+        100% {
+          background-position: 18% 42%, 82% 38%, 56% 78%, 100% 50%;
+        }
+      }
+
+      @keyframes driftTwo {
+        0% {
+          transform: scale(1) translate3d(0, 0, 0);
+          opacity: 0.9;
+        }
+        100% {
+          transform: scale(1.12) translate3d(-1.5%, 1.5%, 0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes pulseMesh {
+        0% {
+          opacity: 0.14;
+          transform: scale(1.08) translateY(0px);
+        }
+        100% {
+          opacity: 0.3;
+          transform: scale(1.16) translateY(-8px);
+        }
+      }
+
+      .shell {
+        position: relative;
+        min-height: 100vh;
+        isolation: isolate;
+      }
+
+      .header-wrap {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        padding: 16px 18px 0;
+      }
+
+      .header {
+        max-width: 1240px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 14px 18px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 22px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+      }
+
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .logo-mark {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        box-shadow: 0 0 22px rgba(217, 91, 197, 0.45);
+        flex: 0 0 auto;
+      }
+
+      .logo-text {
+        font-family: Orbitron, Inter, sans-serif;
+        font-size: 1.12rem;
         font-weight: 700;
-        letter-spacing: 0.14em;
+        letter-spacing: -0.03em;
+      }
+
+      .logo-text span {
+        opacity: 0.64;
+        font-weight: 500;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .nav a,
+      .actions a {
+        text-decoration: none;
+      }
+
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 999px;
+        color: rgba(247, 245, 255, 0.9);
+        font-size: 0.92rem;
+        font-weight: 600;
+        transition: 160ms ease;
+      }
+
+      .nav-link:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+
+      .nav-link.active {
+        background: rgba(255,255,255,0.12);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.06);
+        color: var(--text);
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .hero {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 112px 24px 72px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+        gap: 36px;
+        align-items: center;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: rgba(247,245,255,0.9);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
-        margin-bottom: 12px;
       }
-      h1 {
-        margin: 0 0 12px;
-        font-size: clamp(32px, 6vw, 56px);
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, var(--accent-2), var(--accent));
+        box-shadow: 0 0 18px rgba(77, 184, 255, 0.6);
       }
-      p {
+
+      .hero h1 {
+        margin: 18px 0 16px;
+        font-size: clamp(3rem, 6vw, 5.8rem);
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+      }
+
+      .hero p {
         margin: 0;
-        line-height: 1.7;
-        color: #a5b4c3;
-        font-size: 16px;
+        max-width: 760px;
+        color: var(--muted);
+        font-size: 1.08rem;
+        line-height: 1.8;
       }
-      code {
-        color: #b490ff;
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 28px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-width: 170px;
+        padding: 14px 18px;
+        border-radius: 16px;
+        font-size: 0.96rem;
+        font-weight: 800;
+        transition: 180ms ease;
+      }
+
+      .btn-primary {
+        color: #fff;
+        background: linear-gradient(135deg, rgba(77,184,255,0.9), rgba(217,91,197,0.88));
+        box-shadow: 0 20px 50px rgba(23, 19, 52, 0.28);
+      }
+
+      .btn-secondary {
+        color: var(--text);
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 26px;
+      }
+
+      .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: rgba(247,245,255,0.82);
+        font-size: 0.88rem;
+        font-weight: 600;
+      }
+
+      .hero-card,
+      .panel {
+        position: relative;
+        border: 1px solid rgba(255,255,255,0.12);
+        background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04));
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(22px) saturate(170%);
+        -webkit-backdrop-filter: blur(22px) saturate(170%);
+      }
+
+      .hero-card {
+        padding: 24px;
+        border-radius: 28px;
+        overflow: hidden;
+        min-height: 420px;
+      }
+
+      .hero-card::before {
+        content: "";
+        position: absolute;
+        inset: -30% -10% auto auto;
+        width: 280px;
+        height: 280px;
+        background: radial-gradient(circle, rgba(217,91,197,0.4), transparent 62%);
+        filter: blur(18px);
+      }
+
+      .card-kicker {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.08);
+        font-size: 0.74rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgba(247,245,255,0.78);
+      }
+
+      .wave {
+        position: relative;
+        z-index: 1;
+        margin: 32px 0 26px;
+        height: 180px;
+        border-radius: 24px;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 14% 48%, rgba(77,184,255,0.78), transparent 0 26%),
+          radial-gradient(circle at 55% 56%, rgba(188,72,233,0.72), transparent 0 26%),
+          radial-gradient(circle at 88% 34%, rgba(255,137,216,0.76), transparent 0 24%),
+          linear-gradient(135deg, rgba(7,11,29,0.92), rgba(24,8,51,0.88) 45%, rgba(54,12,75,0.85));
+      }
+
+      .wave::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255,255,255,0.42) 0.8px, transparent 0.9px);
+        background-size: 8px 8px;
+        opacity: 0.34;
+        mask-image: radial-gradient(circle at 50% 52%, rgba(255,255,255,1), rgba(255,255,255,0.75) 42%, transparent 72%);
+        transform: scale(1.12);
+      }
+
+      .wave::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 30% 68%, transparent 0 28%, rgba(255,255,255,0.1) 28.4%, transparent 29%),
+          radial-gradient(circle at 72% 24%, transparent 0 28%, rgba(255,255,255,0.1) 28.4%, transparent 29%);
+        opacity: 0.42;
+        mix-blend-mode: screen;
+      }
+
+      .card-grid {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .mini-stat {
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .mini-stat .label {
+        color: rgba(247,245,255,0.64);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .mini-stat .value {
+        margin-top: 8px;
+        font-size: 1.28rem;
+        font-weight: 800;
+      }
+
+      .panel-row {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 24px 72px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .panel {
+        border-radius: 24px;
+        padding: 22px;
+      }
+
+      .panel h3 {
+        margin: 0 0 10px;
+        font-size: 1.02rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.75;
+      }
+
+      .footer {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 24px 28px;
+        color: rgba(247,245,255,0.54);
+        font-size: 0.82rem;
+      }
+
+      @media (max-width: 1080px) {
+        .header {
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .hero,
+        .panel-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .header-wrap {
+          padding: 14px 14px 0;
+        }
+
+        .header {
+          align-items: flex-start;
+          justify-content: flex-start;
+          padding: 16px;
+          border-radius: 20px;
+        }
+
+        .nav,
+        .actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
+
+        .hero {
+          padding: 72px 18px 52px;
+          gap: 22px;
+        }
+
+        .hero h1 {
+          font-size: clamp(2.5rem, 14vw, 4rem);
+        }
+
+        .hero-card {
+          min-height: auto;
+          padding: 20px;
+        }
+
+        .wave {
+          height: 150px;
+        }
+
+        .card-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .panel-row,
+        .footer {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
       }
     </style>
   </head>
   <body>
-    <main class="card">
-      <div class="eyebrow">Helixa Subdomain</div>
-      <h1>nh.helixa.xyz</h1>
-      <p>This path is live in the repo and ready for Rendr to build on. Current root: <code>agentdna/nh/</code>.</p>
-    </main>
+    <div class="shell">
+      <div class="header-wrap">
+        <header class="header">
+          <a class="logo" href="/">
+            <span class="logo-mark"></span>
+            <span class="logo-text">helixa<span>.xyz</span></span>
+          </a>
+
+          <nav class="nav" aria-label="Primary">
+            <a class="nav-link active" href="/">Dashboard</a>
+            <a class="nav-link" href="/agents">Directory</a>
+            <a class="nav-link" href="/jobs">Jobs</a>
+            <a class="nav-link" href="/manage">Manage</a>
+            <a class="nav-link" href="/mint">Register</a>
+            <a class="nav-link" href="/token">$CRED</a>
+            <a class="nav-link" href="/docs">Docs</a>
+          </nav>
+
+          <div class="actions">
+            <a class="pill" href="/nh/">NH Staging</a>
+          </div>
+        </header>
+      </div>
+
+      <main>
+        <section class="hero">
+          <div>
+            <div class="eyebrow">Helixa Staging Surface</div>
+            <h1>Build the next Helixa homepage in the open.</h1>
+            <p>
+              `nh.helixa.xyz` is now the staging and build area for new Helixa work. This first pass keeps the live header structure, turns it into glass, and anchors the whole page in a slow-moving gradient built from the blue, violet, and pink tones in Rendr’s reference.
+            </p>
+
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="/docs">Open Docs</a>
+              <a class="btn btn-secondary" href="https://github.com/Bendr-20/helixa" target="_blank" rel="noopener noreferrer">Open Repo</a>
+            </div>
+
+            <div class="meta">
+              <div class="meta-chip">Glass header</div>
+              <div class="meta-chip">Animated gradient</div>
+              <div class="meta-chip">NH staging path active</div>
+            </div>
+          </div>
+
+          <aside class="hero-card">
+            <div class="card-kicker">Current direction</div>
+            <div class="wave" aria-hidden="true"></div>
+            <div class="card-grid">
+              <div class="mini-stat">
+                <div class="label">Palette</div>
+                <div class="value">Blue, violet, magenta</div>
+              </div>
+              <div class="mini-stat">
+                <div class="label">Header</div>
+                <div class="value">Live nav, glass treatment</div>
+              </div>
+              <div class="mini-stat">
+                <div class="label">Use</div>
+                <div class="value">Staging and homepage builds</div>
+              </div>
+              <div class="mini-stat">
+                <div class="label">Next</div>
+                <div class="value">Refine sections and interactions</div>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="panel-row">
+          <article class="panel">
+            <h3>Header kept familiar</h3>
+            <p>The nav keeps the current Helixa structure so staging still feels connected to the live product, but the chrome is now lighter, glassier, and more premium.</p>
+          </article>
+          <article class="panel">
+            <h3>Background stays alive</h3>
+            <p>The page uses layered radial gradients with very slow drift so the background keeps moving without getting noisy or distracting while someone sits on it.</p>
+          </article>
+          <article class="panel">
+            <h3>Built for iteration</h3>
+            <p>This gives NH a proper first landing state so Rendr can keep shaping the visual system here before anything graduates to the main Helixa surface.</p>
+          </article>
+        </section>
+      </main>
+
+      <div class="footer">nh.helixa.xyz staging area in the Helixa repo.</div>
+    </div>
   </body>
 </html>
