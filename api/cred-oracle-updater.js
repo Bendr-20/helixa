@@ -24,7 +24,54 @@ const ORACLE_ABI = [
 ];
 
 const API_BASE = 'http://localhost:3457';
+const API_PAGE_LIMIT = 1000;
 // Use V2 Helixa agents (tokenId 1-N) not terminal indexer IDs
+
+async function fetchJson(url) {
+    const http = require('http');
+    return new Promise((resolve, reject) => {
+        http.get(url, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(new Error(`Failed to parse ${url}: ${e.message}`));
+                }
+            });
+        }).on('error', reject);
+    });
+}
+
+async function fetchAllAgents() {
+    const all = [];
+    const seen = new Set();
+    let page = 1;
+    let pages = 1;
+
+    do {
+        const url = `${API_BASE}/api/v2/agents?limit=${API_PAGE_LIMIT}&page=${page}&spam=true&sort=tokenId&order=asc`;
+        const parsed = await fetchJson(url);
+        const agents = parsed.agents || [];
+        pages = Math.max(1, Number(parsed.pages) || 1);
+
+        for (const agent of agents) {
+            if (agent?.tokenId == null || seen.has(agent.tokenId)) continue;
+            seen.add(agent.tokenId);
+            all.push(agent);
+        }
+
+        console.log(`Fetched page ${page}/${pages}: ${agents.length} agents`);
+        page += 1;
+    } while (page <= pages);
+
+    return all;
+}
+
+function formatError(err) {
+    return err?.shortMessage || err?.info?.error?.message || err?.reason || err?.message || String(err);
+}
 
 async function main() {
     // Get deployer key
@@ -39,24 +86,15 @@ async function main() {
     const provider = new ethers.JsonRpcProvider('https://mainnet.base.org', 8453, { staticNetwork: true });
     const wallet = new ethers.Wallet(deployerKey, provider);
     const oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, wallet);
+    const balance = await provider.getBalance(wallet.address);
 
     console.log(`Oracle: ${ORACLE_ADDRESS}`);
     console.log(`Updater: ${wallet.address}`);
+    console.log(`Balance: ${ethers.formatEther(balance)} ETH`);
 
-    // Fetch all Helixa V2 agents with cred scores
-    const http = require('http');
-    const agents = await new Promise((resolve, reject) => {
-        http.get(`${API_BASE}/api/v2/agents?limit=2000`, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    const parsed = JSON.parse(data);
-                    resolve(parsed.agents || []);
-                } catch (e) { reject(e); }
-            });
-        }).on('error', reject);
-    });
+    // Fetch the full Helixa V2 agent set, including filtered/spam-hidden entries.
+    // The API caps page size at 1000, so paginate explicitly.
+    const agents = await fetchAllAgents();
 
     if (!agents.length) {
         console.log('No agents found from API');
@@ -70,6 +108,23 @@ async function main() {
     // Batch in groups of 100 to avoid gas limits
     const BATCH_SIZE = 100;
     let totalUpdated = 0;
+    let failedBatches = 0;
+
+    if (scored.length > 0) {
+        const preview = scored.slice(0, Math.min(BATCH_SIZE, scored.length));
+        const previewTokenIds = preview.map(a => BigInt(a.tokenId));
+        const previewScores = preview.map(a => a.credScore);
+        const feeData = await provider.getFeeData();
+        const gasEstimate = await oracle.batchUpdate.estimateGas(previewTokenIds, previewScores);
+        const maxFeePerGas = feeData.maxFeePerGas || feeData.gasPrice;
+        if (maxFeePerGas) {
+            const estimatedCost = gasEstimate * maxFeePerGas;
+            console.log(`Estimated first batch cost: ~${ethers.formatEther(estimatedCost)} ETH (${gasEstimate.toString()} gas @ max ${ethers.formatUnits(maxFeePerGas, 'gwei')} gwei)`);
+            if (balance < estimatedCost) {
+                throw new Error(`Insufficient updater balance: have ${ethers.formatEther(balance)} ETH, need about ${ethers.formatEther(estimatedCost)} ETH for the first batch`);
+            }
+        }
+    }
 
     for (let i = 0; i < scored.length; i += BATCH_SIZE) {
         const batch = scored.slice(i, i + BATCH_SIZE);
@@ -86,11 +141,15 @@ async function main() {
             console.log(`  Confirmed, gas: ${receipt.gasUsed.toString()}`);
             totalUpdated += batch.length;
         } catch (e) {
-            console.error(`  Batch failed: ${e.message}`);
+            failedBatches += 1;
+            console.error(`  Batch failed: ${formatError(e)}`);
         }
     }
 
     console.log(`\n✅ Updated ${totalUpdated} scores onchain`);
+    if (failedBatches > 0) {
+        throw new Error(`${failedBatches} batch(es) failed during oracle update`);
+    }
     
     // Verify a few
     if (scored.length > 0) {
