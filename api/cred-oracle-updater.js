@@ -126,6 +126,8 @@ async function main() {
         }
     }
 
+    let nextNonce = await wallet.getNonce('pending');
+
     for (let i = 0; i < scored.length; i += BATCH_SIZE) {
         const batch = scored.slice(i, i + BATCH_SIZE);
         const tokenIds = batch.map(a => BigInt(a.tokenId));
@@ -134,8 +136,8 @@ async function main() {
         console.log(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batch.length} agents (IDs ${tokenIds[0]}-${tokenIds[tokenIds.length - 1]})`);
         
         try {
-            const nonce = await wallet.getNonce();
-            const tx = await oracle.batchUpdate(tokenIds, scores, { nonce });
+            const tx = await oracle.batchUpdate(tokenIds, scores, { nonce: nextNonce });
+            nextNonce += 1;
             console.log(`  TX: ${tx.hash}`);
             const receipt = await tx.wait();
             console.log(`  Confirmed, gas: ${receipt.gasUsed.toString()}`);
