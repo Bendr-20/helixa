@@ -235,6 +235,28 @@ async function buildSiweToken(wallet: { address: string; getEthereumProvider: ()
   return `${address}:${timestamp}:${signature}`;
 }
 
+function isWalletRejection(error: any) {
+  const code = error?.code;
+  const message = [error?.message, error?.shortMessage, error?.reason, error?.info?.error?.message]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return code === 4001
+    || code === 'ACTION_REJECTED'
+    || message.includes('user rejected')
+    || message.includes('rejected the request')
+    || message.includes('action_rejected');
+}
+
+function getWalletLinkFailureMessage(error: any) {
+  if (isWalletRejection(error)) {
+    return 'Human profile created. Agent linking still needs a wallet signature, so finish that step on desktop or retry it later from Manage.';
+  }
+
+  return 'Human profile created, but agent linking failed on this device. Open the profile on desktop or Manage to finish the link.';
+}
+
 function StepPill({ active, complete, label, onClick }: { active: boolean, complete: boolean, label: string, onClick: () => void }) {
   return (
     <button
@@ -296,6 +318,7 @@ export function HumanJoin() {
   const [saveMessage, setSaveMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
+  const [createdProfilePath, setCreatedProfilePath] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentStep = pathSteps[location.pathname] || 'intro';
@@ -316,6 +339,7 @@ export function HumanJoin() {
     if (saveMessage) setSaveMessage('');
     if (submitError) setSubmitError('');
     if (submitSuccess) setSubmitSuccess('');
+    if (createdProfilePath) setCreatedProfilePath('');
   };
 
   const toggleArrayValue = (field: 'serviceCategories' | 'paymentPreferences' | 'communicationChannels', value: string) => {
@@ -344,6 +368,7 @@ export function HumanJoin() {
     setSaveMessage('Draft saved locally on this device.');
     if (submitError) setSubmitError('');
     if (submitSuccess) setSubmitSuccess('');
+    if (createdProfilePath) setCreatedProfilePath('');
   };
 
   const importEnsAvatar = () => {
@@ -389,18 +414,13 @@ export function HumanJoin() {
     }
 
     const linkedAgentTokenId = parseLinkedAgentTokenId(draft.linkedAgent);
-    // If linking an agent, we need human wallet proof (SIWE). If no linked agent, we can use Privy access token.
-    if (linkedAgentTokenId !== null && !wallet) {
-      setSubmitError('Linking an agent requires wallet authentication. Please connect a wallet or remove the linked agent.');
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       let authToken = '';
-      const shouldUseWalletAuth = Boolean(wallet) && (linkedAgentTokenId !== null || draft.authMethod === 'wallet');
+      const shouldUseWalletAuth = Boolean(wallet) && draft.authMethod === 'wallet';
       if (shouldUseWalletAuth) {
-        // Wallet proof required for linking and preferred for onchain minting
+        // Wallet proof is only required for wallet-first onchain minting.
         authToken = await buildSiweToken(wallet);
       } else {
         // No linked agent → use Privy access token (email/social)
@@ -487,27 +507,43 @@ export function HumanJoin() {
       if (!registerRes.ok) throw new Error(registerData?.error || 'Human register failed');
 
       let principal = registerData.principal;
+      let linkWarning = '';
 
-      if (linkedAgentTokenId !== null && principal?.id) {
-        const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ agentTokenId: linkedAgentTokenId }),
-        });
+      if (linkedAgentTokenId !== null && principal?.id && wallet) {
+        try {
+          const linkAuthToken = shouldUseWalletAuth ? authToken : await buildSiweToken(wallet);
+          const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${linkAuthToken}`,
+            },
+            body: JSON.stringify({ agentTokenId: linkedAgentTokenId }),
+          });
 
-        if (linkRes.ok) {
+          if (!linkRes.ok) {
+            const linkData = await linkRes.json().catch(() => ({}));
+            throw new Error(linkData?.error || 'Agent link failed');
+          }
+
           const linkData = await linkRes.json().catch(() => ({}));
           if (linkData?.principal) principal = linkData.principal;
+        } catch (error: any) {
+          linkWarning = getWalletLinkFailureMessage(error);
         }
+      } else if (linkedAgentTokenId !== null && !wallet) {
+        linkWarning = 'Human profile created. Connect the owning wallet later if you want to link the agent.';
       }
 
       const profileId = principal?.tokenId ?? principal?.walletAddress ?? principal?.id;
+      const profilePath = `/h/${profileId}`;
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
-      setSubmitSuccess(registerData?.message || 'Human profile published.');
-      navigate(`/h/${profileId}`);
+      setCreatedProfilePath(profilePath);
+      setSubmitSuccess(linkWarning || registerData?.message || 'Human profile published.');
+
+      if (!linkWarning) {
+        navigate(profilePath);
+      }
     } catch (error: any) {
       setSubmitError(error?.message || 'Failed to publish human profile.');
     } finally {
@@ -968,6 +1004,13 @@ export function HumanJoin() {
               {submitSuccess && (
                 <div style={{ marginTop: '1rem', color: '#86efac', fontSize: '0.92rem', lineHeight: 1.5 }}>
                   {submitSuccess}
+                  {createdProfilePath && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <Link to={createdProfilePath} style={{ color: '#6eecd8', textDecoration: 'none', fontWeight: 600 }}>
+                        Open created profile →
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 
