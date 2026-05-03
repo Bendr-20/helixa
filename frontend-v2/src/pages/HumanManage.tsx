@@ -436,6 +436,27 @@ export function HumanManage() {
       setStatus(null);
 
       try {
+        // Authenticated users: try their own profile first
+        if (wallet || authenticated) {
+          const accessToken = authenticated ? await getAccessToken().catch(() => null) : null;
+          const authHeader = accessToken
+            ? `Bearer ${accessToken}`
+            : await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
+          const meRes = await fetch(`${API_URL}/api/v2/principals/human/me`, {
+            headers: { Authorization: authHeader },
+          });
+          if (meRes.ok) {
+            const principal = normalizeHumanPrincipal(await meRes.json());
+            if (!mounted) return;
+            setHuman(principal);
+            setDraft(draftFromHuman(principal));
+            setRepairMode(false);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Public lookup (for viewing or unauthenticated)
         if (publicLookupId) {
           const publicRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(publicLookupId))}`);
           if (publicRes.ok) {
@@ -471,24 +492,7 @@ export function HumanManage() {
           return;
         }
 
-        const accessToken = authenticated ? await getAccessToken().catch(() => null) : null;
-        const authHeader = accessToken
-          ? `Bearer ${accessToken}`
-          : await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
-        const meRes = await fetch(`${API_URL}/api/v2/principals/human/me`, {
-          headers: { Authorization: authHeader },
-        });
-
-        if (meRes.ok) {
-          const principal = normalizeHumanPrincipal(await meRes.json());
-          if (!mounted) return;
-          setHuman(principal);
-          setDraft(draftFromHuman(principal));
-          setRepairMode(false);
-          setLoading(false);
-          return;
-        }
-
+        // If authenticated but no profile yet
         if (!mounted) return;
         setHuman(null);
         setDraft(defaultDraft);
