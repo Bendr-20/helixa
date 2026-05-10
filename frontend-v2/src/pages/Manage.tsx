@@ -4,6 +4,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { WalletButton } from '../components/WalletButton';
 import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
+import { buildManageIdentityState, type ManageIdentityRecord } from './manageIdentity';
 
 const API = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz/api/v2';
 
@@ -677,18 +678,78 @@ function LookupPanel({ onSelect }: { onSelect: (id: number) => void }) {
 
 // ─── Main Component ──────────────────────────────────────────────
 export function Manage() {
-  const { authenticated } = usePrivy();
+  const { ready, authenticated, user, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const address = wallets[0]?.address as `0x${string}` | undefined;
   const allWalletAddresses = wallets.map(w => w.address).filter(Boolean);
-  const isConnected = authenticated && !!address;
-  const { data: userAgents, isLoading } = useAgentsByOwner(address, allWalletAddresses);
-  const humanPrincipals = userAgents?.filter(agent => agent.framework === 'human' || agent.mintOrigin === 'HUMAN') || [];
-  const ownedAgents = userAgents?.filter(agent => agent.framework !== 'human' && agent.mintOrigin !== 'HUMAN') || [];
+  const { data: userAgents, isLoading: agentsLoading } = useAgentsByOwner(address, allWalletAddresses);
+  const [fetchedHuman, setFetchedHuman] = useState<ManageIdentityRecord | null>(null);
+  const [humanLoading, setHumanLoading] = useState(false);
+  const [humanError, setHumanError] = useState<string | null>(null);
   const [editingTokenId, setEditingTokenId] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
   const [agentNameInput, setAgentNameInput] = useState('');
   const [ensNameInput, setEnsNameInput] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHumanProfile() {
+      if (!ready || !authenticated) {
+        setFetchedHuman(null);
+        setHumanError(null);
+        setHumanLoading(false);
+        return;
+      }
+
+      setHumanLoading(true);
+      setHumanError(null);
+
+      try {
+        const accessToken = await getAccessToken().catch(() => null);
+        if (!accessToken) {
+          if (mounted) setFetchedHuman(null);
+          return;
+        }
+
+        const res = await fetch(`${API}/principals/human/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: 'no-store',
+        });
+
+        if (res.status === 401 || res.status === 404) {
+          if (mounted) setFetchedHuman(null);
+          return;
+        }
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const principal = data?.principal || data?.human || data;
+        if (mounted) setFetchedHuman(principal || null);
+      } catch {
+        if (mounted) {
+          setFetchedHuman(null);
+          setHumanError('Human profile could not be loaded.');
+        }
+      } finally {
+        if (mounted) setHumanLoading(false);
+      }
+    }
+
+    loadHumanProfile();
+    return () => { mounted = false; };
+  }, [ready, authenticated, getAccessToken]);
+
+  const identityState = buildManageIdentityState({
+    records: userAgents || [],
+    fetchedHuman,
+    isAgentLoading: agentsLoading,
+    isHumanLoading: humanLoading,
+  });
+  const { humanSummaries, ownedAgents, isLoading } = identityState;
+  const accountDisplay = address || user?.email?.address || 'Signed in';
+  const accountKind = address ? 'Wallet' : user?.email?.address ? 'Email sign-in' : 'Privy session';
 
   // Auto-load from URL params (?id=1 or ?token=1)
   const urlTokenId = searchParams.get('id') || searchParams.get('token');
@@ -707,7 +768,20 @@ export function Manage() {
     );
   }
 
-  if (!isConnected) {
+  if (!ready) {
+    return (
+      <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={s.connectCard}>
+          <h2 style={{ fontSize: '1.5rem', fontFamily: "'Orbitron', sans-serif", fontWeight: 600, color: '#e0e0e0', marginBottom: '0.75rem' }}>
+            Loading Manage
+          </h2>
+          <p style={{ color: '#888', fontSize: '0.9rem' }}>Checking your Helixa session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
     return (
       <div style={{ ...s.page, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={s.connectCard}>
@@ -717,10 +791,10 @@ export function Manage() {
             </svg>
           </div>
           <h2 style={{ fontSize: '1.5rem', fontFamily: "'Orbitron', sans-serif", fontWeight: 600, color: '#e0e0e0', marginBottom: '0.75rem' }}>
-            Connect to Manage
+            Sign in to Manage
           </h2>
           <p style={{ color: '#888', marginBottom: '2rem', fontSize: '0.9rem' }}>
-            Sign in to view and manage the agents you own.
+            Use email for an offchain human profile, or connect a wallet to manage onchain agents.
           </p>
           <WalletButton />
         </div>
@@ -745,60 +819,86 @@ export function Manage() {
         {/* Header */}
         <div style={s.header}>
           <div>
-            <h1 style={s.title}>Manage Your <span style={s.gradient}>Agents</span></h1>
-            <p style={s.subtitle}>View and update the agents you own</p>
+            <h1 style={s.title}>Manage Your <span style={s.gradient}>Helixa Identity</span></h1>
+            <p style={s.subtitle}>Human profile first, agent tools when you actually have agents</p>
           </div>
-          <Link to="/mint" style={s.mintBtn}>Register New Agent</Link>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Link to="/manage/human" style={{ ...s.mintBtn, background: 'linear-gradient(135deg, #6eecd8, #80d0ff)' }}>Human Profile</Link>
+            <Link to="/mint" style={s.mintBtn}>Register Agent</Link>
+          </div>
         </div>
 
         {/* Account Card */}
         <div style={s.card}>
           <div style={s.accountRow}>
             <div>
-              <div style={s.accountLabel}>Your Account</div>
-              <div style={s.accountAddr}>{address}</div>
+              <div style={s.accountLabel}>{accountKind}</div>
+              <div style={s.accountAddr}>{accountDisplay}</div>
+              {humanError && <div style={{ color: '#f6c77d', fontSize: '0.78rem', marginTop: '0.35rem' }}>{humanError}</div>}
             </div>
-            <div>
-              <div style={s.countNum}>{isLoading ? '...' : ownedAgents.length}</div>
-              <div style={s.countLabel}>Agents Owned</div>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div>
+                <div style={s.countNum}>{isLoading ? '...' : humanSummaries.length}</div>
+                <div style={s.countLabel}>Human Profiles</div>
+              </div>
+              <div>
+                <div style={s.countNum}>{isLoading ? '...' : ownedAgents.length}</div>
+                <div style={s.countLabel}>Agents Owned</div>
+              </div>
             </div>
           </div>
         </div>
 
-        {!isLoading && humanPrincipals.length > 0 && (
+        {!isLoading && humanSummaries.length > 0 && (
           <div style={{ ...s.card, marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <div>
                 <h2 style={{ ...s.sectionTitle, marginBottom: '0.35rem' }}>Your Human Profile</h2>
                 <p style={{ color: '#a39bb9', fontSize: '0.92rem', margin: 0 }}>
-                  Your human record should live separately from the agent grid.
+                  This is your Helixa identity even before you connect a wallet or own an agent.
                 </p>
               </div>
               <Link to="/manage/human" style={s.mintBtn}>Manage Human Profile</Link>
             </div>
 
             <div style={{ marginTop: '1rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-              {humanPrincipals.map((human) => (
-                <div key={human.tokenId} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(110,236,216,0.15)', borderRadius: '14px', padding: '1rem 1.1rem' }}>
+              {humanSummaries.map((human) => (
+                <div key={human.key} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(110,236,216,0.15)', borderRadius: '14px', padding: '1rem 1.1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
                     <div>
                       <div style={{ color: '#f3f0ff', fontWeight: 700, fontSize: '1.05rem' }}>{human.name}</div>
-                      <div style={{ color: '#8d87a1', fontSize: '0.82rem' }}>Human token #{human.tokenId}</div>
+                      <div style={{ color: '#8d87a1', fontSize: '0.82rem' }}>{human.tokenId != null ? `Human token #${human.tokenId}` : 'Offchain human profile'}</div>
+                      {human.description && <div style={{ color: '#a39bb9', fontSize: '0.82rem', marginTop: '0.35rem', lineHeight: 1.4 }}>{human.description}</div>}
                     </div>
-                    <span style={{ display: 'inline-flex', padding: '0.35rem 0.7rem', borderRadius: '999px', background: 'rgba(110,236,216,0.12)', border: '1px solid rgba(110,236,216,0.2)', color: '#6eecd8', fontSize: '0.78rem', fontWeight: 700 }}>
-                      human
+                    <span style={{ display: 'inline-flex', padding: '0.35rem 0.7rem', borderRadius: '999px', background: human.tokenId != null ? 'rgba(110,236,216,0.12)' : 'rgba(180,144,255,0.12)', border: human.tokenId != null ? '1px solid rgba(110,236,216,0.2)' : '1px solid rgba(180,144,255,0.2)', color: human.tokenId != null ? '#6eecd8' : '#b490ff', fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                      {human.statusLabel}
                     </span>
                   </div>
+                  <div style={{ color: '#8d87a1', fontSize: '0.82rem', marginBottom: '0.85rem' }}>Human Cred: {human.credScore}/100</div>
                   <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <Link to="/manage/human" style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Manage Human">
+                    <Link to={human.managePath} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Manage Human">
                       Manage
                     </Link>
-                    <Link to={`/h/${human.tokenId}`} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Open Public Human Profile">
+                    <Link to={human.publicPath} style={{ ...s.overlayBtn, width: 'auto', borderRadius: '999px', padding: '0 12px' }} title="Open Public Human Profile">
                       Profile
                     </Link>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {!isLoading && humanSummaries.length === 0 && (
+          <div style={{ ...s.card, marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ ...s.sectionTitle, marginBottom: '0.35rem' }}>No Human Profile Yet</h2>
+                <p style={{ color: '#a39bb9', fontSize: '0.92rem', margin: 0 }}>
+                  Start with a human profile if you are joining Helixa as a person, operator, founder, or service provider.
+                </p>
+              </div>
+              <Link to="/join/human" style={s.mintBtn}>Create Human Profile</Link>
             </div>
           </div>
         )}
@@ -837,14 +937,17 @@ export function Manage() {
                 <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             </div>
-            <h3 style={s.emptyTitle}>No Agents Found</h3>
-            <p style={s.emptyText}>You don't own any agents yet. Register your first agent to get started!</p>
-            <Link to="/mint" style={s.mintBtn}>Register Your First Agent</Link>
+            <h3 style={s.emptyTitle}>{identityState.emptyAgentTitle}</h3>
+            <p style={s.emptyText}>{identityState.emptyAgentText}</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {humanSummaries.length > 0 && <Link to="/manage/human" style={{ ...s.mintBtn, background: 'linear-gradient(135deg, #6eecd8, #80d0ff)' }}>Edit Human Profile</Link>}
+              <Link to="/mint" style={s.mintBtn}>{humanSummaries.length > 0 ? 'Register Agent' : 'Register Your First Agent'}</Link>
+            </div>
           </div>
         )}
 
         {/* Agent Naming (only if agents exist) */}
-        {!isLoading && ownedAgents.length > 0 && (
+        {!isLoading && identityState.showAgentTools && (
           <div style={s.namingCard}>
             <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 600, fontSize: '1.05rem', color: '#e0e0e0', marginBottom: '0.75rem' }}>
               Agent Name
@@ -879,7 +982,7 @@ export function Manage() {
         )}
 
         {/* Lookup any agent */}
-        <LookupPanel onSelect={(id) => setEditingTokenId(id)} />
+        {!isLoading && identityState.showAgentTools && <LookupPanel onSelect={(id) => setEditingTokenId(id)} />}
 
         {/* Management Guide */}
         <div style={s.guideGrid}>
@@ -887,22 +990,22 @@ export function Manage() {
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(180,144,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b490ff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </div>
-            <h3 style={s.guideTitle}>Update Traits</h3>
-            <p style={s.guideText}>Modify your agent's personality traits, values, and behavioral parameters as they evolve.</p>
+            <h3 style={s.guideTitle}>Human Profile</h3>
+            <p style={s.guideText}>Keep your bio, skills, links, service categories, and contact preferences current.</p>
           </div>
           <div style={s.guideCard}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(110,236,216,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6eecd8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
             </div>
-            <h3 style={s.guideTitle}>Edit Story</h3>
-            <p style={s.guideText}>Update your agent's origin, mission, lore, and manifesto to reflect growth and new achievements.</p>
+            <h3 style={s.guideTitle}>Agent Identities</h3>
+            <p style={s.guideText}>When you own agents, this page unlocks profile editing, naming tools, and agent-specific management.</p>
           </div>
           <div style={s.guideCard}>
             <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(245,160,208,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a0d0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
             </div>
-            <h3 style={s.guideTitle}>Track Evolution</h3>
-            <p style={s.guideText}>Monitor your agent's reputation growth, trait mutations, and activity history over time.</p>
+            <h3 style={s.guideTitle}>Cred Growth</h3>
+            <p style={s.guideText}>Track the reputation signals attached to both human profiles and onchain agent identities.</p>
           </div>
         </div>
       </div>
