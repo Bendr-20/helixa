@@ -109,10 +109,6 @@ export function HumanAuthButtons({ intro }: HumanAuthButtonsProps) {
           : 'Use email for the smoothest flow, or wallet if you want to link an onchain identity.'}
       </div>
 
-      <div style={{ color: '#8d87a1', fontSize: '0.9rem', lineHeight: 1.5 }}>
-        X login is not enabled in Privy for this app yet, so I removed the dead button instead of sending people into a broken flow.
-      </div>
-
       {error && (
         <div style={{ color: '#fca5a5', fontSize: '0.9rem', lineHeight: 1.5 }}>
           {error}
