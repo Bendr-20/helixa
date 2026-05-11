@@ -735,7 +735,7 @@ export function HumanManage() {
         <div className="mint-container" style={{ maxWidth: '760px' }}>
           <div style={pageCardStyle}>
             <h1 style={{ marginTop: 0, fontSize: '2rem' }}>Manage Human Profile</h1>
-            <HumanAuthButtons intro="Sign in first, then I can load or repair your full human profile cleanly. Email and wallet work here now. I removed X from this flow because Privy is rejecting Twitter auth for this app." />
+            <HumanAuthButtons intro="Sign in to manage your human profile. Email and wallet are supported." />
           </div>
         </div>
       </div>
@@ -763,7 +763,7 @@ export function HumanManage() {
               Manage your <span className="text-gradient">Human</span> profile
             </h1>
             <p style={{ color: '#9a94af', fontSize: '1rem', maxWidth: '700px', lineHeight: 1.6, marginBottom: '1rem' }}>
-              This is the richer human profile flow, not the stripped-down repair page. Bio, skills, service lanes, links, identity surfaces, all of it.
+              Update your public identity, work preferences, links, and review details.
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               {stepOrder.map((step, index) => (
@@ -800,7 +800,7 @@ export function HumanManage() {
               border: '1px solid rgba(246,199,125,0.18)',
               color: '#f6c77d',
             }}>
-              I rebuilt the manage flow, but your current profile record still came from the thin fallback. Saving from here will restore the richer human profile shape.
+              This profile needs an update. Save from here to refresh the full human profile record.
             </div>
           )}
 
