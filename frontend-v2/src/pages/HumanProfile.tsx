@@ -132,6 +132,7 @@ export function HumanProfile() {
   const { data: human, isLoading, error, refetch, isFetching } = useHuman(id);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [socialMetrics, setSocialMetrics] = useState<Record<string, SocialMetric>>({});
+  const [copiedProfileLink, setCopiedProfileLink] = useState(false);
 
   useEffect(() => {
     setAvatarLoadFailed(false);
@@ -264,9 +265,17 @@ export function HumanProfile() {
     buildExternalLink('EAS', human.services?.eas?.url || human.externalIds?.eas),
   ].filter(Boolean) as Array<{ label: string; url: string }>;
   const manageHref = human.tokenId != null ? `/manage/human?tokenId=${human.tokenId}` : '/manage/human';
+  const publicProfilePath = `/h/${encodeURIComponent(String(human.id || id))}`;
+  const publicProfileUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://helixa.xyz'}${publicProfilePath}`;
   const telegramHandle = human.services?.telegram?.handle ? normalizeHandle(String(human.services.telegram.handle)) : '';
   const hasWallet = typeof human.walletAddress === 'string' && human.walletAddress.trim().length > 0;
   const shortWallet = hasWallet ? `${human.walletAddress.slice(0, 6)}...${human.walletAddress.slice(-4)}` : '';
+
+  const copyProfileLink = async () => {
+    await navigator.clipboard.writeText(publicProfileUrl);
+    setCopiedProfileLink(true);
+    window.setTimeout(() => setCopiedProfileLink(false), 2000);
+  };
 
   return (
     <div className="py-8">
@@ -282,6 +291,9 @@ export function HumanProfile() {
             <Link to={manageHref} className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
               Manage Profile
             </Link>
+            <button type="button" className="btn btn-primary" onClick={copyProfileLink} style={{ width: '100%', justifyContent: 'center' }}>
+              {copiedProfileLink ? 'Profile Link Copied' : 'Copy Profile Link'}
+            </button>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 items-start">
@@ -333,7 +345,8 @@ export function HumanProfile() {
                   <div className="text-muted text-xs mb-2 uppercase tracking-wider">Profile</div>
                   <div className="text-sm mb-2"><span className="text-muted">Timezone:</span> {human.metadata?.timezone || 'Not set'}</div>
                   <div className="text-sm mb-2"><span className="text-muted">Region:</span> {human.metadata?.region || 'Not set'}</div>
-                  <div className="text-sm"><span className="text-muted">Open to work:</span> {human.metadata?.openToWork === false ? 'No' : 'Yes'}</div>
+                  <div className="text-sm mb-2"><span className="text-muted">Open to work:</span> {human.metadata?.openToWork === false ? 'No' : 'Yes'}</div>
+                  <div className="text-sm" style={wrapAnywhereStyle}><span className="text-muted">Share:</span> {publicProfileUrl}</div>
                 </div>
 
                 <div className="glass-card p-4 text-left overflow-hidden">

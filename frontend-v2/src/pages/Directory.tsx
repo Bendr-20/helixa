@@ -16,6 +16,8 @@ type EntityFilter = 'all' | 'agent' | 'human' | 'organization';
 type SortFilter = 'credScore' | 'name' | 'recent';
 
 function PrincipalCard({ principal }: { principal: DirectoryPrincipal }) {
+  const [copiedLink, setCopiedLink] = useState(false);
+
   if (principal.entityType === 'agent') {
     return <AgentCard agent={principal.raw as any} />;
   }
@@ -31,13 +33,19 @@ function PrincipalCard({ principal }: { principal: DirectoryPrincipal }) {
     ...(principal.serviceCategories || []).slice(0, 2),
   ].filter(Boolean);
 
+  const publicProfileUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://helixa.xyz'}${principal.publicPath}`;
+
+  const copyPrincipalLink = async () => {
+    await navigator.clipboard.writeText(publicProfileUrl);
+    setCopiedLink(true);
+    window.setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   return (
-    <Link
-      to={principal.publicPath}
+    <div
       className="agent-card"
       style={{
         display: 'block',
-        textDecoration: 'none',
         color: 'inherit',
         background: 'rgba(10,10,20,0.9)',
         border: '1px solid rgba(255,255,255,0.06)',
@@ -47,44 +55,51 @@ function PrincipalCard({ principal }: { principal: DirectoryPrincipal }) {
         minHeight: '100%',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '0.9rem' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-            {chips.map((chip) => (
-              <span key={chip} className="badge badge-sm">{chip}</span>
-            ))}
+      <Link to={principal.publicPath} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '0.9rem' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              {chips.map((chip) => (
+                <span key={chip} className="badge badge-sm">{chip}</span>
+              ))}
+            </div>
+            <h3 style={{ fontWeight: 600, fontSize: '1.05rem', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {principal.name}
+            </h3>
+            {principal.humanOrganization && (
+              <div style={{ color: '#9aa0b5', fontSize: '0.85rem' }}>{principal.humanOrganization}</div>
+            )}
           </div>
-          <h3 style={{ fontWeight: 600, fontSize: '1.05rem', margin: '0 0 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {principal.name}
-          </h3>
-          {principal.humanOrganization && (
-            <div style={{ color: '#9aa0b5', fontSize: '0.85rem' }}>{principal.humanOrganization}</div>
+          {principal.entityType === 'human' ? (
+            <CredBadge score={principal.credScore || 0} size="sm" />
+          ) : (
+            <span className="badge badge-sm" style={{ background: 'rgba(180,144,255,0.2)', color: '#d7c7ff' }}>Org</span>
           )}
         </div>
-        {principal.entityType === 'human' ? (
-          <CredBadge score={principal.credScore || 0} size="sm" />
-        ) : (
-          <span className="badge badge-sm" style={{ background: 'rgba(180,144,255,0.2)', color: '#d7c7ff' }}>Org</span>
+
+        <p style={{ color: '#a8aec7', fontSize: '0.92rem', lineHeight: 1.55, minHeight: '4.3em', marginBottom: '0.9rem' }}>
+          {principal.description || (principal.entityType === 'human' ? 'Human principal profile' : 'Organization profile')}
+        </p>
+
+        {secondaryItems.length > 0 && (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
+            {secondaryItems.map((item) => (
+              <span key={item} className="badge badge-sm" style={{ background: 'rgba(110,236,216,0.12)', color: '#9cf4e6' }}>{item}</span>
+            ))}
+          </div>
         )}
-      </div>
-
-      <p style={{ color: '#a8aec7', fontSize: '0.92rem', lineHeight: 1.55, minHeight: '4.3em', marginBottom: '0.9rem' }}>
-        {principal.description || (principal.entityType === 'human' ? 'Human principal profile' : 'Organization profile')}
-      </p>
-
-      {secondaryItems.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-          {secondaryItems.map((item) => (
-            <span key={item} className="badge badge-sm" style={{ background: 'rgba(110,236,216,0.12)', color: '#9cf4e6' }}>{item}</span>
-          ))}
-        </div>
-      )}
+      </Link>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', paddingTop: '0.85rem', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.8rem', color: '#8e94ab' }}>
         <span>{principal.verified ? 'Wallet linked' : 'Offchain profile'}</span>
-        <span>Open profile →</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={copyPrincipalLink} className="btn btn-ghost text-xs" style={{ padding: '5px 8px' }}>
+            {copiedLink ? 'Profile Link Copied' : 'Copy Profile Link'}
+          </button>
+          <Link to={principal.publicPath} style={{ color: '#9cf4e6', textDecoration: 'none' }}>Open profile →</Link>
+        </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
