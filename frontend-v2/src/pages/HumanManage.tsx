@@ -246,12 +246,14 @@ async function getHumanAuthHeader({
   wallet,
   authenticated,
   getAccessToken,
+  preferWallet = false,
 }: {
   wallet: any;
   authenticated: boolean;
   getAccessToken: () => Promise<string | null>;
+  preferWallet?: boolean;
 }) {
-  if (wallet) {
+  if (preferWallet && wallet) {
     const bearer = await buildWalletBearer(wallet);
     return `Bearer ${bearer}`;
   }
@@ -259,6 +261,11 @@ async function getHumanAuthHeader({
   if (authenticated) {
     const token = await getAccessToken();
     if (token) return `Bearer ${token}`;
+  }
+
+  if (wallet) {
+    const bearer = await buildWalletBearer(wallet);
+    return `Bearer ${bearer}`;
   }
 
   throw new Error('Sign in with a wallet, or finish Privy sign-in first.');
@@ -598,7 +605,8 @@ export function HumanManage() {
     setStatus({ type: 'info', msg: repairMode ? 'Repairing your human profile...' : 'Saving your human profile...' });
 
     try {
-      const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken });
+      const needsWalletAuth = Boolean(human?.tokenId) || linkedAgentTokenId !== null;
+      const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken, preferWallet: needsWalletAuth });
       const authEmail = user?.email?.address?.trim() || '';
       const linkedAccounts = compactObject({
         x: draft.x.replace(/^@/, '').trim(),
@@ -631,7 +639,7 @@ export function HumanManage() {
 
       const payload: any = {
         tokenId: human?.tokenId ?? undefined,
-        mintOnchain: Boolean(wallet) && !human?.tokenId,
+        mintOnchain: false,
         name: draft.displayName.trim() || human?.name || 'Human',
         description: draft.bio.trim(),
         image: draft.profileImage.trim() || undefined,
