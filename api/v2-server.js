@@ -33,6 +33,7 @@ let {
 } = svc;
 
 const credOracle = require('./services/cred-oracle');
+const { authorizeHumanAgentLink } = require('./services/human-link-auth');
 const {
     parseSIWA,
     verifySIWA,
@@ -42,6 +43,7 @@ const {
     SIWE_ALLOWED_DOMAINS,
     requireHumanAuth,
     requireHumanWalletAuth,
+    verifyPrivyAccessToken,
 } = require('./middleware/auth');
 const { buildSIWSMessage, pendingChallenges, requireSIWS, requireAuth } = require('./middleware/siws');
 const { securityHeaders, cors } = require('./middleware/cors');
@@ -897,9 +899,18 @@ function getHumanProfileByWallet(walletAddress) {
     }
 }
 
+function normalizeHumanUserId(userId) {
+    const value = String(userId || '').trim();
+    return value.startsWith('user:') ? value.slice(5) : value;
+}
 function getHumanProfileByUserId(userId) {
-    const key = `user:${userId}`;
-    return loadHumanProfiles()[key] || null;
+    const normalizedUserId = normalizeHumanUserId(userId);
+    if (!normalizedUserId) return null;
+    const profiles = loadHumanProfiles();
+    const directKey = `user:${normalizedUserId}`;
+    if (profiles[directKey]) return profiles[directKey] || null;
+    const storageKey = resolveStoredHumanProfileKey(profiles, null, { userId: normalizedUserId });
+    return storageKey ? (profiles[storageKey] || null) : null;
 }
 function getHumanProfileById(id) {
     const profiles = loadHumanProfiles();
@@ -910,9 +921,7 @@ function getHumanProfileById(id) {
     try {
         return profiles[ethers.getAddress(String(id)).toLowerCase()] || null;
     } catch {
-        // Also try user: prefix
-        const userKey = `user:${String(id)}`;
-        return profiles[userKey] || null;
+        return getHumanProfileByUserId(id);
     }
 }
 
@@ -4310,16 +4319,24 @@ app.post('/api/v2/principals/organization/register', requireHumanAuth, async (re
 // POST /api/v2/human/:id/link-agent — Link an owned agent to a human principal
 app.post('/api/v2/human/:id/link-agent', requireHumanWalletAuth, async (req, res) => {
     const caller = req.human.address;
-    const { agentTokenId } = req.body || {};
+    const { agentTokenId, humanAuthToken } = req.body || {};
     const tokenId = Number(agentTokenId);
     if (!Number.isInteger(tokenId)) return res.status(400).json({ error: 'agentTokenId required' });
 
     try {
         const profile = getHumanProfileById(req.params.id);
         if (!profile) return res.status(404).json({ error: 'Human principal not found' });
-        if (profile.walletAddress.toLowerCase() !== caller.toLowerCase()) {
-            return res.status(403).json({ error: 'Caller must own this human principal profile' });
+
+        let privyUserId = null;
+        if (humanAuthToken && typeof humanAuthToken === 'string') {
+            const token = humanAuthToken.replace(/^Bearer\s+/i, '').trim();
+            const verifiedPrivy = token ? await verifyPrivyAccessToken(token) : null;
+            if (!verifiedPrivy) return res.status(401).json({ error: 'Invalid or expired Privy access token' });
+            privyUserId = verifiedPrivy.userId;
         }
+
+        const linkAuth = authorizeHumanAgentLink({ profile, caller, privyUserId });
+        if (!linkAuth.ok) return res.status(linkAuth.status).json({ error: linkAuth.error });
         if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
 
         const owner = await readContract.ownerOf(tokenId);
@@ -4328,7 +4345,7 @@ app.post('/api/v2/human/:id/link-agent', requireHumanWalletAuth, async (req, res
         }
 
         const linked = [...new Set([...(profile.linkedAgents || []), String(tokenId)])];
-        const updated = saveHumanProfile(caller, { linkedAgents: linked });
+        const updated = saveHumanProfile(caller, { ...profile, ...linkAuth.profilePatch, linkedAgents: linked });
         const refreshedHumanCred = await refreshHumanCredSnapshot(updated, { bypassCache: true });
         const responseProfile = refreshedHumanCred
             ? { ...updated, humanCredSnapshot: refreshedHumanCred }

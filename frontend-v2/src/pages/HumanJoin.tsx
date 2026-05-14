@@ -519,7 +519,10 @@ export function HumanJoin() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${linkAuthToken}`,
             },
-            body: JSON.stringify({ agentTokenId: linkedAgentTokenId }),
+            body: JSON.stringify({
+              agentTokenId: linkedAgentTokenId,
+              ...(!shouldUseWalletAuth ? { humanAuthToken: authToken } : {}),
+            }),
           });
 
           if (!linkRes.ok) {

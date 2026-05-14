@@ -606,6 +606,7 @@ export function HumanManage() {
 
     try {
       const needsWalletAuth = Boolean(human?.tokenId) || linkedAgentTokenId !== null;
+      const humanAuthToken = authenticated ? await getAccessToken().catch(() => null) : null;
       const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken, preferWallet: needsWalletAuth });
       const authEmail = user?.email?.address?.trim() || '';
       const linkedAccounts = compactObject({
@@ -703,7 +704,11 @@ export function HumanManage() {
             'Content-Type': 'application/json',
             Authorization: walletAuthHeader,
           },
-          body: JSON.stringify({ agentTokenId: linkedAgentTokenId, relationship: draft.relationship }),
+          body: JSON.stringify({
+            agentTokenId: linkedAgentTokenId,
+            relationship: draft.relationship,
+            ...(humanAuthToken ? { humanAuthToken } : {}),
+          }),
         });
 
         if (linkRes.ok) {
