@@ -6,7 +6,8 @@ import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
 import { useAgentsByOwner } from '../hooks/useAgents';
 import { buildManageIdentityState, type ManageIdentityRecord } from './manageIdentity';
 
-const API = import.meta.env.VITE_API_URL || 'https://api.helixa.xyz/api/v2';
+const API_ORIGIN = (import.meta.env.VITE_API_URL || 'https://api.helixa.xyz').replace(/\/+$/, '').replace(/\/api\/v2$/i, '');
+const API = `${API_ORIGIN}/api/v2`;
 
 // ─── Styles ──────────────────────────────────────────────────────
 const s = {
