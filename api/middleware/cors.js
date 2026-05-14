@@ -6,6 +6,7 @@ const ALLOWED_ORIGINS = [
     'https://helixa.xyz',
     'https://www.helixa.xyz',
     'https://api.helixa.xyz',
+    'https://synagent.helixa.xyz',
     'http://localhost:5173',
     'http://localhost:3000',
 ];
