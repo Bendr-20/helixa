@@ -11,6 +11,15 @@ const SIWA_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 const SIWA_DOMAIN = 'api.helixa.xyz';
 const SIWE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 const SIWE_DOMAIN = 'api.helixa.xyz';
+const SIWE_ALLOWED_DOMAINS = Array.from(new Set([
+    SIWE_DOMAIN,
+    'helixa.xyz',
+    'www.helixa.xyz',
+    ...(process.env.SIWE_ALLOWED_DOMAINS || '')
+        .split(',')
+        .map(domain => domain.trim())
+        .filter(Boolean),
+]));
 
 function parseWalletSignIn(authHeader) {
     if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -47,6 +56,27 @@ function verifyWalletMessage(address, timestamp, signature, messageFactory, expi
     }
 }
 
+function verifyWalletMessageCandidates(address, timestamp, signature, messageFactories, expiryMs) {
+    return messageFactories.some(messageFactory => verifyWalletMessage(address, timestamp, signature, messageFactory, expiryMs));
+}
+
+function normalizeTimestampMs(timestamp) {
+    let ts = parseInt(timestamp);
+    if (isNaN(ts)) return null;
+    if (ts < 1e12) ts = ts * 1000;
+    return ts;
+}
+
+function buildStandardSIWEMessage(domain, address, timestamp) {
+    const ts = normalizeTimestampMs(timestamp);
+    if (!ts) throw new Error('Invalid SIWE timestamp');
+    return `${domain} wants you to sign in with your Ethereum account:\n${address}\n\nSign in to Helixa.\n\nURI: https://${domain}\nVersion: 1\nChain ID: 8453\nNonce: ${timestamp}\nIssued At: ${new Date(ts).toISOString()}`;
+}
+
+function buildLegacySIWEMessage(domain, address, timestamp) {
+    return `Sign-In With Ethereum: ${domain} wants you to sign in with your wallet ${address} at ${timestamp}`;
+}
+
 function verifySIWA(address, timestamp, signature) {
     return verifyWalletMessage(
         address,
@@ -58,11 +88,16 @@ function verifySIWA(address, timestamp, signature) {
 }
 
 function verifySIWE(address, timestamp, signature) {
-    return verifyWalletMessage(
+    const messageFactories = SIWE_ALLOWED_DOMAINS.flatMap(domain => [
+        (walletAddress, ts) => buildStandardSIWEMessage(domain, walletAddress, ts),
+        (walletAddress, ts) => buildLegacySIWEMessage(domain, walletAddress, ts),
+    ]);
+
+    return verifyWalletMessageCandidates(
         address,
         timestamp,
         signature,
-        (walletAddress, ts) => `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet ${walletAddress} at ${ts}`,
+        messageFactories,
         SIWE_EXPIRY_MS,
     );
 }
@@ -249,6 +284,7 @@ module.exports = {
     requireSIWE,
     SIWA_DOMAIN,
     SIWE_DOMAIN,
+    SIWE_ALLOWED_DOMAINS,
     verifyPrivyAccessToken,
     requirePrivyAccessToken,
     requireHumanAuth,

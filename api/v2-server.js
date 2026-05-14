@@ -39,6 +39,7 @@ const {
     requireSIWA,
     SIWA_DOMAIN,
     SIWE_DOMAIN,
+    SIWE_ALLOWED_DOMAINS,
     requireHumanAuth,
     requireHumanWalletAuth,
 } = require('./middleware/auth');
@@ -2410,7 +2411,7 @@ app.get(['/', '/api/v2'], (req, res) => {
             human: {
                 type: 'SIWE (Sign-In With Ethereum) or Privy access token',
                 header: 'Authorization: Bearer {address}:{timestamp}:{signature} (SIWE) or Bearer {access-token} (Privy)',
-                message: `Sign-In With Ethereum: ${SIWE_DOMAIN} wants you to sign in with your wallet {address} at {timestamp}`,
+                message: `${SIWE_ALLOWED_DOMAINS[1] || SIWE_DOMAIN} wants you to sign in with your Ethereum account:\n{address}\n\nSign in to Helixa.\n\nURI: https://${SIWE_ALLOWED_DOMAINS[1] || SIWE_DOMAIN}\nVersion: 1\nChain ID: 8453\nNonce: {timestamp}\nIssued At: {isoTimestamp}`,
                 expiry: '1 hour (SIWE) / as per token (Privy)',
             },
         },

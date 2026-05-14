@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { API_URL } from '../lib/constants';
+import { buildHumanSiweMessage } from '../utils/siwe';
 import { HumanAuthButtons } from '../components/HumanAuthButtons';
 
 type HumanJoinStep = 'intro' | 'profile' | 'work' | 'links' | 'review';
@@ -228,7 +229,7 @@ async function optimizeProfileImage(file: File) {
 async function buildSiweToken(wallet: { address: string; getEthereumProvider: () => Promise<any> }) {
   const address = wallet.address;
   const timestamp = Date.now().toString();
-  const message = `Sign-In With Ethereum: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
+  const message = buildHumanSiweMessage(address, timestamp);
   const provider = await wallet.getEthereumProvider();
   const signer = await new ethers.BrowserProvider(provider).getSigner();
   const signature = await signer.signMessage(message);
