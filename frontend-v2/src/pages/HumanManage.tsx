@@ -429,6 +429,7 @@ export function HumanManage() {
   const [loading, setLoading] = useState(true);
   const [human, setHuman] = useState<HumanPrincipal | null>(null);
   const [draft, setDraft] = useState<HumanDraft>(defaultDraft);
+  const [skillsInput, setSkillsInput] = useState(() => toCommaSeparated(defaultDraft.skills));
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'info'; msg: string } | null>(null);
   const [repairMode, setRepairMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -456,8 +457,10 @@ export function HumanManage() {
           if (meRes.ok) {
             const principal = normalizeHumanPrincipal(await meRes.json());
             if (!mounted) return;
+            const nextDraft = draftFromHuman(principal);
             setHuman(principal);
-            setDraft(draftFromHuman(principal));
+            setDraft(nextDraft);
+            setSkillsInput(toCommaSeparated(nextDraft.skills));
             setRepairMode(false);
             setLoading(false);
             return;
@@ -470,8 +473,10 @@ export function HumanManage() {
           if (publicRes.ok) {
             const principal = normalizeHumanPrincipal(await publicRes.json());
             if (!mounted) return;
+            const nextDraft = draftFromHuman(principal);
             setHuman(principal);
-            setDraft(draftFromHuman(principal));
+            setDraft(nextDraft);
+            setSkillsInput(toCommaSeparated(nextDraft.skills));
             setRepairMode(false);
             setLoading(false);
             return;
@@ -483,8 +488,10 @@ export function HumanManage() {
           if (fallbackRes?.ok) {
             const fallback = normalizeHumanFallback(await fallbackRes.json());
             if (!mounted) return;
+            const nextDraft = draftFromHuman(fallback);
             setHuman(fallback);
-            setDraft(draftFromHuman(fallback));
+            setDraft(nextDraft);
+            setSkillsInput(toCommaSeparated(nextDraft.skills));
             setRepairMode(true);
             setStatus({ type: 'info', msg: 'Your human token exists, but the richer profile record is missing. Saving here will repair it.' });
             setLoading(false);
@@ -496,6 +503,7 @@ export function HumanManage() {
           if (!mounted) return;
           setHuman(null);
           setDraft(defaultDraft);
+          setSkillsInput(toCommaSeparated(defaultDraft.skills));
           setLoading(false);
           return;
         }
@@ -504,6 +512,7 @@ export function HumanManage() {
         if (!mounted) return;
         setHuman(null);
         setDraft(defaultDraft);
+        setSkillsInput(toCommaSeparated(defaultDraft.skills));
       } catch (error: any) {
         if (!mounted) return;
         const rejected = isWalletRejection(error);
@@ -718,8 +727,10 @@ export function HumanManage() {
       }
 
       const normalized = normalizeHumanPrincipal(principal);
+      const nextDraft = draftFromHuman(normalized);
       setHuman(normalized);
-      setDraft(draftFromHuman(normalized));
+      setDraft(nextDraft);
+      setSkillsInput(toCommaSeparated(nextDraft.skills));
       setRepairMode(false);
       setStatus({ type: 'success', msg: registerData?.message || 'Human profile saved.' });
       setCurrentStep('review');
@@ -884,7 +895,15 @@ export function HumanManage() {
             <div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={fieldLabelStyle}>Skills</label>
-                <input value={toCommaSeparated(draft.skills)} onChange={e => updateDraft({ skills: fromCommaSeparated(e.target.value) })} placeholder="product strategy, protocol design, AI consulting" style={inputStyle} />
+                <input
+                  value={skillsInput}
+                  onChange={e => {
+                    setSkillsInput(e.target.value);
+                    updateDraft({ skills: fromCommaSeparated(e.target.value) });
+                  }}
+                  placeholder="product strategy, protocol design, AI consulting"
+                  style={inputStyle}
+                />
               </div>
 
               <div style={{ marginBottom: '1.25rem' }}>

@@ -316,6 +316,7 @@ export function HumanJoin() {
   const { wallets } = useWallets();
   const wallet = wallets[0];
   const [draft, setDraft] = useState<HumanJoinDraft>(readStoredDraft);
+  const [skillsInput, setSkillsInput] = useState(() => toCommaSeparated(readStoredDraft().skills));
   const [saveMessage, setSaveMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState('');
@@ -802,8 +803,11 @@ export function HumanJoin() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={fieldLabelStyle}>Skills</label>
                 <input
-                  value={toCommaSeparated(draft.skills)}
-                  onChange={e => updateDraft({ skills: fromCommaSeparated(e.target.value) })}
+                  value={skillsInput}
+                  onChange={e => {
+                    setSkillsInput(e.target.value);
+                    updateDraft({ skills: fromCommaSeparated(e.target.value) });
+                  }}
                   placeholder="product strategy, protocol design, AI consulting"
                   style={inputStyle}
                 />
