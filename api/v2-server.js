@@ -2583,6 +2583,7 @@ function setNoStore(res) {
 }
 
 // GET /api/v2/stats
+let statsSnapshot = null;
 app.get('/api/v2/stats', async (req, res) => {
     try {
         setNoStore(res);
@@ -2597,24 +2598,15 @@ app.get('/api/v2/stats', async (req, res) => {
                 note: 'V2 contract not yet deployed',
             });
         }
-        
-        const queries = [
-            readContract.totalAgents(),
-            readContract.mintPrice(),
-        ];
-        if (wallet) queries.push(provider.getBalance(wallet.address));
-        
-        const results = await Promise.all(queries);
-        const total = results[0];
-        const price = results[1];
-        const balance = results[2] || 0n;
-        
+
         // Compute extra stats from indexer
         let totalCredScore = 0, soulboundCount = 0, frameworkSet = new Set();
         const totalHumans = Object.keys(loadHumanProfiles()).length;
         const totalOrganizations = Object.keys(loadOrganizationProfiles()).length;
+        let indexedAgentCount = 0;
         try {
             const all = indexer.getAllAgents();
+            indexedAgentCount = all.length;
             for (const a of all) {
                 totalCredScore += (a.credScore || 0);
                 if (a.soulbound) soulboundCount++;
@@ -2622,22 +2614,47 @@ app.get('/api/v2/stats', async (req, res) => {
             }
         } catch (e) { console.warn('Stats indexer error:', e.message); }
 
-        res.json({
-            totalAgents: Math.max(0, Number(total) - 1), // Hide test agent #0
+        const [total, price, balance] = await Promise.all([
+            withTimeout(readContract.totalAgents(), 1200, null),
+            withTimeout(readContract.mintPrice(), 1200, null),
+            wallet ? withTimeout(provider.getBalance(wallet.address), 1200, null) : Promise.resolve(null),
+        ]);
+
+        let totalAgents = statsSnapshot?.totalAgents || indexedAgentCount || 0;
+        try {
+            if (total != null) totalAgents = Math.max(0, Number(total) - 1); // Hide test agent #0
+        } catch {}
+
+        const formatEtherOr = (value, fallback = '0') => {
+            try {
+                return value == null ? fallback : ethers.formatEther(value);
+            } catch {
+                return fallback;
+            }
+        };
+        const mintPrice = formatEtherOr(price, statsSnapshot?.mintPrice || '0');
+        const gasBalance = formatEtherOr(balance, statsSnapshot?.gasBalance || '0');
+
+        const response = {
+            totalAgents,
             totalCredScore,
             frameworks: frameworkSet.size,
             soulboundCount,
             totalHumans,
             totalOrganizations,
-            mintPrice: ethers.formatEther(price),
+            mintPrice,
             network: 'Base',
             chainId: 8453,
             contract: V2_CONTRACT_ADDRESS,
             contractDeployed: true,
             phase: 1,
             gasWallet: wallet ? wallet.address : DEPLOYER_ADDRESS,
-            gasBalance: ethers.formatEther(balance),
-        });
+            gasBalance,
+            cachedStats: total == null,
+        };
+
+        statsSnapshot = response;
+        res.json(response);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

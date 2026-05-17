@@ -16,6 +16,8 @@ const DB_PATH = path.join(__dirname, '..', 'data', 'agents.db');
 const DEFAULT_START_BLOCK = 42_254_000;
 const CHUNK_SIZE = 10_000;
 const POLL_INTERVAL_MS = 30_000;
+const SCORE_READ_TIMEOUT_MS = Math.max(500, parseInt(process.env.INDEXER_SCORE_READ_TIMEOUT_MS || '1500', 10) || 1500);
+const SCORE_REFRESH_BATCH_LIMIT = Math.max(1, parseInt(process.env.INDEXER_SCORE_REFRESH_BATCH_LIMIT || '240', 10) || 240);
 
 let db;
 let readContract;
@@ -359,6 +361,22 @@ async function syncEvents(fromBlock, toBlock) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+async function readWithTimeout(promise, ms = SCORE_READ_TIMEOUT_MS) {
+    let timer;
+    try {
+        return await Promise.race([
+            Promise.resolve(promise)
+                .then(value => ({ ok: true, value }))
+                .catch(error => ({ ok: false, error })),
+            new Promise(resolve => {
+                timer = setTimeout(() => resolve({ ok: false, timeout: true }), ms);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
+
 async function runSync() {
     if (syncInFlight) {
         console.log('[INDEXER] Sync skipped, previous run still in flight');
@@ -480,8 +498,9 @@ async function refreshScores() {
 
     scoreRefreshInFlight = true;
     try {
-        const rows = db.prepare('SELECT tokenId, credScore, points, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC').all();
-        console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
+        const totalRows = db.prepare('SELECT COUNT(*) as cnt FROM agents').get().cnt;
+        const rows = db.prepare('SELECT tokenId, credScore, points, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC LIMIT ?').all(SCORE_REFRESH_BATCH_LIMIT);
+        console.log(`[INDEXER] Refreshing cred scores for ${rows.length}/${totalRows} oldest agents...`);
 
         const updateStmt = db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?');
         const CONCURRENCY = Math.max(1, Math.min(12, parseInt(process.env.INDEXER_SCORE_REFRESH_CONCURRENCY || '3', 10) || 3));
@@ -491,12 +510,12 @@ async function refreshScores() {
             const batch = rows.slice(i, i + CONCURRENCY);
             const results = await Promise.all(batch.map(async (row) => {
                 try {
-                    const [credRead, pointsRead] = await Promise.allSettled([
-                        readContract.getCredScore(row.tokenId),
-                        readContract.points(row.tokenId),
+                    const [credRead, pointsRead] = await Promise.all([
+                        readWithTimeout(readContract.getCredScore(row.tokenId)),
+                        readWithTimeout(readContract.points(row.tokenId)),
                     ]);
-                    const credOk = credRead.status === 'fulfilled';
-                    const pointsOk = pointsRead.status === 'fulfilled';
+                    const credOk = credRead.ok;
+                    const pointsOk = pointsRead.ok;
                     if (!credOk && !pointsOk) return null;
                     return {
                         tokenId: row.tokenId,
