@@ -265,6 +265,11 @@ async function fetchAgentData(tokenId) {
     try {
         const agent = await readContract.getAgent(tokenId);
         let credScore = 0, points = 0;
+        try {
+            const current = db?.prepare('SELECT credScore, points FROM agents WHERE tokenId = ?').get(tokenId);
+            credScore = Number(current?.credScore || 0);
+            points = Number(current?.points || 0);
+        } catch {}
         try { credScore = Number(await readContract.getCredScore(tokenId)); } catch {}
         try { points = Number(await readContract.points(tokenId)); } catch {}
         return {
@@ -475,25 +480,28 @@ async function refreshScores() {
 
     scoreRefreshInFlight = true;
     try {
-        const rows = db.prepare('SELECT tokenId, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC').all();
+        const rows = db.prepare('SELECT tokenId, credScore, points, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC').all();
         console.log(`[INDEXER] Refreshing cred scores for ${rows.length} agents...`);
 
         const updateStmt = db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?');
-        const CONCURRENCY = 12;
+        const CONCURRENCY = Math.max(1, Math.min(12, parseInt(process.env.INDEXER_SCORE_REFRESH_CONCURRENCY || '3', 10) || 3));
         let updated = 0;
 
         for (let i = 0; i < rows.length; i += CONCURRENCY) {
             const batch = rows.slice(i, i + CONCURRENCY);
             const results = await Promise.all(batch.map(async (row) => {
                 try {
-                    const [credRes, pointsRes] = await Promise.all([
-                        readContract.getCredScore(row.tokenId).catch(() => 0),
-                        readContract.points(row.tokenId).catch(() => 0),
+                    const [credRead, pointsRead] = await Promise.allSettled([
+                        readContract.getCredScore(row.tokenId),
+                        readContract.points(row.tokenId),
                     ]);
+                    const credOk = credRead.status === 'fulfilled';
+                    const pointsOk = pointsRead.status === 'fulfilled';
+                    if (!credOk && !pointsOk) return null;
                     return {
                         tokenId: row.tokenId,
-                        credScore: Number(credRes || 0),
-                        points: Number(pointsRes || 0),
+                        credScore: credOk ? Number(credRead.value || 0) : Number(row.credScore || 0),
+                        points: pointsOk ? Number(pointsRead.value || 0) : Number(row.points || 0),
                     };
                 } catch {
                     return null;
