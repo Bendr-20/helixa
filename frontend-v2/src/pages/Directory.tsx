@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { AgentCard, AgentCardSkeleton } from '../components/AgentCard';
@@ -14,6 +14,8 @@ const fadeUp = {
 
 type EntityFilter = 'all' | 'agent' | 'human' | 'organization';
 type SortFilter = 'credScore' | 'name' | 'recent';
+
+const DIRECTORY_PAGE_SIZE = 60;
 
 function PrincipalCard({ principal }: { principal: DirectoryPrincipal }) {
   const [copiedLink, setCopiedLink] = useState(false);
@@ -107,6 +109,7 @@ export function Directory() {
   const [search, setSearch] = useState('');
   const [entityType, setEntityType] = useState<EntityFilter>('all');
   const [sortBy, setSortBy] = useState<SortFilter>('credScore');
+  const [visibleCount, setVisibleCount] = useState(DIRECTORY_PAGE_SIZE);
   const { data: stats } = useAgentStats();
   const { data: principals, isLoading, error } = useHelixaDirectory();
 
@@ -145,6 +148,17 @@ export function Directory() {
         }
       });
   }, [principals, entityType, search, sortBy]);
+
+  useEffect(() => {
+    setVisibleCount(DIRECTORY_PAGE_SIZE);
+  }, [search, entityType, sortBy]);
+
+  const visiblePrincipals = useMemo(
+    () => filteredPrincipals.slice(0, visibleCount),
+    [filteredPrincipals, visibleCount]
+  );
+
+  const hasMoreProfiles = visiblePrincipals.length < filteredPrincipals.length;
 
   const clearFilters = () => {
     setSearch('');
@@ -243,7 +257,13 @@ export function Directory() {
 
         <div className="dir-results-bar">
           <span>
-            {isLoading ? 'Loading...' : error ? 'Error loading directory' : `${filteredPrincipals.length} profiles`}
+            {isLoading
+              ? 'Loading...'
+              : error
+                ? 'Error loading directory'
+                : hasMoreProfiles
+                  ? `Showing ${visiblePrincipals.length} of ${filteredPrincipals.length} profiles`
+                  : `${filteredPrincipals.length} profiles`}
           </span>
         </div>
 
@@ -281,19 +301,33 @@ export function Directory() {
             ))}
           </div>
         ) : (
-          <div className="dir-grid">
-            {filteredPrincipals.map((principal, i) => (
-              <motion.div
-                key={`${principal.entityType}-${principal.id}`}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.4) }}
-              >
-                <PrincipalCard principal={principal} />
-              </motion.div>
-            ))}
-          </div>
+          <>
+            <div className="dir-grid">
+              {visiblePrincipals.map((principal, i) => (
+                <motion.div
+                  key={`${principal.entityType}-${principal.id}`}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.4) }}
+                >
+                  <PrincipalCard principal={principal} />
+                </motion.div>
+              ))}
+            </div>
+
+            {hasMoreProfiles && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setVisibleCount((count) => count + DIRECTORY_PAGE_SIZE)}
+                >
+                  Load More Profiles
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
