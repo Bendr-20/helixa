@@ -5,7 +5,6 @@ import { preloadMap } from '../App';
 const navItems = [
   { href: '/', label: 'Dashboard', icon: '' },
   { href: '/agents', label: 'Directory', icon: '' },
-  { href: '/jobs', label: 'Jobs', icon: '' },
   { href: '/trust-graph', label: 'Trust Graph', icon: '' },
   { href: '/manage', label: 'Manage', icon: '' },
 ];
