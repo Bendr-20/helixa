@@ -26,6 +26,7 @@ Multipass gives every agent a trusted identity graph:
 - what agent or runtime manages it
 - what accounts, wallets, services, and proofs are linked to it
 - what tools and payment endpoints it exposes
+- which standards it publishes, consumes, or verifies
 - what work it has done
 - what humans are in the loop
 - what trust and Cred context exists
@@ -123,7 +124,7 @@ Machine-readable outputs should include:
 - x402 payment metadata
 - supported tools and schemas
 - message routes
-- ERC-8004 references where relevant
+- standards spine references and compatibility status
 - public attestations and validation signals
 - public Cred context
 
@@ -136,6 +137,7 @@ It may have:
 - a Bankr profile
 - a Helixa AgentDNA record
 - an ERC-8004 identity
+- an ERC-8217 binding where relevant
 - one or more wallets
 - social accounts
 - domain and email proofs
@@ -181,6 +183,26 @@ $CRED is the Helixa economic rail for paid access, identity reports, endpoint us
 
 An identity fragment is any account, proof, credential, endpoint, wallet, attestation, social account, NFT, payment rail, runtime signal, or work history source attached to a Multipass.
 
+### ERC-8217
+
+ERC-8217 is the Agent NFT Identity Bindings draft. It defines how an ERC-8004 agent identity can be bound to an external NFT or tokenized controller, so the controller asset can represent authority over the agent identity. Multipass should treat this as the primary standards bridge between a control asset and an ERC-8004 agent.
+
+### ERC-8004
+
+ERC-8004 is the Trustless Agents standard. It provides the public agent identity rail, with identity, reputation, and validation registries. Multipass should use it for standards-readable agent identity and external trust references, not as the entire Multipass product.
+
+### ERC-8126
+
+ERC-8126 is the AI Agent Verification standard. It defines specialized verification and risk scoring for ERC-8004 agents. Multipass should ingest its results as verification and risk fragments, with raw private proof material kept outside public profiles.
+
+### ERC-8257
+
+ERC-8257 is the Agent Tool Registry draft. It defines tool manifests, pricing, access rules, origin binding, creator binding, and verifiability. Multipass should use it as the standards-readable tool and access layer where available.
+
+### ERC-8183
+
+ERC-8183 is the Agentic Commerce draft. It defines job escrow, provider submission, evaluator attestation, and terminal job outcomes. Multipass should treat it as the standards-readable work and outcome layer for Synagent-style jobs.
+
 ### ERC-8048
 
 ERC-8048 is a draft metadata interface for token registries. It lets a token expose arbitrary per-token key-value metadata through `metadata(tokenId, key)` and `MetadataSet` events.
@@ -193,7 +215,68 @@ ERC-721T is the Agent Metadata Profile of ERC-8048. It reserves agent-oriented m
 
 The owner controls the Multipass. The operator may run infrastructure or services. The agent manager may update approved agent-facing metadata within delegated scopes. These roles can overlap, but the permission model must treat them separately.
 
-## 6. Core Data Model
+## 6. Standards Spine
+
+Multipass should be the product surface. The standards spine is the composability layer underneath it.
+
+The spec should not make every draft standard a launch blocker, but it must know where each one fits. Multipass should expose a `standards_profile` that tells humans, agents, and indexers which standards are supported, pending, unsupported, or imported as unverified fragments.
+
+### Spine map
+
+| Layer | Standard | Role | Multipass behavior | Launch stance |
+| --- | --- | --- | --- | --- |
+| Root control and binding | ERC-8217 | Binds an ERC-8004 agent identity to an external NFT or tokenized controller. | Use as the primary bridge when a Multipass or linked NFT controls an ERC-8004 identity. Transfer changes control state, but secrets, runtime authority, and dangerous permissions still pause for revalidation. | Core architecture, adapter-ready at launch. |
+| Public agent identity | ERC-8004 | Provides agent identity, reputation, validation, and registration metadata. | Publish and read ERC-8004 references. Connect AgentDNA, service endpoints, reputation, and validation context through Multipass. | Core architecture, active integration. |
+| Verification and risk | ERC-8126 | Provides agent verification types and a unified risk score for ERC-8004 agents. | Store risk and verification summaries as fragments. Keep private proof material outside public profiles. | Adapter-ready at launch, active after provider selection. |
+| Tools and access | ERC-8257 | Provides tool registry records, manifests, pricing, access predicates, and verifiability. | Link MCP, A2A, x402, and tool manifests to standard-readable tool records. Bankr x402 Cloud remains the payment source of truth where it hosts the endpoint. | Adapter-ready at launch, active in Synagent phase. |
+| Jobs and outcomes | ERC-8183 | Provides job escrow, provider submission, evaluator attestation, and outcome records. | Use for Synagent-style work history. Evaluated outcomes become work fragments and can feed Cred only after validation. | Adapter-ready at launch, active in Synagent phase. |
+| NFT metadata | ERC-721T / ERC-8048 | Provides lightweight agent metadata on ERC-721 tokens. | Ingest as NFT metadata fragments. Treat all fields as untrusted until ownership, endpoint, and wallet control are checked. | Optional ingestion, useful early. |
+
+Note: ERC-8004 identity records are themselves ERC-721 based. Multipass and linked NFT controller assets are broader control, provenance, and metadata layers around that public agent identity, not replacements for it.
+
+### Launch compatibility matrix
+
+| Standard | Launch requirement | First implementation target | What can wait |
+| --- | --- | --- | --- |
+| ERC-8004 | Active integration. | Read and publish identity references, registration metadata, validation references, and reputation context. | Advanced validation automation and full cross-chain indexing. |
+| ERC-8217 | Core architecture with adapter-ready support. | Store binding refs and model controller-asset authority over ERC-8004 identities. | Full live binding writes if the draft or deployment surface changes. |
+| ERC-8126 | Adapter-ready support. | Store verification and risk summaries as fragments. | Choosing final providers and surfacing detailed private verification flows. |
+| ERC-8257 | Adapter-ready support. | Store tool registry refs, manifest hashes, and access summaries. | Full Synagent tool registry writes and predicate management. |
+| ERC-8183 | Adapter-ready support. | Store job, evaluator, and outcome refs as work-history fragments. | Native Synagent escrow orchestration and automated evaluator routing. |
+| ERC-721T / ERC-8048 | Optional ingestion. | Read metadata keys from compatible NFTs and import them as unverified fragments. | Writing metadata to third-party collections or relying on it as authority. |
+
+### Control and trust flow
+
+1. A human, organization, project, or swarm owns the Multipass.
+2. The Multipass or linked controller asset binds to an ERC-8004 agent identity through ERC-8217 where available.
+3. ERC-8004 exposes public agent identity, registration metadata, reputation, and validation references.
+4. ERC-8126 adds verification and risk context.
+5. ERC-8257 exposes tool access, manifests, and pricing where tools are standardized.
+6. ERC-8183 records jobs, evaluator attestations, and outcome proofs where work is standardized.
+7. Cred consumes verified outcomes, attestations, receipts, and history. $CRED can pay for access and settlement, but cannot buy reputation.
+
+### Standards adapter rules
+
+- Track each standard by `standard_id`, `status`, `chain_id`, `contract_address`, `record_id`, `adapter_version`, `last_verified_at`, and `assurance_level`.
+- Draft standards must go through adapter modules so contract or schema changes do not break the Multipass core.
+- External standard data is untrusted until verified by ownership, signature, endpoint control, contract event, or trusted issuer.
+- Multipass should explain standards compatibility clearly to humans instead of exposing raw protocol names only.
+- If a standard is unavailable on a chain, Multipass should store a pending or unsupported status rather than pretending support exists.
+
+### Product interpretation
+
+For humans, the standards spine should collapse into simple labels:
+
+- identity bound
+- owner verified
+- risk checked
+- tools verified
+- work attested
+- trust updated
+
+For agents and developers, the same data should expose exact standard references, contract addresses, token IDs, job IDs, tool IDs, manifests, and verification timestamps.
+
+## 7. Core Data Model
 
 ### Multipass
 
@@ -217,6 +300,7 @@ Required or expected fields:
 - `cred_summary`
 - `payment_profile`
 - `discovery_profile`
+- `standards_profile`
 - `created_at`
 - `updated_at`
 
@@ -247,6 +331,36 @@ This keeps the product human owned without blocking agent-created drafts or disc
 API rule:
 
 > Clients should not infer ownership from a missing field. They should read `owner_summary.owner_state`, `owner_summary.verification_status`, and `custody_epoch` together.
+
+### Standards profile
+
+The standards profile tells other agents and developers how this Multipass maps into external standards.
+
+Fields:
+
+- `standards_profile_id`
+- `multipass_id`
+- `supported_standards`: list of standard reference records
+- `primary_erc8004_agent_id` optional
+- `primary_erc8217_binding` optional
+- `risk_summary` optional
+- `tool_registry_refs` optional
+- `job_registry_refs` optional
+- `metadata_profile_refs` optional
+- `adapter_versions`
+- `last_verified_at`
+
+Standard reference record:
+
+- `standard_id`: `erc8217`, `erc8004`, `erc8126`, `erc8257`, `erc8183`, `erc8048`, `erc721t`, or partner-defined
+- `support_status`: `active`, `pending`, `unsupported`, `imported_unverified`, `deprecated`
+- `chain_id` optional
+- `contract_address` optional
+- `record_id` optional
+- `source_url` optional
+- `assurance_level`
+- `adapter_version`
+- `last_verified_at`
 
 ### Identity fragment
 
@@ -368,22 +482,26 @@ Rule:
 
 > Transfer starts a new custody epoch. Identity and history persist, but active authority is reverified.
 
-## 7. Identity Fragment Catalog
+## 8. Identity Fragment Catalog
 
 ### Agent identity fragments
 
 These describe the agent itself.
 
 - Helixa AgentDNA record
+- ERC-8217 binding
 - ERC-8004 identity
+- ERC-8126 verification and risk reference
 - ERC-721T / ERC-8048 NFT metadata
 - Bankr profile
 - x402 service profile
 - runtime manifest
+- ERC-8257 tool registry reference
 - tool manifest
 - MCP endpoint
 - A2A endpoint
 - model or runtime claims
+- ERC-8183 job or outcome reference
 - work history source
 - swarm membership
 
@@ -444,6 +562,8 @@ These add trust from third parties.
 - work completion attestations
 - dispute outcomes
 - validation registry references
+- ERC-8126 verification or risk result
+- ERC-8183 evaluator attestation
 
 ### Payment and commercial fragments
 
@@ -458,6 +578,7 @@ These make the identity usable in agent commerce.
 - fee and burn receipt
 - product catalog
 - service level and rate limits
+- ERC-8183 job escrow reference where applicable
 
 ### Communication fragments
 
@@ -471,7 +592,7 @@ These make the identity reachable.
 - human-in-the-loop approval policy
 - signed response capability
 
-## 8. Human Surface
+## 9. Human Surface
 
 The human surface should feel like a premium control room, not a protocol explorer.
 
@@ -527,7 +648,7 @@ The key UI promise:
 
 > Humans can see and control the whole stack without needing to understand every protocol underneath.
 
-## 9. Agent Surface
+## 10. Agent Surface
 
 The agent surface should be boring, structured, and reliable.
 
@@ -578,7 +699,7 @@ Rule:
 
 > If an agent can discover a Multipass, it should know how to verify it, message it, and pay it.
 
-## 10. Upgradeable Contract Architecture
+## 11. Upgradeable Contract Architecture
 
 All Helixa-owned stateful contracts for this build must be upgradeable.
 
@@ -634,6 +755,7 @@ Upgradeable modules:
 - $CRED burn and accounting module
 - endpoint and payment manifest pointer registry
 - permission and delegation registry
+- standards adapter and reference registry
 
 Payment-related contracts should store policies, pointers, hashes, commitments, and normalized receipt references. They should not store raw request payloads, raw response payloads, private proof material, or Bankr-hosted settlement authority.
 
@@ -709,7 +831,7 @@ Some values should be hard to change even if contracts are upgradeable:
 
 Upgradeable logic should not mean rewriteable history.
 
-## 11. Bankr x402 Cloud and $CRED Rebuild
+## 12. Bankr x402 Cloud and $CRED Rebuild
 
 The current x402 system should be rebuilt around Bankr x402 Cloud and $CRED.
 
@@ -756,7 +878,11 @@ Shared boundary:
 | Fragment registry | Helixa upgradeable contracts plus indexer | Fragment status, assurance level, visibility, hashes, issuer references, and public pointers | Raw private documents, OAuth secrets, and hidden proof material |
 | Multipass API and indexer | Helixa backend | Resolved profile JSON, agent cards, redacted views, search, and analytics | Contract upgrade authority and Bankr settlement authority |
 | Bankr x402 Cloud | Bankr | Endpoint references, normalized receipt fragments, provider receipt IDs, and settlement hashes | Hosted endpoint runtime, payment challenge, payment verification, logs, and settlement source of truth |
+| ERC-8217 | ERC-8217 binding contract where deployed | Binding references between controller assets and ERC-8004 identities | Binding contract governance and external controller token ownership |
 | ERC-8004 | ERC-8004 contracts | References to identity, reputation, validation, and registration metadata | ERC-8004 registry ownership and protocol state |
+| ERC-8126 | Verification providers and ERC-8126 interfaces | Verification summary, risk score, issuer, expiry, and proof commitments | Raw private verification data and provider infrastructure |
+| ERC-8257 | Tool registry contracts and manifests | Tool registry references, manifest hashes, access summaries, and pricing pointers | Tool endpoint runtime and external predicate governance |
+| ERC-8183 | Job escrow contracts and evaluator attestations | Job references, outcome status, evaluator summary, and proof hashes | Escrow contract governance and raw private work payloads |
 | ERC-721T / ERC-8048 | External NFT contract | Ingested NFT metadata fragments and verification status | Token ownership, token metadata writes, and NFT transfer events |
 | $CRED token | $CRED token contract and Helixa fee modules where owned | Fee policy, burn accounting references, and receipt summaries | Token balances and token transfer rules unless Helixa owns that contract path |
 | Proof providers | Provider or issuer | Proof result, commitment, issuer, expiry, and verification status | Raw private proof inputs and provider infrastructure |
@@ -829,7 +955,7 @@ Every paid request should produce a receipt fragment:
 
 Receipt fragments can contribute to activity history, but not directly to Cred score without outcome validation.
 
-## 12. Agent NFT and ERC-721T Layer
+## 13. Agent NFT and ERC-721T Layer
 
 Agent NFTs remain important, but they are one fragment type.
 
@@ -844,7 +970,7 @@ NFTs can provide:
 - marketplace transfer signal
 - swarm roster membership
 
-ERC-721T / ERC-8048 can provide a lightweight agent metadata layer for NFTs.
+ERC-721T / ERC-8048 can provide a lightweight agent metadata layer for NFTs. This is different from ERC-8217. ERC-8217 binds control between an ERC-8004 identity and a controller asset. ERC-721T / ERC-8048 only exposes metadata fields that can help discovery.
 
 Multipass should ingest these fields where available:
 
@@ -875,7 +1001,7 @@ Multipass adds the missing layers:
 - runtime and tool metadata
 - agent-readable discovery contract
 
-## 13. Swarm Model
+## 14. Swarm Model
 
 A swarm Multipass is a parent identity for a collection, project, or coordinated group of agents.
 
@@ -898,7 +1024,7 @@ Rule:
 
 > Aggregate swarm trust should never erase individual agent history.
 
-## 14. Transfer and Custody
+## 15. Transfer and Custody
 
 Transfers should be safe, visible, and explicit.
 
@@ -924,7 +1050,7 @@ Never blindly transfer:
 - hidden human data
 - private memory
 
-## 15. Data Visibility
+## 16. Data Visibility
 
 Every fragment needs a visibility policy.
 
@@ -977,19 +1103,24 @@ Examples:
 - private runtime config
 - secrets references
 
-## 16. MVP Scope
+## 17. MVP Scope
 
 Build first:
 
 1. Multipass schema as premium identity graph.
-2. Upgradeable contract architecture using small UUPS modules.
-3. Public card and deep profile for agents.
-4. Human owner dashboard lite.
-5. Identity fragment model with statuses, assurance levels, visibility, and transfer policy.
-6. Core fragments:
+2. Standards spine model with adapter records for ERC-8217, ERC-8004, ERC-8126, ERC-8257, ERC-8183, ERC-721T, and ERC-8048.
+3. Upgradeable contract architecture using small UUPS modules.
+4. Public card and deep profile for agents.
+5. Human owner dashboard lite.
+6. Identity fragment model with statuses, assurance levels, visibility, and transfer policy.
+7. Core fragments:
    - Helixa AgentDNA
+   - ERC-8217 binding reference
    - ERC-8004 identity
+   - ERC-8126 verification and risk reference
    - ERC-721T / ERC-8048 NFT metadata
+   - ERC-8257 tool registry reference
+   - ERC-8183 job or outcome reference
    - Bankr profile
    - wallet or smart account
    - domain and email
@@ -998,11 +1129,11 @@ Build first:
    - GitHub
    - NFT collection token
    - x402 endpoint
-7. Agent discovery JSON and agent card.
-8. Bankr x402 Cloud paid endpoints with $CRED as preferred asset.
-9. Receipt fragments for paid endpoint usage.
-10. Custody epoch model.
-11. Swarm parent profile lite.
+8. Agent discovery JSON and agent card.
+9. Bankr x402 Cloud paid endpoints with $CRED as preferred asset.
+10. Receipt fragments for paid endpoint usage.
+11. Custody epoch model.
+12. Swarm parent profile lite.
 
 Do not build first:
 
@@ -1014,7 +1145,7 @@ Do not build first:
 - complex zk proof marketplace
 - full automated agent permissions without human approvals
 
-## 17. MVP API Contract Appendix
+## 18. MVP API Contract Appendix
 
 These are minimal API contracts for planning. They can evolve, but implementation should start with versioned schemas.
 
@@ -1053,6 +1184,7 @@ Required:
 - `public_fragments`
 - `cred_summary`
 - `discovery_profile`
+- `standards_profile`
 - `payment_profile`
 - `updated_at`
 
@@ -1084,8 +1216,33 @@ Required:
 - `trust_summary`
 - `rate_limits`
 - `contact_policy`
+- `standards_refs`
 
 The agent card should be small enough for other agents to ingest quickly. It should point to deeper JSON rather than embedding the full graph.
+
+### Standards profile required fields
+
+Required:
+
+- `standards_profile_id`
+- `multipass_id`
+- `primary_refs`
+- `standard_refs`
+- `compatibility_summary`
+- `adapter_versions`
+- `last_verified_at`
+
+Each `standard_refs` item should include:
+
+- `standard_id`
+- `support_status`
+- `chain_id` optional
+- `contract_address` optional
+- `record_id` optional
+- `manifest_url` optional
+- `proof_hash` optional
+- `assurance_level`
+- `last_verified_at`
 
 ### x402 manifest required fields
 
@@ -1105,6 +1262,8 @@ Required per endpoint:
 - `rate_limit`
 - `visibility`: `public` or `gated`
 - `requires_owner_approval`
+- `erc8257_tool_ref` optional
+- `manifest_hash` optional
 
 ### Receipt fragment required fields
 
@@ -1125,17 +1284,18 @@ Required:
 - `created_at`
 - `settled_at` optional
 - `response_class`
+- `erc8183_job_ref` optional
 
 Receipt boundary:
 
 > Store enough to prove payment activity and support analytics. Do not store private request payloads or raw response payloads in public receipt fragments.
 
-## 18. Roadmap
+## 19. Roadmap
 
 ### Phase 0: Foundation
 
 - Finalize premium identity stack positioning.
-- Define Multipass, owner, agent manager, fragment, payment, discovery, custody, and upgradeable contract schemas.
+- Define Multipass, owner, agent manager, fragment, payment, discovery, custody, standards spine, and upgradeable contract schemas.
 - Define visibility and transfer policies.
 - Define agent-readable JSON schema.
 
@@ -1154,11 +1314,15 @@ Receipt boundary:
 - Wallet challenge.
 - Bankr profile link.
 - AgentDNA or Helixa link.
+- ERC-8217 binding link.
 - ERC-8004 link.
+- ERC-8126 verification and risk link.
 - ERC-721T / ERC-8048 ingestion.
 - X, Farcaster, GitHub, domain, and email links.
 - NFT collection token link.
 - x402 endpoint link.
+- ERC-8257 tool registry reference.
+- ERC-8183 job and outcome reference.
 
 ### Phase 3: Human Owner Dashboard
 
@@ -1175,6 +1339,7 @@ Receipt boundary:
 - Public JSON profile.
 - Agent card.
 - OpenAPI and tool manifest links.
+- ERC-8257 tool registry references.
 - x402 manifest.
 - Message routes.
 - Owner approval route.
@@ -1197,7 +1362,15 @@ Receipt boundary:
 - Add receipt fragments.
 - Add burn and revenue accounting.
 
-### Phase 7: Custody and Transfer
+### Phase 7: Synagent Standards Layer
+
+- Add ERC-8257 adapters for tool registry references.
+- Add ERC-8183 adapters for job, escrow, evaluator, and outcome references.
+- Map Synagent request intake, provider matching, evaluator attestations, and outcome proofs into Multipass fragments.
+- Feed only validated outcomes into Cred context.
+- Keep raw private work payloads outside public profiles.
+
+### Phase 8: Custody and Transfer
 
 - Transfer detection.
 - Claim flow.
@@ -1206,7 +1379,7 @@ Receipt boundary:
 - Reverification.
 - Historical owner and operator context.
 
-### Phase 8: Swarm Multipass
+### Phase 9: Swarm Multipass
 
 - Parent swarm profile.
 - Roster.
@@ -1215,7 +1388,7 @@ Receipt boundary:
 - Per-agent reputation preserved.
 - Shared x402 endpoints.
 
-### Phase 9: Advanced Proofs
+### Phase 10: Advanced Proofs
 
 - World ID.
 - Government ID selective disclosure.
@@ -1224,7 +1397,7 @@ Receipt boundary:
 - Human score providers.
 - Private proof commitments.
 
-### Phase 10: NFT and Marketplace Layer
+### Phase 11: NFT and Marketplace Layer
 
 - Collection browsing.
 - NFT identity-link flow.
@@ -1232,7 +1405,7 @@ Receipt boundary:
 - Later native marketplace rails.
 - Transfer-aware Multipass handoff.
 
-### Phase 11: Runtime Handoff
+### Phase 12: Runtime Handoff
 
 - Encrypted config export.
 - Public soul export.
@@ -1242,7 +1415,7 @@ Receipt boundary:
 - Smart account ownership support.
 - Redeploy flow.
 
-## 19. Open Decisions
+## 20. Open Decisions
 
 1. Should $CRED be mandatory for Helixa-hosted x402 endpoints, or preferred with USDC fallback from day one?
 2. What should be public by default for human owners: display name, wallet, socials, or only verified presence badges?
@@ -1251,12 +1424,13 @@ Receipt boundary:
 5. What should be the first paid Multipass endpoint: agent lookup, identity fragment report, Cred report, or owner verification summary?
 6. What multisig and timelock policy should govern launch upgrades?
 
-## 20. Immediate Next Steps
+## 21. Immediate Next Steps
 
 1. Share this draft with the team for product and architecture review.
 2. Confirm the upgradeable contract policy as a launch requirement.
 3. Define the first contract module boundaries.
 4. Define the first agent-readable schemas.
-5. Start x402 rebuild planning around Bankr x402 Cloud with $CRED-first pricing.
-6. Decide default human-owner visibility.
-7. Keep Cred protected: payments and burns buy access or services, not reputation.
+5. Define the standards spine adapter schema and launch compatibility matrix.
+6. Start x402 rebuild planning around Bankr x402 Cloud with $CRED-first pricing.
+7. Decide default human-owner visibility.
+8. Keep Cred protected: payments and burns buy access or services, not reputation.
