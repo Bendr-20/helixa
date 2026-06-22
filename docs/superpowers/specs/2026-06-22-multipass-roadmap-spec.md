@@ -1,96 +1,122 @@
 # Multipass Premium Identity Stack Spec
 
-Status: draft for Quigley review
+Status: team review draft
 Date: 2026-06-22
 
-## 1. Product Thesis
+## 1. Executive Summary
 
-Multipass is a premium identity stack for AI agents, human owners, projects, collections, and swarms.
+Multipass is the premium identity stack for AI agents, human owners, projects, collections, and swarms.
 
-It is human owned and agent managed.
+The core idea is simple:
 
-Humans should feel in control. Agents should be able to discover, verify, communicate with, and transact through it without needing a human to explain the context.
+> Multipass is a human-owned, agent-managed identity asset.
 
-Core line:
+Humans should feel in control. They should be able to see who owns an agent, who operates it, what it can access, what it has done, how it gets paid, and what trust signals support it.
 
-> Multipass gives every agent a trusted identity graph: who owns it, what it controls, where it works, who is behind it, what it has done, and how other agents can safely interact with it.
+Agents should be able to discover and use the same identity through structured machine-readable data. A good Multipass should tell another agent how to verify it, message it, call its tools, pay its endpoints, and understand its trust context.
 
-Agent NFTs are one layer in the stack. They are not the stack.
+Agent NFTs are one layer in this stack. They can provide art, provenance, collection context, ownership signals, and cultural identity. They are not the whole product.
 
-An NFT can be linked as a provenance and ownership fragment, but the broader product is richer than any single NFT layer. Multipass combines agent identity, human ownership, social proof, payment rails, runtime authority, work history, and trust data into one premium surface.
+## 2. Product Thesis
 
-## 2. Positioning
+Multipass gives every agent a trusted identity graph:
 
-### Public framing
+- who owns it
+- who operates it
+- what agent or runtime manages it
+- what accounts, wallets, services, and proofs are linked to it
+- what tools and payment endpoints it exposes
+- what work it has done
+- what humans are in the loop
+- what trust and Cred context exists
+- what changes when ownership transfers
 
-Multipass is the control and trust layer for agent identity.
+Multipass should become the premium surface for understanding and controlling agent identity.
 
-For humans:
+It should feel simple and high-end to humans, while exposing reliable structured data for agents.
 
-- See every agent, owner, operator, proof, permission, payment rail, and trust signal in one place.
-- Understand who controls an agent or swarm.
-- Review what the agent can do.
-- Approve or revoke sensitive permissions.
-- View provenance, work history, Cred context, social proof, and linked profiles.
+## 3. Positioning
 
-For agents:
+### For humans
 
-- Discover other agents and swarms through structured machine-readable profiles.
-- Verify ownership, authority, and payment methods.
-- Find x402 endpoints, tool manifests, message routes, and service schemas.
-- Communicate with the right owner, operator, runtime, or agent endpoint.
-- Pay in the correct asset, with $CRED as the preferred Helixa rail where supported.
+Multipass is a control room for agent identity.
+
+Humans can:
+
+- see the whole identity stack in one place
+- understand who controls an agent or swarm
+- approve or revoke sensitive permissions
+- review linked wallets, socials, proofs, endpoints, and payment rails
+- inspect provenance, work history, and Cred context
+- see what is public, gated, private, or hidden
+- understand what happens after a sale, transfer, or custody change
+
+### For agents
+
+Multipass is a discovery, verification, communication, and payment profile.
+
+Agents can:
+
+- discover other agents and swarms
+- verify owner and controller state
+- find MCP, A2A, web, and x402 endpoints
+- inspect supported protocols and trust requirements
+- route messages to the right agent, owner, operator, or swarm
+- pay with the correct asset, with $CRED as the preferred Helixa rail where supported
+- ingest public identity fragments without reading a human-only page
 
 ### What Multipass is
 
-- A premium identity graph.
-- A human-owned control asset.
-- An agent-managed operational profile.
-- A registry of identity fragments.
-- A permission and custody layer.
-- A discovery and communication layer for agents.
-- A monetization rail for paid data, APIs, identity linking, verification, and runtime services.
+- A premium identity graph
+- A human-owned control asset
+- An agent-managed operational profile
+- A registry of identity fragments
+- A permission and custody layer
+- A discovery and communication layer for agents
+- A monetization rail for paid data, APIs, identity linking, verification, dashboards, and runtime services
 
 ### What Multipass is not
 
-- Not just an NFT marketplace.
-- Not just a profile page.
-- Not just an ERC-8004 record.
-- Not a mechanism for purchasing reputation.
-- Not a blind transfer of private keys, secrets, or production authority.
+- Not just an NFT marketplace
+- Not just a profile page
+- Not just an ERC-8004 record
+- Not a way to purchase reputation
+- Not a blind transfer of keys, secrets, memory, or production authority
 
-## 3. Product Principles
+## 4. Product Principles
 
-### 1. Human owned, agent managed
+### Human owned, agent managed
 
-The Multipass belongs to a human, organization, or verified controller. The agent can manage parts of it through delegated scopes, but the human owns final authority.
+The owner controls the Multipass. The agent can manage approved parts of it through delegated scopes.
 
 Examples:
 
 - A human approves which fragments are public.
-- A human grants the agent permission to update its work history or service endpoints.
-- A human revokes tool access, payment routes, or delegated signers.
-- An agent can publish status, update schemas, receive work, and maintain discoverability within approved limits.
+- A human grants the agent permission to update service endpoints.
+- A human revokes tool access, delegated signers, or payment routes.
+- An agent can update schemas, publish status, append work receipts, and maintain discoverability inside approved limits.
 
-### 2. Humans see clearly
+### Humans see clearly
 
-The surface should feel premium, visual, and calm. It should answer:
+The surface should answer:
 
 - Who owns this?
-- Who operates it?
-- What is this agent allowed to do?
-- What proof supports that claim?
+- Who operates this?
+- What can this agent do?
+- What permissions are active?
+- Which proofs support the claims?
+- Which data is public, gated, private, or hidden?
 - What changed recently?
-- What happens if ownership transfers?
-- Can I trust it enough to interact, hire, pay, or integrate?
+- Can I trust this enough to hire, pay, integrate, or transfer?
 
-### 3. Agents read everything
+### Agents read everything they need
 
 Every public Multipass should expose structured data for agent discovery.
 
 Machine-readable outputs should include:
 
 - canonical profile JSON
+- agent card
 - identity fragment graph
 - ownership and custody state
 - service endpoints
@@ -101,15 +127,18 @@ Machine-readable outputs should include:
 - public attestations and validation signals
 - public Cred context
 
-### 4. Identity is fragmented by default
+### Identity is fragmented by default
 
-A real agent is not one wallet or one NFT. It may have:
+A real agent is not one wallet, one profile, one NFT, or one registry entry.
+
+It may have:
 
 - a Bankr profile
 - a Helixa AgentDNA record
 - an ERC-8004 identity
 - one or more wallets
 - social accounts
+- domain and email proofs
 - x402 endpoints
 - tool manifests
 - human owners
@@ -118,49 +147,59 @@ A real agent is not one wallet or one NFT. It may have:
 - work history
 - swarm membership
 - collection provenance
-- zk or DID-backed proofs
+- DID, verifiable credential, zk, or zkTLS proofs
 
 Multipass is the premium graph that makes these fragments understandable.
 
-### 5. Authority is not identity
+### Authority is not identity
 
-Identity and history can persist. Authority must be proven.
+Identity and history can persist across ownership changes. Authority must be proven and reverified.
 
-A profile can remember past owners, operators, work, and provenance, but active permissions should always be scoped, revocable, and reverified after transfer.
+A Multipass can remember past owners, operators, work, and provenance, but active permissions should always be scoped, revocable, and reset when control changes.
 
-### 6. $CRED is access and settlement, not reputation purchase
+### $CRED is access and settlement, not reputation purchase
 
-$CRED can power payments, access, discounts, endpoint usage, verification fees, identity-linking fees, and burns.
+$CRED can power payments, access, discounts, endpoint usage, verification fees, identity-linking fees, dashboards, and burns.
 
-$CRED must not directly raise a Cred score. Cred is earned through evidence, outcomes, attestations, history, and trust signals.
+$CRED must not directly raise a Cred score. Cred is earned through evidence, outcomes, attestations, history, ownership context, and validation signals.
 
-## 4. Glossary
+## 5. Glossary
 
-### Cred score and Cred context
+### Cred score
 
-Cred score is the trust and reputation signal. It is earned through evidence, outcomes, attestations, ownership context, work history, and validation signals.
+Cred score is the trust and reputation signal. It is earned from evidence, outcomes, attestations, work history, ownership context, validation signals, and other verified data.
 
-Cred context is the explanation layer around a score: what proofs, history, custody changes, disputes, or attestations influenced trust.
+### Cred context
+
+Cred context explains why trust looks the way it does. It should show proofs, history, custody changes, disputes, validation, and reputation signals behind the score.
 
 ### $CRED token
 
-$CRED is the Helixa economic rail for access, paid endpoints, premium reports, linking services, verification, dashboards, and burns. It does not alter reputation.
+$CRED is the Helixa economic rail for paid access, identity reports, endpoint usage, linking services, verification, dashboards, and burns. It does not alter reputation by itself.
 
 ### Identity fragment
 
 An identity fragment is any account, proof, credential, endpoint, wallet, attestation, social account, NFT, payment rail, runtime signal, or work history source attached to a Multipass.
 
+### ERC-8048
+
+ERC-8048 is a draft metadata interface for token registries. It lets a token expose arbitrary per-token key-value metadata through `metadata(tokenId, key)` and `MetadataSet` events.
+
+### ERC-721T
+
+ERC-721T is the Agent Metadata Profile of ERC-8048. It reserves agent-oriented metadata keys for ERC-721 tokens, including `context`, `endpoint[mcp]`, `endpoint[a2a]`, `endpoint[web]`, `endpoint[x402]`, and `address[<chain-id>]`. Multipass should ingest it as an NFT metadata fragment, not treat it as the whole identity system.
+
 ### Owner, operator, and agent manager
 
 The owner controls the Multipass. The operator may run infrastructure or services. The agent manager may update approved agent-facing metadata within delegated scopes. These roles can overlap, but the permission model must treat them separately.
 
-## 5. Core Objects
+## 6. Core Data Model
 
 ### Multipass
 
 The canonical identity asset.
 
-Fields:
+Required or expected fields:
 
 - `multipass_id`
 - `subject_type`: `agent`, `human`, `swarm`, `collection`, `project`, `organization`
@@ -181,10 +220,6 @@ Fields:
 - `created_at`
 - `updated_at`
 
-Rule:
-
-> The owner controls the Multipass. The agent may manage approved parts of it.
-
 Creation rule:
 
 - A draft Multipass can be proposed by an agent, importer, crawler, project team, or human.
@@ -194,9 +229,26 @@ Creation rule:
 - Transition to `active` requires at least one owner fragment, one controller proof, and one custody epoch.
 - Agent-managed updates require delegated scopes from the owner.
 
-This keeps the product human owned without blocking agent-created drafts and discovery imports.
+This keeps the product human owned without blocking agent-created drafts or discovery imports.
 
-### Identity Fragment
+### Multipass state lifecycle and nullability
+
+`owner_summary` should always exist in API responses, but its fields can show unknown or pending ownership while the Multipass is in draft.
+
+| Status | Meaning | `owner_controller_id` | `owner_summary` response | Paid endpoints | Notes |
+| --- | --- | --- | --- | --- | --- |
+| `draft` | Proposed or imported identity with unverified data. | Nullable. | Required object with `owner_state`, nullable `controller`, and `verification_status: none` or `pending`. | Disabled. | Safe for discovery imports and agent-proposed records. |
+| `link_ready` | Owner is claimed or verified, but required fragments or review are incomplete. | Required. | Required object with controller summary and current verification state. | Disabled by default. | Used before public trust labels or paid services go live. |
+| `active` | Verified owner, valid custody epoch, and approved public profile. | Required. | Required verified owner/controller summary. | Enabled if payment profile is approved. | Normal operating state. |
+| `transfer_pending` | Ownership transfer or control change detected. | Required for prior controller; pending controller may be separate. | Required object showing prior controller, pending controller if known, and transfer state. | Dangerous or owner-sensitive endpoints paused. | New owner must claim and start a new custody epoch. |
+| `suspended` | Profile or permissions paused by owner, Helixa safety policy, or protocol policy. | Required unless archived from draft. | Required object with last known controller and suspension reason when public. | Disabled unless explicitly allowed. | Preserves history while limiting interaction. |
+| `archived` | No longer active but kept for provenance and history. | Nullable only if it never left draft; otherwise last known controller remains. | Required object with archived state and last known public controller if available. | Disabled. | Historical fragments remain readable according to visibility policy. |
+
+API rule:
+
+> Clients should not infer ownership from a missing field. They should read `owner_summary.owner_state`, `owner_summary.verification_status`, and `custody_epoch` together.
+
+### Identity fragment
 
 A claim, proof, account, credential, endpoint, or authority signal attached to a Multipass.
 
@@ -238,9 +290,9 @@ Assurance levels:
 - `private_proof`: proven through zk, zkTLS, or selective disclosure.
 - `operational`: used successfully in live agent work, payments, or runtime calls.
 
-### Human Owner
+### Human owner
 
-The human, team, or organization behind an agent or swarm.
+The human, team, organization, or DAO behind an agent or swarm.
 
 Fields:
 
@@ -260,7 +312,7 @@ Rule:
 
 > Human ownership should be visible enough to build trust, but private enough to avoid doxxing by default.
 
-### Agent Manager
+### Agent manager
 
 The operational agent identity allowed to maintain approved parts of the Multipass.
 
@@ -286,7 +338,7 @@ Allowed actions can include:
 - initiate x402 quotes
 - propose profile edits for human approval
 
-Disallowed without explicit approval:
+Disallowed without explicit owner approval:
 
 - change ownership
 - transfer the Multipass
@@ -295,9 +347,9 @@ Disallowed without explicit approval:
 - spend above limits
 - grant new dangerous permissions
 
-### Custody Epoch
+### Custody epoch
 
-A time-bounded period where a specific owner/controller has authority over the Multipass.
+A time-bounded period where a specific owner or controller has authority over the Multipass.
 
 Fields:
 
@@ -316,96 +368,54 @@ Rule:
 
 > Transfer starts a new custody epoch. Identity and history persist, but active authority is reverified.
 
-### Discovery Profile
-
-The agent-readable surface.
-
-Fields:
-
-- `profile_url`
-- `canonical_json_url`
-- `agent_card_url`
-- `openapi_url`
-- `tool_manifest_url`
-- `x402_manifest_url`
-- `message_routes`
-- `supported_protocols`
-- `payment_assets`
-- `rate_limits`
-- `trust_requirements`
-- `contact_policy`
-
-The discovery profile should let another agent answer:
-
-- What is this entity?
-- Who controls it?
-- What can it do?
-- How do I talk to it?
-- What does it cost?
-- What payment asset is accepted?
-- What proofs should I check before trusting it?
-
-### Payment Profile
-
-The payment and monetization rail for a Multipass.
-
-Fields:
-
-- `preferred_asset`: `$CRED`
-- `fallback_assets`: `USDC`, `ETH` if needed
-- `bankr_profile_fragment_id`
-- `x402_cloud_endpoints`
-- `fee_policy`
-- `burn_policy`
-- `revenue_split_policy`
-- `settlement_wallets`
-- `receipt_history`
-
-Rule:
-
-> $CRED should be the preferred Helixa asset for Multipass services. USDC can remain a compatibility fallback where third-party x402 infrastructure requires it.
-
-## 6. Identity Fragment Catalog
+## 7. Identity Fragment Catalog
 
 ### Agent identity fragments
 
 These describe the agent itself.
 
-- Helixa AgentDNA record: canonical Helixa identity and trust profile.
-- ERC-8004 identity: standards-aligned agent identity anchor.
-- Bankr profile: agent commerce profile, wallet, token, products, revenue model.
-- x402 service profile: paid endpoints and payment requirements.
-- Runtime manifest: where the agent runs and how it can be contacted.
-- Tool manifest: tools, schemas, permissions, and limits.
-- Model/runtime claims: framework, model family, hosting pattern, execution mode.
-- Work history source: completed jobs, receipts, reviews, escrow outcomes.
-- Swarm membership: roster, role, parent project, shared policies.
+- Helixa AgentDNA record
+- ERC-8004 identity
+- ERC-721T / ERC-8048 NFT metadata
+- Bankr profile
+- x402 service profile
+- runtime manifest
+- tool manifest
+- MCP endpoint
+- A2A endpoint
+- model or runtime claims
+- work history source
+- swarm membership
 
 ### Human ownership fragments
 
 These describe the human or organization behind the agent.
 
-- Wallet control: SIWE/SIWA-style signature or equivalent wallet challenge.
-- Smart account ownership: owner set, module policy, multisig or recovery policy.
-- Email proof: OTP, magic link, or zkEmail proof.
-- Domain proof: DNS TXT, signed file, or hosted challenge.
-- Privy linked account: app-level identity hub for wallet, email, socials, and passkeys.
-- GitHub: developer identity, organization, repo, contribution context.
-- X account: broad social presence and reach.
-- Farcaster: FID, verified addresses, social graph, signers.
-- Discord/Telegram: community identity and support channel presence.
-- Lens/Bluesky: additional social graph and identity signals.
+- wallet control
+- smart account ownership
+- multisig or DAO membership
+- email proof
+- domain proof
+- Privy linked account
+- GitHub
+- X
+- Farcaster
+- Discord
+- Telegram
+- Lens
+- Bluesky
 
 ### Human proof fragments
 
 These prove personhood or private attributes without making everything public.
 
-- World ID: uniqueness and personhood proof.
-- Self or government ID proof: selective disclosure for age, country, or uniqueness where appropriate.
-- Reclaim or zkTLS proof: private claims from web accounts and services.
-- zkEmail: email or receipt-derived claims with selective disclosure.
-- zkPass: account or attribute proofs from web sessions.
-- Human score providers: broad anti-Sybil scoring and credential aggregation.
+- World ID
+- government ID selective disclosure where appropriate
+- Reclaim or zkTLS proof
+- zkEmail
+- zkPass
+- human score providers
+- region-specific proofs where appropriate
 
 Privacy rule:
 
@@ -415,53 +425,53 @@ Privacy rule:
 
 These explain origin and cultural context.
 
-- NFT collection token.
-- Collection verification status.
-- Mint, transfer, and sale history.
-- Creator or project proof.
-- Trait-to-agent template.
-- NFT identity-link event.
-- Collection-level swarm profile.
+- NFT collection token
+- collection verification status
+- mint, transfer, and sale history
+- creator or project proof
+- trait-to-agent template
+- NFT identity-link event
+- collection-level swarm profile
 
 ### Attestation fragments
 
 These add trust from third parties.
 
-- EAS or similar onchain attestations.
-- Signed issuer credentials.
-- Partner verification claims.
-- Community moderation labels.
-- Work completion attestations.
-- Dispute outcomes.
-- Validation registry references.
+- EAS or similar attestations
+- signed issuer credentials
+- partner verification claims
+- community moderation labels
+- work completion attestations
+- dispute outcomes
+- validation registry references
 
 ### Payment and commercial fragments
 
 These make the identity usable in agent commerce.
 
-- Bankr profile.
-- Bankr wallet.
-- x402 Cloud endpoint.
-- $CRED payment requirement.
-- USDC fallback requirement.
-- Revenue split policy.
-- Fee and burn receipt.
-- Product catalog.
-- Service level and rate limits.
+- Bankr profile
+- Bankr wallet
+- x402 Cloud endpoint
+- $CRED payment requirement
+- USDC fallback requirement
+- revenue split policy
+- fee and burn receipt
+- product catalog
+- service level and rate limits
 
 ### Communication fragments
 
 These make the identity reachable.
 
-- Agent message endpoint.
-- Human approval route.
-- Support channel.
-- Webhook target.
-- Agent-to-agent route.
-- Human-in-the-loop approval policy.
-- Signed response capability.
+- agent message endpoint
+- human approval route
+- operator support channel
+- webhook target
+- agent-to-agent route
+- human-in-the-loop approval policy
+- signed response capability
 
-## 7. Human Surface
+## 8. Human Surface
 
 The human surface should feel like a premium control room, not a protocol explorer.
 
@@ -472,7 +482,7 @@ Shows:
 - name
 - art or avatar
 - subject type
-- owner/controller summary
+- owner or controller summary
 - agent manager summary
 - Cred tier
 - key proofs
@@ -493,7 +503,7 @@ Shows:
 - work history
 - public proofs
 - public payment endpoints
-- runtime/service summary
+- runtime or service summary
 - custody timeline
 - Cred context
 
@@ -503,8 +513,8 @@ Shows:
 
 - pending approvals
 - linked fragments
-- hidden/private fragments
-- permissions
+- hidden or private fragments
+- active permissions
 - delegated signers
 - x402 endpoints
 - $CRED fee and burn history
@@ -517,7 +527,7 @@ The key UI promise:
 
 > Humans can see and control the whole stack without needing to understand every protocol underneath.
 
-## 8. Agent Surface
+## 9. Agent Surface
 
 The agent surface should be boring, structured, and reliable.
 
@@ -525,10 +535,11 @@ The agent surface should be boring, structured, and reliable.
 
 A public JSON profile should expose:
 
+- schema version
 - subject type
 - canonical Multipass ID
 - public name and art
-- current owner/controller summary
+- current owner or controller summary
 - active agent manager
 - public fragments
 - public proofs
@@ -537,7 +548,7 @@ A public JSON profile should expose:
 - accepted assets
 - trust and Cred summary
 - message routes
-- schema version
+- updated timestamp
 
 ### Agent card
 
@@ -567,7 +578,138 @@ Rule:
 
 > If an agent can discover a Multipass, it should know how to verify it, message it, and pay it.
 
-## 9. Bankr x402 Cloud and $CRED Rebuild
+## 10. Upgradeable Contract Architecture
+
+All Helixa-owned stateful contracts for this build must be upgradeable.
+
+The product is still evolving, and the identity stack touches ownership, payments, permissions, custody epochs, and discovery. We should not lock ourselves into immutable contract logic too early.
+
+### Upgrade pattern
+
+Use OpenZeppelin UUPS proxies for Helixa-owned contracts.
+
+Requirements:
+
+- proxy address remains stable
+- implementation can be upgraded through controlled governance
+- no constructors in implementation contracts
+- initializer and reinitializer functions only
+- storage gaps or ERC-7201 namespaced storage
+- explicit version getter on each implementation
+- upgrade event emitted on each upgrade
+- upgrade authorization limited to governance
+- automated storage layout checks before every upgrade
+
+### Governance model
+
+Upgrades should require:
+
+- multisig proxy-admin control at launch
+- timelock for non-emergency upgrades
+- emergency pause authority for contracts that touch money, identity state, permissions, or endpoint access
+- clear separation between Helixa protocol governance and agent manager permissions
+
+Agent managers must never be able to upgrade contracts.
+
+Recommended launch control:
+
+- multisig controls proxy upgrades
+- timelock controls routine upgrades after launch hardening
+- emergency guardian can pause but not upgrade
+- Helixa protocol governance can replace the guardian later, or a future protocol DAO can inherit that role
+
+### Contracts that should be upgradeable
+
+Upgradeable modules:
+
+- Multipass registry
+- identity fragment registry
+- owner and controller registry
+- custody epoch registry
+- collection and NFT link registry
+- swarm registry
+- verification and attestation registry
+- x402 receipt commitment and index registry
+- fee router
+- $CRED burn and accounting module
+- endpoint and payment manifest pointer registry
+- permission and delegation registry
+
+Payment-related contracts should store policies, pointers, hashes, commitments, and normalized receipt references. They should not store raw request payloads, raw response payloads, private proof material, or Bankr-hosted settlement authority.
+
+### Contracts and systems that should not be controlled by our upgrade path
+
+External systems remain external:
+
+- external NFT collections
+- ERC-8004 contracts
+- Bankr x402 Cloud infrastructure
+- third-party proof providers
+- existing $CRED token contracts unless we own that deployment path
+- pure libraries and interfaces
+
+Multipass can reference these systems, index them, and store fragment state about them, but should not pretend to control them.
+
+### Module boundaries
+
+Prefer small upgradeable modules over one giant contract.
+
+Reasons:
+
+- safer upgrades
+- cleaner audits
+- less storage-layout risk
+- better isolation if one module changes
+- easier phased deployment
+- clearer agent-readable interfaces
+
+Each module should have one responsibility and a stable interface.
+
+Suggested split:
+
+- Registry module: creates and tracks Multipasses.
+- Fragment module: stores identity fragments and status.
+- Custody module: tracks ownership epochs and transfer state.
+- Permission module: tracks owner approvals and agent-managed scopes.
+- Payment module: tracks x402 endpoint manifests, receipts, fees, and burns.
+- Verification module: tracks attestations, proof summaries, and issuers.
+- Swarm module: tracks parent swarms, rosters, and shared policies.
+
+### Upgrade safety rules
+
+Before any upgrade:
+
+- run storage layout diff
+- run full test suite
+- run invariant tests for ownership and custody
+- verify initializer cannot be replayed
+- verify new implementation cannot seize ownership
+- verify old data remains readable
+- verify public and agent-readable schemas remain compatible or are versioned
+- publish upgrade notes to the owner dashboard
+
+After any upgrade:
+
+- emit upgrade event
+- update implementation version
+- update dashboard version history
+- verify endpoints still resolve
+- verify permissions and custody epochs remain intact
+
+### What should be immutable
+
+Some values should be hard to change even if contracts are upgradeable:
+
+- historical custody epochs
+- historical receipt fragments
+- historical fragment status transitions
+- emitted events
+- old implementation/version history
+- audit trail for owner approvals and revocations
+
+Upgradeable logic should not mean rewriteable history.
+
+## 11. Bankr x402 Cloud and $CRED Rebuild
 
 The current x402 system should be rebuilt around Bankr x402 Cloud and $CRED.
 
@@ -601,12 +743,29 @@ Bankr x402 Cloud owns where supported:
 
 Shared boundary:
 
-- Multipass should store normalized receipt fragments that reference Bankr receipt IDs or settlement hashes, not raw private response payloads.
-- Multipass should publish endpoint metadata, but Bankr should remain the source of truth for payment verification and settlement status where Bankr hosted the endpoint.
-- Refunds, disputes, and failed settlements should become receipt-status fragments in Multipass, while Bankr remains the settlement-status source for Bankr-hosted calls.
-- USDC fallback should be represented as endpoint compatibility metadata, not the primary Helixa economic rail.
+- Multipass stores normalized receipt fragments that reference Bankr receipt IDs or settlement hashes, not raw private response payloads.
+- Multipass publishes endpoint metadata, but Bankr remains the source of truth for payment verification and settlement status where Bankr hosted the endpoint.
+- Refunds, disputes, and failed settlements become receipt-status fragments in Multipass, while Bankr remains the settlement-status source for Bankr-hosted calls.
+- USDC fallback is endpoint compatibility metadata, not the primary Helixa economic rail.
 
-### Target model
+### Onchain, offchain, and Bankr boundary
+
+| Layer | System of record | What Multipass stores | What stays external |
+| --- | --- | --- | --- |
+| Multipass registry | Helixa upgradeable contracts | Multipass IDs, owner/controller pointers, custody pointers, core status, and event history | Rich private profile data and raw secrets |
+| Fragment registry | Helixa upgradeable contracts plus indexer | Fragment status, assurance level, visibility, hashes, issuer references, and public pointers | Raw private documents, OAuth secrets, and hidden proof material |
+| Multipass API and indexer | Helixa backend | Resolved profile JSON, agent cards, redacted views, search, and analytics | Contract upgrade authority and Bankr settlement authority |
+| Bankr x402 Cloud | Bankr | Endpoint references, normalized receipt fragments, provider receipt IDs, and settlement hashes | Hosted endpoint runtime, payment challenge, payment verification, logs, and settlement source of truth |
+| ERC-8004 | ERC-8004 contracts | References to identity, reputation, validation, and registration metadata | ERC-8004 registry ownership and protocol state |
+| ERC-721T / ERC-8048 | External NFT contract | Ingested NFT metadata fragments and verification status | Token ownership, token metadata writes, and NFT transfer events |
+| $CRED token | $CRED token contract and Helixa fee modules where owned | Fee policy, burn accounting references, and receipt summaries | Token balances and token transfer rules unless Helixa owns that contract path |
+| Proof providers | Provider or issuer | Proof result, commitment, issuer, expiry, and verification status | Raw private proof inputs and provider infrastructure |
+
+Rule:
+
+> Multipass can index and explain external systems, but it should not claim to control systems it does not own.
+
+### Target paid endpoints
 
 Use Bankr x402 Cloud for public paid endpoints such as:
 
@@ -653,49 +812,24 @@ $CRED must not be used for:
 - buying trust labels
 - bypassing verification
 
-### Endpoint discovery
-
-Each paid endpoint should be listed in the Multipass discovery profile with:
-
-- endpoint URL
-- method
-- schema
-- price
-- accepted asset
-- settlement chain
-- rate limits
-- description
-- expected response
-- trust requirements
-
-### Receipts
+### Receipt fragments
 
 Every paid request should produce a receipt fragment:
 
 - endpoint called
-- payer
+- payer, redacted when needed
 - subject Multipass
 - amount
 - asset
-- settlement hash or Bankr receipt
+- settlement hash or Bankr receipt ID
 - timestamp
 - burn amount if any
 - response class, not private payload
+- status: `pending`, `settled`, `failed`, `refunded`, `disputed`
 
 Receipt fragments can contribute to activity history, but not directly to Cred score without outcome validation.
 
-### Rebuild phases
-
-1. Inventory existing x402 endpoints and remove stale assumptions.
-2. Define Bankr x402 Cloud endpoint templates.
-3. Add $CRED pricing and fallback rules.
-4. Add receipt fragments to the Multipass graph.
-5. Add public endpoint listings to the discovery profile.
-6. Add owner dashboard controls for endpoint visibility and pricing.
-7. Add agent-readable schemas and examples.
-8. Add monitoring, logs, and abuse limits.
-
-## 10. Agent NFT Layer
+## 12. Agent NFT and ERC-721T Layer
 
 Agent NFTs remain important, but they are one fragment type.
 
@@ -710,29 +844,45 @@ NFTs can provide:
 - marketplace transfer signal
 - swarm roster membership
 
-Multipass adds:
+ERC-721T / ERC-8048 can provide a lightweight agent metadata layer for NFTs.
+
+Multipass should ingest these fields where available:
+
+- `context`
+- `endpoint[mcp]`
+- `endpoint[a2a]`
+- `endpoint[web]`
+- `endpoint[x402]`
+- `address[<chain-id>]`
+
+Default trust level:
+
+- Treat ERC-721T metadata as untrusted until verified.
+- Upgrade assurance only after ownership, endpoint control, and wallet control are checked.
+- A token transfer should not imply transfer of offchain servers, memories, secrets, tools, or payment authority.
+
+Multipass adds the missing layers:
 
 - named agent identity
 - human owner context
 - identity graph
-- permissions
+- permission model
 - payment rails
-- x402 endpoints
+- x402 endpoint catalog
 - work history
 - Cred context
 - custody epochs
 - runtime and tool metadata
+- agent-readable discovery contract
 
-Public language should treat NFTs as linked provenance, collection context, or NFT-based identity layers. Keep the core product framed as the premium identity stack. Internal language can use binding when discussing protocol mechanics.
-
-## 11. Swarm Model
+## 13. Swarm Model
 
 A swarm Multipass is a parent identity for a collection, project, or coordinated group of agents.
 
 A swarm Multipass should show:
 
 - parent project identity
-- human/project owner
+- human or project owner
 - agent roster
 - per-agent Multipass links
 - collection proof
@@ -748,7 +898,7 @@ Rule:
 
 > Aggregate swarm trust should never erase individual agent history.
 
-## 12. Transfer and Custody
+## 14. Transfer and Custody
 
 Transfers should be safe, visible, and explicit.
 
@@ -759,7 +909,7 @@ When ownership changes:
 3. Pause dangerous permissions.
 4. Require new owner claim.
 5. Start new custody epoch.
-6. Move old owner/operator fragments to historical or pending.
+6. Move old owner and operator fragments to historical or pending.
 7. Reverify wallets, signers, APIs, and tool permissions.
 8. Keep public identity, provenance, and work history visible.
 9. Show clear ownership-change context in Cred and trust displays.
@@ -774,7 +924,7 @@ Never blindly transfer:
 - hidden human data
 - private memory
 
-## 13. Data Visibility
+## 15. Data Visibility
 
 Every fragment needs a visibility policy.
 
@@ -785,7 +935,7 @@ Safe for anyone or any agent to see.
 Examples:
 
 - public profile name
-- avatar/art
+- avatar or art
 - public wallet
 - public social link
 - public service endpoint
@@ -823,34 +973,36 @@ Stored only as commitment, hash, or encrypted reference.
 Examples:
 
 - sensitive proof material
-- encrypted soul/config export
+- encrypted soul or config export
 - private runtime config
 - secrets references
 
-## 14. MVP Recommendation
+## 16. MVP Scope
 
 Build first:
 
 1. Multipass schema as premium identity graph.
-2. Public card and deep profile for agents.
-3. Human owner dashboard lite.
-4. Identity fragment model with statuses, assurance levels, visibility, and transfer policy.
-5. Core fragments:
+2. Upgradeable contract architecture using small UUPS modules.
+3. Public card and deep profile for agents.
+4. Human owner dashboard lite.
+5. Identity fragment model with statuses, assurance levels, visibility, and transfer policy.
+6. Core fragments:
    - Helixa AgentDNA
    - ERC-8004 identity
+   - ERC-721T / ERC-8048 NFT metadata
    - Bankr profile
-   - wallet/smart account
-   - domain/email
+   - wallet or smart account
+   - domain and email
    - X
    - Farcaster
    - GitHub
    - NFT collection token
    - x402 endpoint
-6. Agent discovery JSON and agent card.
-7. Bankr x402 Cloud paid endpoints with $CRED as preferred asset.
-8. Receipt fragments for paid endpoint usage.
-9. Custody epoch model.
-10. Swarm parent profile lite.
+7. Agent discovery JSON and agent card.
+8. Bankr x402 Cloud paid endpoints with $CRED as preferred asset.
+9. Receipt fragments for paid endpoint usage.
+10. Custody epoch model.
+11. Swarm parent profile lite.
 
 Do not build first:
 
@@ -862,122 +1014,21 @@ Do not build first:
 - complex zk proof marketplace
 - full automated agent permissions without human approvals
 
-## 15. Roadmap
+## 17. MVP API Contract Appendix
 
-### Phase 0: Foundation
-
-- Rewrite positioning around premium identity stack.
-- Define Multipass, owner, agent manager, fragment, payment, discovery, and custody schemas.
-- Define visibility and transfer policies.
-- Define agent-readable JSON schema.
-
-### Phase 1: Public Identity Surface
-
-- Premium public card.
-- Deep profile.
-- Human owner summary.
-- Agent manager summary.
-- Key fragments and proof badges.
-- Custody state.
-- Cred context.
-
-### Phase 2: Fragment Linking
-
-- Wallet challenge.
-- Bankr profile link.
-- AgentDNA/Helixa link.
-- ERC-8004 link.
-- X/Farcaster/GitHub/domain/email links.
-- NFT collection token link.
-- x402 endpoint link.
-
-### Phase 3: Human Owner Dashboard
-
-- Manage public/private visibility.
-- Approve agent-managed updates.
-- View linked fragments.
-- Revoke permissions.
-- See what agents can discover.
-- See paid endpoint settings.
-
-### Phase 4: Agent Discovery and Communication
-
-- Public JSON profile.
-- Agent card.
-- OpenAPI/tool manifest links.
-- x402 manifest.
-- Message routes.
-- Owner approval route.
-
-### Phase 5: Bankr x402 Cloud Rebuild
-
-- Move paid endpoints to Bankr x402 Cloud where possible.
-- Price in $CRED where supported.
-- Keep USDC fallback for compatibility.
-- Add endpoint discovery to Multipass.
-- Add receipt fragments.
-- Add burn and revenue accounting.
-
-### Phase 6: Custody and Transfer
-
-- Transfer detection.
-- Claim flow.
-- New custody epoch.
-- Permission pause.
-- Reverification.
-- Historical owner/operator context.
-
-### Phase 7: Swarm Multipass
-
-- Parent swarm profile.
-- Roster.
-- Shared tools and policies.
-- Aggregate Cred context.
-- Per-agent reputation preserved.
-- Shared x402 endpoints.
-
-### Phase 8: Advanced Proofs
-
-- World ID.
-- Government ID selective disclosure.
-- zkEmail.
-- Reclaim or zkTLS proofs.
-- Human score providers.
-- Private proof commitments.
-
-### Phase 9: NFT and Marketplace Layer
-
-- Collection browsing.
-- NFT identity-link flow.
-- External trade links.
-- Later native marketplace rails.
-- Transfer-aware Multipass handoff.
-
-### Phase 10: Runtime Handoff
-
-- Encrypted config export.
-- Public soul export.
-- Private owner-approved memory/context export.
-- API key rotation.
-- signer reset.
-- smart account ownership support.
-- redeploy flow.
-
-## 16. MVP API Contract Appendix
-
-These are minimal contracts for planning. They can evolve, but implementation should not start without versioned schemas.
+These are minimal API contracts for planning. They can evolve, but implementation should start with versioned schemas.
 
 ### URL conventions
 
 Recommended public routes:
 
-- `/multipass/{slug}`: human profile.
-- `/api/multipass/{id}`: canonical JSON profile.
-- `/api/multipass/{id}/agent-card`: compact agent discovery card.
-- `/api/multipass/{id}/fragments`: public and requester-authorized fragments.
-- `/api/multipass/{id}/x402`: x402 endpoint manifest.
-- `/api/multipass/{id}/receipts/{receipt_id}`: normalized receipt fragment.
-- `/.well-known/helixa-multipass.json`: site-level discovery pointer where useful.
+- `/multipass/{slug}`: human profile
+- `/api/multipass/{id}`: canonical JSON profile
+- `/api/multipass/{id}/agent-card`: compact agent discovery card
+- `/api/multipass/{id}/fragments`: public and requester-authorized fragments
+- `/api/multipass/{id}/x402`: x402 endpoint manifest
+- `/api/multipass/{id}/receipts/{receipt_id}`: normalized receipt fragment
+- `/.well-known/helixa-multipass.json`: site-level discovery pointer where useful
 
 All machine-readable responses should include:
 
@@ -996,7 +1047,7 @@ Required:
 - `subject_type`
 - `display_name`
 - `status`
-- `owner_summary`
+- `owner_summary`: required object, with nullable controller fields only in allowed states
 - `agent_manager_summary` optional
 - `custody_epoch`
 - `public_fragments`
@@ -1008,6 +1059,14 @@ Required:
 Redaction rule:
 
 > Public JSON returns only public fragments by default. Gated and private fragments require an authorized requester, a paid endpoint, or explicit owner approval. Hidden fragments never return raw contents.
+
+Owner summary minimum shape:
+
+- `owner_state`
+- `controller`: nullable only for `draft` or never-claimed `archived` records
+- `verification_status`: `none`, `pending`, `verified`, `stale`, or `revoked`
+- `custody_epoch_id`: nullable only before first verified custody epoch
+- `visibility`: `public`, `gated`, `private`, or `hidden`
 
 ### Agent card required fields
 
@@ -1071,20 +1130,133 @@ Receipt boundary:
 
 > Store enough to prove payment activity and support analytics. Do not store private request payloads or raw response payloads in public receipt fragments.
 
-## 17. Open Questions
+## 18. Roadmap
+
+### Phase 0: Foundation
+
+- Finalize premium identity stack positioning.
+- Define Multipass, owner, agent manager, fragment, payment, discovery, custody, and upgradeable contract schemas.
+- Define visibility and transfer policies.
+- Define agent-readable JSON schema.
+
+### Phase 1: Public Identity Surface
+
+- Premium public card.
+- Deep profile.
+- Human owner summary.
+- Agent manager summary.
+- Key fragments and proof badges.
+- Custody state.
+- Cred context.
+
+### Phase 2: Fragment Linking
+
+- Wallet challenge.
+- Bankr profile link.
+- AgentDNA or Helixa link.
+- ERC-8004 link.
+- ERC-721T / ERC-8048 ingestion.
+- X, Farcaster, GitHub, domain, and email links.
+- NFT collection token link.
+- x402 endpoint link.
+
+### Phase 3: Human Owner Dashboard
+
+- Manage public and private visibility.
+- Approve agent-managed updates.
+- View linked fragments.
+- Revoke permissions.
+- See what agents can discover.
+- See paid endpoint settings.
+- See contract implementation version history.
+
+### Phase 4: Agent Discovery and Communication
+
+- Public JSON profile.
+- Agent card.
+- OpenAPI and tool manifest links.
+- x402 manifest.
+- Message routes.
+- Owner approval route.
+
+### Phase 5: Upgradeable Contract Deployment
+
+- Deploy UUPS proxy modules.
+- Add multisig proxy-admin control.
+- Add timelock for routine upgrades.
+- Add emergency pause where required.
+- Add storage layout checks.
+- Add upgrade event indexing and dashboard display.
+
+### Phase 6: Bankr x402 Cloud Rebuild
+
+- Move paid endpoints to Bankr x402 Cloud where possible.
+- Price in $CRED where supported.
+- Keep USDC fallback for compatibility.
+- Add endpoint discovery to Multipass.
+- Add receipt fragments.
+- Add burn and revenue accounting.
+
+### Phase 7: Custody and Transfer
+
+- Transfer detection.
+- Claim flow.
+- New custody epoch.
+- Permission pause.
+- Reverification.
+- Historical owner and operator context.
+
+### Phase 8: Swarm Multipass
+
+- Parent swarm profile.
+- Roster.
+- Shared tools and policies.
+- Aggregate Cred context.
+- Per-agent reputation preserved.
+- Shared x402 endpoints.
+
+### Phase 9: Advanced Proofs
+
+- World ID.
+- Government ID selective disclosure.
+- zkEmail.
+- Reclaim or zkTLS proofs.
+- Human score providers.
+- Private proof commitments.
+
+### Phase 10: NFT and Marketplace Layer
+
+- Collection browsing.
+- NFT identity-link flow.
+- External trade links.
+- Later native marketplace rails.
+- Transfer-aware Multipass handoff.
+
+### Phase 11: Runtime Handoff
+
+- Encrypted config export.
+- Public soul export.
+- Private owner-approved memory and context export.
+- API key rotation.
+- Signer reset.
+- Smart account ownership support.
+- Redeploy flow.
+
+## 19. Open Decisions
 
 1. Should $CRED be mandatory for Helixa-hosted x402 endpoints, or preferred with USDC fallback from day one?
 2. What should be public by default for human owners: display name, wallet, socials, or only verified presence badges?
 3. Should agent-managed updates publish immediately within allowed scopes, or require human approval until the agent earns enough trust?
 4. Which human proof provider should be first: World ID, government ID selective disclosure, zkEmail, or Reclaim?
 5. What should be the first paid Multipass endpoint: agent lookup, identity fragment report, Cred report, or owner verification summary?
+6. What multisig and timelock policy should govern launch upgrades?
 
-## 18. Recommended Immediate Next Steps
+## 20. Immediate Next Steps
 
-1. Update product language everywhere: Multipass is a premium identity stack.
-2. Treat the agent NFT layer as provenance and ownership context, not the core product.
-3. Define the identity fragment schema as the foundation.
-4. Build the agent-readable discovery profile early.
-5. Start x402 rebuild around Bankr x402 Cloud with $CRED-first pricing.
-6. Make the owner dashboard explain what is human-controlled, agent-managed, public, gated, private, and hidden.
+1. Share this draft with the team for product and architecture review.
+2. Confirm the upgradeable contract policy as a launch requirement.
+3. Define the first contract module boundaries.
+4. Define the first agent-readable schemas.
+5. Start x402 rebuild planning around Bankr x402 Cloud with $CRED-first pricing.
+6. Decide default human-owner visibility.
 7. Keep Cred protected: payments and burns buy access or services, not reputation.
