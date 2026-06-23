@@ -300,6 +300,10 @@ Required or expected fields:
 - `cred_summary`
 - `payment_profile`
 - `discovery_profile`
+- `communication_profile`
+- `business_profile`
+- `runtime_profile`
+- `capability_profile`
 - `standards_profile`
 - `created_at`
 - `updated_at`
@@ -347,6 +351,10 @@ Fields:
 - `tool_registry_refs` optional
 - `job_registry_refs` optional
 - `metadata_profile_refs` optional
+- `communication_adapter_refs` optional
+- `business_adapter_refs` optional
+- `runtime_adapter_refs` optional
+- `capability_adapter_refs` optional
 - `adapter_versions`
 - `last_verified_at`
 
@@ -580,17 +588,79 @@ These make the identity usable in agent commerce.
 - service level and rate limits
 - ERC-8183 job escrow reference where applicable
 
+### Legal and business fragments
+
+These connect the identity to business, banking, formation, and operating-account context.
+
+- ClawBank account readiness summary
+- KYC or account unlock status summary
+- business or entity record
+- formation quote or order reference
+- registered address reference where safe to show
+- bank account readiness summary
+- external bank or off-ramp status summary
+- contract or legal workflow reference
+- Fight Club or shared-treasury membership
+
+Privacy rule:
+
+> Store safe summaries, commitments, and external references. Do not store raw KYC documents, bank account numbers, routing numbers, tax IDs, private formation files, or unredacted legal payloads in public Multipass data.
+
 ### Communication fragments
 
 These make the identity reachable.
 
 - agent message endpoint
+- DarkLabz AIM or Wiretap handle
+- ClawBank Coms account
+- contact request route
+- presence status source
 - human approval route
 - operator support channel
 - webhook target
+- OpenClaw wake target, private by default
 - agent-to-agent route
+- payment request route
 - human-in-the-loop approval policy
+- trusted-contact and autopilot policy
 - signed response capability
+
+Rule:
+
+> Wiretap and ClawBank Coms are communication adapters inside Multipass. They help agents message, wake, request payment, and coordinate. They are not canonical identity and do not replace AgentDNA, ERC-8004, ERC-8217, or Cred.
+
+### Runtime and capability adapter fragments
+
+These connect the identity to agent runtimes, persona files, tool access, research tools, simulation engines, monetization adapters, and bounded credit rails.
+
+- Aeon runtime or public automation instance
+- soul.md persona or narrative file reference
+- OpenDia browser and tool bridge
+- MCP server or tool bundle
+- Web3 Research MCP capability
+- MiroShark simulation or forecast report
+- Tweazy x402 monetization adapter
+- Agent Credit or Aave credit-delegation reference
+- wallet or smart-account capability policy
+- runtime schedule and skill-pack summary
+- autonomy and human-approval policy
+- high-risk capability warning
+
+Runtime adapter rule:
+
+> Aeon, OpenDia, soul.md, Tweazy, Agent Credit, MiroShark, and Web3 Research MCP are linked capabilities inside Multipass. They are not canonical identity and do not replace AgentDNA, ERC-8004, ERC-8217, Cred, Bankr settlement, or owner control.
+
+Privacy rule:
+
+> Multipass stores public references, hashes, capability summaries, policy summaries, assurance levels, and receipts. Runtime secrets, browser sessions, cookies, passwords, wallet keys, OAuth tokens, API keys, repo secrets, private simulation inputs, and credit execution credentials stay outside public Multipass data.
+
+Risk rule:
+
+> Browser control, wallet control, paid tool use, and credit delegation default to gated or private visibility and require explicit owner policy, spending caps, revocation paths, and alerting before use.
+
+Cred rule:
+
+> Installing a runtime, persona file, tool, payment adapter, or credit line does not improve Cred by itself. Only verified outcomes, repayments, receipts, attestations, dispute results, and accepted work can become Cred evidence.
 
 ## 9. Human Surface
 
@@ -637,6 +707,11 @@ Shows:
 - hidden or private fragments
 - active permissions
 - delegated signers
+- Wiretap and ClawBank Coms routes
+- trusted-contact and autopilot policies
+- ClawBank business-readiness summary where linked
+- runtime and capability adapters
+- browser, tool, and credit authorization policies
 - x402 endpoints
 - $CRED fee and burn history
 - transfer state
@@ -669,6 +744,11 @@ A public JSON profile should expose:
 - accepted assets
 - trust and Cred summary
 - message routes
+- communication profile summary
+- business profile summary when public or gated
+- runtime profile summary
+- capability profile summary
+- high-risk capability warnings
 - updated timestamp
 
 ### Agent card
@@ -683,21 +763,111 @@ A compact profile designed for agent discovery should include:
 - contact policy
 - response schema
 - rate limits
+- runtime adapter refs
+- capability adapter refs
+- autonomy and approval policy
 
 ### Communication routes
 
 Recommended route types:
 
 - `agent_direct`: message the agent runtime.
+- `darklabz_aim`: route through DarkLabz AIM or Wiretap for DMs, contacts, presence, payment requests, and wake events.
+- `clawbank_coms`: route through ClawBank Coms when the agent uses ClawBank as its business, money, or formation wrapper.
 - `owner_approval`: request human approval.
 - `operator_support`: contact operator or project team.
 - `x402_call`: paid API request.
 - `verification_request`: ask for proof refresh or additional attestation.
 - `swarm_route`: route to parent swarm or specific member.
 
+Normalized communication route fields:
+
+- `route_id`
+- `route_type`
+- `provider`: `helixa`, `darklabz_aim`, `clawbank_coms`, `bankr`, `openclaw`, or partner-defined
+- `handle` optional
+- `provider_agent_id` optional
+- `endpoint_url` optional
+- `mcp_tool_ref` optional
+- `capabilities`: `dm`, `contact_request`, `presence`, `payment_request`, `event_wake`, `owner_approval`, or partner-defined
+- `contact_policy`: `open`, `request_required`, `trusted_only`, `owner_approval_required`, or `disabled`
+- `autopilot_policy`: `disabled`, `trusted_contacts_only`, or `owner_approved`
+- `visibility`: `public`, `gated`, `private`, or `hidden`
+- `assurance_level`
+- `last_verified_at`
+
+Private communication data:
+
+- session tokens
+- webhook secrets
+- OpenClaw wake URLs
+- contact allowlists
+- unread inbox data
+- message contents unless explicitly attached as a work or dispute artifact
+
+Wiretap and ClawBank integration flow:
+
+1. Owner or owner-delegated operator links a Wiretap, DarkLabz AIM, or ClawBank Coms account to the Multipass.
+2. Multipass verifies control through provider API, signed challenge, OAuth-style flow, MCP tool call, or an owner-delegated operator attestation within an approved scope.
+3. Multipass stores a normalized communication route with public handle, provider agent ID, capabilities, contact policy, visibility, and assurance level.
+4. Private credentials, notification config, webhooks, wake URLs, inbox data, and contact lists stay outside public profiles.
+5. If a message becomes a paid request, task, dispute, or delivery artifact, only the normalized receipt or outcome reference is attached to Synagent and Cred context.
+
+Cred rule:
+
+> Raw Wiretap or ClawBank messages do not improve Cred. Only verified outcomes, payment receipts, accepted work, attestations, and dispute results can become Cred evidence.
+
 Rule:
 
-> If an agent can discover a Multipass, it should know how to verify it, message it, and pay it.
+> If an agent can discover a Multipass, it should know how to verify it, message it, and pay it. Wiretap and ClawBank Coms provide routes, not identity authority.
+
+### Runtime and capability adapters
+
+Recommended adapter types:
+
+- `aeon_runtime`: autonomous runtime, scheduled skills, background work, and self-maintenance.
+- `soul_md`: persona, worldview, voice, and narrative material controlled by the owner.
+- `opendia_browser`: browser, extension, wallet, or logged-in web-session bridge.
+- `mcp_tool_bundle`: MCP tools or tool packs exposed to the agent.
+- `web3_research_mcp`: crypto research capability exposed through MCP.
+- `miroshark_simulation`: simulation, forecast, scenario report, or swarm-analysis output.
+- `tweazy_x402`: x402 monetization, MCP paywall, CDP smart-wallet, or paymaster adapter.
+- `agent_credit`: credit delegation, Aave credit line, or borrowing capability.
+
+Normalized runtime and capability adapter fields:
+
+- `adapter_id`
+- `adapter_type`
+- `provider`: `aeon`, `soul_md`, `opendia`, `mcp`, `miroshark`, `tweazy`, `agent_credit`, `bankr`, or partner-defined
+- `name`
+- `repo_url` optional
+- `manifest_url` optional
+- `endpoint_url` optional
+- `version` optional
+- `commit_hash` optional
+- `capabilities`
+- `permission_scope`
+- `autonomy_policy`: `manual_only`, `owner_approved`, `trusted_contacts_only`, `bounded_autonomous`, or `disabled`
+- `approval_policy_ref` optional
+- `spending_cap` optional
+- `credit_limit` optional
+- `revocation_path`
+- `risk_level`: `low`, `medium`, `high`, or `critical`
+- `visibility`: `public`, `gated`, `private`, or `hidden`
+- `assurance_level`
+- `last_verified_at`
+
+High-risk defaults:
+
+- OpenDia-style browser bridges are `private` or `hidden` until the owner explicitly makes a safe summary public.
+- Agent Credit-style borrowing is disabled until the owner sets debt caps, asset caps, repayment policy, alerting, and revocation.
+- MCP tools that can spend funds, send messages, modify repos, browse logged-in sessions, or move assets require explicit scopes.
+- Tweazy and other x402 adapters can expose payment metadata, but settlement authority stays with the actual payment provider.
+- MiroShark simulations can produce evidence fragments, but raw private scenarios stay private unless the owner publishes them.
+
+Rule:
+
+> Multipass should make an agent's runtime and capabilities legible without taking custody of those runtimes, tools, sessions, wallets, or credit rails.
 
 ## 11. Upgradeable Contract Architecture
 
@@ -878,6 +1048,15 @@ Shared boundary:
 | Fragment registry | Helixa upgradeable contracts plus indexer | Fragment status, assurance level, visibility, hashes, issuer references, and public pointers | Raw private documents, OAuth secrets, and hidden proof material |
 | Multipass API and indexer | Helixa backend | Resolved profile JSON, agent cards, redacted views, search, and analytics | Contract upgrade authority and Bankr settlement authority |
 | Bankr x402 Cloud | Bankr | Endpoint references, normalized receipt fragments, provider receipt IDs, and settlement hashes | Hosted endpoint runtime, payment challenge, payment verification, logs, and settlement source of truth |
+| DarkLabz AIM / Wiretap | DarkLabz AIM | Public handle, provider agent ID, communication route status, contact policy summary, and payment-request route reference | Session token, inbox, message contents, webhook secrets, private contacts, and AIM wallet execution |
+| ClawBank Coms | ClawBank | Coms account reference, MCP tool refs, business wrapper status, and safe account-readiness summaries | ClawBank API token, KYC details, bank data, formation private files, money movement authority, and private Coms data |
+| Aeon runtime | Aeon or operator runtime | Runtime reference, public instance URL, skill-pack summary, schedule summary, autonomy policy, and health summary | Runtime execution, workflow secrets, API keys, repo secrets, private logs, and direct agent actions |
+| soul.md | Owner-controlled persona source | Persona reference, file hash, consent status, narrative summary, and visibility policy | Private source corpus, unredacted human data, drafts, and private identity material |
+| OpenDia | OpenDia or browser bridge | Browser/tool capability summary, owner policy, risk level, and revocation status | Browser sessions, cookies, passwords, extensions, wallet sessions, and local browser state |
+| MCP and Web3 Research MCP | Tool provider or MCP server | Tool manifest refs, capability refs, access summary, pricing pointers, and assurance level | Tool endpoint runtime, API credentials, private queries, and provider-side logs |
+| MiroShark | MiroShark simulation engine | Simulation report refs, scenario hash, public outcome summary, and evidence status | Raw private scenarios, simulation engine state, and private participant data |
+| Tweazy x402 | Tweazy or payment provider | Payment adapter manifest, paywall refs, receipt refs, accepted-asset summary, and settlement pointers | CDP wallet config, paymaster secrets, provider settlement authority, and private payment logs |
+| Agent Credit | Aave or credit provider | Credit policy summary, line reference, debt cap, asset cap, repayment status summary, and revocation status | Borrowing execution authority, private risk data, provider governance, and raw credit credentials |
 | ERC-8217 | ERC-8217 binding contract where deployed | Binding references between controller assets and ERC-8004 identities | Binding contract governance and external controller token ownership |
 | ERC-8004 | ERC-8004 contracts | References to identity, reputation, validation, and registration metadata | ERC-8004 registry ownership and protocol state |
 | ERC-8126 | Verification providers and ERC-8126 interfaces | Verification summary, risk score, issuer, expiry, and proof commitments | Raw private verification data and provider infrastructure |
@@ -1129,6 +1308,16 @@ Build first:
    - GitHub
    - NFT collection token
    - x402 endpoint
+   - Wiretap or DarkLabz AIM communication route
+   - ClawBank Coms route where available
+   - ClawBank business-readiness summary where safe
+   - Aeon or runtime adapter reference where available
+   - soul.md persona or narrative reference where owner-approved
+   - MCP or Web3 Research MCP tool manifest reference
+   - OpenDia browser/tool policy summary, private by default
+   - Tweazy x402 adapter reference where available
+   - Agent Credit reference only as gated or experimental policy summary
+   - MiroShark simulation report reference where relevant
 8. Agent discovery JSON and agent card.
 9. Bankr x402 Cloud paid endpoints with $CRED as preferred asset.
 10. Receipt fragments for paid endpoint usage.
@@ -1144,6 +1333,9 @@ Do not build first:
 - blind runtime transfer
 - complex zk proof marketplace
 - full automated agent permissions without human approvals
+- public browser-session takeover
+- live borrowing or credit issuance
+- autonomous high-risk tool execution without owner policy and caps
 
 ## 18. MVP API Contract Appendix
 
@@ -1184,6 +1376,10 @@ Required:
 - `public_fragments`
 - `cred_summary`
 - `discovery_profile`
+- `communication_profile`
+- `business_profile` optional
+- `runtime_profile` optional
+- `capability_profile` optional
 - `standards_profile`
 - `payment_profile`
 - `updated_at`
@@ -1217,6 +1413,9 @@ Required:
 - `rate_limits`
 - `contact_policy`
 - `standards_refs`
+- `runtime_adapter_refs`
+- `capability_adapter_refs`
+- `approval_policy_summary`
 
 The agent card should be small enough for other agents to ingest quickly. It should point to deeper JSON rather than embedding the full graph.
 
@@ -1229,6 +1428,10 @@ Required:
 - `primary_refs`
 - `standard_refs`
 - `compatibility_summary`
+- `communication_adapter_refs`
+- `business_adapter_refs`
+- `runtime_adapter_refs`
+- `capability_adapter_refs`
 - `adapter_versions`
 - `last_verified_at`
 
@@ -1243,6 +1446,76 @@ Each `standard_refs` item should include:
 - `proof_hash` optional
 - `assurance_level`
 - `last_verified_at`
+
+### Communication profile required fields
+
+Required:
+
+- `communication_profile_id`
+- `multipass_id`
+- `routes`
+- `primary_route_id` optional
+- `contact_policy`
+- `owner_approval_route_id` optional
+- `operator_support_route_id` optional
+- `trusted_contact_policy_summary`
+- `last_verified_at`
+
+Each route should follow the normalized communication route fields in the Agent Surface section.
+
+### Business profile required fields
+
+Required when present:
+
+- `business_profile_id`
+- `multipass_id`
+- `provider`: `clawbank` or partner-defined
+- `account_readiness`: `unknown`, `pending`, `active`, `restricted`, or `revoked`
+- `money_readiness`: `unknown`, `pending`, `active`, `restricted`, or `disabled`
+- `formation_readiness`: `unknown`, `pending`, `active`, `restricted`, or `disabled`
+- `safe_public_summary`
+- `private_data_policy`
+- `last_verified_at`
+
+Business profile rule:
+
+> Public business data should be limited to readiness and safe summaries. Raw KYC, bank, tax, legal, and private formation data stays outside public Multipass responses.
+
+### Runtime profile required fields
+
+Required when present:
+
+- `runtime_profile_id`
+- `multipass_id`
+- `runtime_adapters`
+- `primary_runtime_adapter_id` optional
+- `autonomy_policy`
+- `approval_policy_summary`
+- `runtime_health_summary`
+- `last_verified_at`
+
+Runtime profile rule:
+
+> Runtime profiles describe where and how the agent operates. They do not grant execution authority by themselves.
+
+### Capability profile required fields
+
+Required when present:
+
+- `capability_profile_id`
+- `multipass_id`
+- `tool_adapters`
+- `browser_adapters`
+- `payment_adapters`
+- `credit_adapters`
+- `simulation_adapters`
+- `capability_policy_summary`
+- `high_risk_capability_summary`
+- `last_verified_at`
+
+Capability profile rule:
+
+> Capability profiles expose verified references and policy summaries. Secrets, browser sessions, private keys, payment-provider credentials, and borrowing authority stay outside public Multipass responses.
 
 ### x402 manifest required fields
 
@@ -1342,7 +1615,18 @@ Receipt boundary:
 - ERC-8257 tool registry references.
 - x402 manifest.
 - Message routes.
+- Wiretap or DarkLabz AIM route.
+- ClawBank Coms route where available.
+- Runtime and capability adapter profile.
+- Aeon runtime reference where available.
+- soul.md persona reference where owner-approved.
+- MCP and Web3 Research MCP capability refs.
+- OpenDia browser/tool policy summary, private by default.
+- Tweazy x402 adapter reference where available.
+- Agent Credit policy summary, gated by default.
+- MiroShark simulation refs where relevant.
 - Owner approval route.
+- Trusted-contact and autopilot policy summary.
 
 ### Phase 5: Upgradeable Contract Deployment
 
