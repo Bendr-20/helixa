@@ -6,6 +6,8 @@
 <p align="center"><strong>The Credibility Layer for AI Agents</strong></p>
 <p align="center">Built on ERC-8004 | Live on Base</p>
 
+> **Project status:** This repository preserves the original Helixa / AgentDNA / Cred implementation and reference materials. New Multipass development lives at [Bendr-20/multipass](https://github.com/Bendr-20/multipass).
+
 ---
 
 ## What It Does
