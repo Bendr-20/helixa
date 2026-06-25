@@ -2935,7 +2935,43 @@ app.get('/api/v2/principals/human/me', requireHumanAuth, async (req, res) => {
 // GET /api/v2/metadata/:id — OpenSea-compatible metadata
 app.get('/api/v2/metadata/:id', async (req, res) => {
     try {
-        const agent = await formatAgentV2(parseInt(req.params.id));
+        const tokenId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(tokenId) || tokenId < 0) return res.status(400).json({ error: 'Invalid token id' });
+
+        // OpenSea crawlers call tokenURI directly and will drop or hide collection items
+        // when metadata hangs. Use the same bounded fast path as /api/v2/agent/:id,
+        // then degrade to lightweight/generic metadata instead of timing out.
+        const genericAgent = {
+            tokenId,
+            name: `Helixa Agent #${tokenId}`,
+            framework: 'custom',
+            credScore: 0,
+            points: 0,
+            mintOrigin: 'UNKNOWN',
+            verified: false,
+            soulbound: false,
+            generation: 0,
+            mutationCount: 0,
+            traits: [],
+            personality: null,
+            narrative: null,
+        };
+        let agent;
+        try {
+            agent = await getAgentForResponse(tokenId, { timeoutMs: 2500 });
+        } catch {
+            agent = await Promise.race([
+                formatAgentAuraSource(tokenId).catch(() => genericAgent),
+                new Promise(resolve => setTimeout(() => resolve(genericAgent), 750)),
+            ]);
+        }
+        agent.tokenId = Number(agent.tokenId || tokenId);
+        agent.credScore = Number(agent.credScore || 0);
+        agent.points = Number(agent.points || 0);
+        agent.generation = Number(agent.generation || 0);
+        agent.mutationCount = Number(agent.mutationCount || 0);
+
+        res.set('Cache-Control', 'public, max-age=300');
         const tier = agent.credScore >= 91 ? 'Preferred' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Junk';
         
         const attributes = [
@@ -2991,8 +3027,8 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
         
         const agentName = agent.name || `Helixa Agent #${agent.tokenId}`;
         const agentDesc = agent.narrative?.mission 
-            ? `${agent.name} — ${agent.narrative.mission}`
-            : `${agent.name} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`;
+            ? `${agentName} — ${agent.narrative.mission}`
+            : `${agentName} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`;
         
         res.json({
             // ERC-8004 registration file fields
@@ -3020,7 +3056,7 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
             attributes,
         });
     } catch (e) {
-        res.status(404).json({ error: 'Agent not found' });
+        res.status(500).json({ error: 'Metadata unavailable', detail: e.message?.slice(0, 200) });
     }
 });
 
