@@ -1,0 +1,468 @@
+(function(){const r=document.createElement("link").relList;if(r&&r.supports&&r.supports("modulepreload"))return;for(const s of document.querySelectorAll('link[rel="modulepreload"]'))t(s);new MutationObserver(s=>{for(const n of s)if(n.type==="childList")for(const o of n.addedNodes)o.tagName==="LINK"&&o.rel==="modulepreload"&&t(o)}).observe(document,{childList:!0,subtree:!0});function i(s){const n={};return s.integrity&&(n.integrity=s.integrity),s.referrerPolicy&&(n.referrerPolicy=s.referrerPolicy),s.crossOrigin==="use-credentials"?n.credentials="include":s.crossOrigin==="anonymous"?n.credentials="omit":n.credentials="same-origin",n}function t(s){if(s.ep)return;s.ep=!0;const n=i(s);fetch(s.href,n)}})();const ue="nft_adapter_new_erc8004",pe="trusted_resolver_metadata";function fe(e={},r={}){const i=r.resolverStatus==="loaded",t=e.profile?.display_name??e.agentCards?.[0]?.name??"Multipass profile",s=e.resolver?.canonicalId??e.agentCards?.[0]?.helixaId??e.liveProfilePage?.headerMeta?.match(/\b\d+:\d+\b/u)?.[0]??null;if(!i)return{kind:"preview",title:"Preview Multipass",subject:t,resolvedId:s,sourceLabel:e.sourceLabel??"bundled fixture",originLabel:"Preview from bundled public data",summary:"This preview shows the Multipass trust profile shape before a live record is activated.",showFutureBindNote:!0};const n=e.activation?.origin===ue&&e.activation?.originSource===pe;return{kind:"activated",title:"Activated Multipass",subject:t,resolvedId:s,sourceLabel:e.sourceLabel??"live Helixa API",originLabel:n?"Activated from NFT":"Activated from live agent record",summary:"This Multipass was built from a live public agent record.",showFutureBindNote:!0}}const me={modeLabel:"Static Demo",sourceLabel:"bundled fixture",profile:{schema_version:"0.1.0",multipass_id:"mp_bendr_2",subject_type:"agent",display_name:"Bendr 2.0",slug:"bendr-2",status:"link_ready",owner_summary:{owner_state:"unclaimed",verification_status:"none",visibility:"public",summary:"Demo ownership state for public static preview."},custody_epoch:null,public_fragments:[{fragment_id:"frag_bendr_profile",fragment_type:"attestation",status:"verified",assurance_level:"platform_verified",visibility:"public",updated_at:"2026-06-24T00:00:00Z"},{fragment_id:"frag_bendr_endpoint",fragment_type:"endpoint",status:"pending",assurance_level:"self_attested",visibility:"public",updated_at:"2026-06-24T00:00:00Z"},{fragment_id:"frag_bendr_standard_ref",fragment_type:"standard_ref",status:"stale",assurance_level:"issuer_attested",visibility:"public",updated_at:"2026-06-24T00:00:00Z"},{fragment_id:"frag_bendr_receipt_history",fragment_type:"receipt",status:"historical",assurance_level:"issuer_attested",visibility:"public",updated_at:"2026-06-24T00:00:00Z"},{fragment_id:"frag_bendr_route_dispute",fragment_type:"verification_result",status:"disputed",assurance_level:"unverified",visibility:"public",updated_at:"2026-06-24T00:00:00Z"},{fragment_id:"frag_bendr_helixa_identity",fragment_type:"attestation",status:"verified",assurance_level:"onchain_verified",visibility:"public",updated_at:"2026-06-24T22:49:52Z"},{fragment_id:"frag_bendr_cred_score",fragment_type:"risk_summary",status:"verified",assurance_level:"platform_verified",visibility:"public",updated_at:"2026-06-24T22:49:52Z"},{fragment_id:"frag_bendr_social_x",fragment_type:"social",status:"verified",assurance_level:"platform_verified",visibility:"public",updated_at:"2026-06-24T22:49:52Z"}],cred_summary:{trust_state:"established",attestation_count:4,receipt_count:1,last_updated_at:"2026-06-24T22:49:52Z",public_note:"Cred score 80 imported from Helixa API. Cred is a signal, not something bought or raised by payment."},discovery_profile:{summary:"Bendr 2.0 is the Helixa lead agent with AgentDNA token #1, imported Cred context, public routes, and machine-readable Multipass records.",tags:["bendr","helixa","multipass"],avatar_url:null,visibility:"public"},standards_profile:{standards_profile_id:"sp_bendr_2",supported_standard_ids:["ERC-8004","ERC-8217","ERC-8126","ERC-8257","ERC-8183"],last_verified_at:null},payment_profile:{accepted_assets:[{asset:"CRED",chain_id:8453}],x402_manifest_url:"/multipass/static/x402-manifest.json",paid_endpoints_enabled:!1},updated_at:"2026-06-24T22:49:52Z"},fragments:{subject_id:"bendr-2",fragments:[{schema_version:"0.1.0",fragment_id:"frag_bendr_profile",multipass_id:"mp_bendr_2",fragment_type:"attestation",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"historical_on_transfer",source:{source_type:"platform_check",source_id:"bendr_profile",issuer:"Helixa",observed_at:"2026-06-24T00:00:00Z",reference_url:null},public_value:"Bendr 2.0 profile claim checked by the Helixa fixture.",proof_reference:"fixture:profile-check",created_at:"2026-06-24T00:00:00Z",updated_at:"2026-06-24T00:00:00Z",verified_at:"2026-06-24T00:00:00Z"},{schema_version:"0.1.0",fragment_id:"frag_bendr_endpoint",multipass_id:"mp_bendr_2",fragment_type:"endpoint",status:"pending",assurance_level:"self_attested",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"owner_submission",source_id:"bendr_endpoint",issuer:null,observed_at:"2026-06-24T00:00:00Z",reference_url:null},public_value:"Bendr local API endpoint awaiting live verification.",proof_reference:null,created_at:"2026-06-24T00:00:00Z",updated_at:"2026-06-24T00:00:00Z",endpoint_ref:{endpoint_id:"lookup",url:"/multipass/",protocol:"api",manifest_url:"/multipass/static/x402-manifest.json"}},{schema_version:"0.1.0",fragment_id:"frag_bendr_standard_ref",multipass_id:"mp_bendr_2",fragment_type:"standard_ref",status:"stale",assurance_level:"issuer_attested",visibility:"public",transfer_policy:"pause_on_transfer",source:{source_type:"issuer_attestation",source_id:"bendr_standard",issuer:"Helixa",observed_at:"2026-06-24T00:00:00Z",reference_url:null},public_value:"ERC-8004 adapter reference that needs a fresh check before stronger claims.",proof_reference:"fixture:standard-ref",created_at:"2026-06-24T00:00:00Z",updated_at:"2026-06-24T00:00:00Z",verified_at:"2026-06-24T00:00:00Z",expires_at:"2026-06-25T00:00:00Z"},{schema_version:"0.1.0",fragment_id:"frag_bendr_receipt_history",multipass_id:"mp_bendr_2",fragment_type:"receipt",status:"historical",assurance_level:"issuer_attested",visibility:"public",transfer_policy:"historical_on_transfer",source:{source_type:"payment_receipt",source_id:"bendr_receipt",issuer:"Helixa",observed_at:"2026-06-24T00:00:00Z",reference_url:null},public_value:"Receipt evidence retained as history; it does not create trust by itself.",proof_reference:"receipt_bendr_lookup",created_at:"2026-06-24T00:00:00Z",updated_at:"2026-06-24T00:00:00Z"},{schema_version:"0.1.0",fragment_id:"frag_bendr_route_dispute",multipass_id:"mp_bendr_2",fragment_type:"verification_result",status:"disputed",assurance_level:"unverified",visibility:"public",transfer_policy:"never_transfer",source:{source_type:"platform_check",source_id:"bendr_route_dispute",issuer:"Helixa",observed_at:"2026-06-24T00:00:00Z",reference_url:null},public_value:"Route claim intentionally marked disputed in the fixture.",proof_reference:"fixture:route-dispute",created_at:"2026-06-24T00:00:00Z",updated_at:"2026-06-24T00:00:00Z",verification_ref:{verification_type:"route_review",result:"inconclusive",issuer:"Helixa",risk_level:"medium",score:null}},{schema_version:"0.1.0",fragment_id:"frag_bendr_helixa_identity",multipass_id:"mp_bendr_2",fragment_type:"attestation",status:"verified",assurance_level:"onchain_verified",visibility:"public",transfer_policy:"historical_on_transfer",source:{source_type:"contract_read",source_id:"helixa_agentdna_1",issuer:"Helixa",observed_at:"2026-06-24T22:49:52Z",reference_url:"https://api.helixa.xyz/api/v2/agent/1"},public_value:"Helixa AgentDNA token #1 on Base, contract 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60.",proof_reference:"base:8453:0x2e3B541C59D38b84E3Bc54e977200230A204Fe60:1",created_at:"2026-06-24T22:49:52Z",updated_at:"2026-06-24T22:49:52Z",verified_at:"2026-06-24T22:49:52Z"},{schema_version:"0.1.0",fragment_id:"frag_bendr_cred_score",multipass_id:"mp_bendr_2",fragment_type:"risk_summary",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"registry_import",source_id:"helixa_cred_score_1",issuer:"Helixa",observed_at:"2026-06-24T22:49:52Z",reference_url:"https://api.helixa.xyz/api/v2/agent/1"},public_value:"Cred score 80, Preferred tier, imported from Helixa API.",proof_reference:"helixa-api:agent:1:credScore",created_at:"2026-06-24T22:49:52Z",updated_at:"2026-06-24T22:49:52Z",verified_at:"2026-06-24T22:49:52Z",verification_ref:{verification_type:"cred_import",result:"passed",issuer:"Helixa",risk_level:"low",score:80}},{schema_version:"0.1.0",fragment_id:"frag_bendr_social_x",multipass_id:"mp_bendr_2",fragment_type:"social",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"platform_check",source_id:"bendr_x_handle",issuer:"Helixa",observed_at:"2026-06-24T22:49:52Z",reference_url:"https://api.helixa.xyz/api/v2/agent/1"},public_value:"X handle @BendrAI_eth imported from Helixa API.",proof_reference:"helixa-api:agent:1:socials.x",created_at:"2026-06-24T22:49:52Z",updated_at:"2026-06-24T22:49:52Z",verified_at:"2026-06-24T22:49:52Z"},{schema_version:"0.1.0",fragment_id:"frag_quigbot_identity",multipass_id:"mp_quigbot",fragment_type:"attestation",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"historical_on_transfer",source:{source_type:"platform_check",source_id:"quigbot_identity",issuer:"Helixa",observed_at:"2026-06-24T23:50:00Z",reference_url:"https://helixa.xyz/agent/81"},public_value:"Quigbot identity checked by the Helixa fixture.",proof_reference:"fixture:quigbot-identity",created_at:"2026-06-24T23:50:00Z",updated_at:"2026-06-24T23:50:00Z",verified_at:"2026-06-24T23:50:00Z"},{schema_version:"0.1.0",fragment_id:"frag_quigbot_cred",multipass_id:"mp_quigbot",fragment_type:"risk_summary",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"registry_import",source_id:"quigbot_cred",issuer:"Helixa",observed_at:"2026-06-24T23:50:00Z",reference_url:"https://helixa.xyz/agent/81"},public_value:"Quigbot Cred score 75, Prime tier.",proof_reference:"fixture:quigbot-cred",created_at:"2026-06-24T23:50:00Z",updated_at:"2026-06-24T23:50:00Z",verified_at:"2026-06-24T23:50:00Z"},{schema_version:"0.1.0",fragment_id:"frag_e2etest_identity",multipass_id:"mp_e2etest",fragment_type:"attestation",status:"pending",assurance_level:"self_attested",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"owner_submission",source_id:"e2etest_identity",issuer:"Helixa",observed_at:"2026-06-24T23:50:00Z",reference_url:"https://helixa.xyz/agent/0"},public_value:"E2ETest is a low-assurance test record.",proof_reference:"fixture:e2etest-identity",created_at:"2026-06-24T23:50:00Z",updated_at:"2026-06-24T23:50:00Z"},{schema_version:"0.1.0",fragment_id:"frag_e2etest_cred",multipass_id:"mp_e2etest",fragment_type:"risk_summary",status:"disputed",assurance_level:"unverified",visibility:"public",transfer_policy:"never_transfer",source:{source_type:"platform_check",source_id:"e2etest_cred",issuer:"Helixa",observed_at:"2026-06-24T23:50:00Z",reference_url:"https://helixa.xyz/agent/0"},public_value:"Lower trust context for a test/demo agent.",proof_reference:"fixture:e2etest-cred",created_at:"2026-06-24T23:50:00Z",updated_at:"2026-06-24T23:50:00Z"},{schema_version:"0.1.0",fragment_id:"frag_helixa_swarm_roster",multipass_id:"mp_helixa_swarm",fragment_type:"custody_record",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"pause_on_transfer",source:{source_type:"platform_check",source_id:"helixa_swarm_roster",issuer:"Helixa",observed_at:"2026-06-24T23:38:00Z",reference_url:"https://helixa.xyz/multipass/"},public_value:"Parent Multipass manages Bendr, Quigbot, and E2ETest demo agents as one collection roster.",proof_reference:"fixture:helixa-swarm-roster",created_at:"2026-06-24T23:38:00Z",updated_at:"2026-06-24T23:38:00Z",verified_at:"2026-06-24T23:38:00Z"},{schema_version:"0.1.0",fragment_id:"frag_helixa_swarm_tools",multipass_id:"mp_helixa_swarm",fragment_type:"endpoint",status:"pending",assurance_level:"self_attested",visibility:"public",transfer_policy:"pause_on_transfer",source:{source_type:"owner_submission",source_id:"helixa_swarm_tools",issuer:"Helixa",observed_at:"2026-06-24T23:38:00Z",reference_url:"https://helixa.xyz/multipass/"},public_value:"Shared tool policy preview for routes, permissions, and approvals across the swarm.",proof_reference:"fixture:helixa-swarm-tools",created_at:"2026-06-24T23:38:00Z",updated_at:"2026-06-24T23:38:00Z",endpoint_ref:{endpoint_id:"swarm_policy",url:"https://helixa.xyz/multipass/",protocol:"api",manifest_url:"/multipass/static/x402-manifest.json"}},{schema_version:"0.1.0",fragment_id:"frag_helixa_swarm_cred",multipass_id:"mp_helixa_swarm",fragment_type:"risk_summary",status:"verified",assurance_level:"platform_verified",visibility:"public",transfer_policy:"reverify_on_transfer",source:{source_type:"registry_import",source_id:"helixa_swarm_cred",issuer:"Helixa",observed_at:"2026-06-24T23:38:00Z",reference_url:"https://helixa.xyz/multipass/"},public_value:"Aggregate Cred context summarizes the roster without erasing each agent's individual profile.",proof_reference:"fixture:helixa-swarm-cred",created_at:"2026-06-24T23:38:00Z",updated_at:"2026-06-24T23:38:00Z",verified_at:"2026-06-24T23:38:00Z",verification_ref:{verification_type:"swarm_cred_summary",result:"passed",issuer:"Helixa",risk_level:"medium",score:78}}]},card:{schema_version:"0.1.0",multipass_id:"mp_bendr_2",name:"Bendr 2.0",subject_type:"agent",capabilities:[{capability_id:"profile_lookup",label:"Profile lookup",description:"Read public Multipass profile data from the static preview.",visibility:"public"},{capability_id:"agent_card_resolution",label:"Agent card resolution",description:"Resolve compact agent card fields for discovery and trust checks.",visibility:"public"}],message_routes:[{route_id:"web_profile",channel:"api",address:"https://helixa.xyz/agent/1",visibility:"public"},{route_id:"telegram",channel:"chat",address:"@bendr2bot",visibility:"public"}],service_endpoints:[{endpoint_id:"helixa_profile",url:"https://api.helixa.xyz/api/v2/agent/1",description:"Public Helixa AgentDNA profile for Bendr 2.0.",visibility:"public"},{endpoint_id:"multipass_preview",url:"https://helixa.xyz/multipass/",description:"Hidden Multipass prototype preview.",visibility:"public"}],x402_manifest_url:"/multipass/static/x402-manifest.json",accepted_assets:[{asset:"CRED",chain_id:8453}],trust_summary:{identity_status:"verified",assurance_level:"onchain_verified",last_updated_at:"2026-06-24T22:49:52Z"},rate_limits:{requests:60,window_seconds:60,burst:10},contact_policy:{mode:"approval_required",requires_owner_approval:!0,policy_note:"Static demo only."},standards_refs:[{standard_id:"ERC-8004",support_status:"adapter_ready",record_id:null},{standard_id:"ERC-8217",support_status:"pending",record_id:null}]},standards:{schema_version:"0.1.0",standards_profile_id:"sp_bendr_2",multipass_id:"mp_bendr_2",primary_refs:{erc8004_identity:null,controller_asset:null,x402_manifest:"mp_bendr_2:x402"},standard_refs:[{standard_id:"ERC-8004",status:"adapter_ready",chain_id:8453,contract_address:null,record_id:null,adapter_version:"0.1.0",last_verified_at:null,assurance_level:"unverified"},{standard_id:"ERC-8217",status:"pending",chain_id:8453,contract_address:null,record_id:null,adapter_version:"0.1.0",last_verified_at:null,assurance_level:"unverified"},{standard_id:"ERC-8257",status:"pending",chain_id:null,contract_address:null,record_id:null,adapter_version:"0.1.0",last_verified_at:null,assurance_level:"unverified"}],compatibility_summary:{identity_bound:!1,owner_verified:!1,risk_checked:!1,tools_verified:!1,work_attested:!1,trust_updated:!1},adapter_versions:{"ERC-8004":"0.1.0","ERC-8217":"0.1.0","ERC-8257":"0.1.0"},last_verified_at:null},x402:{schema_version:"0.1.0",multipass_id:"mp_bendr_2",endpoints:[{endpoint_id:"lookup",url:"/multipass/",method:"GET",description:"Sample CRED-gated profile lookup route for public static preview.",price:{amount:"1",decimals:18},asset:"CRED",chain_id:8453,provider:"bankr_x402_cloud",settlement_reference_policy:"provider_receipt",rate_limit:{requests:10,window_seconds:60,burst:2},visibility:"public",requires_owner_approval:!1}]},receipt:{schema_version:"0.1.0",receipt_id:"receipt_bendr_lookup",multipass_id:"mp_bendr_2",endpoint_id:"lookup",provider:"bankr_x402_cloud",amount:"1",asset:"CRED",chain_id:8453,status:"settled",created_at:"2026-06-24T00:00:00Z",response_class:"success",settlement_reference:null,redaction_note:"Sample public static receipt. No private request or response payload is included."},routes:{},agentCards:[{name:"Bendr 2.0",tokenId:1,helixaId:"8453:1",framework:"openclaw",credScore:80,credTier:"Preferred",verified:!0,profileUrl:"https://helixa.xyz/agent/1",proofFragmentIds:["frag_bendr_profile","frag_bendr_endpoint","frag_bendr_standard_ref","frag_bendr_receipt_history","frag_bendr_route_dispute","frag_bendr_helixa_identity","frag_bendr_cred_score"],ownerSnapshot:{owner:"0x3395...480E0",operator:"Bendr runtime",custodyEpoch:"Epoch 01",permissionState:"Active owner-approved routes",visibility:"Public profile, private credentials hidden",recentChange:"Cred import refreshed",reviewAction:"Review stale standards reference"},changeReviewLedger:[{event:"Cred import refreshed",source:"Helixa API",impact:"Cred context updated",reviewState:"Verified"},{event:"Standards reference stale",source:"Standards profile",impact:"Adapter claim needs a fresh check",reviewState:"Reverify"},{event:"Private credentials hidden",source:"Private vault",impact:"No public data exposed",reviewState:"No public action"}]},{name:"Quigbot",tokenId:81,helixaId:"8453:81",framework:"openclaw",credScore:75,credTier:"Prime",verified:!0,profileUrl:"https://helixa.xyz/agent/81",proofFragmentIds:["frag_quigbot_identity","frag_quigbot_cred"],ownerSnapshot:{owner:"0x17d7...bDe4",operator:"Quigbot runtime",custodyEpoch:"Epoch 01",permissionState:"Active owner-approved routes",visibility:"Public profile, private credentials hidden",recentChange:"Identity and Cred context imported",reviewAction:"No public review action"},changeReviewLedger:[{event:"Identity context imported",source:"Helixa fixture",impact:"Agent card updated",reviewState:"Verified"},{event:"Cred import refreshed",source:"Helixa API",impact:"Cred context updated",reviewState:"Verified"},{event:"Private credentials hidden",source:"Private vault",impact:"No public data exposed",reviewState:"No public action"}]},{name:"E2ETest",tokenId:0,helixaId:"8453:0",framework:"openclaw",credScore:41,credTier:"Marginal",verified:!1,profileUrl:"https://helixa.xyz/agent/0",proofFragmentIds:["frag_e2etest_identity","frag_e2etest_cred"],ownerSnapshot:{owner:"Demo owner pending",operator:"Test fixture",custodyEpoch:"Draft epoch",permissionState:"Review required before active routes",visibility:"Public test profile",recentChange:"Low-assurance test record imported",reviewAction:"Verify owner before production use"},changeReviewLedger:[{event:"Low-assurance test record imported",source:"Test fixture",impact:"Routes remain inactive",reviewState:"Review required"},{event:"Owner verification missing",source:"Owner registry",impact:"Production use blocked",reviewState:"Reverify"},{event:"Private credentials hidden",source:"Private vault",impact:"No public data exposed",reviewState:"No public action"}]},{name:"Helixa Swarm",tokenId:"swarm:helixa",helixaId:"8453:swarm:helixa",framework:"multi-agent",credScore:78,credTier:"Prime",verified:!0,profileUrl:"https://helixa.xyz/swarm/helixa",subjectType:"swarm",members:3,role:"Parent Multipass",custody:"Custody epoch ready",proofFragmentIds:["frag_helixa_swarm_roster","frag_helixa_swarm_tools","frag_helixa_swarm_cred"],roster:[{name:"Bendr 2.0",role:"Lead agent"},{name:"Quigbot",role:"Product agent"},{name:"E2ETest",role:"Test agent"}],sharedControls:["Tool approval policy","Route policy reference","Owner approval required"],aggregateCred:"Cred 78 Prime summarizes the roster without replacing individual agent scores.",transferBehavior:"Permissions pause and tool routes reverify when custody changes.",transferPreview:{currentOwner:"0x3395...480E0",custodyEpoch:"Epoch 03",claimAction:"New owner claim required",permissionsState:"Permissions paused",toolAction:"Reverify shared tools",privateAccessAction:"Rotate private access",historyState:"History preserved",credContinuity:"Cred continues with ownership-change context."},ownerSnapshot:{owner:"0x3395...480E0",operator:"Helixa ops",custodyEpoch:"Epoch 03",permissionState:"Paused until owner review",visibility:"Public profile, gated private data",recentChange:"Transfer detected 2026-06-24",reviewAction:"Reverify routes before resume"},changeReviewLedger:[{event:"Cred import refreshed",source:"Helixa API",impact:"Aggregate Cred context updated",reviewState:"Verified"},{event:"Transfer detected",source:"Owner registry",impact:"Permissions paused",reviewState:"Review required"},{event:"Shared route policy changed",source:"Policy reference",impact:"Routes paused for recheck",reviewState:"Paused"},{event:"Standards reference stale",source:"Standards profile",impact:"Adapter claim needs a fresh check",reviewState:"Reverify"},{event:"Private credentials hidden",source:"Private vault",impact:"No secrets or private credentials exposed",reviewState:"No public action"}]}]},Z="/multipass-api";function ve(e){const r=X(e);return r?Y(r.toString()):Z}function X(e){const r=e.searchParams.get("api");if(!r)return null;try{const i=new URL(r);return["http:","https:"].includes(i.protocol)?i:null}catch{return null}}function _e(e,r){const t=`${Y(e||Z)}/api/multipass/${encodeURIComponent(r.slug)}`;return{profile:t,fragments:`${t}/fragments`,card:`${t}/agent-card`,standards:`${t}/standards`,x402:`${t}/x402`,receipt:`${t}/receipts/${encodeURIComponent(r.receiptId)}`}}async function C(e,r=fetch){const i=await r(e);if(!i.ok)throw new Error(`GET ${e} failed with ${i.status}`);const t=await i.text();try{return JSON.parse(t)}catch(s){throw new Error(`API returned invalid JSON for ${e}: ${s.message}`)}}async function he({apiBase:e=Z,subject:r,fetchImpl:i=fetch}){const t=_e(e,r),[s,n,o,l,d,u]=await Promise.all([C(t.profile,i),C(t.fragments,i),C(t.card,i),C(t.standards,i),C(t.x402,i),C(t.receipt,i)]);return{profile:s,fragments:n,card:o,standards:l,x402:d,receipt:u,routes:t,modeLabel:"Local API Demo",sourceLabel:"local API"}}function ge(e){const r=e.pathname;return(r==="/multipass"||r.startsWith("/multipass/"))&&!X(e)}async function ye(){return structuredClone(me)}function Y(e){return e.endsWith("/")?e.slice(0,-1):e}const v=8453,be="Base (8453)",G="0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",S="https://api.helixa.xyz/api/v2/agent",we="https://api.helixa.xyz/api/v2/metadata",K="https://api.helixa.xyz/api/v2/aura",$e="https://api.helixa.xyz/api/v2/agents?limit=100";class p extends Error{constructor(r,i,t={}){super(i),this.name="HelixaResolverError",this.code=r,this.details=t}}function xe(e){const r=String(e??"").trim();if(!r)throw new p("empty_input","Enter a Helixa token ID or Helixa ID.");if(/^\d+$/.test(r)){if(!Q(r))throw new p("invalid_format","Use a token ID like 1 or a Helixa ID like 8453:1.");return{chainId:v,tokenId:r,canonicalId:`${v}:${r}`}}const i=r.match(/^(\d+):(\d+)$/);if(!i)throw new p("invalid_format","Use a token ID like 1 or a Helixa ID like 8453:1.");const t=Number(i[1]);if(t!==v)throw new p("unsupported_chain","V0 supports Base Helixa AgentDNA records only.",{chainId:t});const s=i[2];if(!Q(s))throw new p("invalid_format","Use a token ID like 1 or a Helixa ID like 8453:1.");return{chainId:t,tokenId:s,canonicalId:`${v}:${s}`}}async function Ae(e,r=fetch){return await ee(`${S}/${encodeURIComponent(e)}`,r,"GET Helixa agent failed")}async function Se(e=fetch){const r=await ee($e,e,"GET Helixa agents failed");if(!Array.isArray(r?.agents))throw new p("invalid_json","Helixa returned a directory response this prototype cannot read yet.");return r.agents}async function ee(e,r,i){let t;try{t=await r(e,{method:"GET",credentials:"omit",headers:{Accept:"application/json"}})}catch(n){throw new p("network_error","Could not reach the Helixa API. Static demo is still available.",{cause:n.message})}if(!t.ok)throw t.status===404?new p("not_found","No Helixa agent found for that ID."):t.status===429?new p("rate_limited","Helixa API is rate-limiting requests. Try again shortly.",{retryAfter:t.headers?.get?.("Retry-After")??null}):new p("http_error",`${i} with ${t.status}`,{status:t.status});const s=await t.text();try{return JSON.parse(s)}catch(n){throw new p("invalid_json","Helixa returned a response this prototype cannot read yet.",{cause:n.message})}}function Ce(e){const r=String(e?.tokenId??"").trim()||"unknown",i=e?.name||`Agent #${r}`,t=`mp_helixa_agent_${r}`,s=e?.services?.web?.url??`https://helixa.xyz/agent/${encodeURIComponent(r)}`,n=e?.mintedAt??new Date().toISOString(),o=Me(e,r,t,n),l=q(e?.credScore),d=er(e),u=re(e),h=Ze(e,r,o,s),g=Ne(e,{tokenId:r,displayName:i,credTier:l,profileUrl:s}),c=`${v}:${r}`,w={name:i,tokenId:r,helixaId:c,framework:e?.framework??e?.metadata?.framework??"unknown",credScore:y(e?.credScore)?Number(e.credScore):null,credTier:l,verified:!!e?.verified,profileUrl:s,proofFragmentIds:o.map(m=>m.fragment_id),ownerSnapshot:je(e),changeReviewLedger:Oe(e),transferPreview:Fe(e)};return{modeLabel:"Live Trust Profile",sourceLabel:"live Helixa API",heroNote:`Read-only live Helixa API data for ${i}.`,liveProfilePage:{eyebrow:"LIVE MULTIPASS",prototypeLabel:"Live trust profile",audience:"Public trust, route, custody, and proof context for agent builders, directories, and marketplace compatibility.",headline:`${i} Multipass`,body:`Portable agent trust profile for ${i} with public identity, custody context, routes, and proof inspection.`,note:`Shareable live trust profile for ${c}.`,recordIntro:"Live AgentDNA trust profile assembled from public Helixa API signals. Display only; authority and private credentials stay protected.",headerMeta:`Live profile · ${c}`,sharePath:`/multipass/?agent=${encodeURIComponent(r)}`},profile:{schema_version:"0.1.0",multipass_id:t,subject_type:"agent",display_name:i,slug:`helixa-agent-${r}`,status:"live_resolved",owner_summary:{owner_state:e?.owner?"observed":"not_published",verification_status:e?.verified?"verified":"unverified",visibility:"public",summary:"Public owner state observed from the live Helixa API."},custody_epoch:null,public_fragments:o.map(({fragment_id:m,fragment_type:ne,status:oe,assurance_level:le,visibility:ce,updated_at:de})=>({fragment_id:m,fragment_type:ne,status:oe,assurance_level:le,visibility:ce,updated_at:de})),cred_summary:{trust_state:y(e?.credScore)?"established":"pending",attestation_count:o.filter(m=>m.fragment_type==="attestation").length,receipt_count:0,last_updated_at:n,public_note:y(e?.credScore)?`Cred score ${e.credScore} imported from Helixa API. Cred is an evidence signal, not a payment outcome.`:"No live Cred score published by the Helixa API."},discovery_profile:{summary:`${i} resolved from the live Helixa API as AgentDNA token #${r}.`,tags:F(["helixa","multipass",e?.framework]),avatar_url:null,visibility:"public"},standards_profile:{standards_profile_id:`sp_helixa_agent_${r}`,supported_standard_ids:u,last_verified_at:null},payment_profile:{accepted_assets:d.map(m=>({asset:m.toUpperCase(),chain_id:v})),x402_manifest_url:null,paid_endpoints_enabled:!1},updated_at:n},fragments:{subject_id:`helixa-agent-${r}`,fragments:o},card:Ke(e,r,s),visualIdentity:g,marketplaceListing:h,agentCards:[w],standards:{standard_refs:u.map(m=>({standard_id:m,status:"referenced"}))},x402:{endpoints:d.map(m=>({endpoint_id:"live-profile-reference",asset:m.toUpperCase(),route:s,status:"planned"}))},receipt:{receipt_id:"No live receipt attached",status:"not_attached",response_class:null,redaction_note:"No live receipt attached to this public Helixa API record."},routes:{profile:`${S}/${encodeURIComponent(r)}`}}}async function ke(e,r=fetch){const i=String(e??"").trim(),t=await Pe(i,r),s=await Ae(t.tokenId,r);return{...Ce(s),resolver:t}}async function Pe(e,r=fetch){try{return xe(e)}catch(s){if(!(s instanceof p)||s.code!=="invalid_format"||!Ee(e))throw s}const i=Ie(await Se(r),e);if(i.length===0)throw new p("not_found","No Helixa agent matched that name or handle. Try a token ID like 81.");if(i.length>1)throw new p("ambiguous_lookup","Pick a matching Helixa agent.",{matches:i});const t=i[0].tokenId;return{chainId:v,tokenId:t,canonicalId:`${v}:${t}`,lookupInput:e}}function Ie(e,r){const i=B(r);if(!i)return[];const t=e.map(n=>Le(n,i)).filter(Boolean).sort(Re),s=t.filter(n=>n.rank===0);return(s.length?s:t).slice(0,8).map(({rank:n,...o})=>o)}function Le(e,r){const i=String(e?.tokenId??"").trim(),t=String(e?.name??"").trim();if(!i||!t)return null;const s=Te(e),n=s.some(l=>l===r),o=!n&&s.some(l=>l.includes(r));return!n&&!o?null:{rank:n?0:1,tokenId:i,name:t,helixaId:`${v}:${i}`,framework:e?.framework??"unknown",credScore:y(e?.credScore)?Number(e.credScore):null,verified:!!e?.verified}}function Te(e){const r=[e?.name,e?.slug,e?.agentAddress];for(const i of Object.values(e?.socials??{}))r.push(i);for(const i of Object.values(e?.services??{}))r.push(i?.handle,i?.url);return r.map(B).filter(Boolean)}function Re(e,r){if(e.rank!==r.rank)return e.rank-r.rank;if(e.verified!==r.verified)return e.verified?-1:1;const i=e.credScore??-1/0,t=r.credScore??-1/0;return i!==t?t-i:Number(e.tokenId)-Number(r.tokenId)}function Ee(e){const r=String(e??"").trim();return!r||r.length>80||/https?:\/\//i.test(r)||r.includes("/")?!1:/[a-z_@#.-]/i.test(r)}function B(e){return String(e??"").trim().toLowerCase().replace(/^@/,"").replace(/\s+/g," ")}function Ne(e,{tokenId:r,displayName:i,credTier:t,profileUrl:s}){const n=String(e?.framework??"unknown").trim()||"unknown",o=y(e?.credScore)?`Cred ${e.credScore}`:"Cred pending",l=e?.verified?"Verified":"Unverified";return{source:"helixa_aura",label:"Helixa Agent Aura",imageUrl:`${K}/${encodeURIComponent(r)}.png`,initials:De(i),tone:Ue(t),summary:"Helixa Agent Aura image for this live profile.",chips:[o,t,l,n].filter(Boolean),seed:`helixa-${r}-${B(i)}`,provenanceDrawer:He(e,{tokenId:r,credTier:t,framework:n,profileUrl:s})}}function He(e,{tokenId:r,credTier:i,framework:t,profileUrl:s}){const n=`${we}/${encodeURIComponent(r)}`,o=`${K}/${encodeURIComponent(r)}.png`,l=`${S}/${encodeURIComponent(r)}`,d=I(s)??`https://helixa.xyz/agent/${encodeURIComponent(r)}`,u=L(e?.owner);return{title:"Agent Aura Provenance",summary:"Public Helixa API-reported provenance for this AgentDNA visual.",facts:F([{label:"Helixa ID",value:`${v}:${r}`},{label:"AgentDNA token ID",value:String(r)},{label:"Chain",value:be},{label:"Contract",value:G},u?{label:"Owner",value:u}:null,y(e?.credScore)?{label:"Cred",value:`Cred ${e.credScore} · ${i}`}:null,t!=="unknown"?{label:"Framework",value:T(t)}:null,{label:"Metadata source",value:n},{label:"Aura image source",value:o},{label:"API source",value:l}]),links:F([{label:"Metadata JSON",url:n},{label:"Aura image",url:o},{label:"Helixa profile",url:d},{label:"OpenSea item",url:`https://opensea.io/assets/base/${G}/${encodeURIComponent(r)}`},e?.explorer?{label:"Explorer",url:e.explorer}:null]),safetyNote:"Display only. Public provenance does not grant authority, verify private credentials, or expose secrets."}}function De(e){const r=String(e??"").trim().split(/\s+/).filter(Boolean);return r.length?r.length===1?r[0].slice(0,2).toUpperCase():`${r[0][0]??""}${r[1][0]??""}`.toUpperCase():"MP"}function Ue(e){return String(e??"pending").toLowerCase().replace(/[^a-z0-9]+/g,"-")}function Me(e,r,i,t){const s=[];s.push(R({fragment_id:`frag_live_${r}_identity`,multipass_id:i,fragment_type:"attestation",status:e?.verified?"verified":"pending",assurance_level:e?.verified?"onchain_verified":"platform_verified",transfer_policy:"historical_on_transfer",source_type:e?.explorer?"contract_read":"platform_check",observed_at:t,reference_url:e?.explorer??`https://helixa.xyz/agent/${encodeURIComponent(r)}`,public_value:`Helixa AgentDNA token #${r}${e?.mintOrigin?` minted from ${e.mintOrigin}`:""}.`})),y(e?.credScore)&&s.push(R({fragment_id:`frag_live_${r}_cred`,multipass_id:i,fragment_type:"risk_summary",status:"verified",assurance_level:"platform_verified",transfer_policy:"reverify_on_transfer",source_type:"registry_import",observed_at:t,reference_url:`${S}/${encodeURIComponent(r)}`,public_value:`Cred score ${e.credScore}, ${q(e.credScore)} tier, imported from Helixa API.`}));for(const[n,o]of Object.entries(e?.socials??{}))o&&s.push(R({fragment_id:`frag_live_${r}_social_${N(n)}`,multipass_id:i,fragment_type:"social",status:e?.verified?"verified":"pending",assurance_level:"platform_verified",transfer_policy:"reverify_on_transfer",source_type:"platform_check",observed_at:t,reference_url:`${S}/${encodeURIComponent(r)}`,public_value:`${T(n)} handle ${o} imported from Helixa API.`}));for(const[n,o]of Object.entries(e?.services??{})){const l=o?.url??o?.handle;l&&s.push(R({fragment_id:`frag_live_${r}_service_${N(n)}`,multipass_id:i,fragment_type:"endpoint",status:"pending",assurance_level:"self_attested",transfer_policy:"pause_on_transfer",source_type:"platform_check",observed_at:t,reference_url:`${S}/${encodeURIComponent(r)}`,public_value:`${T(n)} service route published by Helixa API.`,endpoint_ref:{endpoint_id:N(n),url:l,protocol:n}}))}for(const n of re(e))s.push(R({fragment_id:`frag_live_${r}_standard_${N(n)}`,multipass_id:i,fragment_type:"standard_ref",status:"stale",assurance_level:"issuer_attested",transfer_policy:"pause_on_transfer",source_type:"issuer_attestation",observed_at:t,reference_url:`${S}/${encodeURIComponent(r)}`,public_value:`${n} appears in public Helixa traits or metadata and needs a fresh adapter check before stronger claims.`}));return s}function R({fragment_id:e,multipass_id:r,fragment_type:i,status:t,assurance_level:s,transfer_policy:n,source_type:o,observed_at:l,reference_url:d,public_value:u,endpoint_ref:h=void 0}){return{schema_version:"0.1.0",fragment_id:e,multipass_id:r,fragment_type:i,status:t,assurance_level:s,visibility:"public",transfer_policy:n,source:{source_type:o,source_id:e,issuer:"Helixa",observed_at:l,reference_url:d},public_value:u,proof_reference:d,created_at:l,updated_at:l,...t==="verified"?{verified_at:l}:{},...h?{endpoint_ref:h}:{}}}function je(e){return{owner:L(e?.owner)??"Owner not published",operator:L(e?.operator)??"Not delegated",custodyEpoch:"Live API observation",permissionState:"Read-only public profile",visibility:"Public profile, private credentials hidden",recentChange:"Live profile fetched",reviewAction:"Review live identity fields",note:"State reference only. Multipass shows ownership, custody, visibility, and review context without executing approvals or transferring authority."}}function Oe(e){const r=[{event:"Live profile fetched",source:"Helixa API",impact:"Public profile refreshed",reviewState:"Verified"},{event:"Owner observed",source:"Helixa API",impact:e?.owner?"Owner field published":"Owner not published",reviewState:e?.owner?"Verified":"Review required"},{event:"Private credentials hidden",source:"Private vault",impact:"No secrets or private credentials exposed",reviewState:"No public action"}];return y(e?.credScore)&&r.splice(1,0,{event:"Cred imported",source:"Helixa API",impact:`Cred score ${e.credScore} displayed as context`,reviewState:"Verified"}),Object.keys(e?.services??{}).length&&r.push({event:"Services reviewed",source:"Helixa API",impact:"Public routes shown as references only",reviewState:"Review required"}),r}function Fe(e){return{currentOwner:L(e?.owner)??"Owner not published",custodyEpoch:"Live API observation",claimAction:"No transfer detected",permissionsState:"Read-only public profile",toolAction:"Reverify tools before active use",privateAccessAction:"Rotate private access on custody change",historyState:"Public history preserved",credContinuity:"Cred continues with ownership-change context if custody changes.",note:"Transfer state preview preserves public history but does not transfer secrets, private credentials, or active authority."}}function Ze(e,r,i,t){const s=e?.name||`Agent #${r}`,n=y(e?.credScore)?Number(e.credScore):null,o=e?.framework??e?.metadata?.framework??"unknown",l=`${v}:${r}`;return{title:`${s} trust profile`,subtitle:"Marketplace compatibility context",summary:qe(e),identity:{name:s,helixaId:l,tokenId:String(r),framework:o,verifiedLabel:e?.verified?"Verified AgentDNA":"Unverified AgentDNA",sourceLabel:"Live Helixa API"},score:Be(n),badges:ze(e,o),facts:Ve(e,r),routes:Ge(e),paymentReferences:Qe(e),proof:Je(i),links:We(e,t),safetyNote:"Display only. Marketplace compatibility does not execute listings, authority changes, payments, or credential release."}}function Be(e){const r=e===null?"Unrated":q(e);return{label:e===null?"Cred pending":`Cred ${e}`,tier:r,value:e,tone:r.toLowerCase()}}function qe(e){const r=e?.metadata?.serviceCategories??[],i=e?.skills??[],t=e?.domains??[],s=[...r,...i,...t].filter(Boolean).slice(0,3);return s.length?`Read-only public AgentDNA trust profile prepared for directories, builders, and marketplace compatibility: ${s.join(", ")}.`:"Read-only public AgentDNA trust profile with route, custody, and ownership context for marketplace compatibility."}function ze(e,r){return[{label:e?.verified?"Verified AgentDNA":"Unverified AgentDNA",tone:e?.verified?"verified":"review"},...e?.soulbound?[{label:"Soulbound",tone:"neutral"}]:[],...e?.metadata?.openToWork?[{label:"Open to work",tone:"verified"}]:[],{label:T(r),tone:"neutral"},{label:"Base",tone:"neutral"}]}function Ve(e,r){return[{label:"Owner",value:L(e?.owner)??"Owner not published"},{label:"Operator",value:L(e?.operator)??"Not delegated"},{label:"Token ID",value:String(r)},{label:"Generation",value:j(e?.generation,"Not published")},{label:"Version",value:j(e?.version,"Not published")},{label:"Points",value:j(e?.points,"Not published")}]}function Ge(e){const r=[];for(const[i,t]of Object.entries(e?.services??{})){const s=t?.url??t?.handle;s&&r.push({label:T(i),value:String(s),url:I(s),kind:"service"})}for(const[i,t]of Object.entries(e?.socials??{}))t&&r.push({label:T(i),value:String(t),url:Xe(i,t),kind:"social"});return r}function Qe(e){const r=[];for(const i of e?.metadata?.acceptedPayments??[])r.push({label:"Accepted reference",value:String(i).toUpperCase(),chainId:v,source:"Helixa metadata"});return e?.linkedToken?.symbol&&r.push({label:"Linked token",value:String(e.linkedToken.symbol).toUpperCase(),chainId:v,source:"Helixa linked token"}),Ye(r)}function Je(e){return{publicFragmentCount:e.length,verifiedSignalCount:e.filter(r=>r.status==="verified").length,reviewRequiredCount:e.filter(r=>["pending","stale"].includes(r.status)).length,privateCredentialState:"No secrets or private credentials exposed"}}function We(e,r){return[r?{label:"Profile",url:I(r),kind:"profile"}:null,e?.explorer?{label:"Explorer",url:I(e.explorer),kind:"explorer"}:null].filter(i=>i?.url)}function I(e){try{const r=new URL(String(e));return["https:","http:"].includes(r.protocol)?r.href:null}catch{return null}}function Xe(e,r){const i=String(r).trim();if(!i)return null;const t=I(i);if(t)return t;const s=i.replace(/^@/,""),n=String(e).toLowerCase();return n==="x"?`https://x.com/${encodeURIComponent(s)}`:n==="github"&&/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(s)?`https://github.com/${s}`:n==="telegram"?`https://t.me/${encodeURIComponent(s)}`:n==="website"?I(i):null}function Ye(e){const r=new Set;return e.filter(i=>{const t=`${i.label}:${i.value}:${i.chainId}:${i.source}`;return r.has(t)?!1:(r.add(t),!0)})}function j(e,r){return e==null||e===""?r:String(e)}function Ke(e,r,i){return{schema_version:"0.1.0",agent_id:`${v}:${r}`,name:e?.name??`Agent #${r}`,capabilities:[...e?.skills??[],...e?.domains??[]].map(t=>({name:t})),service_endpoints:Object.entries(e?.services??{}).map(([t,s])=>({endpoint_id:N(t),url:s?.url??s?.handle??i,protocol:t})),trust_summary:{identity_status:e?.verified?"verified":"pending",assurance_level:e?.verified?"onchain_verified":"platform_verified",cred_score:y(e?.credScore)?Number(e.credScore):null},profile_url:i}}function q(e){const r=Number(e);return Number.isFinite(r)?r>=80?"Preferred":r>=65?"Prime":r>=50?"Qualified":r>=30?"Marginal":"Junk":"Unrated"}function y(e){return Number.isFinite(Number(e))}function L(e){const r=String(e??"");return/^0x[a-fA-F0-9]{40}$/.test(r)?`${r.slice(0,6)}...${r.slice(-4)}`:null}function re(e){const r=[...e?.traits??[],...e?.skills??[],...e?.domains??[]].map(i=>typeof i=="string"?i:i?.name).filter(Boolean);return[...new Set(r.filter(i=>/^ERC-\d+/i.test(i)).map(i=>i.toUpperCase()))]}function er(e){return[...new Set([...e?.metadata?.acceptedPayments??[],e?.linkedToken?.symbol].filter(Boolean).map(r=>String(r).toLowerCase()))]}function F(e){return e.filter(Boolean)}function N(e){return String(e).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"")||"unknown"}function T(e){const r=String(e),i={a2a:"A2A",mcp:"MCP",x:"X",github:"GitHub",usdc:"USDC",cred:"CRED"},t=r.toLowerCase();return i[t]?i[t]:r.replace(/[_-]+/g," ").replace(/\b\w/g,s=>s.toUpperCase())}function Q(e){return/^\d+$/.test(e)&&!/^0+$/.test(e)}const rr={slug:"bendr-2",receiptId:"receipt_bendr_lookup"},J={prototypeLabel:"Internal Prototype",audience:"Built first for agent builders and agent teams; marketplace compatibility is a secondary display use case."},O={title:"Inspect proof",eyebrow:"PROOF LAYER",body:"Open the proof when a card needs verification. Each signal keeps its own visibility, source, assurance level, and transfer rule."},H={fragmentType:{endpoint:"Endpoint fragments describe routes, protocols, manifests, and access surfaces an agent may expose.",attestation:"Attestation fragments describe claims or checks from an owner, platform, issuer, or verifier.",receipt:"Receipt fragments describe access or payment evidence without making that evidence trust by itself.",standard_ref:"Standard reference fragments connect the profile to external standards without implying every adapter is live.",verification_result:"Verification result fragments record review outcomes, risk context, or disputed checks.",custody_record:"Custody record fragments describe owner or controller epochs without transferring private authority.",risk_summary:"Risk summary fragments carry imported Cred or safety context without collapsing identity into a single score.",social:"Social fragments connect public handles to an agent profile through a named source or verification path."},visibility:{public:"Visible to anyone and safe for profile cards, indexers, and partner systems.",gated:"Released only after token, payment, relationship, or allowlist policy is satisfied.",private:"Visible only to approved owners, operators, or internal systems with a clear need.",hidden:"Not discoverable through public or gated surfaces, reserved for safety or integrity review."},status:{verified:"Checked by a platform, issuer, contract read, or other explicit verification path.",pending:"Submitted or referenced, but still waiting for review or a stronger proof source.",stale:"Previously useful, but old enough that builders should request a fresh check.",historical:"Kept as provenance or prior evidence, not treated as active authority.",disputed:"Flagged for review because the claim, source, or interpretation is contested."},assurance:{unverified:"Unverified means the fragment has no stronger source than a raw claim or placeholder.",self_attested:"Self attested means the owner or agent supplied the claim without outside verification.",platform_verified:"Platform verified means Helixa or another platform checked the fragment through a defined process.",cryptographic:"Cryptographic means the fragment is backed by a signature, hash, or comparable cryptographic proof.",issuer_attested:"Issuer attested means a named issuer supplied or signed the supporting evidence.",onchain_verified:"Onchain verified means the fragment was checked against a chain record or contract read."},transferPolicy:{reverify_on_transfer:"Reverify on transfer means a new owner must confirm the fragment before it is treated as current.",pause_on_transfer:"Pause on transfer means active authority should stop until the new owner or operator approves it.",historical_on_transfer:"Historical on transfer means provenance stays visible, but it does not grant active authority.",never_transfer:"Never transfer means the fragment is bound to the prior controller or context and must not move."}};function tr(e){const r={name:e.profile.display_name,tokenId:e.profile.slug??e.profile.multipass_id,helixaId:e.profile.slug??e.profile.multipass_id,framework:"unknown",credScore:null,credTier:e.profile.cred_summary?.trust_state??"none",verified:e.card.trust_summary?.identity_status==="verified",profileUrl:null};return{eyebrow:"PROFILE GALLERY",title:"Example trust profiles.",body:"Each card gives agents, humans, organizations, swarms, apps, and directories a quick read on identity, separate trust state, Cred context, framework, and profile route. Marketplace compatibility stays secondary; deeper proof sits below for verification.",cards:(e.agentCards?.length?e.agentCards:[r]).map(t=>({name:t.name,tokenId:t.tokenId,helixaId:t.helixaId??String(t.tokenId??t.name),framework:t.framework??"unknown",credScore:t.credScore??null,credTier:t.credTier??"Unrated",credLabel:t.credScore===null||t.credScore===void 0?"Cred pending":`Cred ${t.credScore}`,verified:!!t.verified,verifiedLabel:t.verified?"verified":"unverified",profileUrl:t.profileUrl??null,subjectLabel:t.subjectType??"agent",memberLabel:_r(t.members),role:t.role??pr(t),custody:t.custody??"Owner verified",detailMode:t.subjectType==="swarm"?"swarm":"agent",roster:Array.isArray(t.roster)?t.roster.map(s=>({name:s.name,role:s.role??"Member agent"})):[],sharedControls:dr(t.sharedControls),aggregateCred:t.aggregateCred??null,transferBehavior:t.transferBehavior??null,ownerSnapshot:lr(t),changeReviewLedger:sr(t),transferPreview:cr(t.transferPreview,t),proofFragmentIds:Array.isArray(t.proofFragmentIds)?t.proofFragmentIds:[],visual:fr(t),proofSummary:vr(t)}))}}function ir(e,r=null){const i=te(e.fragments,r);return{title:O.title,eyebrow:O.eyebrow,body:O.body,cards:i.map(ar),legends:H,emptyPrivateNote:"Private and hidden fragments are not rendered in this public prototype."}}function ar(e){const r=D(e.fragment_type),i=e.endpoint_ref?.protocol?`${e.endpoint_ref.protocol} `:"",t=e.source?.source_type?D(e.source.source_type):"Unknown source",s=e.source?.issuer?` by ${e.source.issuer}`:"";return{id:e.fragment_id,title:hr(e),type:e.fragment_type,typeLabel:r,status:e.status,statusExplanation:H.status[e.status]??"Status explanation unavailable.",assurance:e.assurance_level,assuranceLabel:D(e.assurance_level),assuranceExplanation:H.assurance[e.assurance_level]??"Assurance explanation unavailable.",visibility:e.visibility,visibilityExplanation:H.visibility[e.visibility]??"Visibility explanation unavailable.",transferPolicy:e.transfer_policy,transferPolicyLabel:D(e.transfer_policy),transferPolicyExplanation:H.transferPolicy[e.transfer_policy]??"Transfer policy explanation unavailable.",sourceLabel:`${t}${s}`,summary:e.endpoint_ref?`${r} for ${i}endpoint from ${t}${s}.`:`${r} from ${t}${s}.`,publicValue:e.public_value??"No public value returned."}}function sr(e){const r=nr(e.changeReviewLedger);return r.length===0?null:{title:"Change + Review Ledger",eyebrow:"RECENT CHANGES / REVIEW QUEUE",rows:r,note:"Readable state only. Multipass shows change history, source, impact, and review state without executing approvals or transferring authority."}}function nr(e){return Array.isArray(e)?e.filter(r=>r&&typeof r=="object").map(r=>({event:r.event??"Change recorded",source:r.source??"Source not published",impact:r.impact??"Impact not published",reviewState:r.reviewState??r.state??"Review state not published",tone:or(r.reviewState??r.state)})):[]}function or(e){const r=String(e??"").toLowerCase();return r.includes("verified")?"verified":r.includes("required")||r.includes("reverify")?"review":r.includes("paused")?"paused":(r.includes("no public action"),"neutral")}function lr(e){const r=e.ownerSnapshot??{};return{title:"Owner & Custody Snapshot",owner:r.owner??"Owner not published",operator:r.operator??(e.subjectType==="swarm"?"Operator not published":"Agent operator not published"),custodyEpoch:r.custodyEpoch??e.custody??"Custody epoch pending",permissionState:r.permissionState??"Permission state not published",visibility:r.visibility??"Public profile only",recentChange:r.recentChange??"No recent public change",reviewAction:r.reviewAction??"No public review action",note:r.note??"State reference only. Multipass shows ownership, custody, visibility, and review context without executing approvals or transferring authority."}}function cr(e,r){return e?{title:"Transfer State Preview",currentOwner:e.currentOwner??"Owner pending",custodyEpoch:e.custodyEpoch??r.custody??"Custody epoch pending",claimAction:ur(e.claimAction),permissionsState:e.permissionsState??"Permissions paused",toolAction:e.toolAction??"Reverify tools",privateAccessAction:e.privateAccessAction??"Rotate private access",historyState:e.historyState??"History preserved",credContinuity:e.credContinuity??"Cred continues with ownership-change context.",note:e.note??"Transfer preview preserves public history but does not transfer secrets, private credentials, or active authority."}:null}function dr(e){if(!Array.isArray(e))return[];const r={"Tool approvals":"Tool approval policy","Route policy":"Route policy reference","Owner approval":"Owner approval required"};return e.map(i=>r[i]??i)}function ur(e){return!e||e==="Claim swarm"||e==="Claim agent"?"New owner claim required":e}function pr(e){return String(e.tokenId)==="1"||/bendr/i.test(e.name??"")?"Lead agent":String(e.tokenId)==="81"||/quigbot/i.test(e.name??"")?"Product agent":e.subjectType==="swarm"?"Parent Multipass":"Agent profile"}function fr(e){const r=e.tokenId,i=/^\d+$/.test(String(r??"")),t=e.subjectType??"agent",s=t==="swarm"?"swarm":e.verified?String(e.credTier??"verified").toLowerCase():"review";return{type:t,tone:s,initials:mr(e.name),imageUrl:i?`https://api.helixa.xyz/api/v2/aura/${r}.png`:null,label:`${e.name} visual identity`}}function mr(e){const r=String(e??"MP").split(/\s+/).filter(Boolean);return r.length&&r.slice(0,2).map(i=>i[0]?.toUpperCase()??"").join("")||"MP"}function vr(e){const r=Array.isArray(e.proofFragmentIds)?e.proofFragmentIds.length:0,i=r===1?"public proof signal":"public proof signals";return r>0?`${r} ${i}`:"Proof pending"}function _r(e){return e==null?"1 agent":`${e} ${Number(e)===1?"agent":"agents"}`}function hr(e){const r={frag_bendr_profile:"Bendr profile check",frag_bendr_endpoint:"Bendr API route",frag_bendr_standard_ref:"Standards reference",frag_bendr_receipt_history:"Receipt history",frag_bendr_route_dispute:"Route review flag",frag_bendr_helixa_identity:"Helixa AgentDNA identity",frag_bendr_cred_score:"Cred score import",frag_bendr_social_x:"Social handle check",frag_quigbot_identity:"Quigbot identity",frag_quigbot_cred:"Quigbot Cred context",frag_e2etest_identity:"E2ETest test identity",frag_e2etest_cred:"Lower trust context",frag_helixa_swarm_roster:"Swarm roster",frag_helixa_swarm_tools:"Shared tool policy",frag_helixa_swarm_cred:"Aggregate Cred context"};return r[e.fragment_id]?r[e.fragment_id]:D(e.fragment_type)}function D(e){const r=String(e??"unknown").split("_").filter(Boolean);return r.length===0?"Unknown":[r[0].charAt(0).toUpperCase()+r[0].slice(1),...r.slice(1)].join(" ")}const P={eyebrow:"MULTIPASS",headline:"Portable agent trust profiles for AI-native systems.",body:"Multipass gives agents, humans, swarms, collections, projects, organizations, and AI-native systems a visual identity graph with public proof, custody context, routes, Cred, and discovery data in one readable profile.",note:"Homepage prototype using Helixa AgentDNA examples and live resolver data."};function gr(){return[{title:"What is Multipass?",body:"Multipass is a portable agent trust profile for agents, humans, swarms, collections, projects, organizations, apps, directories, and marketplace display surfaces that need to decide who they are dealing with."},{title:"What the card shows",body:"The card gives the fast read: name, Helixa ID, separate trust state, Cred context, verified status, framework, and profile route."},{title:"What proof adds",body:"Proof records explain where the card comes from without making raw protocol details the first thing people see."}]}function yr(e){return`${e.display_name} is a ${e.subject_type} profile with status ${e.status} and trust state ${e.cred_summary?.trust_state??"none"}.`}function br(e){return ie(e.fragments),[{title:"Card first",label:"Fast read",body:"Name, Helixa ID, Cred, framework, and profile route should be understandable at a glance."},{title:"Proof below",label:"Selected proof",body:"Fragments explain why the selected card should be trusted without dumping raw protocol detail up front."},{title:"Portable by design",label:`${e.x402.endpoints.length} x402 endpoint`,body:"Apps can read the same agent profile across discovery, access, settlement, and custody flows."}]}function wr(e,r=null){const i=te(e.fragments,r),t=$r(e.fragments,i);return[{title:"Profile",status:e.profile.status,summary:yr(e.profile),why:"The profile is the canonical summary agents, apps, and builders can resolve first.",json:$(e.profile)},{title:"Public Fragments",status:`${i.length} public`,summary:i.length?`${i.length} readable proof signals for ${r?.name??e.profile.display_name}.`:`No public fragments returned for ${r?.name??e.profile.display_name}.`,why:"Fragments show the public pieces that support the profile without exposing private records.",json:t},{title:"Agent Card",status:`${e.card.capabilities.length} capabilities`,summary:`${e.card.service_endpoints.length} service endpoint records available.`,why:"The agent card gives machines a compact view of capabilities, routes, endpoints, and trust context.",json:$(e.card)},{title:"Standards",status:`${e.standards.standard_refs.length} refs`,summary:Sr(e.standards.standard_refs),why:"Standards references show compatibility targets and adapter state without claiming every adapter is live.",json:$(e.standards)},{title:"x402",status:`${e.x402.endpoints.length} endpoints`,summary:e.x402.endpoints.map(s=>`${s.endpoint_id} accepts ${s.asset}`).join(", ")||"No endpoints returned.",why:"x402 metadata explains planned access rails and accepted assets without implying live settlement here.",json:$(e.x402)},{title:"Receipt",status:e.receipt.status,summary:`${e.receipt.receipt_id} records a ${e.receipt.response_class??"unknown"} response.`,why:"Receipt evidence records that an access event can be attached to the profile without becoming trust by itself.",json:$(e.receipt)}]}function $r(e,r){const i={fragments:$(r)};for(const t of["multipass_id","profile_id","subject_id","schema_version"])e[t]!==void 0&&(i[t]=e[t]);return i}function $(e){if(Array.isArray(e))return e.map(r=>$(r)).filter(r=>r!==void 0);if(!e||typeof e!="object")return e;if(!xr(e.visibility))return Object.fromEntries(Object.entries(e).filter(([r])=>!Ar(r)).map(([r,i])=>[r,$(i)]).filter(([,r])=>r!==void 0))}function xr(e){return["private","hidden","gated"].includes(String(e??"").toLowerCase())}function Ar(e){const r=e.toLowerCase();return r.startsWith("private")||r.startsWith("hidden")||r.startsWith("gated")||r.includes("_private")||r.includes("_hidden")||r.includes("_gated")}function te(e,r){const i=ie(e),t=r?.proofFragmentIds;if(!Array.isArray(t)||t.length===0)return i;const s=new Map(i.map(n=>[n.fragment_id,n]));return t.map(n=>s.get(n)).filter(Boolean)}function ie(e){return(e.fragments??[]).filter(r=>r.visibility==="public")}function Sr(e){return e.map(r=>`${r.standard_id}: ${r.status}`).join(", ")||"No standard refs returned."}function Cr({root:e,loadDemo:r=Pr,loadLiveDemo:i=ke}){if(!e)throw new Error("createApp requires a root element");let t={expandedCard:null,selectedAgentCard:0,resolverInput:"",resolverStatus:null,resolverError:null,resolverRequestId:0,resolverInFlightInput:null,retryUntil:0,retryMessage:null,lookupMatches:[]};async function s(){Ir(e);try{const d=await r();t={...t,data:d,staticData:d},A(e,t,l);const u=kr();u!==null&&n(u)}catch(d){Lr(e,d)}}async function n(d){const u=String(d??"").trim();t={...t,resolverInput:d,resolverStatus:"loading",resolverError:null,retryMessage:null,resolverInFlightInput:u,resolverRequestId:t.resolverRequestId+1,lookupMatches:[]};const h=t.resolverRequestId;A(e,t,l);try{const g=await i(u);if(h!==t.resolverRequestId)return;t={...t,data:g,resolverStatus:"loaded",resolverError:null,retryUntil:0,retryMessage:null,selectedAgentCard:0,expandedCard:null,resolverInFlightInput:null,lookupMatches:[]},Hr(g?.liveProfilePage?.sharePath),A(e,t,l)}catch(g){if(h!==t.resolverRequestId)return;const c=zr(g);t={...t,data:t.staticData??t.data,selectedAgentCard:0,expandedCard:null,resolverStatus:"error",resolverError:qr(g),resolverInFlightInput:null,retryUntil:c.retryUntil,retryMessage:c.retryMessage,lookupMatches:Br(g)},W(),A(e,t,l)}}function o(){t={...t,data:t.staticData,selectedAgentCard:0,expandedCard:null,resolverInput:"",resolverStatus:null,resolverError:null,resolverInFlightInput:null,resolverRequestId:t.resolverRequestId+1,retryUntil:0,retryMessage:null,lookupMatches:[]},W(),A(e,t,l)}const l={resolveLiveAgent:n,resetStaticDemo:o};return{start:s}}function kr(){if(typeof window>"u")return null;const e=new URL(window.location.href);return e.searchParams.has("agent")?e.searchParams.get("agent")??"":null}function Pr(){const e=new URL(window.location.href);return ge(e)?ye():he({apiBase:ve(e),subject:rr})}function Ir(e){e.innerHTML=`
+    <section class="record-shell loading-shell">
+      <p class="eyebrow">${P.eyebrow}</p>
+      <h1>Loading Multipass...</h1>
+    </section>
+  `}function Lr(e,r){e.innerHTML=`
+    <section class="record-shell error-shell">
+      <p class="eyebrow">${P.eyebrow}</p>
+      <h1>Could not load Multipass API data.</h1>
+      <p>Run <code>pnpm api:bendr</code> in the Multipass repo, then reload this page.</p>
+      <pre class="json-panel">${a(r.message)}</pre>
+    </section>
+  `}function Tr(e){const r=e.liveProfilePage??{};return{eyebrow:r.eyebrow??P.eyebrow,prototypeLabel:r.prototypeLabel??J.prototypeLabel,audience:r.audience??J.audience,headline:r.headline??P.headline,body:r.body??P.body,note:r.note??e.heroNote??P.note}}function Rr(e){return z(e)?` <a class="share-link" href="${f(e)}">${a(e)}</a>`:""}function Er(e){return e&&z(e)?String(e):"/multipass/"}function Nr(e){return new URL(Er(e),"https://helixa.xyz").toString()}function z(e){if(!e)return!1;try{const r=new URL(String(e),"https://helixa.xyz");if(r.origin!=="https://helixa.xyz"||r.pathname!=="/multipass/")return!1;const i=r.searchParams.get("agent");return i===null||/^\d+$/.test(i)}catch{return!1}}function Hr(e){typeof window>"u"||!z(e)||window.history.replaceState(null,"",e)}function W(){if(typeof window>"u")return;const e=new URL(window.location.href);e.searchParams.delete("agent"),window.history.replaceState(null,"",`${e.pathname}${e.search}${e.hash}`)}function A(e,r,i={}){const{data:t}=r,s=Tr(t),n=br(t),o=gr(),l=tr(t),d=l.cards[r.selectedAgentCard]??l.cards[0],u=fe(t,r),h=ir(t,d),g=wr(t,d);e.innerHTML=`
+    <div class="record-shell">
+      <header class="record-header">
+        <div class="brand"><div class="mark" aria-hidden="true"></div><span>Multipass</span></div>
+        <div class="header-meta"><span>Hidden Prototype</span><span>${a(t.liveProfilePage?.headerMeta??t.modeLabel??"Local API Demo")}</span></div>
+      </header>
+
+      ${Dr(s,t,l)}
+
+      ${jr(r)}
+
+      ${Or(u)}
+
+      ${Mr(t,s)}
+
+      ${Wr(l,d,r.selectedAgentCard)}
+
+      ${Gr(t.visualIdentity)}
+
+      ${Qr(t.visualIdentity?.provenanceDrawer)}
+
+      ${at(t.marketplaceListing)}
+
+      <section class="story-records">${n.map(dt).join("")}</section>
+
+      <section class="clarity-grid">${o.map(ut).join("")}</section>
+
+      ${pt(h)}
+
+      <section class="proof-ledger">
+        <div class="ledger-title"><h2>Proof ledger</h2><span>Expandable API records</span></div>
+        ${g.map((c,w)=>mt(c,w,r.expandedCard)).join("")}
+      </section>
+
+      <footer class="footer-note">${a(u.kind==="activated"?"Display-only Multipass profile. It does not execute approvals, change authority, expose private credentials, or alter live routes.":"This is a static public preview. It does not include auth, persistence, contract reads, or payment settlement.")}</footer>
+    </div>
+  `,e.querySelectorAll('[data-action="select-agent-card"]').forEach(c=>{c.addEventListener("click",()=>{r.selectedAgentCard=Number(c.dataset.index),A(e,r,i),e.querySelector(`[data-action="select-agent-card"][data-index="${r.selectedAgentCard}"]`)?.focus()})}),e.querySelectorAll('[data-action="toggle-json"]').forEach(c=>{c.addEventListener("click",()=>{const w=Number(c.dataset.index);r.expandedCard=r.expandedCard===w?null:w,A(e,r,i),e.querySelector(`[data-action="toggle-json"][data-index="${w}"]`)?.focus()})}),e.querySelector('[data-action="resolve-live-agent"]')?.addEventListener("submit",c=>{c.preventDefault();const m=c.currentTarget.querySelector('input[name="agent"]')?.value??"";ae(r)||r.resolverStatus==="loading"&&m.trim()===r.resolverInFlightInput||i.resolveLiveAgent?.(m)}),e.querySelector('[data-action="reset-static-demo"]')?.addEventListener("click",()=>i.resetStaticDemo?.()),e.querySelectorAll('[data-action="resolve-example-agent"]').forEach(c=>{c.addEventListener("click",()=>i.resolveLiveAgent?.(c.getAttribute("data-agent")??""))}),e.querySelectorAll('[data-action="select-lookup-match"]').forEach(c=>{c.addEventListener("click",()=>i.resolveLiveAgent?.(c.dataset.tokenId??""))})}function Dr(e,r,i){const t=i.cards.length,s=Ur(r);return`
+    <section class="homepage-hero">
+      <div class="homepage-hero-copy">
+        <p class="eyebrow">${a(e.eyebrow)}</p>
+        <div class="prototype-ribbon">
+          <span>${a(e.prototypeLabel)}</span>
+          <span>${a(e.audience)}</span>
+        </div>
+        <h1>${a(e.headline)}</h1>
+        <p class="lead">${a(e.body)}</p>
+        <div class="homepage-actions">
+          <a href="#live-resolver" class="homepage-action primary">Activate Multipass</a>
+          <a href="#profile-gallery" class="homepage-action">View example profiles</a>
+        </div>
+        <div class="note">${a(e.note)}${Rr(r.liveProfilePage?.sharePath)}</div>
+      </div>
+      <aside class="homepage-proof-panel" aria-label="Multipass profile ingredients">
+        <p class="card-label">Trust profile stack</p>
+        <h2>Identity, custody, proof, routes, and visual context in one readable profile.</h2>
+        <div class="homepage-proof-grid">
+          ${U("Profiles",t)}
+          ${U("Public proof",s)}
+          ${U("Live source",r.sourceLabel??"bundled fixture")}
+          ${U("Primary use","Discovery")}
+        </div>
+      </aside>
+    </section>
+  `}function Ur(e){return Array.isArray(e.fragments?.fragments)?e.fragments.fragments.filter(r=>r.visibility==="public").length:0}function U(e,r){return`
+    <article class="homepage-proof-stat">
+      <span>${a(e)}</span>
+      <strong>${a(r)}</strong>
+    </article>
+  `}function Mr(e,r){const i=Nr(e.liveProfilePage?.sharePath),t=String(e.liveProfilePage?.headline??r.headline??"Multipass").replace(/[.!?]+$/u,"");return`
+    <section class="share-panel" aria-label="Share Multipass profile">
+      <div>
+        <p class="card-label">Share this Multipass</p>
+        <h2>Portable Agent Identity</h2>
+        <p>${a(t)}. Identity, proof, custody, Cred, and discovery context for agents and AI-native systems.</p>
+      </div>
+      <div class="share-copy-card" aria-label="Multipass share URL">
+        <span>Share URL</span>
+        <code class="share-url">${a(i)}</code>
+        <small class="share-hint">Tap and hold to copy</small>
+      </div>
+    </section>
+  `}function jr(e){return`
+    <section id="live-resolver" class="live-resolver" aria-label="Activate a live agent record">
+      <form data-action="resolve-live-agent">
+        <div>
+          <p class="card-label">Activate a live agent record</p>
+          <h2>Build a Multipass from live AgentDNA data.</h2>
+          <p>Enter an AgentDNA ID, ERC-8004-style ID, token ID, or agent name. Try <code>1</code>, <code>8453:1</code>, <code>Bendr 2.0</code>, or <code>Quigbot</code>.</p>
+        </div>
+        <label>
+          <span>AgentDNA ID, ERC-8004-style ID, token ID, or agent name</span>
+          <input name="agent" value="${f(e.resolverInput??"")}" placeholder="81, 8453:81, or Quigbot" autocomplete="off" />
+        </label>
+        <button type="submit" ${ae(e)?"disabled":""}>${e.resolverStatus==="loading"?"Activating...":"Activate Multipass"}</button>
+        <button type="button" data-action="reset-static-demo">View static demo</button>
+      </form>
+      ${e.resolverError?`<p class="resolver-message error">${a(e.resolverError)}</p>`:""}
+      ${e.retryMessage?`<p class="resolver-message error">${a(e.retryMessage)}</p>`:""}
+      ${Fr()}
+      ${Zr(e.lookupMatches)}
+      ${e.resolverStatus==="loaded"?'<p class="resolver-message">Live record activated into a display-only Multipass. No approvals or authority changes.</p>':""}
+    </section>
+  `}function Or(e){const r=e.resolvedId?`<span>${a(e.resolvedId)}</span>`:"",i=e.showFutureBindNote?'<p class="activation-bind-note">Today, NFT activation creates a new ERC-8004 identity. Binding NFTs to an existing identity is planned for a later adapter release.</p>':"";return`
+    <section class="activation-summary ${f(e.kind)}" aria-label="Multipass activation state">
+      <div>
+        <p class="card-label">Agent Activation</p>
+        <h2>${a(e.title)}</h2>
+        <p>${a(e.summary)}</p>
+      </div>
+      <div class="activation-facts" aria-label="Activation facts">
+        <strong>${a(e.subject)}</strong>
+        ${r}
+        <em>${a(e.originLabel)}</em>
+        <small>${a(e.sourceLabel)}</small>
+      </div>
+      ${i}
+    </section>
+  `}function Fr(){return`
+    <div class="resolver-examples" aria-label="Example Helixa lookups">
+      <span>Examples</span>
+      ${["Bendr","Quigbot","81"].map(r=>`<button type="button" data-action="resolve-example-agent" data-agent="${f(r)}">${a(r)}</button>`).join("")}
+    </div>
+  `}function Zr(e=[]){return e.length?`
+    <div class="lookup-matches" aria-label="Matching Helixa agents">
+      ${e.map(r=>`
+        <button class="lookup-match-card" type="button" data-action="select-lookup-match" data-token-id="${f(r.tokenId)}">
+          <strong>${a(r.name)}</strong>
+          <span>${a(r.helixaId)} · ${a(r.framework??"unknown")} · ${r.credScore===null||r.credScore===void 0?"Cred pending":`Cred ${a(r.credScore)}`}</span>
+          <em>${r.verified?"Verified":"Unverified"}</em>
+        </button>
+      `).join("")}
+    </div>
+  `:""}function ae(e){return e.retryUntil>Date.now()}function Br(e){return!(e instanceof p)||e.code!=="ambiguous_lookup"?[]:Array.isArray(e.details?.matches)?e.details.matches:[]}function qr(e){return e instanceof p?e.message:"Could not reach the Helixa API. Static demo is still available."}function zr(e,r=Date.now()){if(!(e instanceof p)||e.code!=="rate_limited")return{retryUntil:0,retryMessage:null};const i=Number(e.details?.retryAfter);return!Number.isFinite(i)||i<=0?{retryUntil:0,retryMessage:null}:{retryUntil:r+i*1e3,retryMessage:`Try again in ${i} seconds.`}}function _(e,r,i=""){const t=i?` ${i}`:"";return`
+    <div class="field">
+      <span>${a(e)}</span>
+      <strong class="mono${t}">${a(r)}</strong>
+    </div>
+  `}function Vr(e){if(!e)return null;try{const r=new URL(String(e));return r.protocol==="https:"?r.href:null}catch{return null}}function Gr(e){if(!e||!["helixa_aura","aura"].includes(e.source))return"";const r=Vr(e.imageUrl),i=e.label??"Helixa Agent Aura";return`
+    <section class="aura-card" data-visual-source="${f(e.source)}" aria-label="Agent Aura visual for trust profile">
+      <div class="aura-asset-frame">
+        <div class="aura-orb tone-${f(e.tone??"pending")}">
+          ${r?`<img src="${f(r)}" alt="${f(i)}" loading="lazy" />`:""}
+          <span>${a(e.initials??"MP")}</span>
+        </div>
+      </div>
+      <div class="aura-item-meta">
+        <p class="card-label">Visual</p>
+        <h2>${a(i)}</h2>
+        <div class="aura-chips" aria-label="Agent Aura traits">
+          ${(e.chips??[]).map(t=>`<span>${a(t)}</span>`).join("")}
+        </div>
+      </div>
+    </section>
+  `}function Qr(e){if(!e)return"";const r=(e.facts??[]).filter(t=>M(t?.label)&&M(t?.value)),i=(e.links??[]).filter(t=>M(t?.label)&&se(t?.url));return`
+    <section class="aura-provenance-drawer" aria-labelledby="aura-provenance-title">
+      <div class="aura-provenance-copy">
+        <p class="card-label">Public provenance</p>
+        <h2 id="aura-provenance-title">${a(e.title??"Agent Aura Provenance")}</h2>
+        <p>${a(e.summary??"Public source data for this AgentDNA visual.")}</p>
+      </div>
+      <div class="aura-provenance-body">
+        ${r.length?`<div class="aura-provenance-grid">${r.map(Jr).join("")}</div>`:""}
+        ${i.length?`<div class="aura-provenance-links" aria-label="Agent Aura provenance links">${i.map(t=>V(t.label,t.url)).join("")}</div>`:""}
+        ${M(e.safetyNote)?`<p class="aura-provenance-note">${a(e.safetyNote)}</p>`:""}
+      </div>
+    </section>
+  `}function Jr(e){return`
+    <article class="aura-provenance-fact">
+      <span>${a(e.label)}</span>
+      <strong>${a(e.value)}</strong>
+    </article>
+  `}function M(e){return e!=null&&String(e).trim()!==""}function Wr(e,r,i){return`
+    <section id="profile-gallery" class="profile-gallery card-carousel">
+      <div class="card-carousel-head">
+        <p class="eyebrow">${a(e.eyebrow)}</p>
+        <h2>${a(e.title)}</h2>
+        <p>${a(e.body)}</p>
+      </div>
+      <div class="card-track" role="tablist" aria-label="Agent cards">
+        ${e.cards.map((t,s)=>Xr(t,s,i)).join("")}
+      </div>
+      ${Yr(r)}
+      ${et(r.ownerSnapshot)}
+      ${rt(r.changeReviewLedger)}
+      ${it(r)}
+    </section>
+  `}function Xr(e,r,i){const t=r===i;return`
+    <button class="profile-card card-button${t?" selected":""}" data-action="select-agent-card" data-index="${r}" type="button" aria-selected="${t}">
+      <span class="profile-card-visual tone-${f(e.visual?.tone??"neutral")}" aria-label="${f(e.visual?.label??`${e.name} visual identity`)}">
+        ${e.visual?.imageUrl?`<img src="${f(e.visual.imageUrl)}" alt="${f(e.visual.label)}" loading="lazy" />`:""}
+        <span>${a(e.visual?.initials??"MP")}</span>
+      </span>
+      <span class="profile-card-copy">
+        <span class="card-name">${a(e.name)}</span>
+        <span>${a(e.role)} · ${a(e.memberLabel)}</span>
+        <span>${a(e.helixaId)}</span>
+        <span>${a(e.custody)}</span>
+        <span>${a(e.proofSummary)}</span>
+        <strong>${a(e.credLabel)} · ${a(e.verifiedLabel)}</strong>
+      </span>
+    </button>
+  `}function Yr(e){return e.detailMode==="swarm"?Kr(e):`
+    <article class="card-detail">
+      <div>
+        <p class="card-label">Selected agent card</p>
+        <h3>${a(e.name)}</h3>
+        <p>Machine-readable identity card for routing, trust checks, roster context, and profile discovery.</p>
+      </div>
+      <div class="card-fields">
+        ${_("Helixa ID",e.helixaId)}
+        ${_("Framework",e.framework)}
+        ${_("Cred",e.credScore===null?e.credLabel:`${e.credLabel} (${e.credTier})`)}
+        ${_("Identity",e.verifiedLabel)}
+        ${_("Subject",e.subjectLabel)}
+        ${_("Roster",e.memberLabel)}
+        ${_("Role",e.role)}
+        ${_("Custody",e.custody)}
+        ${_("Profile",e.profileUrl??"Not linked")}
+      </div>
+    </article>
+  `}function Kr(e){return`
+    <article class="card-detail swarm-detail">
+      <div>
+        <p class="card-label">Swarm detail</p>
+        <h3>${a(e.name)}</h3>
+        <p>Parent Multipass for a collection of agents with shared routes, custody context, and proof that still preserves each member profile.</p>
+      </div>
+      <div class="swarm-panels">
+        <section class="swarm-panel">
+          <h4>Roster</h4>
+          ${e.roster.map(r=>`
+            <div class="swarm-row">
+              <strong>${a(r.name)}</strong>
+              <span>${a(r.role)}</span>
+            </div>
+          `).join("")}
+        </section>
+        <section class="swarm-panel">
+          <h4>Policy references</h4>
+          ${e.sharedControls.map(r=>`<span class="control-chip">${a(r)}</span>`).join("")}
+        </section>
+        <section class="swarm-panel wide">
+          <h4>Aggregate Cred</h4>
+          <p>${a(e.aggregateCred??`${e.credLabel} (${e.credTier}) gives context only; member scores remain separate.`)}</p>
+        </section>
+        <section class="swarm-panel wide">
+          <h4>Transfer behavior</h4>
+          <p>${a(e.transferBehavior??"Permissions pause and active routes reverify when custody changes.")}</p>
+        </section>
+        <section class="swarm-panel wide">
+          <h4>Summary</h4>
+          <div class="card-fields swarm-fields">
+            ${_("Helixa ID",e.helixaId)}
+            ${_("Roster",e.memberLabel)}
+            ${_("Role",e.role)}
+            ${_("Custody",e.custody)}
+          </div>
+        </section>
+      </div>
+    </article>
+  `}function et(e){return e?`
+    <section class="owner-snapshot">
+      <div class="owner-snapshot-copy">
+        <p class="card-label">${a(e.title)}</p>
+        <h3>${a(e.permissionState)}</h3>
+        <p>${a(e.note)}</p>
+      </div>
+      <div class="owner-snapshot-grid">
+        ${k("Owner",e.owner)}
+        ${k("Operator",e.operator)}
+        ${k("Custody epoch",e.custodyEpoch)}
+        ${k("Visibility",e.visibility)}
+        ${k("Recent change",e.recentChange)}
+        ${k("Review action",e.reviewAction)}
+      </div>
+    </section>
+  `:""}function k(e,r){return`
+    <article class="owner-snapshot-field">
+      <span>${a(e)}</span>
+      <strong>${a(r)}</strong>
+    </article>
+  `}function rt(e){return e?`
+    <section class="change-review-ledger">
+      <div class="change-review-head">
+        <p class="card-label">${a(e.eyebrow)}</p>
+        <h3>${a(e.title)}</h3>
+        <p>${a(e.note)}</p>
+      </div>
+      <div class="change-review-rows">
+        ${e.rows.map(tt).join("")}
+      </div>
+    </section>
+  `:""}function tt(e){return`
+    <article class="change-review-row tone-${a(e.tone)}">
+      <div>
+        <span>Change</span>
+        <strong>${a(e.event)}</strong>
+      </div>
+      <div>
+        <span>Source</span>
+        <strong>${a(e.source)}</strong>
+      </div>
+      <div>
+        <span>Impact</span>
+        <strong>${a(e.impact)}</strong>
+      </div>
+      <div>
+        <span>Review</span>
+        <strong>${a(e.reviewState)}</strong>
+      </div>
+    </article>
+  `}function it(e){if(!e.transferPreview)return"";const r=e.transferPreview;return`
+    <section class="transfer-preview">
+      <div class="transfer-copy">
+        <p class="card-label">${a(r.title)}</p>
+        <h3>${a(r.claimAction)}</h3>
+        <p>${a(r.note)}</p>
+      </div>
+      <div class="transfer-steps">
+        ${x("Current owner",r.currentOwner)}
+        ${x("Custody epoch",r.custodyEpoch)}
+        ${x("Permissions",r.permissionsState)}
+        ${x("Tools",r.toolAction)}
+        ${x("Private access",r.privateAccessAction)}
+        ${x("History",r.historyState)}
+        ${x("Cred",r.credContinuity)}
+      </div>
+    </section>
+  `}function x(e,r){return`
+    <article class="transfer-step">
+      <span>${a(e)}</span>
+      <strong>${a(r)}</strong>
+    </article>
+  `}function at(e){return e?`
+    <section class="marketplace-listing" aria-label="Trust profile marketplace compatibility context">
+      <div class="listing-shell">
+        <div class="listing-copy">
+          <p class="card-label">Trust profile context</p>
+          <h2>${a(e.title??"Agent listing")}</h2>
+          <p>${a(e.summary??"Public AgentDNA profile prepared for read-only marketplace discovery.")}</p>
+          ${e.subtitle?`<span class="listing-subtitle">${a(e.subtitle)}</span>`:""}
+        </div>
+        <div class="listing-score">
+          <span>${a(e.score?.tier??"Unrated")}</span>
+          <strong>${a(e.score?.label??"Cred pending")}</strong>
+        </div>
+      </div>
+      <div class="listing-badges">${(e.badges??[]).map(st).join("")}</div>
+      <section class="listing-identity">
+        ${b({label:"Helixa ID",value:e.identity?.helixaId??"Not published"})}
+        ${b({label:"Framework",value:e.identity?.framework??"unknown"})}
+        ${b({label:"Identity",value:e.identity?.verifiedLabel??"Unverified AgentDNA"})}
+        ${b({label:"Source",value:e.identity?.sourceLabel??"Live Helixa API"})}
+        ${(e.facts??[]).map(b).join("")}
+      </section>
+      <section class="listing-sections">
+        <article class="listing-section">
+          <h3>Public routes</h3>
+          ${nt(e.routes)}
+        </article>
+        <article class="listing-section">
+          <h3>Payment references</h3>
+          ${ot(e.paymentReferences)}
+        </article>
+      </section>
+      ${lt(e.proof)}
+      ${ct(e.links)}
+      <p class="listing-safety">${a(e.safetyNote??"Display only. Marketplace compatibility does not execute listings, authority changes, payments, or credential release.")}</p>
+    </section>
+  `:""}function st(e){return`<span class="listing-badge tone-${f(e?.tone??"neutral")}">${a(e?.label??"")}</span>`}function b(e){return`
+    <article class="listing-fact">
+      <span>${a(e?.label??"")}</span>
+      <strong>${a(e?.value??"Not published")}</strong>
+    </article>
+  `}function nt(e=[]){return e.length?`<div class="listing-routes">${e.map(r=>`
+    <article>
+      <span>${a(r?.label??"Route")}</span>
+      <strong>${V(r?.value??"",r?.url)}</strong>
+    </article>
+  `).join("")}</div>`:'<div class="listing-routes"><article><span>Routes</span><strong>No public service routes published</strong></article></div>'}function ot(e=[]){return e.length?`<div class="listing-payments">${e.map(r=>`<span class="listing-payment">${a(r?.value??"")}${r?.source?` · ${a(r.source)}`:""}</span>`).join("")}</div>`:'<div class="listing-payments"><span class="listing-payment">No public payment references published</span></div>'}function lt(e){return e?`<section class="listing-proof-strip">
+    ${b({label:"Public proof",value:`${e.publicFragmentCount??0} fragments`})}
+    ${b({label:"Verified signals",value:e.verifiedSignalCount??0})}
+    ${b({label:"Review queue",value:e.reviewRequiredCount??0})}
+    ${b({label:"Private access",value:e.privateCredentialState??"No secrets or private credentials exposed"})}
+  </section>`:""}function ct(e=[]){return e.length?`<div class="listing-links">${e.map(r=>`<span class="listing-link">${V(r?.label??"Link",r?.url)}</span>`).join("")}</div>`:""}function V(e,r){return se(r)?`<a href="${f(r)}" target="_blank" rel="noopener noreferrer">${a(e)}</a>`:`<span>${a(e)}</span>`}function se(e){if(!e)return!1;try{const r=new URL(String(e));return["https:","http:"].includes(r.protocol)&&!r.username&&!r.password}catch{return!1}}function dt(e,r){return`
+    <article class="story">
+      <span class="story-num">${String(r+1).padStart(2,"0")}</span>
+      <p class="card-label">${a(e.label)}</p>
+      <h3>${a(e.title)}</h3>
+      <p>${a(e.body)}</p>
+    </article>
+  `}function ut(e){return`
+    <article class="clarity-card">
+      <h3>${a(e.title)}</h3>
+      <p>${a(e.body)}</p>
+    </article>
+  `}function pt(e){return`
+    <section class="fragment-map">
+      <div class="fragment-map-head">
+        <p class="eyebrow">${a(e.eyebrow)}</p>
+        <h2>${a(e.title)}</h2>
+        <p>${a(e.body)}</p>
+      </div>
+      <div class="fragment-cards">
+        ${e.cards.map(ft).join("")}
+      </div>
+      <details class="fragment-legend">
+        <summary>Proof vocabulary</summary>
+        ${E("Fragment type legend",e.legends.fragmentType)}
+        ${E("Status legend",e.legends.status)}
+        ${E("Visibility legend",e.legends.visibility)}
+        ${E("Assurance legend",e.legends.assurance)}
+        ${E("Transfer policy",e.legends.transferPolicy)}
+      </details>
+      <p class="fragment-note">${a(e.emptyPrivateNote)}</p>
+    </section>
+  `}function ft(e){return`
+    <article class="fragment-card">
+      <div class="fragment-card-top">
+        <span class="fragment-type">${a(e.typeLabel)}</span>
+        <span class="fragment-status status-${a(e.status)}">${a(e.status)}</span>
+      </div>
+      <h3>${a(e.title)}</h3>
+      <p>${a(e.summary)}</p>
+      <dl>
+        <div><dt>Assurance</dt><dd>${a(e.assuranceLabel)}</dd></div>
+        <div><dt>Visibility</dt><dd>${a(e.visibility)}</dd></div>
+        <div><dt>Transfer</dt><dd>${a(e.transferPolicyLabel)}</dd></div>
+        <div><dt>Source</dt><dd>${a(e.sourceLabel??"Unknown source")}</dd></div>
+      </dl>
+      <p class="fragment-value">${a(e.publicValue)}</p>
+    </article>
+  `}function E(e,r){return`
+    <article>
+      <h3>${a(e)}</h3>
+      ${Object.entries(r).map(([i,t])=>`
+        <div class="legend-row">
+          <strong>${a(i)}</strong>
+          <span>${a(t)}</span>
+        </div>
+      `).join("")}
+    </article>
+  `}function mt(e,r,i){const t=i===r;return`
+    <article class="ledger-entry">
+      <div class="ledger-row">
+        <div class="doc">${a(e.title)}</div>
+        <div class="badge ${vt(e)}">${a(e.status)}</div>
+        <div class="summary">
+          <span>${a(e.summary)}</span>
+          <span class="why">${a(e.why)}</span>
+        </div>
+        <button data-action="toggle-json" data-index="${r}" aria-expanded="${t}" aria-controls="proof-json-${r}">${t?"Hide JSON":"Show JSON"}</button>
+      </div>
+      ${t?`<pre id="proof-json-${r}" class="json-panel">${a(JSON.stringify(e.json,null,2))}</pre>`:""}
+    </article>
+  `}function vt(e){return["settled","passed","filtered"].includes(String(e.status).toLowerCase())?"verified":"neutral"}function f(e){return a(e)}function a(e){return String(e).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;")}Cr({root:document.querySelector("#app")}).start();
