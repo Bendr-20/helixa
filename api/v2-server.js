@@ -19,6 +19,12 @@ const {
     verifyHmacSignature,
 } = require('./internal-auth');
 const { getXBearerToken } = require('./services/runtime-secrets');
+const {
+    mergePublicAgentProfile,
+    mergeTraitLists,
+    normalizeNarrative,
+    normalizePersonality,
+} = require('./services/public-profile-fallbacks');
 
 // ─── Services ───────────────────────────────────────────────────
 const svc = require('./services/contract');
@@ -1314,12 +1320,14 @@ async function formatAgentAuraSource(tokenId) {
             credScore: Number(localRow.credScore || 0),
         };
 
+        const mergedLocalAgent = mergePublicAgentProfile(localAgent, profile);
+
         try {
-            const { computedScore } = computeCredBreakdown(localAgent);
-            if (computedScore > localAgent.credScore) localAgent.credScore = computedScore;
+            const { computedScore } = computeCredBreakdown(mergedLocalAgent);
+            if (computedScore > mergedLocalAgent.credScore) mergedLocalAgent.credScore = computedScore;
         } catch {}
 
-        return localAgent;
+        return mergedLocalAgent;
     }
 
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
@@ -1389,12 +1397,14 @@ async function formatAgentAuraSource(tokenId) {
         credScore: Number(credRes || 0),
     };
 
+    const mergedResolvedAgent = mergePublicAgentProfile(resolvedAgent, profile);
+
     try {
-        const { computedScore } = computeCredBreakdown(resolvedAgent);
-        if (computedScore > resolvedAgent.credScore) resolvedAgent.credScore = computedScore;
+        const { computedScore } = computeCredBreakdown(mergedResolvedAgent);
+        if (computedScore > mergedResolvedAgent.credScore) mergedResolvedAgent.credScore = computedScore;
     } catch {}
 
-    return resolvedAgent;
+    return mergedResolvedAgent;
 }
 
 function getIndexedAgentSnapshot(tokenId) {
@@ -1452,12 +1462,14 @@ function getIndexedAgentSnapshot(tokenId) {
             _snapshot: true,
         };
 
+        const mergedSnapshot = mergePublicAgentProfile(snapshot, profile);
+
         try {
-            const { computedScore } = computeCredBreakdown(snapshot);
-            if (computedScore > snapshot.credScore) snapshot.credScore = computedScore;
+            const { computedScore } = computeCredBreakdown(mergedSnapshot);
+            if (computedScore > mergedSnapshot.credScore) mergedSnapshot.credScore = computedScore;
         } catch {}
 
-        return snapshot;
+        return mergedSnapshot;
     } catch {
         return null;
     }
@@ -1467,6 +1479,7 @@ function applyComputedCredFloor(agent) {
     if (!agent || typeof agent !== 'object') return agent;
 
     const profile = Number.isFinite(Number(agent.tokenId)) ? (getProfile(Number(agent.tokenId)) || {}) : {};
+    agent = mergePublicAgentProfile(agent, profile);
     const traits = Array.isArray(agent.traits) && agent.traits.length > 0
         ? agent.traits
         : (Array.isArray(profile.traits) ? profile.traits : []);
@@ -1659,47 +1672,14 @@ async function formatAgentV2(tokenId) {
         services: {},
         metadata: {},
         linkedToken: linkedToken.contractAddress ? linkedToken : null,
-        personality: personality ? {
-            quirks: personality[0],
-            communicationStyle: personality[1],
-            values: personality[2],
-            humor: personality[3],
-            riskTolerance: Number(personality[4]),
-            autonomyLevel: Number(personality[5]),
-        } : null,
-        narrative: narrative ? {
-            origin: narrative.origin,
-            mission: narrative.mission,
-            lore: narrative.lore,
-            manifesto: narrative.manifesto,
-        } : null,
-        traits: traits.filter(t => !LINKED_TOKEN_KEYS.includes(t.name)).map(t => ({
-            name: t.name,
-            category: t.category,
-            addedAt: new Date(Number(t.addedAt) * 1000).toISOString(),
-        })),
+        personality: normalizePersonality(personality),
+        narrative: normalizeNarrative(narrative),
+        traits: mergeTraitLists(traits, []),
         explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
     };
 
-    // Merge off-chain profile overrides (traits, personality, narrative)
-    if (profile) {
-        if (profile.personality) {
-            result.personality = { ...(result.personality || {}), ...profile.personality };
-        }
-        if (profile.narrative) {
-            result.narrative = { ...(result.narrative || {}), ...profile.narrative };
-        }
-        if (profile.traits && profile.traits.length > 0) {
-            // Append off-chain traits (deduplicate by name)
-            const existingNames = new Set(result.traits.map(t => t.name));
-            for (const t of profile.traits) {
-                if (!existingNames.has(t.name)) {
-                    result.traits.push(t);
-                    existingNames.add(t.name);
-                }
-            }
-        }
-    }
+    // Merge public off-chain profile fields as fallbacks for flaky/partial contract reads.
+    Object.assign(result, mergePublicAgentProfile(result, profile));
 
     const defaultServices = {
         web: { url: `https://helixa.xyz/agent/${tokenId}` },
@@ -1801,44 +1781,11 @@ async function formatAgentPublicFast(tokenId) {
     }
     if (!agent && !localRow) throw new Error('Agent not found');
 
-    let personality = personalityRes ? {
-        quirks: personalityRes[0],
-        communicationStyle: personalityRes[1],
-        values: personalityRes[2],
-        humor: personalityRes[3],
-        riskTolerance: Number(personalityRes[4]),
-        autonomyLevel: Number(personalityRes[5]),
-    } : null;
-
-    let narrative = narrativeRes ? {
-        origin: narrativeRes.origin,
-        mission: narrativeRes.mission,
-        lore: narrativeRes.lore,
-        manifesto: narrativeRes.manifesto,
-    } : null;
-
-    if (profile.personality) personality = { ...(personality || {}), ...profile.personality };
-    if (profile.narrative) narrative = { ...(narrative || {}), ...profile.narrative };
+    const personality = normalizePersonality(personalityRes);
+    const narrative = normalizeNarrative(narrativeRes);
+    const traits = mergeTraitLists(traitsRes, profile.traits);
 
     const LINKED_TOKEN_KEYS = ['linked-token', 'linked-token-chain', 'linked-token-symbol', 'linked-token-name'];
-    const onchainTraits = Array.isArray(traitsRes)
-        ? traitsRes
-            .filter(t => t && !LINKED_TOKEN_KEYS.includes(t.name))
-            .map(t => ({
-                name: t.name,
-                category: t.category,
-                addedAt: t.addedAt ? new Date(Number(t.addedAt) * 1000).toISOString() : null,
-            }))
-        : [];
-    const traits = [...onchainTraits];
-    const existingNames = new Set(traits.map(t => t.name));
-    if (Array.isArray(profile.traits)) {
-        for (const t of profile.traits) {
-            if (!t?.name || existingNames.has(t.name)) continue;
-            traits.push(t);
-            existingNames.add(t.name);
-        }
-    }
 
     const linkedToken = {};
     if (Array.isArray(traitsRes)) {
@@ -1896,6 +1843,8 @@ async function formatAgentPublicFast(tokenId) {
         traits,
         explorer: `https://basescan.org/token/${V2_CONTRACT_ADDRESS}?a=${tokenId}`,
     };
+
+    Object.assign(result, mergePublicAgentProfile(result, profile));
 
     try {
         const { computedScore } = computeCredBreakdown(result);
