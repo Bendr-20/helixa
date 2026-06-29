@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: Xbot
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
