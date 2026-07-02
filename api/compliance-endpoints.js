@@ -6,9 +6,125 @@
 const DEPLOYER = '0x339559A2d1CD15059365FC7bD36b3047BbA480E0';
 const BENDR_WALLET = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
 const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
+const CONTRACT_LOWER = CONTRACT.toLowerCase();
+const DEPLOYER_LOWER = DEPLOYER.toLowerCase();
+const PUBLIC_BASE_URL = 'https://api.helixa.xyz';
+const AGENT_AURAS_COLLECTION_URL = 'https://opensea.io/collection/agent-auras';
+const ERC721_REQUIREMENT_KIND = '0xbdf8c428';
+const AGENT_AURAS_REQUIREMENT_DATA = `0x000000000000000000000000${CONTRACT_LOWER.slice(2)}`;
+
+function parsePositiveTokenId(value) {
+  const tokenId = Number(value);
+  if (!Number.isSafeInteger(tokenId) || tokenId <= 0) return null;
+  return tokenId;
+}
+
+function buildAgentAuraLookupManifest() {
+  return {
+    type: 'https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1',
+    name: 'agent-aura-lookup',
+    description: 'Lookup a Helixa Agent Aura by token ID and return canonical AgentDNA, CRED, image, OpenSea, and profile links.',
+    version: '1.0.0',
+    endpoint: `${PUBLIC_BASE_URL}/api/v2/tools/agent-aura-lookup`,
+    image: `${PUBLIC_BASE_URL}/api/v2/aura/1.png`,
+    tags: ['ai', 'nft', 'helixa', 'cred', 'agentdna'],
+    creatorAddress: DEPLOYER_LOWER,
+    inputs: {
+      type: 'object',
+      properties: {
+        tokenId: {
+          type: 'integer',
+          minimum: 1,
+          description: 'Agent Auras token ID on Base',
+        },
+      },
+      required: ['tokenId'],
+      additionalProperties: false,
+    },
+    outputs: {
+      type: 'object',
+      properties: {
+        tokenId: { type: 'integer' },
+        contract: { type: 'string' },
+        standard: { type: 'string' },
+        profileUrl: { type: 'string' },
+        imageUrl: { type: 'string' },
+        openseaUrl: { type: 'string' },
+        collectionUrl: { type: 'string' },
+        credScore: { type: 'integer' },
+      },
+    },
+    access: {
+      logic: 'OR',
+      requirements: [{
+        kind: ERC721_REQUIREMENT_KIND,
+        data: AGENT_AURAS_REQUIREMENT_DATA,
+        label: 'Hold any NFT from Agent Auras by Helixa',
+        links: { opensea: AGENT_AURAS_COLLECTION_URL },
+      }],
+    },
+  };
+}
+
+function buildAgentAuraLookupResponse(tokenId, profile = null) {
+  const response = {
+    tool: 'agent-aura-lookup',
+    tokenId,
+    contract: CONTRACT_LOWER,
+    standard: 'ERC-8004',
+    chain: 'base',
+    profileUrl: `${PUBLIC_BASE_URL}/api/v2/agent/${tokenId}`,
+    imageUrl: `${PUBLIC_BASE_URL}/api/v2/aura/${tokenId}.png`,
+    metadataUrl: `${PUBLIC_BASE_URL}/api/v2/metadata/${tokenId}`,
+    openseaUrl: `https://opensea.io/assets/base/${CONTRACT_LOWER}/${tokenId}`,
+    collectionUrl: AGENT_AURAS_COLLECTION_URL,
+  };
+
+  if (profile && typeof profile === 'object') {
+    if (profile.name) response.name = profile.name;
+    if (Number.isInteger(profile.credScore)) response.credScore = profile.credScore;
+    if (profile.tier) response.tier = profile.tier;
+    if (typeof profile.verified === 'boolean') response.verified = profile.verified;
+    if (profile.owner) response.owner = profile.owner;
+  }
+
+  return response;
+}
+
+async function fetchAgentProfileForTool(tokenId) {
+  const profileBaseUrl = process.env.HELIXA_TOOL_PROFILE_BASE_URL || PUBLIC_BASE_URL;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    const res = await fetch(`${profileBaseUrl}/api/v2/agent/${tokenId}`, {
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    return await res.json().catch(() => null);
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 module.exports = function mountCompliance(app) {
   console.log('[COMPLIANCE] Mounting compliance endpoints...');
+
+  // OpenSea Agent Tool Registry discovery (ERC-8257)
+  app.get('/.well-known/ai-tool/agent-aura-lookup.json', (req, res) => {
+    res.json(buildAgentAuraLookupManifest());
+  });
+
+  app.post('/api/v2/tools/agent-aura-lookup', async (req, res) => {
+    const tokenId = parsePositiveTokenId(req.body?.tokenId);
+    if (!tokenId) {
+      return res.status(400).json({ error: 'tokenId must be a positive integer' });
+    }
+    const profile = await fetchAgentProfileForTool(tokenId);
+    return res.json(buildAgentAuraLookupResponse(tokenId, profile));
+  });
 
   // x402 discovery
   app.get('/.well-known/x402.json', (req, res) => {
