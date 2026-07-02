@@ -3,6 +3,11 @@
  * Mount early in Express app before catch-all 404
  */
 
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { z } = require('zod/v4');
+
 const DEPLOYER = '0x339559A2d1CD15059365FC7bD36b3047BbA480E0';
 const BENDR_WALLET = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
 const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
@@ -10,6 +15,8 @@ const CONTRACT_LOWER = CONTRACT.toLowerCase();
 const DEPLOYER_LOWER = DEPLOYER.toLowerCase();
 const PUBLIC_BASE_URL = 'https://api.helixa.xyz';
 const AGENT_AURAS_COLLECTION_URL = 'https://opensea.io/collection/helixa-376479287';
+const OPENSEA_TOOL_ID = '192';
+const OPENSEA_TOOL_REGISTRY = '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1';
 const ERC721_REQUIREMENT_KIND = '0xbdf8c428';
 const AGENT_AURAS_REQUIREMENT_DATA = `0x000000000000000000000000${CONTRACT_LOWER.slice(2)}`;
 
@@ -109,8 +116,102 @@ async function fetchAgentProfileForTool(tokenId) {
   }
 }
 
-module.exports = function mountCompliance(app) {
+function loadOpenSeaApiKey() {
+  const envKey = process.env.OPENSEA_API_KEY?.trim();
+  if (envKey) return envKey;
+
+  const keyFile = process.env.OPENSEA_API_KEY_FILE || path.join(os.homedir(), '.config/opensea/config.json');
+  try {
+    const parsed = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+    return typeof parsed.api_key === 'string' ? parsed.api_key.trim() : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function buildOpenSeaUsageReportingConfig(override) {
+  if (override) return override;
+  if (process.env.OPENSEA_TOOL_USAGE_REPORTING_DISABLED === '1') return undefined;
+
+  const apiKey = loadOpenSeaApiKey();
+  if (!apiKey) return undefined;
+
+  return {
+    aggregatorUrl: process.env.OPENSEA_TOOL_USAGE_URL || undefined,
+    chainId: 8453,
+    toolChainId: 8453,
+    toolRegistryAddress: OPENSEA_TOOL_REGISTRY,
+    toolOnchainId: OPENSEA_TOOL_ID,
+    apiKey,
+  };
+}
+
+function buildAgentAuraLookupInputSchema() {
+  return z.object({
+    tokenId: z.number().int().positive(),
+  }).strict();
+}
+
+function buildAgentAuraLookupOutputSchema() {
+  return z.object({
+    tool: z.literal('agent-aura-lookup'),
+    tokenId: z.number().int().positive(),
+    contract: z.string(),
+    standard: z.string(),
+    chain: z.string(),
+    profileUrl: z.string(),
+    imageUrl: z.string(),
+    metadataUrl: z.string(),
+    openseaUrl: z.string(),
+    collectionUrl: z.string(),
+    name: z.string().optional(),
+    credScore: z.number().int().optional(),
+    tier: z.string().optional(),
+    verified: z.boolean().optional(),
+    owner: z.string().optional(),
+  }).passthrough();
+}
+
+function buildAgentAuraLookupGates(sdk, override) {
+  if (override) return override;
+  if (process.env.HELIXA_TOOL_NFT_GATE_DISABLED === '1') return [];
+
+  return [sdk.predicateGate({
+    toolId: BigInt(OPENSEA_TOOL_ID),
+    operatorAddress: DEPLOYER,
+    rpcUrl: process.env.OPENSEA_TOOL_RPC_URL || process.env.BASE_RPC_URL || process.env.RPC_URL || process.env.READ_RPC_URL || 'https://base-rpc.publicnode.com',
+    registryAddress: OPENSEA_TOOL_REGISTRY,
+  })];
+}
+
+async function createAgentAuraLookupExpressHandler(options = {}) {
+  const sdk = options.sdk || await import('@opensea/tool-sdk');
+  const webHandler = sdk.createToolHandler({
+    manifest: buildAgentAuraLookupManifest(),
+    inputSchema: buildAgentAuraLookupInputSchema(),
+    outputSchema: buildAgentAuraLookupOutputSchema(),
+    gates: buildAgentAuraLookupGates(sdk, options.gates),
+    usageReporting: buildOpenSeaUsageReportingConfig(options.usageReporting),
+    waitUntil: options.waitUntil,
+    async handler(input) {
+      const profile = await fetchAgentProfileForTool(input.tokenId);
+      return buildAgentAuraLookupResponse(input.tokenId, profile);
+    },
+  });
+
+  return sdk.toExpressHandler(webHandler);
+}
+
+module.exports = function mountCompliance(app, options = {}) {
   console.log('[COMPLIANCE] Mounting compliance endpoints...');
+
+  let agentAuraLookupHandlerPromise;
+  function getAgentAuraLookupHandler() {
+    if (!agentAuraLookupHandlerPromise) {
+      agentAuraLookupHandlerPromise = createAgentAuraLookupExpressHandler(options.agentAuraTool || {});
+    }
+    return agentAuraLookupHandlerPromise;
+  }
 
   // OpenSea Agent Tool Registry discovery (ERC-8257)
   app.get('/.well-known/ai-tool/agent-aura-lookup.json', (req, res) => {
@@ -118,12 +219,16 @@ module.exports = function mountCompliance(app) {
   });
 
   app.post('/api/v2/tools/agent-aura-lookup', async (req, res) => {
-    const tokenId = parsePositiveTokenId(req.body?.tokenId);
-    if (!tokenId) {
-      return res.status(400).json({ error: 'tokenId must be a positive integer' });
+    try {
+      if (!parsePositiveTokenId(req.body?.tokenId)) {
+        return res.status(400).json({ error: 'tokenId must be a positive integer' });
+      }
+      const handler = await getAgentAuraLookupHandler();
+      return handler(req, res);
+    } catch (err) {
+      console.error('[COMPLIANCE] Agent Aura OpenSea tool error:', err);
+      return res.status(500).json({ error: 'Internal tool error' });
     }
-    const profile = await fetchAgentProfileForTool(tokenId);
-    return res.json(buildAgentAuraLookupResponse(tokenId, profile));
   });
 
   // x402 discovery

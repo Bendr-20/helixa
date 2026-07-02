@@ -6,8 +6,8 @@ const mountCompliance = require('./compliance-endpoints');
 async function withServer(run, setup = () => {}) {
   const app = express();
   app.use(express.json());
-  mountCompliance(app);
-  setup(app);
+  const setupResult = setup(app) || {};
+  mountCompliance(app, setupResult.mountOptions || {});
   const server = await new Promise((resolve) => {
     const s = app.listen(0, () => resolve(s));
   });
@@ -16,6 +16,23 @@ async function withServer(run, setup = () => {}) {
     return await run(`http://127.0.0.1:${port}`);
   } finally {
     await new Promise((resolve, reject) => server.close((err) => err ? reject(err) : resolve()));
+  }
+}
+
+async function withEnv(overrides, run) {
+  const previous = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    previous[key] = process.env[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  try {
+    return await run();
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   }
 }
 
@@ -44,7 +61,7 @@ test('serves an ERC-8257 manifest for the Agent Auras lookup tool', async () => 
 
 test('agent-aura-lookup endpoint returns a compact Agent Aura profile envelope', async () => {
   const previousBase = process.env.HELIXA_TOOL_PROFILE_BASE_URL;
-  await withServer(async (baseUrl) => {
+  await withEnv({ HELIXA_TOOL_NFT_GATE_DISABLED: '1', OPENSEA_TOOL_USAGE_REPORTING_DISABLED: '1' }, () => withServer(async (baseUrl) => {
     process.env.HELIXA_TOOL_PROFILE_BASE_URL = baseUrl;
     const res = await fetch(`${baseUrl}/api/v2/tools/agent-aura-lookup`, {
       method: 'POST',
@@ -77,14 +94,14 @@ test('agent-aura-lookup endpoint returns a compact Agent Aura profile envelope',
         owner: '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea',
       });
     });
-  });
+  }));
   if (previousBase === undefined) delete process.env.HELIXA_TOOL_PROFILE_BASE_URL;
   else process.env.HELIXA_TOOL_PROFILE_BASE_URL = previousBase;
 });
 
 test('agent-aura-lookup waits long enough for the public profile route to enrich output', async () => {
   const previousBase = process.env.HELIXA_TOOL_PROFILE_BASE_URL;
-  await withServer(async (baseUrl) => {
+  await withEnv({ HELIXA_TOOL_NFT_GATE_DISABLED: '1', OPENSEA_TOOL_USAGE_REPORTING_DISABLED: '1' }, () => withServer(async (baseUrl) => {
     process.env.HELIXA_TOOL_PROFILE_BASE_URL = baseUrl;
     const res = await fetch(`${baseUrl}/api/v2/tools/agent-aura-lookup`, {
       method: 'POST',
@@ -99,9 +116,72 @@ test('agent-aura-lookup waits long enough for the public profile route to enrich
     app.get('/api/v2/agent/:id', (req, res) => {
       setTimeout(() => res.json({ name: 'Slow Bendr', credScore: 80 }), 1700);
     });
-  });
+  }));
   if (previousBase === undefined) delete process.env.HELIXA_TOOL_PROFILE_BASE_URL;
   else process.env.HELIXA_TOOL_PROFILE_BASE_URL = previousBase;
+});
+
+test('agent-aura-lookup emits a zero-value x402 challenge for NFT-gated access', async () => {
+  await withEnv({ OPENSEA_API_KEY: 'test-opensea-key', OPENSEA_TOOL_USAGE_REPORTING_DISABLED: '1' }, () => withServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/api/v2/tools/agent-aura-lookup`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tokenId: 1 }),
+    });
+    assert.equal(res.status, 402);
+    assert.equal(res.headers.get('x-accept-payment'), 'x402');
+    const body = await res.json();
+    assert.equal(body.x402Version, 1);
+    assert.equal(body.accepts[0].maxAmountRequired, '0');
+    assert.equal(body.accepts[0].payTo, '0x339559A2d1CD15059365FC7bD36b3047BbA480E0');
+    assert.equal(body.accepts[0].network, 'base');
+  }));
+});
+
+test('agent-aura-lookup reports successful zero-value EIP-3009 invocations to OpenSea usage', async () => {
+  const usagePayloads = [];
+  const mockAuthorization = {
+    signature: '0x' + '11'.repeat(65),
+    from: '0x00000000000000000000000000000000000000aa',
+    to: '0x339559A2d1CD15059365FC7bD36b3047BbA480E0',
+    value: '0',
+    validAfter: '0',
+    validBefore: String(Math.floor(Date.now() / 1000) + 300),
+    nonce: '0x' + '22'.repeat(32),
+    chainId: 8453,
+  };
+  const mockGate = {
+    async check(_request, ctx) {
+      ctx.callerAddress = mockAuthorization.from;
+      ctx.callerAuthorization = mockAuthorization;
+      ctx.gates.predicate = { granted: true };
+      return null;
+    },
+  };
+
+  await withEnv({ OPENSEA_API_KEY: 'test-opensea-key' }, () => withServer(async (baseUrl) => {
+    process.env.OPENSEA_TOOL_USAGE_URL = `${baseUrl}/usage`;
+    const res = await fetch(`${baseUrl}/api/v2/tools/agent-aura-lookup`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tokenId: 1 }),
+    });
+    assert.equal(res.status, 200);
+    assert.equal(usagePayloads.length, 1);
+    assert.equal(usagePayloads[0].verification_type, 'eip3009_authorization');
+    assert.equal(usagePayloads[0].tool_chain_id, 8453);
+    assert.equal(usagePayloads[0].tool_registry_address, '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1');
+    assert.equal(usagePayloads[0].tool_onchain_id, '192');
+    assert.equal(usagePayloads[0].eip3009.caller_address, mockAuthorization.from);
+    assert.equal(usagePayloads[0].eip3009.value, '0');
+  }, (app) => {
+    app.post('/usage', (req, res) => {
+      usagePayloads.push(req.body);
+      res.json({ ok: true });
+    });
+    return { mountOptions: { agentAuraTool: { gates: [mockGate] } } };
+  }));
+  delete process.env.OPENSEA_TOOL_USAGE_URL;
 });
 
 test('agent-aura-lookup rejects invalid token IDs', async () => {
