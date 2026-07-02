@@ -9,7 +9,7 @@ const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const CONTRACT_LOWER = CONTRACT.toLowerCase();
 const DEPLOYER_LOWER = DEPLOYER.toLowerCase();
 const PUBLIC_BASE_URL = 'https://api.helixa.xyz';
-const AGENT_AURAS_COLLECTION_URL = 'https://opensea.io/collection/agent-auras';
+const AGENT_AURAS_COLLECTION_URL = 'https://opensea.io/collection/helixa-376479287';
 const ERC721_REQUIREMENT_KIND = '0xbdf8c428';
 const AGENT_AURAS_REQUIREMENT_DATA = `0x000000000000000000000000${CONTRACT_LOWER.slice(2)}`;
 

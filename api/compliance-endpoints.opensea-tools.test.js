@@ -38,7 +38,7 @@ test('serves an ERC-8257 manifest for the Agent Auras lookup tool', async () => 
     assert.equal(manifest.access.requirements[0].kind, '0xbdf8c428');
     assert.equal(manifest.access.requirements[0].data, '0x0000000000000000000000002e3b541c59d38b84e3bc54e977200230a204fe60');
     assert.match(manifest.access.requirements[0].label, /Agent Auras/);
-    assert.equal(manifest.access.requirements[0].links.opensea, 'https://opensea.io/collection/agent-auras');
+    assert.equal(manifest.access.requirements[0].links.opensea, 'https://opensea.io/collection/helixa-376479287');
   });
 });
 
@@ -62,7 +62,7 @@ test('agent-aura-lookup endpoint returns a compact Agent Aura profile envelope',
     assert.equal(body.contract, '0x2e3b541c59d38b84e3bc54e977200230a204fe60');
     assert.equal(body.profileUrl, 'https://api.helixa.xyz/api/v2/agent/1');
     assert.equal(body.imageUrl, 'https://api.helixa.xyz/api/v2/aura/1.png');
-    assert.equal(body.collectionUrl, 'https://opensea.io/collection/agent-auras');
+    assert.equal(body.collectionUrl, 'https://opensea.io/collection/helixa-376479287');
     assert.equal(body.openseaUrl, 'https://opensea.io/assets/base/0x2e3b541c59d38b84e3bc54e977200230a204fe60/1');
     assert.equal(body.standard, 'ERC-8004');
     assert.equal(body.tool, 'agent-aura-lookup');
