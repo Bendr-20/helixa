@@ -89,7 +89,7 @@ function requirePaymentLegacy(amountUSDC) {
 }
 
 const PRICING = {
-    agentMint: 0,
+    agentMint: 1,
     update: 0,
     verify: 0,
     credReport: 0.01,
