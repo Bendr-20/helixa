@@ -13,6 +13,11 @@ const {
 
 const TREASURY = '0x01b686e547F4feA03BfC9711B7B5306375735d2a';
 
+test('agent mint is priced at one dollar', () => {
+  assert.equal(PRICING.agentMint, 1);
+  assert.equal(formatUSDPrice(PRICING.agentMint), '$1.00');
+});
+
 test('cred report is priced at one cent', () => {
   assert.equal(PRICING.credReport, 0.01);
   assert.equal(formatUSDPrice(PRICING.credReport), '$0.01');

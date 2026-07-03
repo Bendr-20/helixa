@@ -2387,7 +2387,7 @@ app.get(['/', '/api/v2'], (req, res) => {
     res.json({
         name: 'Helixa V2 API',
         version: '2.0.0',
-        description: 'Agent identity infrastructure with SIWA for agents, SIWE for humans, and free public API access during the current growth phase',
+        description: 'Agent identity infrastructure with SIWA for agents, SIWE for humans, and payment-gated minting on Base',
         contract: V2_CONTRACT_ADDRESS,
         contractDeployed: isContractDeployed(),
         network: 'Base (8453)',
@@ -2417,7 +2417,7 @@ app.get(['/', '/api/v2'], (req, res) => {
                 'GET /api/v2/name/:name': 'Name availability check',
             },
             authenticated: {
-                'POST /api/v2/mint': 'Register new agent (SIWA required, currently free)',
+                'POST /api/v2/mint': `Register new agent (SIWA required, ${formatUSDPrice(PRICING.agentMint)} USDC/x402 or direct ETH mint)`,
                 'POST /api/v2/principals/human/register': 'Register or mint a human principal profile (SIWE or Privy access token)',
                 'POST /api/v2/principals/organization/register': 'Register or mint an organization principal profile (SIWE or Privy access token)',
                 'POST /api/v2/human/:id/link-agent': 'Link an owned agent to a human principal (SIWE required)',
@@ -2432,14 +2432,14 @@ app.get(['/', '/api/v2'], (req, res) => {
         },
         payments: {
             methods: [
-                { protocol: 'x402', status: 'available', chain: 'Base (8453)', currency: 'USDC', endpoint: '/api/v2/agent/:id/cred-report' },
+                { protocol: 'x402', status: 'available', chain: 'Base (8453)', currency: 'USDC', endpoints: ['/api/v2/mint', '/api/v2/register/solana', '/api/v2/agent/:id/cred-report'] },
                 { protocol: 'x402', status: 'planned', chain: 'Base (8453)', currency: '$CRED', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3', endpoint: '/api/v2/agent/:id/cred-report', note: 'Pending clean custom ERC20 facilitator support' },
                 ...(mppServer ? [{ protocol: 'MPP', status: 'available', chain: 'Tempo (4217)', currency: 'USDC.e', spec: 'https://mpp.dev' }] : []),
             ],
             pricing: {
                 phase: 'growth',
-                note: 'Most platform fees are waived; full Cred reports are x402 gated.',
-                agentMint: 'free',
+                note: 'Most platform fees are waived; agent minting and full Cred reports are x402 gated.',
+                agentMint: formatUSDPrice(PRICING.agentMint),
                 update: 'free',
                 credReport: formatUSDPrice(PRICING.credReport),
                 soulLock: 'free',
@@ -9219,7 +9219,7 @@ process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', 
         console.log(`\n🧬 Helixa V2 API running on port ${PORT}`);
         console.log(`   Contract: ${V2_CONTRACT_ADDRESS} ${isContractDeployed() ? '✅' : '⏳ NOT DEPLOYED'}`);
         console.log(`   Auth: SIWA (Sign-In With Agent)`);
-        console.log('   Payments: platform fees disabled');
+        console.log(`   Payments: agent mint ${formatUSDPrice(PRICING.agentMint)} USDC/x402, Cred report ${formatUSDPrice(PRICING.credReport)} USDC/x402`);
         console.log(`   RPC: ${RPC_URL}`);
         console.log(`   8004 Registry: ${ERC8004_REGISTRY} (manual owner-wallet registration only)`);
         console.log(`   Deployer: ${wallet ? wallet.address : 'READ-ONLY (no key)'}\n`);
