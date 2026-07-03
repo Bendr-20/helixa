@@ -20,6 +20,7 @@ const {
 } = require('./internal-auth');
 const { getXBearerToken } = require('./services/runtime-secrets');
 const blocktronicsTokenMetrics = require('./services/blocktronics-token-metrics');
+const { resolveAuraSourceWithFallback } = require('./services/aura-fallback');
 const {
     mergePublicAgentProfile,
     mergeTraitLists,
@@ -3040,7 +3041,7 @@ app.get(['/api/v2/aura/:id.png', '/api/v2/card/:id.png'], async (req, res) => {
         let pending = cached?.pending;
         if (!pending) {
             pending = (async () => {
-                const agent = await formatAgentAuraSource(tokenId);
+                const agent = await resolveAuraSourceWithFallback(tokenId, formatAgentAuraSource, { timeoutMs: 2500 });
 
                 // Keep aura generation lightweight. This route is hit by the Trust Graph UI,
                 // so avoid the slow external enrichments in the full agent formatter.
