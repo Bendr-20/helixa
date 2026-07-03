@@ -1,11 +1,16 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
 const {
   parseTokenIds,
   inspectMetadataShape,
   classifyHealth,
   buildOpenSeaAssetUrl,
+  loadOpenSeaKey,
 } = require('./opensea-metadata-health');
 
 test('parseTokenIds supports comma lists and ranges with de-duplication', () => {
@@ -73,4 +78,12 @@ test('buildOpenSeaAssetUrl uses canonical Base contract path', () => {
     buildOpenSeaAssetUrl(1),
     'https://api.opensea.io/api/v2/chain/base/contract/0x2e3B541C59D38b84E3Bc54e977200230A204Fe60/nfts/1',
   );
+});
+
+test('loadOpenSeaKey accepts api_key config field', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'opensea-key-test-'));
+  const file = path.join(dir, 'config.json');
+  fs.writeFileSync(file, JSON.stringify({ api_key: 'test-key' }));
+
+  assert.equal(loadOpenSeaKey({ keyFile: file }), 'test-key');
 });
