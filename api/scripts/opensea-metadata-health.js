@@ -124,7 +124,7 @@ function loadOpenSeaKey({ keyFile } = {}) {
   const file = keyFile || process.env.OPENSEA_API_KEY_FILE || path.join(os.homedir(), '.config/opensea/config.json');
   try {
     const data = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return String(data.apiKey || data.OPENSEA_API_KEY || '').trim() || null;
+    return String(data.apiKey || data.api_key || data.OPENSEA_API_KEY || '').trim() || null;
   } catch (_) {
     return null;
   }
@@ -275,4 +275,5 @@ module.exports = {
   buildOpenSeaAssetUrl,
   checkTokenHealth,
   parseOpenSeaNft,
+  loadOpenSeaKey,
 };
