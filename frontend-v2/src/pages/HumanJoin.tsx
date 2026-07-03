@@ -4,6 +4,12 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { ethers } from 'ethers';
 import { API_URL } from '../lib/constants';
 import { buildHumanSiweMessage } from '../utils/siwe';
+import {
+  getWalletPublishFallbackMessage,
+  isWalletRejection,
+  shouldFallbackToPrivyAfterWalletError,
+  shouldRetryHumanPublishOffchain,
+} from '../utils/humanWalletAuth.js';
 import { HumanAuthButtons } from '../components/HumanAuthButtons';
 
 type HumanJoinStep = 'intro' | 'profile' | 'work' | 'links' | 'review';
@@ -236,20 +242,6 @@ async function buildSiweToken(wallet: { address: string; getEthereumProvider: ()
   return `${address}:${timestamp}:${signature}`;
 }
 
-function isWalletRejection(error: any) {
-  const code = error?.code;
-  const message = [error?.message, error?.shortMessage, error?.reason, error?.info?.error?.message]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  return code === 4001
-    || code === 'ACTION_REJECTED'
-    || message.includes('user rejected')
-    || message.includes('rejected the request')
-    || message.includes('action_rejected');
-}
-
 function getWalletLinkFailureMessage(error: any) {
   if (isWalletRejection(error)) {
     return 'Human profile created. Agent linking still needs a wallet signature, so finish that step on desktop or retry it later from Manage.';
@@ -420,10 +412,24 @@ export function HumanJoin() {
     setIsSubmitting(true);
     try {
       let authToken = '';
+      let mintOnchain = false;
+      let walletAuthError: any = null;
+      let publishWarning = '';
       const shouldUseWalletAuth = Boolean(wallet) && draft.authMethod === 'wallet';
       if (shouldUseWalletAuth) {
         // Wallet proof is only required for wallet-first onchain minting.
-        authToken = await buildSiweToken(wallet);
+        try {
+          authToken = await buildSiweToken(wallet);
+          mintOnchain = true;
+        } catch (error: any) {
+          walletAuthError = error;
+          if (!shouldFallbackToPrivyAfterWalletError(error)) throw error;
+
+          const token = await getAccessToken();
+          if (!token) throw error;
+          authToken = token;
+          publishWarning = getWalletPublishFallbackMessage(error);
+        }
       } else {
         // No linked agent → use Privy access token (email/social)
         const token = await getAccessToken();
@@ -459,7 +465,7 @@ export function HumanJoin() {
 
       const payload = {
         name: draft.displayName.trim(),
-        mintOnchain: shouldUseWalletAuth,
+        mintOnchain,
         description: draft.bio.trim(),
         image: draft.profileImage.trim() || undefined,
         skills: draft.skills,
@@ -496,7 +502,7 @@ export function HumanJoin() {
         },
       };
 
-      const registerRes = await fetch(`${API_URL}/api/v2/principals/human/register`, {
+      let registerRes = await fetch(`${API_URL}/api/v2/principals/human/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -505,15 +511,38 @@ export function HumanJoin() {
         body: JSON.stringify(payload),
       });
 
-      const registerData = await registerRes.json().catch(() => ({}));
-      if (!registerRes.ok) throw new Error(registerData?.error || 'Human register failed');
+      let registerData = await registerRes.json().catch(() => ({}));
+      if (!registerRes.ok) {
+        const registerError = new Error(registerData?.error || 'Human register failed');
+        if (!mintOnchain || !shouldRetryHumanPublishOffchain(registerError)) throw registerError;
+
+        const fallbackToken = await getAccessToken().catch(() => null);
+        if (!fallbackToken) throw registerError;
+
+        registerRes = await fetch(`${API_URL}/api/v2/principals/human/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${fallbackToken}`,
+          },
+          body: JSON.stringify({ ...payload, mintOnchain: false }),
+        });
+        registerData = await registerRes.json().catch(() => ({}));
+        if (!registerRes.ok) throw new Error(registerData?.error || 'Human register failed');
+
+        mintOnchain = false;
+        authToken = fallbackToken;
+        walletAuthError = registerError;
+        publishWarning = getWalletPublishFallbackMessage(registerError);
+      }
 
       let principal = registerData.principal;
       let linkWarning = '';
 
       if (linkedAgentTokenId !== null && principal?.id && wallet) {
         try {
-          const linkAuthToken = shouldUseWalletAuth ? authToken : await buildSiweToken(wallet);
+          if (walletAuthError && shouldUseWalletAuth) throw walletAuthError;
+          const linkAuthToken = mintOnchain ? authToken : await buildSiweToken(wallet);
           const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
             method: 'POST',
             headers: {
@@ -544,7 +573,7 @@ export function HumanJoin() {
       const profilePath = `/h/${profileId}`;
       window.localStorage.removeItem(DRAFT_STORAGE_KEY);
       setCreatedProfilePath(profilePath);
-      setSubmitSuccess(linkWarning || registerData?.message || 'Human profile published.');
+      setSubmitSuccess([linkWarning || registerData?.message || 'Human profile published.', publishWarning].filter(Boolean).join(' '));
 
       if (!linkWarning) {
         navigate(profilePath);
@@ -610,7 +639,7 @@ export function HumanJoin() {
               }}>
                 {[
                   { key: 'email', title: 'Start with Email', body: 'Best for consultants, operators, and service providers who want a clean profile setup.' },
-                  { key: 'wallet', title: 'Start with Wallet', body: 'Best path. Wallet sign-in now pushes your human profile onchain so it can be discovered through Helixa and 8004 flows.' },
+                  { key: 'wallet', title: 'Start with Wallet', body: 'Wallet sign-in can push your human profile onchain so it can be discovered through Helixa and 8004 flows.' },
                   { key: 'social', title: 'Start with Social', body: 'Useful when your public reputation already lives on X, GitHub, or Farcaster.' },
                 ].map(option => (
                   <button
@@ -643,7 +672,7 @@ export function HumanJoin() {
                 marginBottom: '2rem',
               }}>
                 {[
-                  ['Wallet-first minting', 'If you connect a wallet, Helixa now pushes your human profile onchain by default'], 
+                  ['Wallet-first minting', 'If your wallet can sign cleanly, Helixa pushes your human profile onchain. If wallet signing fails, we save the profile offchain first so you are not blocked'],
                   ['Human-first profile', 'Bio, timezone, skills, service categories'],
                   ['Optional agent link', 'Connect the people behind the work'],
                 ].map(([title, body]) => (

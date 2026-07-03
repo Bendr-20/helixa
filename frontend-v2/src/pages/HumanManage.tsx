@@ -4,6 +4,11 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { BrowserProvider } from 'ethers';
 import { API_URL } from '../lib/constants';
 import { buildHumanSiweMessage } from '../utils/siwe';
+import {
+  getWalletPublishFallbackMessage,
+  isWalletRejection,
+  shouldFallbackToPrivyAfterWalletError,
+} from '../utils/humanWalletAuth.js';
 import { useAgentsByOwner } from '../hooks/useAgents';
 import { HumanAuthButtons } from '../components/HumanAuthButtons';
 
@@ -216,20 +221,6 @@ async function buildWalletBearer(wallet: any) {
   const provider = await wallet.getEthereumProvider();
   const signature = await new BrowserProvider(provider).getSigner().then(signer => signer.signMessage(walletMessage));
   return `${walletAddress}:${timestamp}:${signature}`;
-}
-
-function isWalletRejection(error: any) {
-  const code = error?.code;
-  const message = [error?.message, error?.shortMessage, error?.reason, error?.info?.error?.message]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  return code === 4001
-    || code === 'ACTION_REJECTED'
-    || message.includes('user rejected')
-    || message.includes('rejected the request')
-    || message.includes('action_rejected');
 }
 
 function getWalletStatusMessage(error: any, context: 'load' | 'save' | 'link' = 'save') {
@@ -616,7 +607,18 @@ export function HumanManage() {
     try {
       const needsWalletAuth = Boolean(human?.tokenId) || linkedAgentTokenId !== null;
       const humanAuthToken = authenticated ? await getAccessToken().catch(() => null) : null;
-      const authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken, preferWallet: needsWalletAuth });
+      let authHeader = '';
+      let walletAuthError: any = null;
+      let publishWarning = '';
+      try {
+        authHeader = await getHumanAuthHeader({ wallet, authenticated, getAccessToken, preferWallet: needsWalletAuth });
+      } catch (error: any) {
+        walletAuthError = error;
+        if (!needsWalletAuth || !authenticated || !humanAuthToken || !shouldFallbackToPrivyAfterWalletError(error)) throw error;
+
+        authHeader = `Bearer ${humanAuthToken}`;
+        publishWarning = getWalletPublishFallbackMessage(error);
+      }
       const authEmail = user?.email?.address?.trim() || '';
       const linkedAccounts = compactObject({
         x: draft.x.replace(/^@/, '').trim(),
@@ -705,24 +707,30 @@ export function HumanManage() {
 
       let principal = registerData?.principal || payload;
 
+      let linkWarning = '';
       if (linkedAgentTokenId !== null && principal?.id && wallet) {
-        const walletAuthHeader = `Bearer ${await buildWalletBearer(wallet)}`;
-        const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: walletAuthHeader,
-          },
-          body: JSON.stringify({
-            agentTokenId: linkedAgentTokenId,
-            relationship: draft.relationship,
-            ...(humanAuthToken ? { humanAuthToken } : {}),
-          }),
-        });
+        try {
+          if (walletAuthError) throw walletAuthError;
+          const walletAuthHeader = `Bearer ${await buildWalletBearer(wallet)}`;
+          const linkRes = await fetch(`${API_URL}/api/v2/human/${encodeURIComponent(String(principal.id))}/link-agent`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: walletAuthHeader,
+            },
+            body: JSON.stringify({
+              agentTokenId: linkedAgentTokenId,
+              relationship: draft.relationship,
+              ...(humanAuthToken ? { humanAuthToken } : {}),
+            }),
+          });
 
-        if (linkRes.ok) {
-          const linkData = await linkRes.json().catch(() => ({}));
-          if (linkData?.principal) principal = linkData.principal;
+          if (linkRes.ok) {
+            const linkData = await linkRes.json().catch(() => ({}));
+            if (linkData?.principal) principal = linkData.principal;
+          }
+        } catch (error: any) {
+          linkWarning = getWalletStatusMessage(error, 'link');
         }
       }
 
@@ -732,7 +740,7 @@ export function HumanManage() {
       setDraft(nextDraft);
       setSkillsInput(toCommaSeparated(nextDraft.skills));
       setRepairMode(false);
-      setStatus({ type: 'success', msg: registerData?.message || 'Human profile saved.' });
+      setStatus({ type: 'success', msg: [registerData?.message || 'Human profile saved.', publishWarning, linkWarning].filter(Boolean).join(' ') });
       setCurrentStep('review');
     } catch (error: any) {
       setStatus({
