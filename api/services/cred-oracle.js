@@ -7,7 +7,7 @@
 
 const CRED_ADDRESS = '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3';
 const CRED_DECIMALS = 18;
-const CRED_DISCOUNT = 0.80; // 20% discount → pay 80%
+const CRED_DISCOUNT = 1.00; // $0.10 in USDC or the current $0.10 equivalent in CRED
 const DEXSCREENER_URL = `https://api.dexscreener.com/latest/dex/tokens/${CRED_ADDRESS}`;
 const CACHE_TTL_MS = 60_000;
 
@@ -17,7 +17,7 @@ let fetching = false;
 let refreshTimer = null;
 
 async function fetchPrice() {
-    if (fetching) return; // max 1 concurrent
+    if (fetching) return getCredPriceUSDC(); // max 1 concurrent
     fetching = true;
     try {
         const ctrl = new AbortController();
@@ -41,6 +41,7 @@ async function fetchPrice() {
     } finally {
         fetching = false;
     }
+    return getCredPriceUSDC();
 }
 
 function getCredPriceUSDC() {
@@ -71,6 +72,8 @@ function startBackgroundRefresh() {
 module.exports = {
     CRED_ADDRESS,
     CRED_DECIMALS,
+    CRED_DISCOUNT,
+    fetchPrice,
     getCredPriceUSDC,
     getCredAmountForUSD,
     startBackgroundRefresh,
