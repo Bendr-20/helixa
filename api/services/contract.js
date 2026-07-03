@@ -88,18 +88,10 @@ try {
 // ─── Providers & Wallet ─────────────────────────────────────────
 const CHAIN_ID = RPC_URL.includes('sepolia') ? 84532 : 8453;
 const provider = new ethers.JsonRpcProvider(RPC_URL, CHAIN_ID, { staticNetwork: true });
-const readProvider = READ_RPC_URLS.length === 1
-    ? new ethers.JsonRpcProvider(READ_RPC_URLS[0], CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 })
-    : new ethers.FallbackProvider(
-        READ_RPC_URLS.map((url, index) => ({
-            provider: new ethers.JsonRpcProvider(url, CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 }),
-            priority: index + 1,
-            weight: 1,
-            stallTimeout: 900,
-        })),
-        CHAIN_ID,
-        { quorum: 1 },
-    );
+// Ethers FallbackProvider can enter a persistent "no runners?!" state after
+// transient Base RPC failures. Keep read traffic on a plain JsonRpcProvider so
+// one bad quorum round cannot poison the API process until restart.
+const readProvider = new ethers.JsonRpcProvider(READ_RPC_URLS[0], CHAIN_ID, { staticNetwork: true, batchMaxCount: 1 });
 const wallet = DEPLOYER_KEY ? new ethers.Wallet(DEPLOYER_KEY, provider) : null;
 const rawContract = wallet ? new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, wallet) : null;
 const readContract = new ethers.Contract(V2_CONTRACT_ADDRESS, V2_ABI, readProvider);

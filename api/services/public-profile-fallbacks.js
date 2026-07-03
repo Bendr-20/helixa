@@ -129,11 +129,12 @@ function mergeObjectsWithFallback(primary, fallback, keys) {
 
 function mergePublicAgentProfile(agent, profile = {}) {
   if (!agent || typeof agent !== 'object') return agent;
+  const fallbackProfile = profile && typeof profile === 'object' ? profile : {};
   const merged = { ...agent };
 
   const personality = mergeObjectsWithFallback(
     normalizePersonality(agent.personality),
-    normalizePersonality(profile.personality),
+    normalizePersonality(fallbackProfile.personality),
     ['quirks', 'communicationStyle', 'values', 'humor', 'riskTolerance', 'autonomyLevel'],
   );
   if (personality) merged.personality = personality;
@@ -141,13 +142,13 @@ function mergePublicAgentProfile(agent, profile = {}) {
 
   const narrative = mergeObjectsWithFallback(
     normalizeNarrative(agent.narrative),
-    normalizeNarrative(profile.narrative),
+    normalizeNarrative(fallbackProfile.narrative),
     ['origin', 'mission', 'lore', 'manifesto'],
   );
   if (narrative) merged.narrative = narrative;
   else if ('narrative' in merged) merged.narrative = null;
 
-  const traits = mergeTraitLists(agent.traits, profile.traits);
+  const traits = mergeTraitLists(agent.traits, fallbackProfile.traits);
   merged.traits = traits;
   merged.traitCount = traits.length;
 

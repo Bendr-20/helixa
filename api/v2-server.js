@@ -19,12 +19,17 @@ const {
     verifyHmacSignature,
 } = require('./internal-auth');
 const { getXBearerToken } = require('./services/runtime-secrets');
+const blocktronicsTokenMetrics = require('./services/blocktronics-token-metrics');
 const {
     mergePublicAgentProfile,
     mergeTraitLists,
     normalizeNarrative,
     normalizePersonality,
 } = require('./services/public-profile-fallbacks');
+const {
+    shouldContinueOffchainAfterMintError,
+    formatMintFallbackWarning,
+} = require('./services/principal-register-policy');
 
 // ─── Services ───────────────────────────────────────────────────
 const svc = require('./services/contract');
@@ -57,6 +62,7 @@ const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
 const {
     verifyUSDCPayment, requirePayment, requirePaymentLegacy,
     PRICING, PARTNER_PRICING, resolvePrice, usedPayments, saveUsedPayments,
+    buildCredReportPaymentRoute, formatUSDPrice, getCredTokenAmountForUSD, buildServicePricing,
 } = require('./services/payments');
 const {
     V1_OG_WALLETS, REFERRAL_CODES, referralRegistry, referralStats,
@@ -334,6 +340,31 @@ const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dex
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
 
+async function getCredReportCredPriceUSD() {
+    let price = credOracle.getCredPriceUSDC();
+    if (!price && typeof credOracle.fetchPrice === 'function') {
+        price = await credOracle.fetchPrice();
+    }
+    if (!price) throw new Error('CRED price unavailable - pay with USDC instead');
+    return price;
+}
+
+async function buildCredReportUnpaidBody() {
+    return {
+        contentType: 'application/json',
+        body: {
+            error: 'Payment required',
+            service: 'cred-report',
+            label: 'CRED report',
+            price: { usdc: formatUSDPrice(PRICING.credReport) },
+            network: 'Base (eip155:8453)',
+            assets: { usdc: USDC_ADDRESS },
+            payment: 'Use the PAYMENT-REQUIRED header to complete x402 payment in USDC.',
+            next: { cred: 'Native $CRED x402 payment will be added after custom ERC20 settlement is confirmed.' },
+        },
+    };
+}
+
 const x402Routes = {};
 if (PRICING.agentMint > 0) {
     x402Routes['POST /api/v2/mint'] = {
@@ -349,8 +380,11 @@ if (PRICING.update > 0) {
 }
 if (PRICING.credReport > 0) {
     x402Routes['GET /api/v2/agent/[id]/cred-report'] = {
-        accepts: [{ scheme: 'exact', price: `$${PRICING.credReport}`, network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
-        description: 'Full Cred Report with scoring breakdown', mimeType: 'application/json',
+        ...buildCredReportPaymentRoute({
+            priceUSD: PRICING.credReport,
+            payTo: TREASURY_ADDRESS,
+        }),
+        unpaidResponseBody: buildCredReportUnpaidBody,
     };
 }
 if (PRICING.soulLock > 0) {
@@ -449,14 +483,13 @@ async function verifyUSDCTransfer(txHash, expectedAmountUSD, expectedRecipient) 
     throw new Error('No matching USDC transfer found in transaction');
 }
 
-// Verify a $CRED ERC-20 transfer on Base (20% discount applied)
+// Verify a $CRED ERC-20 transfer on Base at the current USD equivalent price.
 async function verifyCREDTransfer(txHash, expectedAmountUSD, expectedRecipient) {
     const credPrice = credOracle.getCredPriceUSDC();
     if (!credPrice) throw new Error('CRED price unavailable - pay with USDC instead');
     
-    const discountedUSD = expectedAmountUSD * 0.80; // 20% discount
-    const expectedCredAmount = discountedUSD / credPrice;
-    const expectedCredWei = BigInt(Math.round(expectedCredAmount * 10 ** CRED_TOKEN_DECIMALS));
+    const expectedCredWei = BigInt(getCredTokenAmountForUSD(expectedAmountUSD, credPrice));
+    const expectedCredAmount = parseFloat(ethers.formatUnits(expectedCredWei, CRED_TOKEN_DECIMALS));
     // Allow 2% slippage
     const minCredWei = expectedCredWei * 98n / 100n;
     
@@ -473,7 +506,7 @@ async function verifyCREDTransfer(txHash, expectedAmountUSD, expectedRecipient) 
         const amount = BigInt(log.data);
         
         if (to.toLowerCase() === expectedRecipient.toLowerCase() && amount >= minCredWei) {
-            const credAmount = Number(amount) / 10 ** CRED_TOKEN_DECIMALS;
+            const credAmount = parseFloat(ethers.formatUnits(amount, CRED_TOKEN_DECIMALS));
             const usdValue = credAmount * credPrice;
             return { 
                 from: ethers.getAddress('0x' + log.topics[1].slice(26)), 
@@ -481,7 +514,6 @@ async function verifyCREDTransfer(txHash, expectedAmountUSD, expectedRecipient) 
                 amount: credAmount, 
                 usdValue,
                 token: 'CRED',
-                discount: '20%',
                 credPrice
             };
         }
@@ -561,7 +593,7 @@ function paymentGate(priceUSD, recipient) {
                 let result;
                 if (isCredPayment) {
                     result = await verifyCREDTransfer(txHash, priceUSD, recipient);
-                    console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from} (20% discount applied)`);
+                    console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from}`);
                 } else {
                     result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
                     console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
@@ -577,7 +609,7 @@ function paymentGate(priceUSD, recipient) {
                     error: `Payment verification failed: ${e.message}`,
                     hint: 'Send USDC or $CRED to the payment address, then retry with X-Payment-Proof header. For CRED, add X-Payment-Token: CRED. MPP (Tempo) also accepted.',
                     payTo: recipient,
-                    price: { usdc: `$${priceUSD}`, cred: credAmount ? `${Math.ceil(credAmount)} CRED (20% discount)` : 'unavailable' },
+                    price: { usdc: formatUSDPrice(priceUSD), cred: credAmount ? `${Math.ceil(credAmount).toLocaleString()} CRED` : 'unavailable' },
                     network: 'Base (eip155:8453)',
                     assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS },
                     mpp: mppServer ? { supported: true, chain: 'Tempo (4217)', currency: 'USDC.e' } : undefined
@@ -663,7 +695,7 @@ if (Object.keys(x402Routes).length > 0) {
             let result;
             if (isCredPayment) {
                 result = await verifyCREDTransfer(txHash, priceUSD, recipient);
-                console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from} (20% discount)`);
+                console.log(`[CRED PAYMENT] Verified ${result.amount.toLocaleString()} CRED (~$${result.usdValue.toFixed(4)}) from ${result.from}`);
             } else {
                 result = await verifyUSDCTransfer(txHash, priceUSD, recipient);
                 console.log(`[TX PAYMENT] Verified $${result.amount} USDC from ${result.from} (${txHash.slice(0, 10)}...)`);
@@ -678,7 +710,7 @@ if (Object.keys(x402Routes).length > 0) {
                 error: `Payment verification failed: ${e.message}`,
                 hint: 'Send USDC or $CRED to the payment address. For CRED, add header X-Payment-Token: CRED',
                 payTo: recipient,
-                price: { usdc: `$${priceUSD}`, cred: credAmount ? `${Math.ceil(credAmount)} CRED (20% discount)` : 'unavailable' },
+                price: { usdc: formatUSDPrice(priceUSD), cred: credAmount ? `${Math.ceil(credAmount).toLocaleString()} CRED` : 'unavailable' },
                 network: 'Base (eip155:8453)',
                 assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS }
             });
@@ -1786,7 +1818,6 @@ async function formatAgentPublicFast(tokenId) {
     const traits = mergeTraitLists(traitsRes, profile.traits);
 
     const LINKED_TOKEN_KEYS = ['linked-token', 'linked-token-chain', 'linked-token-symbol', 'linked-token-name'];
-
     const linkedToken = {};
     if (Array.isArray(traitsRes)) {
         for (const t of traitsRes) {
@@ -2400,16 +2431,16 @@ app.get(['/', '/api/v2'], (req, res) => {
         },
         payments: {
             methods: [
-                { protocol: 'x402', status: 'disabled', chain: 'Base (8453)', currency: 'USDC' },
-                { protocol: 'x402', status: 'disabled', chain: 'Base (8453)', currency: '$CRED', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3' },
+                { protocol: 'x402', status: 'available', chain: 'Base (8453)', currency: 'USDC', endpoint: '/api/v2/agent/:id/cred-report' },
+                { protocol: 'x402', status: 'planned', chain: 'Base (8453)', currency: '$CRED', token: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3', endpoint: '/api/v2/agent/:id/cred-report', note: 'Pending clean custom ERC20 facilitator support' },
                 ...(mppServer ? [{ protocol: 'MPP', status: 'available', chain: 'Tempo (4217)', currency: 'USDC.e', spec: 'https://mpp.dev' }] : []),
             ],
             pricing: {
                 phase: 'growth',
-                note: 'Helixa platform fees are currently waived.',
+                note: 'Most platform fees are waived; full Cred reports are x402 gated.',
                 agentMint: 'free',
                 update: 'free',
-                credReport: 'free',
+                credReport: formatUSDPrice(PRICING.credReport),
                 soulLock: 'free',
                 soulHandshake: 'free',
             },
@@ -2434,7 +2465,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', version: 'v2', port: PORT, contractDeployed: isContractDeployed() });
 });
 
-// GET /api/v2/pricing — Current prices in USDC and $CRED
+// GET /api/v2/pricing - Current prices in USDC with planned $CRED payment metadata
 // Bankr Router stats + dry-run
 app.get('/api/v2/llm/stats', (req, res) => {
     try {
@@ -2455,20 +2486,17 @@ app.get('/api/v2/pricing', (req, res) => {
     const services = {};
     for (const [key, usdPrice] of Object.entries(PRICING)) {
         if (usdPrice === 0) {
-            services[key] = { usdc: 'free', cred: 'free' };
+            services[key] = buildServicePricing(0);
         } else {
             const credAmount = credOracle.getCredAmountForUSD(usdPrice);
-            services[key] = {
-                usdc: `$${usdPrice}`,
-                cred: credAmount != null ? { amount: credAmount, formatted: `${Math.ceil(credAmount).toLocaleString()} CRED`, discount: '20%' } : null,
-            };
+            services[key] = buildServicePricing(usdPrice, credAmount);
         }
     }
     res.json({
         credToken: credOracle.CRED_ADDRESS,
         credPriceUSD: credPrice,
         credDecimals: credOracle.CRED_DECIMALS,
-        discount: '20% when paying with $CRED',
+        note: 'Paid x402 endpoints currently accept USDC. Native $CRED payment is planned after custom ERC20 facilitator support is confirmed.',
         services,
         oracleStatus: credPrice != null ? 'active' : 'unavailable (USDC only)',
     });
@@ -2980,27 +3008,12 @@ app.get('/api/v2/metadata/:id', async (req, res) => {
             : `${agentName} — Helixa V2 Agent #${agent.tokenId} on Base. Cred Score: ${agent.credScore}. ${tier} tier.`;
         
         res.json({
-            // ERC-8004 registration file fields
-            type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
+            // Pure OpenSea-compatible NFT metadata. Keep agent registration
+            // documents out of token JSON or OpenSea indexes those fields
+            // instead of CRED Score/Tier attributes on some tokens.
             name: agentName,
             description: agentDesc,
             image: imageUrl,
-            services: [
-                { name: 'web', endpoint: `https://helixa.xyz/agent/${agent.tokenId}` },
-                { name: 'A2A', endpoint: 'https://api.helixa.xyz/.well-known/agent-card.json', version: '0.3.0' },
-                { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
-                { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
-            ],
-            x402Support: false,
-            active: true,
-            registrations: [
-                {
-                    agentId: agent.tokenId,
-                    agentRegistry: `eip155:8453:${V2_CONTRACT_ADDRESS}`,
-                },
-            ],
-            supportedTrust: ['reputation'],
-            // OpenSea-compatible fields (backward compat)
             external_url: `https://helixa.xyz/agent/${agent.tokenId}`,
             attributes,
         });
@@ -3353,44 +3366,20 @@ async function mintHandler(req, res) {
             const termPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
             if (fs.existsSync(termPath)) {
                 const tdb = new Database(termPath);
-                // Find existing entry by agent address (from agentscan)
-                const existing = tdb.prepare('SELECT id, token_id FROM agents WHERE address = ? OR owner_address = ?')
-                    .get(agentAddress.toLowerCase(), agentAddress.toLowerCase());
-                
-                const helixaTokenId = `helixa-${tokenId}`;
-                const credScore = 40; // Base score for fresh Helixa mint
-                const tierOf = s => s >= 91 ? 'PREFERRED' : s >= 76 ? 'PRIME' : s >= 51 ? 'QUALIFIED' : s >= 26 ? 'MARGINAL' : 'JUNK';
-                
-                if (existing) {
-                    // Upgrade existing entry → Helixa
-                    tdb.prepare(`UPDATE agents SET 
-                        name = ?, platform = 'helixa', token_id = ?, agent_id = ?,
-                        x402_supported = 1, cred_score = ?, cred_tier = ?, verified = 1,
-                        image_url = ?, description = ?,
-                        metadata = ?, registry = ?
-                        WHERE id = ?`
-                    ).run(name, helixaTokenId, helixaTokenId, credScore, tierOf(credScore),
-                        `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
-                        `${name} — ${fw} agent on Helixa (ERC-8004).`,
-                        JSON.stringify({ framework: fw, mintOrigin: 'AGENT_SIWA', soulbound: soulbound === true }),
-                        V2_CONTRACT_ADDRESS, existing.id);
-                    console.log(`[TERMINAL] ✓ Upgraded existing entry #${existing.id} → helixa-${tokenId}`);
-                } else {
-                    // Insert new Helixa entry
-                    tdb.prepare(`INSERT OR REPLACE INTO agents 
-                        (address, agent_id, token_id, chain_id, name, platform, x402_supported,
-                         cred_score, cred_tier, verified, image_url, description, metadata, registry,
-                         owner_address, created_at, registered_at)
-                        VALUES (?, ?, ?, 8453, ?, 'helixa', 1, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
-                    ).run(agentAddress.toLowerCase(), helixaTokenId, helixaTokenId, name,
-                        credScore, tierOf(credScore),
-                        `https://api.helixa.xyz/api/v2/aura/${tokenId}.png`,
-                        `${name} — ${fw} agent on Helixa (ERC-8004).`,
-                        JSON.stringify({ framework: fw, mintOrigin: 'AGENT_SIWA', soulbound: soulbound === true }),
-                        V2_CONTRACT_ADDRESS, agentAddress.toLowerCase(),
-                        new Date().toISOString(), new Date().toISOString());
-                    console.log(`[TERMINAL] ✓ New Helixa entry: helixa-${tokenId}`);
-                }
+                const { syncHelixaAgentToTerminal } = require('./terminal-sync');
+                syncHelixaAgentToTerminal(tdb, {
+                    tokenId,
+                    name,
+                    agentAddress,
+                    owner: agentAddress,
+                    framework: fw,
+                    mintOrigin: 'AGENT_SIWA',
+                    soulbound: soulbound === true,
+                    credScore: 40, // Base score for fresh Helixa mint
+                    verified: true,
+                    mintedAt: new Date().toISOString(),
+                }, { registry: V2_CONTRACT_ADDRESS });
+                console.log(`[TERMINAL] ✓ Synced Helixa entry: helixa-${tokenId}`);
                 tdb.close();
             }
         } catch (e) {
@@ -4066,31 +4055,42 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
         }
 
         let mintTxHash = null;
+        let mintedOnchain = false;
+        let mintWarning = null;
         if (mintOnchain) {
             if (!callerWallet) {
                 return res.status(403).json({ error: 'On-chain mint requires wallet authentication (SIWE)' });
             }
             if (!isContractDeployed()) return res.status(503).json({ error: 'V2 contract not yet deployed' });
-            const tx = await contract.mintFor(
-                callerWallet,
-                callerWallet,
-                displayName,
-                clamp(framework || 'human', 32) || 'human',
-                soulbound === true,
-                0,
-            );
-            const receipt = await tx.wait();
-            mintTxHash = tx.hash;
-            for (const log of receipt.logs) {
-                try {
-                    const parsed = contract.interface.parseLog(log);
-                    if (parsed?.name === 'AgentRegistered') {
-                        tokenId = Number(parsed.args.tokenId);
-                        break;
-                    }
-                } catch {}
+            try {
+                const tx = await contract.mintFor(
+                    callerWallet,
+                    callerWallet,
+                    displayName,
+                    clamp(framework || 'human', 32) || 'human',
+                    soulbound === true,
+                    0,
+                );
+                const receipt = await tx.wait();
+                mintTxHash = tx.hash;
+                for (const log of receipt.logs) {
+                    try {
+                        const parsed = contract.interface.parseLog(log);
+                        if (parsed?.name === 'AgentRegistered') {
+                            tokenId = Number(parsed.args.tokenId);
+                            break;
+                        }
+                    } catch {}
+                }
+                if (tokenId === null) return res.status(500).json({ error: 'Human mint succeeded but tokenId could not be recovered' });
+                mintedOnchain = true;
+            } catch (e) {
+                if (!shouldContinueOffchainAfterMintError(e)) throw e;
+                console.error(`[HUMAN REGISTER] Mint failed; saving offchain: ${e.message}`);
+                tokenId = null;
+                mintTxHash = null;
+                mintWarning = formatMintFallbackWarning(e);
             }
-            if (tokenId === null) return res.status(500).json({ error: 'Human mint succeeded but tokenId could not be recovered' });
         }
 
         const normalizedImage = await persistHumanProfileImage(image || existing?.image || '');
@@ -4137,10 +4137,11 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
         res.json({
             success: true,
             principal: formatted,
-            mintedOnchain: Boolean(mintOnchain),
+            mintedOnchain,
             txHash: mintTxHash,
+            warning: mintWarning,
             message: tokenId !== null
-                ? `Human principal ${displayName} registered${mintOnchain ? ' and minted on HelixaV2' : ''}`
+                ? `Human principal ${displayName} registered${mintedOnchain ? ' and minted on HelixaV2' : ''}`
                 : `Human principal ${displayName} registered offchain`,
         });
     } catch (e) {
@@ -4715,6 +4716,12 @@ app.get('/.well-known/agent.json', (req, res) => {
                         contract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
                         facilitator: 'https://x402.dexter.cash',
                     },
+                    {
+                        network: 'base',
+                        asset: 'CRED',
+                        contract: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3',
+                        facilitator: 'https://x402.dexter.cash',
+                    },
                 ],
                 recipient: TREASURY_ADDRESS,
             },
@@ -4766,15 +4773,15 @@ app.get('/.well-known/agent.json', (req, res) => {
             },
             {
                 name: 'full_cred_report',
-                description: 'Detailed credibility report with full scoring breakdown across all weighted components. Currently free.',
+                description: 'Detailed CRED report with full scoring breakdown across all weighted components. Paid via x402.',
                 endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/cred-report',
                 method: 'GET',
                 parameters: {
                     id: { type: 'integer', required: true, description: 'Agent token ID' },
                 },
                 returns: { type: 'object', description: 'Full scoring breakdown with all CRED_WEIGHTS components and recommendations' },
-                price: { amount: 0, currency: 'USD', model: 'free' },
-                payments: { x402: { direct_price: 0, enabled: false } },
+                price: { amount: PRICING.credReport, currency: 'USD', model: 'x402' },
+                payments: { x402: { direct_price: PRICING.credReport, enabled: true, currencies: ['USDC'], plannedCurrencies: ['CRED'] } },
             },
             {
                 name: 'update_agent',
@@ -5921,7 +5928,7 @@ app.get('/api/v2/agent/:id/work-stats', async (req, res) => {
 app.get('/api/v2/agent/:id/cred', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentV2(tokenId);
+        const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
 
         res.json({
@@ -5932,8 +5939,8 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
             tierLabel: tierInfo.label,
             scale: { junk: '0-25', marginal: '26-50', qualified: '51-75', prime: '76-90', preferred: '91-100' },
             fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
-            fullReportPrice: `$${PRICING.credReport} USDC`,
-            hint: 'Full report with breakdown, recommendations, and signed receipt available for free.',
+            fullReportPrice: `${formatUSDPrice(PRICING.credReport)} USDC`,
+            hint: 'Full CRED report with breakdown, recommendations, and signed receipt available via x402.',
         });
     } catch (e) {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
@@ -5950,7 +5957,7 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
 }, async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentV2(tokenId);
+        const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
         const { components, computedScore } = computeCredBreakdown(agent);
         const recommendations = getCredRecommendations(agent, components);
@@ -6005,7 +6012,7 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
 app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await formatAgentV2(tokenId);
+        const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
         const { components, computedScore } = computeCredBreakdown(agent);
         const recommendations = getCredRecommendations(agent, components);
@@ -6043,9 +6050,10 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             credScore: agent.credScore,
             tier: tierInfo.tier,
             generatedAt: reportTimestamp,
-            paidAmount: '$0',
+            paidAmount: formatUSDPrice(PRICING.credReport),
+            paymentMethod: req.paymentVerified?.method || 'x402',
             network: 'eip155:8453',
-            feeStatus: 'waived',
+            feeStatus: 'paid',
         });
         const receiptSignature = createHmacSignature(receiptPayload, RECEIPT_HMAC_SECRET);
 
@@ -6071,11 +6079,13 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
         const report = {
             reportId,
             generatedAt: reportTimestamp,
-            paidReport: false,
-            price: '$0',
+            paidReport: true,
+            price: formatUSDPrice(PRICING.credReport),
             pricing: {
-                enabled: false,
-                waived: true,
+                enabled: true,
+                waived: false,
+                currency: 'USDC',
+                model: 'x402',
             },
 
             // Agent identity
@@ -7141,23 +7151,334 @@ app.get('/api/v2/token/stats', (req, res) => {
 // ─── Helixa Agent Terminal API ──────────────────────────────────────
 const terminalDbPath = path.join(__dirname, '..', '..', 'terminal', 'data', 'terminal.db');
 let terminalDb = null;
+let terminalAgentColumns = new Set();
 try {
     const Database = require('better-sqlite3');
     if (fs.existsSync(terminalDbPath)) {
         terminalDb = new Database(terminalDbPath, { readonly: true });
         terminalDb.pragma('journal_mode = WAL');
+        terminalAgentColumns = new Set(terminalDb.prepare('PRAGMA table_info(agents)').all().map(col => col.name));
         console.log('📡 Helixa Agent Terminal DB connected');
     }
 } catch (e) { console.warn('⚠️ Helixa Agent Terminal DB not available:', e.message); }
 
-app.get('/api/terminal/agents', (req, res) => {
+function terminalHasColumn(name) {
+    return terminalAgentColumns.has(name);
+}
+
+function terminalSelectColumn(name, fallback = 'NULL') {
+    return terminalHasColumn(name) ? name : `${fallback} AS ${name}`;
+}
+
+const terminalMarketCache = new Map();
+const TERMINAL_MARKET_CACHE_MS = Math.max(15000, parseInt(process.env.TERMINAL_MARKET_CACHE_MS || '120000', 10));
+const TERMINAL_MARKET_BATCH_SIZE = 30;
+
+function betterTerminalDexPair(current, candidate, preferredChain) {
+    if (!candidate?.baseToken?.address) return current;
+    if (!current) return candidate;
+    const candidatePreferred = preferredChain && candidate.chainId === preferredChain;
+    const currentPreferred = preferredChain && current.chainId === preferredChain;
+    if (candidatePreferred && !currentPreferred) return candidate;
+    if (!candidatePreferred && currentPreferred) return current;
+    return (candidate.liquidity?.usd || 0) > (current.liquidity?.usd || 0) ? candidate : current;
+}
+
+function roundTerminalNumber(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    return Math.round(n * 100) / 100;
+}
+
+function terminalMarketFromPair(pair) {
+    if (!pair) return null;
+    return {
+        token_symbol: pair.baseToken?.symbol || null,
+        token_name: pair.baseToken?.name || null,
+        token_market_cap: roundTerminalNumber(pair.marketCap ?? pair.fdv),
+        price_change_24h: roundTerminalNumber(pair.priceChange?.h24),
+        volume_24h: roundTerminalNumber(pair.volume?.h24),
+        liquidity_usd: roundTerminalNumber(pair.liquidity?.usd),
+        txns_24h_buys: Number.isFinite(Number(pair.txns?.h24?.buys)) ? Number(pair.txns.h24.buys) : null,
+        txns_24h_sells: Number.isFinite(Number(pair.txns?.h24?.sells)) ? Number(pair.txns.h24.sells) : null,
+    };
+}
+
+async function fetchTerminalMarketData(tokenAddresses) {
+    const unique = [...new Set(tokenAddresses.map(a => String(a || '').trim()).filter(Boolean))];
+    const now = Date.now();
+    const byAddress = new Map();
+    const misses = [];
+
+    for (const address of unique) {
+        const key = address.toLowerCase();
+        const cached = terminalMarketCache.get(key);
+        if (cached && now - cached.fetchedAt < TERMINAL_MARKET_CACHE_MS) {
+            if (cached.market) byAddress.set(key, cached.market);
+        } else {
+            misses.push(address);
+        }
+    }
+
+    const batches = [];
+    for (let i = 0; i < misses.length; i += TERMINAL_MARKET_BATCH_SIZE) {
+        batches.push(misses.slice(i, i + TERMINAL_MARKET_BATCH_SIZE));
+    }
+
+    await Promise.all(batches.map(async batch => {
+        try {
+            const resp = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${batch.join(',')}`, {
+                signal: AbortSignal.timeout(3500),
+                headers: { accept: 'application/json' }
+            });
+            if (!resp.ok) throw new Error(`DexScreener HTTP ${resp.status}`);
+            const data = await resp.json();
+            const pairs = Array.isArray(data?.pairs) ? data.pairs : [];
+            const grouped = new Map();
+
+            for (const pair of pairs) {
+                const addr = pair.baseToken?.address?.toLowerCase();
+                if (!addr) continue;
+                grouped.set(addr, betterTerminalDexPair(grouped.get(addr), pair, null));
+            }
+
+            for (const address of batch) {
+                const key = address.toLowerCase();
+                const market = terminalMarketFromPair(grouped.get(key));
+                terminalMarketCache.set(key, { market, fetchedAt: Date.now() });
+                if (market) byAddress.set(key, market);
+            }
+        } catch (e) {
+            console.warn('Terminal live market data fetch failed:', e.message);
+        }
+    }));
+
+    return byAddress;
+}
+
+async function attachLiveTerminalMarketData(agents) {
+    const tokenAddresses = agents.map(a => a.token_address).filter(Boolean);
+    if (!tokenAddresses.length) return agents;
+
+    const liveByAddress = await fetchTerminalMarketData(tokenAddresses);
+    if (!liveByAddress.size) return agents;
+    const refreshedAt = new Date().toISOString();
+
+    return agents.map(agent => {
+        const live = liveByAddress.get(String(agent.token_address || '').toLowerCase());
+        if (!live) return agent;
+        const merged = { ...agent };
+        for (const [key, value] of Object.entries(live)) {
+            if (value !== null && value !== undefined && value !== '') merged[key] = value;
+        }
+        merged.market_data_source = 'dexscreener-live';
+        merged.market_data_refreshed_at = refreshedAt;
+        return merged;
+    });
+}
+
+function terminalHelixaTokenId(agent) {
+    const candidates = [agent?.token_id, agent?.agent_id];
+    for (const value of candidates) {
+        const match = String(value || '').match(/^helixa-(\d+)$/i);
+        if (match) return Number(match[1]);
+    }
+    if (String(agent?.registry || '').toLowerCase() === String(V2_CONTRACT_ADDRESS || '').toLowerCase()) {
+        const numeric = Number(agent?.token_id || agent?.agent_id || agent?.id);
+        if (Number.isInteger(numeric) && numeric >= 0) return numeric;
+    }
+    return null;
+}
+
+function attachLiveTerminalCredData(agents) {
+    const tokenIds = [...new Set(agents.map(terminalHelixaTokenId).filter(id => Number.isInteger(id)))];
+    if (!tokenIds.length) return agents;
+
+    try {
+        const wanted = new Set(tokenIds);
+        const indexed = new Map(
+            indexer.getAllAgents()
+                .filter(agent => wanted.has(Number(agent.tokenId)))
+                .map(agent => [Number(agent.tokenId), applyComputedCredFloor({ ...agent })])
+        );
+        if (!indexed.size) return agents;
+        const refreshedAt = new Date().toISOString();
+
+        return agents.map(agent => {
+            const tokenId = terminalHelixaTokenId(agent);
+            const live = indexed.get(tokenId);
+            if (!live) return agent;
+            const score = Number(live.credScore ?? live.cred_score);
+            if (!Number.isFinite(score)) return agent;
+            return {
+                ...agent,
+                cred_score: score,
+                cred_tier: getCredTier(score).tier,
+                cred_data_source: 'helixa-indexer-live',
+                cred_data_refreshed_at: refreshedAt,
+            };
+        });
+    } catch (e) {
+        console.warn('Terminal live cred data attach failed:', e.message);
+        return agents;
+    }
+}
+
+function terminalWriteDb() {
+    const Database = require('better-sqlite3');
+    const db = new Database(terminalDbPath);
+    db.pragma('journal_mode = WAL');
+    ensureTerminalSubmissionTables(db);
+    return db;
+}
+
+function ensureTerminalSubmissionTables(db) {
+    db.exec(`CREATE TABLE IF NOT EXISTS terminal_agent_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        chain TEXT NOT NULL,
+        chain_id INTEGER NOT NULL,
+        agent_identifier TEXT NOT NULL,
+        website TEXT,
+        x_url TEXT,
+        token_address TEXT,
+        token_symbol TEXT,
+        x402_endpoint TEXT,
+        contact TEXT,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        validation_status TEXT NOT NULL DEFAULT 'passed',
+        validation_errors TEXT,
+        reviewer TEXT,
+        review_note TEXT,
+        promoted_agent_id INTEGER,
+        ip_hash TEXT,
+        user_agent TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_terminal_submissions_status ON terminal_agent_submissions(status);
+    CREATE INDEX IF NOT EXISTS idx_terminal_submissions_identifier ON terminal_agent_submissions(agent_identifier);
+    CREATE INDEX IF NOT EXISTS idx_terminal_submissions_name ON terminal_agent_submissions(name);`);
+}
+
+function cleanTerminalText(value, max = 200) {
+    return String(value || '').trim().replace(/\s+/g, ' ').slice(0, max);
+}
+
+function optionalTerminalUrl(value, max = 240) {
+    const v = cleanTerminalText(value, max);
+    if (!v) return '';
+    try {
+        const u = new URL(v);
+        return ['http:', 'https:'].includes(u.protocol) ? v : '';
+    } catch { return ''; }
+}
+
+function normalizeTerminalX(value) {
+    const v = cleanTerminalText(value, 120);
+    if (!v) return '';
+    if (v.startsWith('@')) return `https://x.com/${v.slice(1)}`;
+    if (/^[A-Za-z0-9_]{1,15}$/.test(v)) return `https://x.com/${v}`;
+    return optionalTerminalUrl(v, 180);
+}
+
+function terminalChainInfo(value, fallbackChainId) {
+    const raw = cleanTerminalText(value, 40).toLowerCase();
+    const n = parseInt(fallbackChainId || raw, 10);
+    const byName = {
+        base: { chain: 'base', chain_id: 8453 },
+        solana: { chain: 'solana', chain_id: 900901 },
+        ethereum: { chain: 'ethereum', chain_id: 1 },
+        eth: { chain: 'ethereum', chain_id: 1 },
+        bsc: { chain: 'bsc', chain_id: 56 },
+        binance: { chain: 'bsc', chain_id: 56 },
+    };
+    if (byName[raw]) return byName[raw];
+    const byId = { 8453: 'base', 900901: 'solana', 1: 'ethereum', 56: 'bsc' };
+    if (byId[n]) return { chain: byId[n], chain_id: n };
+    return null;
+}
+
+function validateTerminalSubmission(body = {}) {
+    const errors = [];
+    const name = cleanTerminalText(body.name, 80);
+    const agent_identifier = cleanTerminalText(body.agent_identifier || body.address || body.agent_id || body.id, 160);
+    const chainInfo = terminalChainInfo(body.chain, body.chain_id);
+    const website = optionalTerminalUrl(body.website, 240);
+    const x_url = normalizeTerminalX(body.x_url || body.x || body.twitter);
+    const token_address = cleanTerminalText(body.token_address, 160);
+    const token_symbol = cleanTerminalText(body.token_symbol, 24).replace(/^\$/, '').toUpperCase();
+    const x402_endpoint = optionalTerminalUrl(body.x402_endpoint, 240);
+    const contact = cleanTerminalText(body.contact, 160);
+    const notes = cleanTerminalText(body.notes || body.description, 500);
+
+    if (String(body.company || '').trim()) errors.push('spam_detected'); // honeypot
+    if (name.length < 2) errors.push('name is required');
+    if (!chainInfo) errors.push('supported chain is required');
+    if (agent_identifier.length < 3) errors.push('agent address or ID is required');
+    if (body.website && !website) errors.push('website must be http(s)');
+    if ((body.x_url || body.x || body.twitter) && !x_url) errors.push('x/twitter must be a handle or http(s) URL');
+    if (body.x402_endpoint && !x402_endpoint) errors.push('x402 endpoint must be http(s)');
+    if (token_symbol && !/^[A-Z0-9.\-_]{1,24}$/.test(token_symbol)) errors.push('token symbol has invalid characters');
+
+    return {
+        ok: errors.length === 0,
+        errors,
+        data: { name, ...chainInfo, agent_identifier, website, x_url, token_address, token_symbol, x402_endpoint, contact, notes }
+    };
+}
+
+function requireTerminalSubmissionAdmin(req, res) {
+    if (hasValidInternalKey(req)) return true;
+    const configured = process.env.TERMINAL_SUBMISSION_ADMIN_KEY || process.env.ADMIN_API_KEY || '';
+    const provided = req.get('x-admin-key') || req.query.key || '';
+    if (!configured || provided !== configured) {
+        res.status(403).json({ error: 'admin key required' });
+        return false;
+    }
+    return true;
+}
+
+function terminalCount(where = '1 = 1', params = {}) {
+    return terminalDb.prepare(`SELECT COUNT(*) as c FROM agents WHERE ${where}`).get(params).c;
+}
+
+const TERMINAL_MARKET_SORT_COLUMNS = new Set(['token_market_cap', 'volume_24h', 'price_change_24h']);
+const TERMINAL_MARKET_CANDIDATE_LIMIT = Math.max(100, parseInt(process.env.TERMINAL_MARKET_CANDIDATE_LIMIT || '1000', 10));
+
+function terminalCompareNullableNumber(a, b, dir = 'DESC') {
+    const av = Number(a);
+    const bv = Number(b);
+    const aOk = Number.isFinite(av);
+    const bOk = Number.isFinite(bv);
+    if (aOk && bOk) return dir === 'ASC' ? av - bv : bv - av;
+    if (aOk) return -1;
+    if (bOk) return 1;
+    return 0;
+}
+
+function terminalSortRows(rows, sort, dir) {
+    return rows.sort((a, b) => {
+        const primary = terminalCompareNullableNumber(a?.[sort], b?.[sort], dir);
+        if (primary) return primary;
+        const score = terminalCompareNullableNumber(a?.cred_score, b?.cred_score, 'DESC');
+        if (score) return score;
+        return String(a?.name || '').localeCompare(String(b?.name || ''));
+    });
+}
+
+app.get('/api/terminal/agents', async (req, res) => {
     if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
     try {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-        const sort = ['cred_score','name','created_at','platform','token_market_cap','volume_24h','price_change_24h','revenue_onchain','ethos_score','talent_score','attention_score'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const requestedSort = ['cred_score','name','created_at','platform','token_market_cap','volume_24h','price_change_24h','revenue_onchain','ethos_score','talent_score','attention_score'].includes(req.query.sort) ? req.query.sort : 'cred_score';
+        const sort = terminalHasColumn(requestedSort) ? requestedSort : 'cred_score';
         const dir = req.query.dir === 'asc' ? 'ASC' : 'DESC';
         const filter = req.query.filter || 'all';
+        const chain = (req.query.chain || 'all').toLowerCase();
         const q = (req.query.q || '').trim();
 
         let where = [];
@@ -7165,8 +7486,18 @@ app.get('/api/terminal/agents', (req, res) => {
         let orderBy = `${sort} ${dir} NULLS LAST`;
         
         // userSort = true when client explicitly chose a sort column
-        const userSort = req.query.sort && req.query.sort !== 'cred_score';
+        const userSort = req.query.sort && req.query.sort !== 'cred_score' && terminalHasColumn(req.query.sort);
+        if (terminalHasColumn('chain_id')) {
+            const chainMap = { base: 8453, solana: 900901, eth: 1, ethereum: 1, bsc: 56 };
+            if (chainMap[chain]) {
+                where.push('chain_id = @chain');
+                params.chain = chainMap[chain];
+            }
+        }
         if (filter === 'x402') { where.push('x402_supported = 1'); }
+        else if (filter === 'bankr') {
+            where.push(`(platform = 'bankr' OR metadata LIKE '%"source":"bankr-app"%')`);
+        }
         else if (filter === 'new') {
             if (!userSort) orderBy = 'created_at DESC NULLS LAST';
         }
@@ -7184,7 +7515,8 @@ app.get('/api/terminal/agents', (req, res) => {
         }
         else if (filter !== 'all') { where.push('cred_tier = @tier'); params.tier = filter; }
         if (q) {
-            where.push("(name LIKE @q OR address LIKE @q OR agent_id LIKE @q)");
+            where.push(`(name LIKE @q OR address LIKE @q OR agent_id LIKE @q
+                OR token_address LIKE @q OR token_symbol LIKE @q OR CAST(token_id AS TEXT) LIKE @q)`);
             params.q = `%${q}%`;
         }
         const whereClause = where.length ? 'WHERE ' + where.join(' AND ') : '';
@@ -7193,23 +7525,65 @@ app.get('/api/terminal/agents', (req, res) => {
         const totalPages = Math.ceil(total / limit);
         const offset = (page - 1) * limit;
 
-        const agents = terminalDb.prepare(
-            `SELECT id, address, agent_id, token_id, name, description, image_url, platform, 
+        const selectColumns = `SELECT id, address, agent_id, token_id, chain_id, name, description, image_url, platform,
                     x402_supported, cred_score, cred_tier, created_at, owner_address, registry,
                     token_symbol, token_name, token_address, token_market_cap, price_change_24h,
                     volume_24h, liquidity_usd, txns_24h_buys, txns_24h_sells,
                     revenue_onchain, revenue_self_reported, ethos_score, talent_score,
-                    attention_score, attention_velocity, x402_endpoints
-             FROM agents ${whereClause} 
-             ORDER BY ${orderBy}
-             LIMIT @limit OFFSET @offset`
-        ).all({ ...params, limit, offset });
+                    ${terminalSelectColumn('attention_score')}, ${terminalSelectColumn('attention_velocity')}, ${terminalSelectColumn('x402_endpoints', '0')}`;
+        let agents;
+        if (TERMINAL_MARKET_SORT_COLUMNS.has(sort)) {
+            const marketWhere = [...where, `token_address IS NOT NULL`, `(token_market_cap IS NOT NULL OR price_change_24h IS NOT NULL OR volume_24h IS NOT NULL OR liquidity_usd IS NOT NULL)`];
+            const marketWhereClause = 'WHERE ' + marketWhere.join(' AND ');
+            const marketRows = terminalDb.prepare(
+                `${selectColumns}
+                 FROM agents ${marketWhereClause}
+                 ORDER BY ${sort} ${dir} NULLS LAST
+                 LIMIT @candidateLimit`
+            ).all({ ...params, candidateLimit: TERMINAL_MARKET_CANDIDATE_LIMIT });
+            const enrichedMarketRows = terminalSortRows(
+                await attachLiveTerminalMarketData(attachLiveTerminalCredData(marketRows)),
+                sort,
+                dir
+            );
+            agents = blocktronicsTokenMetrics.attachCachedTokenMetrics(
+                terminalDb,
+                enrichedMarketRows.slice(offset, offset + limit)
+            );
+
+            if (agents.length < limit) {
+                const nullWhere = [...where, `(token_address IS NULL OR (${sort} IS NULL AND token_market_cap IS NULL AND volume_24h IS NULL AND liquidity_usd IS NULL))`];
+                const nullWhereClause = nullWhere.length ? 'WHERE ' + nullWhere.join(' AND ') : '';
+                const nullOffset = Math.max(0, offset - enrichedMarketRows.length);
+                const filler = terminalDb.prepare(
+                    `${selectColumns}
+                     FROM agents ${nullWhereClause}
+                     ORDER BY cred_score DESC NULLS LAST
+                     LIMIT @limit OFFSET @offset`
+                ).all({ ...params, limit: limit - agents.length, offset: nullOffset });
+                const enrichedFiller = await attachLiveTerminalMarketData(attachLiveTerminalCredData(filler));
+                agents = agents.concat(blocktronicsTokenMetrics.attachCachedTokenMetrics(terminalDb, enrichedFiller));
+            }
+        } else {
+            const rows = terminalDb.prepare(
+                `${selectColumns}
+                 FROM agents ${whereClause}
+                 ORDER BY ${orderBy}
+                 LIMIT @limit OFFSET @offset`
+            ).all({ ...params, limit, offset });
+            agents = blocktronicsTokenMetrics.attachCachedTokenMetrics(
+                terminalDb,
+                await attachLiveTerminalMarketData(attachLiveTerminalCredData(rows))
+            );
+        }
 
         const stats = {
-            total: terminalDb.prepare('SELECT COUNT(*) as c FROM agents').get().c,
-            scored: terminalDb.prepare('SELECT COUNT(*) as c FROM agents WHERE last_scored IS NOT NULL').get().c,
+            total: terminalCount(),
+            scored: terminalCount('last_scored IS NOT NULL'),
             avgScore: terminalDb.prepare('SELECT ROUND(AVG(cred_score),1) as v FROM agents').get().v,
-            x402: terminalDb.prepare('SELECT COUNT(*) as c FROM agents WHERE x402_supported = 1').get().c,
+            x402: terminalCount('x402_supported = 1'),
+            base: terminalHasColumn('chain_id') ? terminalCount('chain_id = 8453') : 0,
+            solana: terminalHasColumn('chain_id') ? terminalCount('chain_id = 900901') : 0,
         };
 
         res.json({ agents, total, page, totalPages, stats });
@@ -7219,19 +7593,167 @@ app.get('/api/terminal/agents', (req, res) => {
     }
 });
 
-app.get('/api/terminal/agent/:address', (req, res) => {
+app.get('/api/terminal/agent/:address', async (req, res) => {
     if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
     try {
         const id = req.params.address;
-        let agent = terminalDb.prepare('SELECT * FROM agents WHERE address = ? OR agent_id = ? OR token_id = ? OR CAST(id AS TEXT) = ?')
-            .get(id, id, id, id);
-        if (!agent) {
-            // Try name match (case-insensitive)
-            agent = terminalDb.prepare('SELECT * FROM agents WHERE LOWER(name) = LOWER(?)').get(id);
-        }
+        let agent = terminalDb.prepare(`SELECT * FROM agents
+            WHERE LOWER(name) = LOWER(@id)
+               OR LOWER(address) = LOWER(@id)
+               OR LOWER(agent_id) = LOWER(@id)
+               OR LOWER(token_id) = LOWER(@id)
+               OR CAST(id AS TEXT) = @id
+               OR LOWER(token_address) = LOWER(@id)
+               OR LOWER(token_symbol) = LOWER(@id)
+            ORDER BY CASE
+                WHEN LOWER(name) = LOWER(@id) THEN 0
+                WHEN LOWER(agent_id) = LOWER(@id) THEN 1
+                WHEN LOWER(token_id) = LOWER(@id) THEN 2
+                WHEN LOWER(address) = LOWER(@id) THEN 3
+                WHEN LOWER(token_address) = LOWER(@id) THEN 4
+                WHEN CAST(id AS TEXT) = @id THEN 5
+                WHEN LOWER(token_symbol) = LOWER(@id) THEN 6
+                ELSE 9
+            END, cred_score DESC
+            LIMIT 1`)
+            .get({ id });
         if (!agent) return res.status(404).json({ error: 'Agent not found' });
+        [agent] = await attachLiveTerminalMarketData(attachLiveTerminalCredData([agent]));
+        [agent] = blocktronicsTokenMetrics.attachCachedTokenMetrics(terminalDb, [agent]);
         res.json(agent);
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/terminal/token-metrics/:token', (req, res) => {
+    if (!terminalDb) return res.status(503).json({ error: 'Terminal DB not available' });
+    try {
+        const chain = blocktronicsTokenMetrics.normalizeChain(req.query.chain || 'base');
+        const token = blocktronicsTokenMetrics.normalizeTokenAddress(req.params.token);
+        const cached = blocktronicsTokenMetrics.readCachedTokenMetrics(terminalDb, token, chain);
+        if (!cached) return res.status(404).json({ error: 'token_metrics_not_found' });
+        res.json({ token_metrics: cached });
+    } catch (e) {
+        const status = ['invalid_token', 'invalid_chain'].includes(e.code) ? 400 : 500;
+        res.status(status).json({ error: e.code || e.message });
+    }
+});
+
+// POST /api/terminal/submit-agent — Public moderated submission queue
+app.post('/api/terminal/submit-agent', (req, res) => {
+    try {
+        const validation = validateTerminalSubmission(req.body || {});
+        if (!validation.ok) {
+            return res.status(400).json({ error: 'validation_failed', errors: validation.errors });
+        }
+
+        const db = terminalWriteDb();
+        const d = validation.data;
+        const existing = db.prepare(`SELECT id, name, agent_id, token_id FROM agents
+            WHERE LOWER(name) = LOWER(@name)
+               OR LOWER(address) = LOWER(@agent_identifier)
+               OR LOWER(agent_id) = LOWER(@agent_identifier)
+               OR LOWER(token_id) = LOWER(@agent_identifier)
+            LIMIT 1`).get(d);
+        if (existing) { db.close(); return res.status(409).json({ error: 'already_listed', agent: existing }); }
+
+        const pending = db.prepare(`SELECT id, status FROM terminal_agent_submissions
+            WHERE status IN ('pending','validated')
+              AND (LOWER(agent_identifier) = LOWER(@agent_identifier) OR LOWER(name) = LOWER(@name))
+            LIMIT 1`).get(d);
+        if (pending) { db.close(); return res.status(409).json({ error: 'already_submitted', submission: pending }); }
+
+        const ip = req.ip || req.connection?.remoteAddress || '';
+        const ip_hash = ip ? crypto.createHash('sha256').update(ip).digest('hex') : null;
+        const user_agent = cleanTerminalText(req.get('user-agent'), 240);
+        const info = db.prepare(`INSERT INTO terminal_agent_submissions
+            (name, chain, chain_id, agent_identifier, website, x_url, token_address, token_symbol, x402_endpoint,
+             contact, notes, status, validation_status, validation_errors, ip_hash, user_agent, created_at, updated_at)
+            VALUES (@name, @chain, @chain_id, @agent_identifier, @website, @x_url, @token_address, @token_symbol, @x402_endpoint,
+             @contact, @notes, 'pending', 'passed', '[]', @ip_hash, @user_agent, datetime('now'), datetime('now'))`
+        ).run({ ...d, ip_hash, user_agent });
+        db.close();
+        res.status(202).json({ success: true, status: 'pending_validation', submission_id: info.lastInsertRowid });
+    } catch (e) {
+        console.error('Terminal submission error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/api/terminal/submissions', (req, res) => {
+    if (!requireTerminalSubmissionAdmin(req, res)) return;
+    try {
+        const status = cleanTerminalText(req.query.status || 'pending', 30);
+        const db = terminalWriteDb();
+        const rows = db.prepare(`SELECT * FROM terminal_agent_submissions WHERE status = @status ORDER BY created_at DESC LIMIT 100`).all({ status });
+        db.close();
+        res.json({ submissions: rows });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/terminal/submissions/:id/validate', (req, res) => {
+    if (!requireTerminalSubmissionAdmin(req, res)) return;
+    try {
+        const id = parseInt(req.params.id, 10);
+        const action = cleanTerminalText(req.body?.action || 'approve', 20).toLowerCase();
+        const reviewer = cleanTerminalText(req.body?.reviewer || 'admin', 80);
+        const review_note = cleanTerminalText(req.body?.note, 400);
+        const db = terminalWriteDb();
+        const sub = db.prepare('SELECT * FROM terminal_agent_submissions WHERE id = ?').get(id);
+        if (!sub) { db.close(); return res.status(404).json({ error: 'submission not found' }); }
+        if (!['approve','reject'].includes(action)) { db.close(); return res.status(400).json({ error: 'action must be approve or reject' }); }
+        if (sub.status !== 'pending' && sub.status !== 'validated') { db.close(); return res.status(409).json({ error: 'submission already reviewed', status: sub.status }); }
+
+        if (action === 'reject') {
+            db.prepare(`UPDATE terminal_agent_submissions SET status='rejected', reviewer=@reviewer, review_note=@review_note, reviewed_at=datetime('now'), updated_at=datetime('now') WHERE id=@id`)
+                .run({ id, reviewer, review_note });
+            db.close();
+            return res.json({ success: true, status: 'rejected', submission_id: id });
+        }
+
+        const existing = db.prepare(`SELECT id, name FROM agents
+            WHERE LOWER(name) = LOWER(@name)
+               OR LOWER(address) = LOWER(@agent_identifier)
+               OR LOWER(agent_id) = LOWER(@agent_identifier)
+               OR LOWER(token_id) = LOWER(@agent_identifier)
+            LIMIT 1`).get(sub);
+        if (existing) { db.close(); return res.status(409).json({ error: 'already_listed', agent: existing }); }
+
+        const agentId = `submitted-${id}`;
+        const metadata = JSON.stringify({
+            source: 'cred.exchange submission',
+            website: sub.website || null,
+            x_url: sub.x_url || null,
+            contact: sub.contact || null,
+            notes: sub.notes || null,
+            submitted_at: sub.created_at,
+            reviewed_by: reviewer,
+        });
+        const result = db.prepare(`INSERT INTO agents
+            (address, agent_id, token_id, chain_id, name, description, metadata, platform, x402_supported,
+             cred_score, cred_tier, verified, token_address, token_symbol, owner_address, created_at, registered_at)
+            VALUES (@address, @agent_id, @token_id, @chain_id, @name, @description, @metadata, 'submitted', @x402_supported,
+             0, 'JUNK', 0, @token_address, @token_symbol, @owner_address, datetime('now'), datetime('now'))`
+        ).run({
+            address: sub.agent_identifier,
+            agent_id: agentId,
+            token_id: agentId,
+            chain_id: sub.chain_id,
+            name: sub.name,
+            description: sub.notes || `${sub.name} submitted to CRED.EXCHANGE for validation.`,
+            metadata,
+            x402_supported: sub.x402_endpoint ? 1 : 0,
+            token_address: sub.token_address || null,
+            token_symbol: sub.token_symbol || null,
+            owner_address: sub.agent_identifier,
+        });
+        db.prepare(`UPDATE terminal_agent_submissions SET status='approved', reviewer=@reviewer, review_note=@review_note, promoted_agent_id=@promoted_agent_id, reviewed_at=datetime('now'), updated_at=datetime('now') WHERE id=@id`)
+            .run({ id, reviewer, review_note, promoted_agent_id: result.lastInsertRowid });
+        db.close();
+        res.json({ success: true, status: 'approved', submission_id: id, agent_row_id: result.lastInsertRowid, agent_id: agentId });
+    } catch (e) {
+        console.error('Terminal validation error:', e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // POST /api/terminal/agent/:id/token — Link a token to an agent
@@ -7356,10 +7878,10 @@ app.get('/api/terminal/leaderboard', (req, res) => {
 
         // Pull candidates: agents with signals (x402, tokens, good descriptions, activity)
         const candidates = terminalDb.prepare(
-            `SELECT id, name, description, address, chain_id, x402_supported, x402_health, 
-                    token_address, token_market_cap, liquidity_usd, volume_24h, tx_count, 
+            `SELECT id, name, description, address, chain_id, x402_supported, ${terminalSelectColumn('x402_health')},
+                    token_address, token_market_cap, liquidity_usd, volume_24h, ${terminalSelectColumn('tx_count', '0')},
                     image_url, metadata, services, platform, cred_score, cred_tier,
-                    token_symbol, price_change_24h, attention_score
+                    token_symbol, price_change_24h, ${terminalSelectColumn('attention_score')}
              FROM agents WHERE ${where}
              ORDER BY cred_score DESC LIMIT 5000`
         ).all(params);

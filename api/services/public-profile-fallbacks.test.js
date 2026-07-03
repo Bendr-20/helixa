@@ -33,6 +33,22 @@ test('profile personality and narrative survive missing contract reads', () => {
   assert.equal(merged.narrative.mission, 'Make agent trust inspectable.');
 });
 
+test('missing public profile is treated as an empty fallback', () => {
+  const merged = mergePublicAgentProfile({
+    tokenId: 1072,
+    name: 'Invoica CEO Agent',
+    personality: null,
+    narrative: null,
+    traits: [],
+  }, null);
+
+  assert.equal(merged.name, 'Invoica CEO Agent');
+  assert.equal(merged.personality, null);
+  assert.equal(merged.narrative, null);
+  assert.deepEqual(merged.traits, []);
+  assert.equal(merged.traitCount, 0);
+});
+
 test('profile fields fill partial contract personality and narrative reads', () => {
   const merged = mergePublicAgentProfile({
     tokenId: 1,
