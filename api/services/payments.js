@@ -93,6 +93,7 @@ const PRICING = {
     update: 0,
     verify: 0,
     credReport: 0.01,
+    deepCredReport: 0.15,
     soulLock: 0,
     soulHandshake: 0,
 };

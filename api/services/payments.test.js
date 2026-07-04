@@ -23,6 +23,11 @@ test('cred report is priced at one cent', () => {
   assert.equal(formatUSDPrice(PRICING.credReport), '$0.01');
 });
 
+test('deep CRED report generation is priced at fifteen cents', () => {
+  assert.equal(PRICING.deepCredReport, 0.15);
+  assert.equal(formatUSDPrice(PRICING.deepCredReport), '$0.15');
+});
+
 test('CRED amount can be calculated for the later native CRED payment upgrade', () => {
   assert.equal(
     getCredTokenAmountForUSD(0.01, 0.0001),

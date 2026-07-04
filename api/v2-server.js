@@ -20,6 +20,7 @@ const {
 } = require('./internal-auth');
 const { getXBearerToken } = require('./services/runtime-secrets');
 const blocktronicsTokenMetrics = require('./services/blocktronics-token-metrics');
+const deepCredReport = require('./services/deep-cred-report');
 const { resolveAuraSourceWithFallback } = require('./services/aura-fallback');
 const {
     mergePublicAgentProfile,
@@ -7623,6 +7624,181 @@ app.get('/api/terminal/agent/:address', async (req, res) => {
         [agent] = blocktronicsTokenMetrics.attachCachedTokenMetrics(terminalDb, [agent]);
         res.json(agent);
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function resolveTerminalDeepCredAgent(id) {
+    if (!terminalDb) {
+        const err = new Error('Terminal DB not available');
+        err.status = 503;
+        throw err;
+    }
+    let agent = terminalDb.prepare(`SELECT * FROM agents
+        WHERE LOWER(name) = LOWER(@id)
+           OR LOWER(address) = LOWER(@id)
+           OR LOWER(agent_id) = LOWER(@id)
+           OR LOWER(token_id) = LOWER(@id)
+           OR CAST(id AS TEXT) = @id
+           OR LOWER(token_address) = LOWER(@id)
+           OR LOWER(token_symbol) = LOWER(@id)
+        ORDER BY CASE
+            WHEN LOWER(name) = LOWER(@id) THEN 0
+            WHEN LOWER(agent_id) = LOWER(@id) THEN 1
+            WHEN LOWER(token_id) = LOWER(@id) THEN 2
+            WHEN LOWER(address) = LOWER(@id) THEN 3
+            WHEN LOWER(token_address) = LOWER(@id) THEN 4
+            WHEN CAST(id AS TEXT) = @id THEN 5
+            WHEN LOWER(token_symbol) = LOWER(@id) THEN 6
+            ELSE 9
+        END, cred_score DESC
+        LIMIT 1`).get({ id });
+    if (!agent) return null;
+    [agent] = await attachLiveTerminalMarketData(attachLiveTerminalCredData([agent]));
+    [agent] = blocktronicsTokenMetrics.attachCachedTokenMetrics(terminalDb, [agent]);
+    return agent;
+}
+
+function deepCredPaymentConfig() {
+    return {
+        accepts: [{ scheme: 'exact', price: formatUSDPrice(PRICING.deepCredReport), network: 'eip155:8453', payTo: TREASURY_ADDRESS }],
+        description: 'Bankr Risk Analyst Deep CRED Report',
+        mimeType: 'application/json',
+    };
+}
+
+function buildDeepCredPaymentRequired(agent) {
+    const credPrice = credOracle.getCredPriceUSDC();
+    const credAmount = credPrice ? credOracle.getCredAmountForUSD(PRICING.deepCredReport) : null;
+    return {
+        error: 'payment_required',
+        service: 'deep-cred-report',
+        label: 'Deep CRED Report',
+        price: { usdc: formatUSDPrice(PRICING.deepCredReport), cred: credAmount ? `${Math.ceil(credAmount).toLocaleString()} CRED` : 'planned' },
+        payTo: TREASURY_ADDRESS,
+        network: 'Base (eip155:8453)',
+        assets: { usdc: USDC_ADDRESS, cred: CRED_TOKEN_ADDRESS },
+        agent: { id: agent.id, name: agent.name, agent_id: agent.agent_id, token_id: agent.token_id, token_address: agent.token_address },
+        instructions: 'Send USDC on Base, then retry with X-Payment-Proof: <txHash>. x402 clients may send PAYMENT-SIGNATURE for this same endpoint.',
+    };
+}
+
+function hasRouteLocalX402Header(req) {
+    return Boolean(
+        getSingleHeaderValue(req.headers['payment-signature']) ||
+        getSingleHeaderValue(req.headers.payment) ||
+        getSingleHeaderValue(req.headers['x-payment'])
+    );
+}
+
+async function verifyDeepCredRouteX402(req, res) {
+    const paymentSignature = getSingleHeaderValue(req.headers['payment-signature']);
+    const paymentAlias = getSingleHeaderValue(req.headers.payment) || getSingleHeaderValue(req.headers['x-payment']);
+    if (!paymentSignature && paymentAlias) req.headers['payment-signature'] = paymentAlias;
+    const localRoutes = {
+        'POST /api/terminal/agent/[id]/deep-cred-report': deepCredPaymentConfig(),
+    };
+    const localMw = x402PaymentMiddleware(localRoutes, x402Server);
+    return new Promise((resolve, reject) => {
+        localMw(req, res, (err) => {
+            if (err) return reject(err);
+            if (res.headersSent || res.writableEnded) return resolve(null);
+            return resolve({ method: 'x402', amount: PRICING.deepCredReport, currency: 'USDC' });
+        });
+    });
+}
+
+async function verifyDeepCredRoutePayment(req, res, agent) {
+    if (hasValidInternalKey(req)) return { method: 'internal-key', amount: 0 };
+    const txPayment = await verifyPaymentFromRequest(req, PRICING.deepCredReport, TREASURY_ADDRESS);
+    if (txPayment) return txPayment;
+    if (hasRouteLocalX402Header(req)) return verifyDeepCredRouteX402(req, res);
+    return null;
+}
+
+function bankrRiskAnalystPrompt(agent, evidence) {
+    return `You are BANKR RISK ANALYST for Helixa CRED Exchange. Analyze agent trust and token/onchain evidence. Do not change or recompute the CRED score. Return only JSON with keys: trust_read, market_read, onchain_risk, red_flags, confidence, analyst_note. confidence must be HIGH, MEDIUM, or LOW.\n\nAgent evidence:\n${JSON.stringify({ agent: { name: agent.name, agent_id: agent.agent_id, token_id: agent.token_id }, evidence }, null, 2)}`;
+}
+
+function extractBankrContent(result) {
+    if (typeof result === 'string') return result;
+    if (Array.isArray(result?.content)) {
+        return result.content.map(part => typeof part === 'string' ? part : part?.text || '').join('\n').trim();
+    }
+    return result?.choices?.[0]?.message?.content || result?.message?.content || JSON.stringify(result || {});
+}
+
+async function runBankrRiskAnalyst(agent, tokenMetrics) {
+    const bankrRouter = require('./services/bankr-router');
+    const evidence = deepCredReport.buildDeepCredEvidence(agent, tokenMetrics);
+    const result = await bankrRouter.route({
+        mode: process.env.DEEP_CRED_BANKR_MODE || 'eco',
+        maxTokens: 900,
+        messages: [{ role: 'user', content: bankrRiskAnalystPrompt(agent, evidence) }],
+        extra: { temperature: 0 },
+    });
+    return {
+        summary: deepCredReport.normalizeBankrRiskAnalystResponse(extractBankrContent(result)),
+        model: `bankr-router:${result?._routing?.selectedModel || 'unknown'}`,
+    };
+}
+
+app.get('/api/terminal/agent/:id/deep-cred-report', async (req, res) => {
+    try {
+        const agent = await resolveTerminalDeepCredAgent(req.params.id);
+        if (!agent) return res.status(404).json({ error: 'Agent not found' });
+        const db = terminalWriteDb();
+        try {
+            const cached = deepCredReport.readCachedDeepCredReport(db, agent);
+            if (!cached) return res.status(404).json({ error: 'deep_cred_report_not_found', payment: buildDeepCredPaymentRequired(agent) });
+            res.json({ report: cached });
+        } finally {
+            db.close();
+        }
+    } catch (e) {
+        res.status(e.status || 500).json({ error: e.message });
+    }
+});
+
+app.post('/api/terminal/agent/:id/deep-cred-report', express.json(), async (req, res) => {
+    try {
+        const agent = await resolveTerminalDeepCredAgent(req.params.id);
+        if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+        let payment;
+        try {
+            payment = await verifyDeepCredRoutePayment(req, res, agent);
+        } catch (e) {
+            const status = /already used/i.test(e.message) ? 400 : 402;
+            return res.status(status).json({ error: 'payment_verification_failed', detail: e.message, payment: buildDeepCredPaymentRequired(agent) });
+        }
+        if (res.headersSent || res.writableEnded) return;
+        if (!payment) return res.status(402).json(buildDeepCredPaymentRequired(agent));
+
+        const tokenMetrics = agent.token_metrics || null;
+        let bankrSummary;
+        let model = 'bankr-router:fallback';
+        try {
+            const bankr = await runBankrRiskAnalyst(agent, tokenMetrics);
+            bankrSummary = bankr.summary;
+            model = bankr.model;
+        } catch (e) {
+            console.warn('[DEEP CRED] Bankr analyst unavailable, using deterministic fallback:', e.message);
+            bankrSummary = deepCredReport.buildFallbackRiskSummary({ agent, tokenMetrics, reason: 'bankr_unavailable' });
+        }
+
+        const report = deepCredReport.buildDeepCredReport({ agent, tokenMetrics, bankrSummary, model });
+        const db = terminalWriteDb();
+        try {
+            deepCredReport.upsertDeepCredReport(db, report, {
+                paidBy: payment.from || payment.payer || null,
+                paymentRef: payment.txHash || payment.method || null,
+            });
+        } finally {
+            db.close();
+        }
+        res.json({ report, payment: { method: payment.method, amount: payment.amount ?? PRICING.deepCredReport, currency: payment.token || 'USDC' } });
+    } catch (e) {
+        res.status(e.status || 500).json({ error: e.message });
+    }
 });
 
 app.get('/api/terminal/token-metrics/:token', (req, res) => {
