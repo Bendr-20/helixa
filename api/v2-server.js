@@ -8157,8 +8157,9 @@ async function initBankrApiKey() {
         const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-2' });
         const resp = await client.send(new GetSecretValueCommand({ SecretId: 'helixa/bankr-api-key' }));
         const parsed = JSON.parse(resp.SecretString);
+        _bankrLlmKey = parsed.BANKR_LLM_KEY || parsed.llmKey || parsed.llm_key || _bankrLlmKey;
         _bankrApiKey = parsed.BANKR_API_KEY || parsed.apiKey || Object.values(parsed)[0];
-        console.log('[BANKR] API key loaded from AWS Secrets Manager');
+        console.log(`[BANKR] API key loaded from AWS Secrets Manager${_bankrLlmKey ? ' with LLM key' : ''}`);
     } catch (e) {
         console.warn('[BANKR] Could not load from Secrets Manager:', e.message);
         try {

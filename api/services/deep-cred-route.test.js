@@ -41,3 +41,10 @@ test('Bankr Risk Analyst uses the dedicated Bankr LLM key before profile API key
   const block = source.slice(fnIdx, fnIdx + 1500);
   assert.match(block, /apiKey:\s*getBankrLlmKey\(\)\s*\|\|\s*getBankrApiKey\(\)/);
 });
+
+test('AWS Bankr secret can provide the dedicated LLM key', () => {
+  const initIdx = source.indexOf('async function initBankrApiKey');
+  assert.ok(initIdx > 0, 'initBankrApiKey helper missing');
+  const block = source.slice(initIdx, initIdx + 1400);
+  assert.match(block, /_bankrLlmKey\s*=\s*parsed\.BANKR_LLM_KEY\s*\|\|\s*parsed\.llmKey\s*\|\|\s*parsed\.llm_key/);
+});
