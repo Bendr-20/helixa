@@ -110,9 +110,13 @@ Add terminal Deep CRED endpoints to `api/v2-server.js`:
 2. `POST /api/terminal/agent/:id/deep-cred-report`
    - Paid generation/refresh path.
    - Price: `$0.15` USDC on Base.
-   - Accepts existing x402 payment flow and existing TX-hash fallback headers where possible.
+   - Must not be added blindly to the global `x402Routes` object because the global x402 middleware runs before terminal DB agent resolution. That could settle payment for an unknown/bad ID.
+   - Use a route-local middleware chain instead:
+     1. resolve the terminal agent and return `404` before any payment check if it does not exist
+     2. check existing TX-hash fallback headers such as `X-Payment-Proof` after resolution
+     3. run a route-local x402 middleware only for this resolved request, or return a clear 402 payment requirements body if first-pass x402 browser signing is deferred
+     4. generate/refresh the report after payment verification
    - After payment verification:
-     - resolve the terminal agent
      - refresh Blocktronics metrics if token is covered and stale/missing
      - collect CRED, market, x402, reputation, and Blocktronics evidence
      - call Bankr Router/Bankr LLM
@@ -259,7 +263,9 @@ ANALYST NOTE: ...
 
 Payment UX for first pass:
 
-- Use backend x402/TX-hash compatibility.
+- Use backend route-local x402/TX-hash compatibility, not the global x402 route map.
+- Resolve the agent through the free terminal lookup before showing or submitting payment.
+- Prefer `X-Payment-Proof` for browser TX-hash fallback because it is already allowed by CORS.
 - If browser x402 signing is not practical in the static app, show a clear payment panel rather than faking payment.
 - Do not block cached report viewing behind wallet connection.
 
@@ -278,7 +284,7 @@ Avoid broad redesign of `Report.tsx` in this pass. It uses `lucide-react`, but t
 - Blocktronics unavailable: continue and state unavailable evidence.
 - Invalid LLM JSON: attempt JSON extraction once, then fallback to deterministic summary.
 - Duplicate payment tx: respect existing used-payment protection.
-- Unknown agent/token: no payment should be consumed if agent resolution fails before generation.
+- Unknown agent/token: no payment should be consumed. This requires route-local pre-resolution before payment middleware.
 
 ## Tests and verification
 
@@ -315,11 +321,15 @@ After implementation:
 - Existing `npm test`/static checks pass in `cred-exchange`
 - Existing relevant `agentdna` API tests pass
 
+## Review adjustment
+
+Spec review found one implementation hazard: global x402 middleware would run before terminal DB agent resolution. The implementation must avoid that path for this endpoint. The safe path is route-local pre-resolution, then route-local payment verification, then report generation.
+
 ## Open implementation question
 
 The only remaining product/UX choice is how polished the first browser payment flow must be:
 
-1. Ship backend x402 + cached UI first, with static-page payment instructions for uncached scans.
+1. Ship backend cached UI first, with route-local x402/TX-hash support and static-page payment instructions for uncached scans.
 2. Add full wallet/x402 signing in the static CRED Exchange page now.
 3. Route paid generation through a Bankr-hosted x402 payment URL if Bankr route setup exists.
 
