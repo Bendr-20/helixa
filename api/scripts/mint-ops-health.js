@@ -1,0 +1,391 @@
+#!/usr/bin/env node
+'use strict';
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { ethers } = require('ethers');
+
+const CONTRACT_ADDRESS = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
+const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const DEFAULT_RPC_URL = process.env.BASE_READ_RPC || process.env.BASE_RPC_URL || 'https://base.drpc.org';
+const DEFAULT_API_PRICING_URL = process.env.HELIXA_PRICING_URL || 'https://api.helixa.xyz/api/v2/pricing';
+const DEFAULT_BANKR_MINT_URL = process.env.BANKR_MINT_URL || 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/mint';
+const DEFAULT_STATE_FILE = process.env.MINT_OPS_STATE_FILE || path.join(os.homedir(), '.openclaw/workspace/memory/mint-ops-health-state.json');
+const EXPECTED_USDC_ATOMS = '1000000';
+const EXPECTED_USD = 1;
+const DEFAULT_MIN_OWNER_ETH = Number(process.env.MINT_OPS_MIN_OWNER_ETH || '0.00005');
+const DEFAULT_SPIKE_MINTS = Number(process.env.MINT_OPS_SPIKE_MINTS || '50');
+const DEFAULT_SPIKE_PER_HOUR = Number(process.env.MINT_OPS_SPIKE_PER_HOUR || '100');
+const DEFAULT_ALERT_COOLDOWN_MS = Number(process.env.MINT_OPS_ALERT_COOLDOWN_MS || String(6 * 60 * 60 * 1000));
+const MIN_CONTRACT_MINT_PRICE_WEI = BigInt(process.env.MINT_OPS_MIN_CONTRACT_MINT_PRICE_WEI || '100000000000000');
+
+const CONTRACT_ABI = [
+  'function totalAgents() view returns (uint256)',
+  'function mintPrice() view returns (uint256)',
+  'function owner() view returns (address)',
+  'function getAgent(uint256 tokenId) view returns (tuple(address agentAddress,string name,string framework,uint64 mintedAt,bool verified,bool soulbound,uint8 origin,uint16 generation,uint256 parentId,uint16 mutationCount,string currentVersion))',
+];
+
+function parseUsdPrice(value) {
+  if (typeof value === 'number') return value;
+  if (value == null) return null;
+  const text = String(value).trim().toLowerCase();
+  if (text === 'free') return 0;
+  const match = text.replace(/,/g, '').match(/\$?([0-9]+(?:\.[0-9]+)?)/);
+  return match ? Number(match[1]) : null;
+}
+
+function parseBankrPaymentRequirements(body) {
+  const accepts = Array.isArray(body?.accepts) ? body.accepts : [];
+  const option = accepts.find((item) => item?.scheme === 'exact' && item?.network === 'eip155:8453');
+  if (!option) return null;
+  const amountAtomic = String(option.amount || option.maxAmountRequired || '0');
+  return {
+    x402Version: body.x402Version || null,
+    amountAtomic,
+    amountUsd: Number(amountAtomic) / 1_000_000,
+    network: option.network,
+    scheme: option.scheme,
+    payTo: option.payTo || null,
+    asset: option.asset || null,
+    resource: option.resource || null,
+  };
+}
+
+function computeMintVelocity({ nowMs = Date.now(), totalAgents, previousState }) {
+  if (!previousState || !Number.isFinite(Number(previousState.totalAgents)) || !Number.isFinite(Number(previousState.checkedAtMs))) {
+    return { mintedSinceLastCheck: 0, minutesSinceLastCheck: null, mintedPerHour: 0 };
+  }
+  const minutesSinceLastCheck = Math.max(0, (nowMs - Number(previousState.checkedAtMs)) / 60_000);
+  const mintedSinceLastCheck = Math.max(0, Number(totalAgents) - Number(previousState.totalAgents));
+  const mintedPerHour = minutesSinceLastCheck > 0 ? mintedSinceLastCheck / (minutesSinceLastCheck / 60) : 0;
+  return {
+    mintedSinceLastCheck,
+    minutesSinceLastCheck: Number(minutesSinceLastCheck.toFixed(2)),
+    mintedPerHour: Number(mintedPerHour.toFixed(2)),
+  };
+}
+
+function addProblem(list, code, message, details = {}) {
+  list.push({ code, message, ...details });
+}
+
+function classifyMintOpsHealth(input, thresholds = {}) {
+  const critical = [];
+  const warnings = [];
+  const minOwnerEth = thresholds.minOwnerEth ?? DEFAULT_MIN_OWNER_ETH;
+  const spikeMints = thresholds.spikeMints ?? DEFAULT_SPIKE_MINTS;
+  const spikePerHour = thresholds.spikePerHour ?? DEFAULT_SPIKE_PER_HOUR;
+
+  const mintPriceWei = BigInt(input.contract?.mintPriceWei ?? '0');
+  if (mintPriceWei === 0n) {
+    addProblem(critical, 'contract_mint_price_zero', 'Contract direct mint price is 0 ETH');
+  } else if (mintPriceWei < MIN_CONTRACT_MINT_PRICE_WEI) {
+    addProblem(critical, 'contract_mint_price_too_low', `Contract direct mint price is too low: ${mintPriceWei.toString()} wei`);
+  }
+
+  if (!input.apiPricing?.httpOk) {
+    addProblem(critical, 'api_pricing_unreachable', 'Helixa pricing endpoint is unreachable');
+  } else if (input.apiPricing.agentMintUsd !== EXPECTED_USD) {
+    addProblem(critical, 'api_mint_price_not_one_usdc', `API mint price is ${input.apiPricing.agentMintUsd ?? 'unknown'} USDC, expected 1`);
+  }
+
+  if (input.bankr?.httpStatus !== 402) {
+    addProblem(critical, 'bankr_mint_route_not_payment_gated', `Bankr mint route returned HTTP ${input.bankr?.httpStatus ?? 'unknown'}, expected 402`);
+  }
+  if (input.bankr?.amountAtomic !== EXPECTED_USDC_ATOMS || input.bankr?.amountUsd !== EXPECTED_USD) {
+    addProblem(critical, 'bankr_mint_price_not_one_usdc', `Bankr mint route price is ${input.bankr?.amountUsd ?? 'unknown'} USDC, expected 1`);
+  }
+  if (!input.bankr?.active) {
+    addProblem(critical, 'bankr_schema_unreachable', 'Bankr mint schema endpoint is unreachable or inactive');
+  }
+  if (!input.bankr?.schemaRequiresSignature) {
+    addProblem(critical, 'bankr_schema_missing_wallet_signature', 'Bankr mint schema does not require wallet signature fields');
+  }
+
+  if (Number(input.contract?.ownerEth ?? 0) < minOwnerEth) {
+    addProblem(warnings, 'owner_gas_low', `Backend owner gas is low: ${input.contract?.ownerEth ?? 0} ETH`, { thresholdEth: minOwnerEth });
+  }
+
+  if (Number(input.velocity?.mintedSinceLastCheck ?? 0) >= spikeMints || Number(input.velocity?.mintedPerHour ?? 0) >= spikePerHour) {
+    addProblem(critical, 'mint_spike_detected', `Mint spike detected: +${input.velocity.mintedSinceLastCheck} since last check (${input.velocity.mintedPerHour}/hr)`);
+  }
+
+  return {
+    status: critical.length ? 'critical' : warnings.length ? 'warning' : 'ok',
+    critical,
+    warnings,
+  };
+}
+
+function formatAlertMessage(report) {
+  if (!report || report.status === 'ok') return '';
+  const lines = ['Mint ops alert'];
+  const snapshot = report.snapshot || {};
+  lines.push(`Status: ${report.status}`);
+  lines.push(`Snapshot: totalAgents: ${snapshot.totalAgents ?? 'unknown'}, API mint: $${snapshot.apiMintUsd ?? 'unknown'}, Bankr mint: $${snapshot.bankrAmountUsd ?? 'unknown'}, owner gas: ${snapshot.ownerEth ?? 'unknown'} ETH`);
+  if (report.critical?.length) {
+    lines.push('Critical:');
+    for (const item of report.critical) lines.push(`- ${item.message}`);
+  }
+  if (report.warnings?.length) {
+    lines.push('Warnings:');
+    for (const item of report.warnings) lines.push(`- ${item.message}`);
+  }
+  return lines.join('\n');
+}
+
+function buildAlertHash(report) {
+  if (!report || report.status === 'ok') return '';
+  const criticalCodes = (report.critical || []).map((item) => item.code).sort();
+  const warningCodes = (report.warnings || []).map((item) => item.code).sort();
+  return JSON.stringify({ status: report.status, criticalCodes, warningCodes });
+}
+
+function shouldEmitAlert({ report, previousState, nowMs = Date.now(), cooldownMs = DEFAULT_ALERT_COOLDOWN_MS }) {
+  const hash = buildAlertHash(report);
+  if (!hash) return false;
+  if (!previousState?.lastAlertHash || previousState.lastAlertHash !== hash) return true;
+  const lastAlertAtMs = Number(previousState.lastAlertAtMs || 0);
+  return !lastAlertAtMs || nowMs - lastAlertAtMs >= cooldownMs;
+}
+
+function readState(file = DEFAULT_STATE_FILE) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeState(state, file = DEFAULT_STATE_FILE) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function schemaRequiresSignature(schema) {
+  const input = schema?.schema?.input;
+  if (!input) return false;
+  if (Array.isArray(input.required)) {
+    return input.required.includes('signatureTimestamp') && input.required.includes('signature');
+  }
+  return Boolean(input.signatureTimestamp && input.signature && /required/i.test(String(input.signatureTimestamp)) && /required/i.test(String(input.signature)));
+}
+
+function buildBankrSchemaUrl(mintUrl = DEFAULT_BANKR_MINT_URL) {
+  const parsed = new URL(mintUrl);
+  const parts = parsed.pathname.split('/').filter(Boolean);
+  if (parts.length < 2) throw new Error(`Invalid Bankr mint URL: ${mintUrl}`);
+  return `https://api.bankr.bot/x402/endpoints/schema/${parts[0]}/${parts[1]}`;
+}
+
+async function fetchJson(url, { method = 'GET', body, headers = {}, timeoutMs = 15000 } = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { method, body, headers, signal: controller.signal });
+    const text = await res.text();
+    let json = null;
+    try { json = text ? JSON.parse(text) : null; } catch (_) {}
+    return { ok: res.ok, status: res.status, json, text };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL } = {}) {
+  const provider = new ethers.JsonRpcProvider(rpcUrl, 8453, { staticNetwork: true, batchMaxCount: 1 });
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+  const [totalAgentsRaw, mintPriceRaw, owner] = await Promise.all([
+    contract.totalAgents(),
+    contract.mintPrice(),
+    contract.owner(),
+  ]);
+  const totalAgents = Number(totalAgentsRaw);
+  let latestAgent = null;
+  if (totalAgents > 0) {
+    const latestTokenId = totalAgents - 1;
+    const agent = await contract.getAgent(latestTokenId);
+    latestAgent = {
+      tokenId: latestTokenId,
+      name: agent.name,
+      framework: agent.framework,
+      mintedAt: Number(agent.mintedAt),
+      mintedAtIso: new Date(Number(agent.mintedAt) * 1000).toISOString(),
+      origin: Number(agent.origin),
+    };
+  }
+  const ownerBalanceWei = await provider.getBalance(owner);
+  const lastMintAgeMinutes = latestAgent ? Number(((Date.now() - latestAgent.mintedAt * 1000) / 60_000).toFixed(2)) : null;
+  return {
+    contractAddress: CONTRACT_ADDRESS,
+    totalAgents,
+    mintPriceWei: mintPriceRaw.toString(),
+    mintPriceEth: Number(ethers.formatEther(mintPriceRaw)),
+    owner,
+    ownerEth: Number(ethers.formatEther(ownerBalanceWei)),
+    latestAgent,
+    lastMintAgeMinutes,
+  };
+}
+
+async function collectApiPricing({ pricingUrl = DEFAULT_API_PRICING_URL } = {}) {
+  const res = await fetchJson(pricingUrl);
+  const agentMintUsd = parseUsdPrice(res.json?.services?.agentMint?.usdc);
+  return { httpOk: res.ok, status: res.status, agentMintUsd, url: pricingUrl };
+}
+
+async function collectBankrMint({ mintUrl = DEFAULT_BANKR_MINT_URL } = {}) {
+  const probe = await fetchJson(mintUrl, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: '{}',
+  });
+  const payment = parseBankrPaymentRequirements(probe.json) || {};
+  const schemaUrl = buildBankrSchemaUrl(mintUrl);
+  const schema = await fetchJson(schemaUrl);
+  return {
+    url: mintUrl,
+    httpStatus: probe.status,
+    amountAtomic: payment.amountAtomic || null,
+    amountUsd: payment.amountUsd ?? null,
+    network: payment.network || null,
+    payTo: payment.payTo || null,
+    asset: payment.asset || null,
+    active: schema.ok && schema.json?.success === true,
+    schemaStatus: schema.status,
+    schemaRequiresSignature: schema.ok && schemaRequiresSignature(schema.json),
+  };
+}
+
+async function collectHealth(options = {}) {
+  const nowMs = options.nowMs || Date.now();
+  const previousState = options.previousState === undefined ? readState(options.stateFile) : options.previousState;
+  const [contract, apiPricing, bankr] = await Promise.all([
+    collectContractSnapshot(options),
+    collectApiPricing(options),
+    collectBankrMint(options),
+  ]);
+  const velocity = computeMintVelocity({ nowMs, totalAgents: contract.totalAgents, previousState });
+  const classification = classifyMintOpsHealth({ contract, apiPricing, bankr, velocity }, options.thresholds);
+  const report = {
+    generated_at: new Date(nowMs).toISOString(),
+    status: classification.status,
+    critical: classification.critical,
+    warnings: classification.warnings,
+    snapshot: {
+      totalAgents: contract.totalAgents,
+      latestTokenId: contract.latestAgent?.tokenId ?? null,
+      latestMintedAt: contract.latestAgent?.mintedAtIso ?? null,
+      latestName: contract.latestAgent?.name ?? null,
+      contractMintPriceEth: contract.mintPriceEth,
+      contractMintPriceWei: contract.mintPriceWei,
+      apiMintUsd: apiPricing.agentMintUsd,
+      bankrAmountUsd: bankr.amountUsd,
+      bankrPayTo: bankr.payTo,
+      owner: contract.owner,
+      ownerEth: contract.ownerEth,
+      mintedSinceLastCheck: velocity.mintedSinceLastCheck,
+      mintedPerHour: velocity.mintedPerHour,
+    },
+    contract,
+    apiPricing,
+    bankr,
+    velocity,
+  };
+  if (options.writeState !== false) {
+    writeState({ checkedAtMs: nowMs, checkedAt: report.generated_at, totalAgents: contract.totalAgents, status: report.status }, options.stateFile);
+  }
+  return report;
+}
+
+function parseArgs(argv) {
+  const args = { json: true, writeState: true };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--alert-only') args.alertOnly = true;
+    else if (arg === '--strict') args.strict = true;
+    else if (arg === '--no-write-state') args.writeState = false;
+    else if (arg === '--state-file') args.stateFile = argv[++i];
+    else if (arg === '--alert-cooldown-ms') args.alertCooldownMs = Number(argv[++i]);
+    else if (arg === '--rpc') args.rpcUrl = argv[++i];
+    else if (arg === '--bankr-url') args.mintUrl = argv[++i];
+    else if (arg === '--pricing-url') args.pricingUrl = argv[++i];
+    else if (arg === '--help' || arg === '-h') args.help = true;
+    else throw new Error(`Unknown argument: ${arg}`);
+  }
+  return args;
+}
+
+function usage() {
+  return [
+    'Usage: node api/scripts/mint-ops-health.js [--alert-only] [--strict] [--no-write-state]',
+    '',
+    'Report-only checker. It never sends transactions or makes paid x402 calls.',
+    'Checks: contract mint price, totalAgents/latest mint, API USDC mint price, Bankr x402 price/schema, backend owner gas, and mint velocity.',
+  ].join('\n');
+}
+
+async function main(argv = process.argv.slice(2)) {
+  const args = parseArgs(argv);
+  if (args.help) {
+    console.log(usage());
+    return;
+  }
+  const previousState = readState(args.stateFile);
+  const nowMs = Date.now();
+  const report = await collectHealth({ ...args, previousState, nowMs, writeState: false });
+  const emitAlert = shouldEmitAlert({
+    report,
+    previousState,
+    nowMs,
+    cooldownMs: args.alertCooldownMs ?? DEFAULT_ALERT_COOLDOWN_MS,
+  });
+
+  if (args.alertOnly) {
+    const message = emitAlert ? formatAlertMessage(report) : '';
+    if (message) console.log(message);
+  } else {
+    console.log(JSON.stringify(report, null, 2));
+  }
+
+  if (args.writeState !== false) {
+    const nextState = {
+      ...(previousState || {}),
+      checkedAtMs: nowMs,
+      checkedAt: report.generated_at,
+      totalAgents: report.snapshot.totalAgents,
+      status: report.status,
+    };
+    if (emitAlert) {
+      nextState.lastAlertHash = buildAlertHash(report);
+      nextState.lastAlertAtMs = nowMs;
+      nextState.lastAlertAt = report.generated_at;
+    }
+    writeState(nextState, args.stateFile);
+  }
+
+  if (args.strict && report.status === 'critical') process.exitCode = 2;
+  else if (args.strict && report.status === 'warning') process.exitCode = 1;
+}
+
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(JSON.stringify({ status: 'critical', error: error.message, stack: error.stack }, null, 2));
+    process.exitCode = 2;
+  });
+}
+
+module.exports = {
+  parseUsdPrice,
+  parseBankrPaymentRequirements,
+  computeMintVelocity,
+  classifyMintOpsHealth,
+  formatAlertMessage,
+  buildAlertHash,
+  shouldEmitAlert,
+  schemaRequiresSignature,
+  buildBankrSchemaUrl,
+  collectHealth,
+};
