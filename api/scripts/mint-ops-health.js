@@ -54,11 +54,12 @@ function parseBankrPaymentRequirements(body) {
 }
 
 function computeMintVelocity({ nowMs = Date.now(), totalAgents, previousState }) {
-  if (!previousState || !Number.isFinite(Number(previousState.totalAgents)) || !Number.isFinite(Number(previousState.checkedAtMs))) {
+  const currentTotalAgents = Number(totalAgents);
+  if (!Number.isFinite(currentTotalAgents) || !previousState || !Number.isFinite(Number(previousState.totalAgents)) || !Number.isFinite(Number(previousState.checkedAtMs))) {
     return { mintedSinceLastCheck: 0, minutesSinceLastCheck: null, mintedPerHour: 0 };
   }
   const minutesSinceLastCheck = Math.max(0, (nowMs - Number(previousState.checkedAtMs)) / 60_000);
-  const mintedSinceLastCheck = Math.max(0, Number(totalAgents) - Number(previousState.totalAgents));
+  const mintedSinceLastCheck = Math.max(0, currentTotalAgents - Number(previousState.totalAgents));
   const mintedPerHour = minutesSinceLastCheck > 0 ? mintedSinceLastCheck / (minutesSinceLastCheck / 60) : 0;
   return {
     mintedSinceLastCheck,
@@ -78,34 +79,45 @@ function classifyMintOpsHealth(input, thresholds = {}) {
   const spikeMints = thresholds.spikeMints ?? DEFAULT_SPIKE_MINTS;
   const spikePerHour = thresholds.spikePerHour ?? DEFAULT_SPIKE_PER_HOUR;
 
-  const mintPriceWei = BigInt(input.contract?.mintPriceWei ?? '0');
-  if (mintPriceWei === 0n) {
-    addProblem(critical, 'contract_mint_price_zero', 'Contract direct mint price is 0 ETH');
-  } else if (mintPriceWei < MIN_CONTRACT_MINT_PRICE_WEI) {
-    addProblem(critical, 'contract_mint_price_too_low', `Contract direct mint price is too low: ${mintPriceWei.toString()} wei`);
+  if (input.contract?.error) {
+    addProblem(critical, 'contract_snapshot_unreachable', `Contract snapshot failed: ${input.contract.error}`);
+  } else {
+    const mintPriceWei = BigInt(input.contract?.mintPriceWei ?? '0');
+    if (mintPriceWei === 0n) {
+      addProblem(critical, 'contract_mint_price_zero', 'Contract direct mint price is 0 ETH');
+    } else if (mintPriceWei < MIN_CONTRACT_MINT_PRICE_WEI) {
+      addProblem(critical, 'contract_mint_price_too_low', `Contract direct mint price is too low: ${mintPriceWei.toString()} wei`);
+    }
   }
 
-  if (!input.apiPricing?.httpOk) {
-    addProblem(critical, 'api_pricing_unreachable', 'Helixa pricing endpoint is unreachable');
+  if (input.apiPricing?.error || !input.apiPricing?.httpOk) {
+    addProblem(critical, 'api_pricing_unreachable', input.apiPricing?.error ? `Helixa pricing endpoint failed: ${input.apiPricing.error}` : 'Helixa pricing endpoint is unreachable');
   } else if (input.apiPricing.agentMintUsd !== EXPECTED_USD) {
     addProblem(critical, 'api_mint_price_not_one_usdc', `API mint price is ${input.apiPricing.agentMintUsd ?? 'unknown'} USDC, expected 1`);
   }
 
-  if (input.bankr?.httpStatus !== 402) {
-    addProblem(critical, 'bankr_mint_route_not_payment_gated', `Bankr mint route returned HTTP ${input.bankr?.httpStatus ?? 'unknown'}, expected 402`);
-  }
-  if (input.bankr?.amountAtomic !== EXPECTED_USDC_ATOMS || input.bankr?.amountUsd !== EXPECTED_USD) {
-    addProblem(critical, 'bankr_mint_price_not_one_usdc', `Bankr mint route price is ${input.bankr?.amountUsd ?? 'unknown'} USDC, expected 1`);
-  }
-  if (!input.bankr?.active) {
-    addProblem(critical, 'bankr_schema_unreachable', 'Bankr mint schema endpoint is unreachable or inactive');
-  }
-  if (!input.bankr?.schemaRequiresSignature) {
-    addProblem(critical, 'bankr_schema_missing_wallet_signature', 'Bankr mint schema does not require wallet signature fields');
+  if (input.bankr?.error) {
+    addProblem(critical, 'bankr_mint_route_unreachable', `Bankr mint route check failed: ${input.bankr.error}`);
+  } else {
+    if (input.bankr?.httpStatus !== 402) {
+      addProblem(critical, 'bankr_mint_route_not_payment_gated', `Bankr mint route returned HTTP ${input.bankr?.httpStatus ?? 'unknown'}, expected 402`);
+    }
+    if (input.bankr?.amountAtomic !== EXPECTED_USDC_ATOMS || input.bankr?.amountUsd !== EXPECTED_USD) {
+      addProblem(critical, 'bankr_mint_price_not_one_usdc', `Bankr mint route price is ${input.bankr?.amountUsd ?? 'unknown'} USDC, expected 1`);
+    }
+    if (String(input.bankr?.asset || '').toLowerCase() !== USDC_BASE.toLowerCase()) {
+      addProblem(critical, 'bankr_mint_asset_not_usdc', `Bankr mint route asset is ${input.bankr?.asset || 'unknown'}, expected Base USDC`);
+    }
+    if (!input.bankr?.active) {
+      addProblem(critical, 'bankr_schema_unreachable', 'Bankr mint schema endpoint is unreachable or inactive');
+    }
+    if (!input.bankr?.schemaRequiresSignature) {
+      addProblem(critical, 'bankr_schema_missing_wallet_signature', 'Bankr mint schema does not require wallet signature fields');
+    }
   }
 
-  if (Number(input.contract?.ownerEth ?? 0) < minOwnerEth) {
-    addProblem(warnings, 'owner_gas_low', `Backend owner gas is low: ${input.contract?.ownerEth ?? 0} ETH`, { thresholdEth: minOwnerEth });
+  if (!input.contract?.error && Number.isFinite(Number(input.contract?.ownerEth)) && Number(input.contract.ownerEth) < minOwnerEth) {
+    addProblem(warnings, 'owner_gas_low', `Backend owner gas is low: ${input.contract.ownerEth} ETH`, { thresholdEth: minOwnerEth });
   }
 
   if (Number(input.velocity?.mintedSinceLastCheck ?? 0) >= spikeMints || Number(input.velocity?.mintedPerHour ?? 0) >= spikePerHour) {
@@ -136,16 +148,24 @@ function formatAlertMessage(report) {
   return lines.join('\n');
 }
 
+function stableAlertItem(item) {
+  return Object.keys(item || {}).sort().reduce((acc, key) => {
+    acc[key] = item[key];
+    return acc;
+  }, {});
+}
+
 function buildAlertHash(report) {
   if (!report || report.status === 'ok') return '';
-  const criticalCodes = (report.critical || []).map((item) => item.code).sort();
-  const warningCodes = (report.warnings || []).map((item) => item.code).sort();
-  return JSON.stringify({ status: report.status, criticalCodes, warningCodes });
+  const critical = (report.critical || []).map(stableAlertItem).sort((a, b) => `${a.code}:${a.message}`.localeCompare(`${b.code}:${b.message}`));
+  const warnings = (report.warnings || []).map(stableAlertItem).sort((a, b) => `${a.code}:${a.message}`.localeCompare(`${b.code}:${b.message}`));
+  return JSON.stringify({ status: report.status, critical, warnings });
 }
 
 function shouldEmitAlert({ report, previousState, nowMs = Date.now(), cooldownMs = DEFAULT_ALERT_COOLDOWN_MS }) {
   const hash = buildAlertHash(report);
   if (!hash) return false;
+  if (previousState?.status === 'ok') return true;
   if (!previousState?.lastAlertHash || previousState.lastAlertHash !== hash) return true;
   const lastAlertAtMs = Number(previousState.lastAlertAtMs || 0);
   return !lastAlertAtMs || nowMs - lastAlertAtMs >= cooldownMs;
@@ -259,13 +279,22 @@ async function collectBankrMint({ mintUrl = DEFAULT_BANKR_MINT_URL } = {}) {
   };
 }
 
+async function safeCollect(name, collector) {
+  try {
+    return await collector();
+  } catch (error) {
+    return { error: error?.message || String(error), source: name };
+  }
+}
+
 async function collectHealth(options = {}) {
   const nowMs = options.nowMs || Date.now();
   const previousState = options.previousState === undefined ? readState(options.stateFile) : options.previousState;
+  const collectors = options.collectors || {};
   const [contract, apiPricing, bankr] = await Promise.all([
-    collectContractSnapshot(options),
-    collectApiPricing(options),
-    collectBankrMint(options),
+    safeCollect('contract', collectors.contract || (() => collectContractSnapshot(options))),
+    safeCollect('apiPricing', collectors.apiPricing || (() => collectApiPricing(options))),
+    safeCollect('bankr', collectors.bankr || (() => collectBankrMint(options))),
   ]);
   const velocity = computeMintVelocity({ nowMs, totalAgents: contract.totalAgents, previousState });
   const classification = classifyMintOpsHealth({ contract, apiPricing, bankr, velocity }, options.thresholds);
@@ -275,17 +304,17 @@ async function collectHealth(options = {}) {
     critical: classification.critical,
     warnings: classification.warnings,
     snapshot: {
-      totalAgents: contract.totalAgents,
+      totalAgents: contract.totalAgents ?? null,
       latestTokenId: contract.latestAgent?.tokenId ?? null,
       latestMintedAt: contract.latestAgent?.mintedAtIso ?? null,
       latestName: contract.latestAgent?.name ?? null,
-      contractMintPriceEth: contract.mintPriceEth,
-      contractMintPriceWei: contract.mintPriceWei,
-      apiMintUsd: apiPricing.agentMintUsd,
-      bankrAmountUsd: bankr.amountUsd,
-      bankrPayTo: bankr.payTo,
-      owner: contract.owner,
-      ownerEth: contract.ownerEth,
+      contractMintPriceEth: contract.mintPriceEth ?? null,
+      contractMintPriceWei: contract.mintPriceWei ?? null,
+      apiMintUsd: apiPricing.agentMintUsd ?? null,
+      bankrAmountUsd: bankr.amountUsd ?? null,
+      bankrPayTo: bankr.payTo ?? null,
+      owner: contract.owner ?? null,
+      ownerEth: contract.ownerEth ?? null,
       mintedSinceLastCheck: velocity.mintedSinceLastCheck,
       mintedPerHour: velocity.mintedPerHour,
     },
@@ -295,7 +324,7 @@ async function collectHealth(options = {}) {
     velocity,
   };
   if (options.writeState !== false) {
-    writeState({ checkedAtMs: nowMs, checkedAt: report.generated_at, totalAgents: contract.totalAgents, status: report.status }, options.stateFile);
+    writeState({ checkedAtMs: nowMs, checkedAt: report.generated_at, totalAgents: report.snapshot.totalAgents ?? previousState?.totalAgents ?? null, status: report.status }, options.stateFile);
   }
   return report;
 }
@@ -355,9 +384,14 @@ async function main(argv = process.argv.slice(2)) {
       ...(previousState || {}),
       checkedAtMs: nowMs,
       checkedAt: report.generated_at,
-      totalAgents: report.snapshot.totalAgents,
+      totalAgents: report.snapshot.totalAgents ?? previousState?.totalAgents ?? null,
       status: report.status,
     };
+    if (report.status === 'ok') {
+      delete nextState.lastAlertHash;
+      delete nextState.lastAlertAtMs;
+      delete nextState.lastAlertAt;
+    }
     if (emitAlert) {
       nextState.lastAlertHash = buildAlertHash(report);
       nextState.lastAlertAtMs = nowMs;

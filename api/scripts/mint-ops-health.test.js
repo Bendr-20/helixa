@@ -11,6 +11,9 @@ const {
   computeMintVelocity,
   buildAlertHash,
   shouldEmitAlert,
+  schemaRequiresSignature,
+  buildBankrSchemaUrl,
+  collectHealth,
 } = require('./mint-ops-health');
 
 test('parseUsdPrice normalizes dollar strings and numbers', () => {
@@ -43,7 +46,7 @@ test('classifyMintOpsHealth stays ok for healthy paid mint posture', () => {
   const result = classifyMintOpsHealth({
     contract: { totalAgents: 5216, mintPriceWei: '569858205032133', ownerEth: 0.01, lastMintAgeMinutes: 5 },
     apiPricing: { agentMintUsd: 1, httpOk: true },
-    bankr: { httpStatus: 402, amountUsd: 1, amountAtomic: '1000000', schemaRequiresSignature: true, active: true },
+    bankr: { httpStatus: 402, amountUsd: 1, amountAtomic: '1000000', asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', schemaRequiresSignature: true, active: true },
     velocity: { mintedSinceLastCheck: 0, mintedPerHour: 0 },
   });
 
@@ -56,7 +59,7 @@ test('classifyMintOpsHealth flags free mint bypasses and route schema drift', ()
   const result = classifyMintOpsHealth({
     contract: { totalAgents: 5216, mintPriceWei: '0', ownerEth: 0.00001, lastMintAgeMinutes: 5 },
     apiPricing: { agentMintUsd: 0, httpOk: true },
-    bankr: { httpStatus: 402, amountUsd: 0.5, amountAtomic: '500000', schemaRequiresSignature: false, active: true },
+    bankr: { httpStatus: 402, amountUsd: 0.5, amountAtomic: '500000', asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', schemaRequiresSignature: false, active: true },
     velocity: { mintedSinceLastCheck: 125, mintedPerHour: 250 },
   });
 
@@ -99,11 +102,13 @@ test('formatAlertMessage summarizes critical and warning items', () => {
   assert(text.includes('totalAgents: 5216'));
 });
 
-test('buildAlertHash changes when alert codes change', () => {
-  const base = { status: 'warning', critical: [], warnings: [{ code: 'owner_gas_low', message: 'low' }] };
-  const changed = { status: 'critical', critical: [{ code: 'bankr_mint_price_not_one_usdc', message: 'bad' }], warnings: [] };
+test('buildAlertHash changes when alert codes or details change', () => {
+  const base = { status: 'warning', critical: [], warnings: [{ code: 'owner_gas_low', message: 'Owner gas is low: 0.00002 ETH' }] };
+  const changedCode = { status: 'critical', critical: [{ code: 'bankr_mint_price_not_one_usdc', message: 'bad' }], warnings: [] };
+  const changedDetails = { status: 'warning', critical: [], warnings: [{ code: 'owner_gas_low', message: 'Owner gas is low: 0.000001 ETH' }] };
 
-  assert.notEqual(buildAlertHash(base), buildAlertHash(changed));
+  assert.notEqual(buildAlertHash(base), buildAlertHash(changedCode));
+  assert.notEqual(buildAlertHash(base), buildAlertHash(changedDetails));
 });
 
 test('shouldEmitAlert suppresses unchanged alerts inside cooldown', () => {
@@ -113,10 +118,52 @@ test('shouldEmitAlert suppresses unchanged alerts inside cooldown', () => {
   assert.equal(shouldEmitAlert({ report, previousState, nowMs: 2_000, cooldownMs: 10_000 }), false);
 });
 
-test('shouldEmitAlert emits when alert changes or cooldown expires', () => {
+test('shouldEmitAlert emits when alert changes, cooldown expires, or status recovered then recurred', () => {
   const report = { status: 'critical', critical: [{ code: 'contract_mint_price_zero', message: 'free' }], warnings: [] };
   const previousState = { lastAlertHash: 'different', lastAlertAtMs: 1_000 };
 
   assert.equal(shouldEmitAlert({ report, previousState, nowMs: 2_000, cooldownMs: 10_000 }), true);
   assert.equal(shouldEmitAlert({ report, previousState: { lastAlertHash: buildAlertHash(report), lastAlertAtMs: 1_000 }, nowMs: 20_000, cooldownMs: 10_000 }), true);
+  assert.equal(shouldEmitAlert({ report, previousState: { status: 'ok', lastAlertHash: buildAlertHash(report), lastAlertAtMs: 1_000 }, nowMs: 2_000, cooldownMs: 10_000 }), true);
+});
+
+test('classifyMintOpsHealth flags a non-USDC Bankr payment asset', () => {
+  const result = classifyMintOpsHealth({
+    contract: { totalAgents: 5216, mintPriceWei: '569858205032133', ownerEth: 0.01 },
+    apiPricing: { agentMintUsd: 1, httpOk: true },
+    bankr: { httpStatus: 402, amountUsd: 1, amountAtomic: '1000000', asset: '0x0000000000000000000000000000000000000000', schemaRequiresSignature: true, active: true },
+    velocity: { mintedSinceLastCheck: 0, mintedPerHour: 0 },
+  });
+
+  assert.equal(result.status, 'critical');
+  assert(result.critical.some((item) => item.code === 'bankr_mint_asset_not_usdc'));
+});
+
+test('schemaRequiresSignature handles legacy string schema and JSON schema required arrays', () => {
+  assert.equal(schemaRequiresSignature({ schema: { input: { signatureTimestamp: 'string (required)', signature: 'string (required)' } } }), true);
+  assert.equal(schemaRequiresSignature({ schema: { input: { required: ['to', 'signatureTimestamp', 'signature'] } } }), true);
+  assert.equal(schemaRequiresSignature({ schema: { input: { required: ['to'] } } }), false);
+});
+
+test('buildBankrSchemaUrl maps Bankr-hosted mint URLs to the schema API', () => {
+  assert.equal(
+    buildBankrSchemaUrl('https://x402.bankr.bot/0xabc/mint'),
+    'https://api.bankr.bot/x402/endpoints/schema/0xabc/mint',
+  );
+});
+
+test('collectHealth converts collector failures into classified critical alerts', async () => {
+  const report = await collectHealth({
+    nowMs: 2_000,
+    previousState: { checkedAtMs: 1_000, totalAgents: 5216 },
+    writeState: false,
+    collectors: {
+      contract: async () => { throw new Error('RPC timeout'); },
+      apiPricing: async () => ({ httpOk: true, status: 200, agentMintUsd: 1 }),
+      bankr: async () => ({ httpStatus: 402, amountUsd: 1, amountAtomic: '1000000', asset: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913', active: true, schemaRequiresSignature: true }),
+    },
+  });
+
+  assert.equal(report.status, 'critical');
+  assert(report.critical.some((item) => item.code === 'contract_snapshot_unreachable'));
 });
