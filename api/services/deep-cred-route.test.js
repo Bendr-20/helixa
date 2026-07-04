@@ -32,3 +32,12 @@ test('Deep CRED route is not registered in the global x402 route map', () => {
   const x402Block = source.slice(x402Start, x402End);
   assert.equal(x402Block.includes('deep-cred-report'), false);
 });
+
+test('Bankr Risk Analyst uses the dedicated Bankr LLM key before profile API key', () => {
+  const helperIdx = source.indexOf('function getBankrLlmKey');
+  assert.ok(helperIdx > 0, 'getBankrLlmKey helper missing');
+  const fnIdx = source.indexOf('async function runBankrRiskAnalyst');
+  assert.ok(fnIdx > 0, 'runBankrRiskAnalyst helper missing');
+  const block = source.slice(fnIdx, fnIdx + 1500);
+  assert.match(block, /apiKey:\s*getBankrLlmKey\(\)\s*\|\|\s*getBankrApiKey\(\)/);
+});

@@ -7726,12 +7726,26 @@ function extractBankrContent(result) {
     return result?.choices?.[0]?.message?.content || result?.message?.content || JSON.stringify(result || {});
 }
 
+let _bankrLlmKey = null;
+function getBankrLlmKey() {
+    if (process.env.BANKR_LLM_KEY) return process.env.BANKR_LLM_KEY;
+    if (_bankrLlmKey !== null) return _bankrLlmKey;
+    try {
+        const cfg = require(require('os').homedir() + '/.bankr/config.json');
+        _bankrLlmKey = cfg.llmKey || cfg.llm_key || '';
+    } catch {
+        _bankrLlmKey = '';
+    }
+    return _bankrLlmKey;
+}
+
 async function runBankrRiskAnalyst(agent, tokenMetrics) {
     const bankrRouter = require('./services/bankr-router');
     const evidence = deepCredReport.buildDeepCredEvidence(agent, tokenMetrics);
     const result = await bankrRouter.route({
         mode: process.env.DEEP_CRED_BANKR_MODE || 'eco',
         maxTokens: 900,
+        apiKey: getBankrLlmKey() || getBankrApiKey(),
         messages: [{ role: 'user', content: bankrRiskAnalystPrompt(agent, evidence) }],
         extra: { temperature: 0 },
     });
