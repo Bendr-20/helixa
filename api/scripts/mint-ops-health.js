@@ -8,7 +8,13 @@ const { ethers } = require('ethers');
 
 const CONTRACT_ADDRESS = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const USDC_BASE = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const DEFAULT_RPC_URL = process.env.BASE_READ_RPC || process.env.BASE_RPC_URL || 'https://base.drpc.org';
+const DEFAULT_RPC_URL = process.env.BASE_READ_RPC || process.env.BASE_RPC_URL || 'https://mainnet.base.org';
+const DEFAULT_RPC_FALLBACK_URLS = [
+  ...parseRpcUrlList(process.env.BASE_READ_RPC_FALLBACKS || process.env.BASE_RPC_FALLBACKS),
+  'https://mainnet.base.org',
+  'https://base-rpc.publicnode.com',
+  'https://base.llamarpc.com',
+];
 const DEFAULT_API_PRICING_URL = process.env.HELIXA_PRICING_URL || 'https://api.helixa.xyz/api/v2/pricing';
 const DEFAULT_BANKR_MINT_URL = process.env.BANKR_MINT_URL || 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/mint';
 const DEFAULT_STATE_FILE = process.env.MINT_OPS_STATE_FILE || path.join(os.homedir(), '.openclaw/workspace/memory/mint-ops-health-state.json');
@@ -18,6 +24,7 @@ const DEFAULT_MIN_OWNER_ETH = Number(process.env.MINT_OPS_MIN_OWNER_ETH || '0.00
 const DEFAULT_SPIKE_MINTS = Number(process.env.MINT_OPS_SPIKE_MINTS || '50');
 const DEFAULT_SPIKE_PER_HOUR = Number(process.env.MINT_OPS_SPIKE_PER_HOUR || '100');
 const DEFAULT_ALERT_COOLDOWN_MS = Number(process.env.MINT_OPS_ALERT_COOLDOWN_MS || String(6 * 60 * 60 * 1000));
+const DEFAULT_RPC_TIMEOUT_MS = normalizePositiveInteger(process.env.MINT_OPS_RPC_TIMEOUT_MS, 15000, 1, 60000);
 const MIN_CONTRACT_MINT_PRICE_WEI = BigInt(process.env.MINT_OPS_MIN_CONTRACT_MINT_PRICE_WEI || '100000000000000');
 
 const CONTRACT_ABI = [
@@ -214,7 +221,36 @@ async function fetchJson(url, { method = 'GET', body, headers = {}, timeoutMs = 
   }
 }
 
-async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL } = {}) {
+async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcTimeoutMs = DEFAULT_RPC_TIMEOUT_MS, collectFromRpc = collectContractSnapshotFromRpc } = {}) {
+  const urls = normalizeRpcUrls(rpcUrls ?? [rpcUrl, ...DEFAULT_RPC_FALLBACK_URLS]);
+  const timeoutMs = normalizePositiveInteger(rpcTimeoutMs, DEFAULT_RPC_TIMEOUT_MS, 1, 60000);
+  const rpcFailures = [];
+
+  for (const url of urls) {
+    try {
+      const snapshot = await withRpcSnapshotTimeout(Promise.resolve().then(() => collectFromRpc(url)), timeoutMs);
+      return { ...snapshot, rpcUrl: url, rpcFailures };
+    } catch (error) {
+      rpcFailures.push({ rpcUrl: url, error: error?.message || String(error) });
+    }
+  }
+
+  throw new Error(`All Base RPC snapshots failed: ${rpcFailures.map((failure) => `${failure.rpcUrl}: ${failure.error}`).join('; ')}`);
+}
+
+async function withRpcSnapshotTimeout(promise, timeoutMs) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(`RPC snapshot timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+async function collectContractSnapshotFromRpc(rpcUrl) {
   const provider = new ethers.JsonRpcProvider(rpcUrl, 8453, { staticNetwork: true, batchMaxCount: 1 });
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
   const [totalAgentsRaw, mintPriceRaw, owner] = await Promise.all([
@@ -248,6 +284,33 @@ async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL } = {}) {
     latestAgent,
     lastMintAgeMinutes,
   };
+}
+
+function parseRpcUrlList(value) {
+  if (Array.isArray(value)) return value.flatMap(parseRpcUrlList);
+  return String(value || '')
+    .split(/[\s,]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function normalizeRpcUrls(values) {
+  const seen = new Set();
+  const urls = [];
+  for (const url of parseRpcUrlList(values)) {
+    if (!/^https?:\/\//i.test(url)) continue;
+    const key = url.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    urls.push(url);
+  }
+  return urls.length ? urls : ['https://mainnet.base.org'];
+}
+
+function normalizePositiveInteger(value, fallback, min = 1, max = Number.MAX_SAFE_INTEGER) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < min) return fallback;
+  return Math.min(Math.floor(number), max);
 }
 
 async function collectApiPricing({ pricingUrl = DEFAULT_API_PRICING_URL } = {}) {
@@ -421,5 +484,6 @@ module.exports = {
   shouldEmitAlert,
   schemaRequiresSignature,
   buildBankrSchemaUrl,
+  collectContractSnapshot,
   collectHealth,
 };

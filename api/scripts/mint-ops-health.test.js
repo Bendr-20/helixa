@@ -13,6 +13,7 @@ const {
   shouldEmitAlert,
   schemaRequiresSignature,
   buildBankrSchemaUrl,
+  collectContractSnapshot,
   collectHealth,
 } = require('./mint-ops-health');
 
@@ -150,6 +151,39 @@ test('buildBankrSchemaUrl maps Bankr-hosted mint URLs to the schema API', () => 
     buildBankrSchemaUrl('https://x402.bankr.bot/0xabc/mint'),
     'https://api.bankr.bot/x402/endpoints/schema/0xabc/mint',
   );
+});
+
+test('collectContractSnapshot falls back to the next RPC before failing the monitor', async () => {
+  const calls = [];
+  const result = await collectContractSnapshot({
+    rpcUrls: ['https://bad-rpc.example', 'https://good-rpc.example'],
+    collectFromRpc: async (rpcUrl) => {
+      calls.push(rpcUrl);
+      if (rpcUrl.includes('bad-rpc')) throw new Error('408 Request Timeout');
+      return { totalAgents: 5220, mintPriceWei: '569858205032133', ownerEth: 0.01 };
+    },
+  });
+
+  assert.deepEqual(calls, ['https://bad-rpc.example', 'https://good-rpc.example']);
+  assert.equal(result.rpcUrl, 'https://good-rpc.example');
+  assert.deepEqual(result.rpcFailures, [{ rpcUrl: 'https://bad-rpc.example', error: '408 Request Timeout' }]);
+});
+
+test('collectContractSnapshot timeboxes a stuck RPC before trying the next fallback', async () => {
+  const calls = [];
+  const result = await collectContractSnapshot({
+    rpcUrls: ['https://stuck-rpc.example', 'https://good-rpc.example'],
+    rpcTimeoutMs: 1,
+    collectFromRpc: async (rpcUrl) => {
+      calls.push(rpcUrl);
+      if (rpcUrl.includes('stuck-rpc')) return new Promise(() => {});
+      return { totalAgents: 5220, mintPriceWei: '569858205032133', ownerEth: 0.01 };
+    },
+  });
+
+  assert.deepEqual(calls, ['https://stuck-rpc.example', 'https://good-rpc.example']);
+  assert.equal(result.rpcUrl, 'https://good-rpc.example');
+  assert.deepEqual(result.rpcFailures, [{ rpcUrl: 'https://stuck-rpc.example', error: 'RPC snapshot timed out after 1ms' }]);
 });
 
 test('collectHealth converts collector failures into classified critical alerts', async () => {
