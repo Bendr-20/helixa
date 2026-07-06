@@ -14,6 +14,7 @@ const {
   schemaRequiresSignature,
   buildBankrSchemaUrl,
   collectContractSnapshot,
+  collectContractSnapshotFromRpc,
   collectHealth,
 } = require('./mint-ops-health');
 
@@ -184,6 +185,29 @@ test('collectContractSnapshot timeboxes a stuck RPC before trying the next fallb
   assert.deepEqual(calls, ['https://stuck-rpc.example', 'https://good-rpc.example']);
   assert.equal(result.rpcUrl, 'https://good-rpc.example');
   assert.deepEqual(result.rpcFailures, [{ rpcUrl: 'https://stuck-rpc.example', error: 'RPC snapshot timed out after 1ms' }]);
+});
+
+test('collectContractSnapshotFromRpc destroys the provider when a contract call times out', async () => {
+  let destroyed = false;
+  const provider = {
+    destroy: () => { destroyed = true; },
+  };
+  const contract = {
+    totalAgents: () => new Promise(() => {}),
+    mintPrice: async () => 569858205032133n,
+    owner: async () => '0x339559A2d1CD15059365FC7bD36b3047BbA480E0',
+    getAgent: async () => ({ name: 'Latest', framework: 'bankr', mintedAt: 1783340595n, origin: 0 }),
+  };
+
+  await assert.rejects(
+    collectContractSnapshotFromRpc('https://stuck-rpc.example', {
+      rpcTimeoutMs: 1,
+      providerFactory: () => provider,
+      contractFactory: () => contract,
+    }),
+    /RPC snapshot timed out after 1ms/,
+  );
+  assert.equal(destroyed, true);
 });
 
 test('collectHealth converts collector failures into classified critical alerts', async () => {

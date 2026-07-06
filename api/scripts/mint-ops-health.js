@@ -221,14 +221,17 @@ async function fetchJson(url, { method = 'GET', body, headers = {}, timeoutMs = 
   }
 }
 
-async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcTimeoutMs = DEFAULT_RPC_TIMEOUT_MS, collectFromRpc = collectContractSnapshotFromRpc } = {}) {
+async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcTimeoutMs = DEFAULT_RPC_TIMEOUT_MS, collectFromRpc } = {}) {
   const urls = normalizeRpcUrls(rpcUrls ?? [rpcUrl, ...DEFAULT_RPC_FALLBACK_URLS]);
   const timeoutMs = normalizePositiveInteger(rpcTimeoutMs, DEFAULT_RPC_TIMEOUT_MS, 1, 60000);
   const rpcFailures = [];
+  const usesCustomCollector = typeof collectFromRpc === 'function';
+  const snapshotCollector = collectFromRpc || collectContractSnapshotFromRpc;
 
   for (const url of urls) {
     try {
-      const snapshot = await withRpcSnapshotTimeout(Promise.resolve().then(() => collectFromRpc(url)), timeoutMs);
+      const snapshotPromise = Promise.resolve().then(() => snapshotCollector(url, { rpcTimeoutMs: timeoutMs }));
+      const snapshot = usesCustomCollector ? await withRpcSnapshotTimeout(snapshotPromise, timeoutMs) : await snapshotPromise;
       return { ...snapshot, rpcUrl: url, rpcFailures };
     } catch (error) {
       rpcFailures.push({ rpcUrl: url, error: error?.message || String(error) });
@@ -238,10 +241,13 @@ async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcT
   throw new Error(`All Base RPC snapshots failed: ${rpcFailures.map((failure) => `${failure.rpcUrl}: ${failure.error}`).join('; ')}`);
 }
 
-async function withRpcSnapshotTimeout(promise, timeoutMs) {
+async function withRpcSnapshotTimeout(promise, timeoutMs, onTimeout) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(`RPC snapshot timed out after ${timeoutMs}ms`)), timeoutMs);
+    timeoutId = setTimeout(() => {
+      if (onTimeout) onTimeout();
+      reject(new Error(`RPC snapshot timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -250,40 +256,60 @@ async function withRpcSnapshotTimeout(promise, timeoutMs) {
   }
 }
 
-async function collectContractSnapshotFromRpc(rpcUrl) {
-  const provider = new ethers.JsonRpcProvider(rpcUrl, 8453, { staticNetwork: true, batchMaxCount: 1 });
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-  const [totalAgentsRaw, mintPriceRaw, owner] = await Promise.all([
-    contract.totalAgents(),
-    contract.mintPrice(),
-    contract.owner(),
-  ]);
-  const totalAgents = Number(totalAgentsRaw);
-  let latestAgent = null;
-  if (totalAgents > 0) {
-    const latestTokenId = totalAgents - 1;
-    const agent = await contract.getAgent(latestTokenId);
-    latestAgent = {
-      tokenId: latestTokenId,
-      name: agent.name,
-      framework: agent.framework,
-      mintedAt: Number(agent.mintedAt),
-      mintedAtIso: new Date(Number(agent.mintedAt) * 1000).toISOString(),
-      origin: Number(agent.origin),
-    };
+function destroyProvider(provider) {
+  try {
+    provider?.destroy?.();
+  } catch (_) {
+    // Cleanup is best-effort; the health check should still report the original RPC failure.
   }
-  const ownerBalanceWei = await provider.getBalance(owner);
-  const lastMintAgeMinutes = latestAgent ? Number(((Date.now() - latestAgent.mintedAt * 1000) / 60_000).toFixed(2)) : null;
-  return {
-    contractAddress: CONTRACT_ADDRESS,
-    totalAgents,
-    mintPriceWei: mintPriceRaw.toString(),
-    mintPriceEth: Number(ethers.formatEther(mintPriceRaw)),
-    owner,
-    ownerEth: Number(ethers.formatEther(ownerBalanceWei)),
-    latestAgent,
-    lastMintAgeMinutes,
-  };
+}
+
+async function collectContractSnapshotFromRpc(rpcUrl, { rpcTimeoutMs = DEFAULT_RPC_TIMEOUT_MS, providerFactory, contractFactory } = {}) {
+  const timeoutMs = normalizePositiveInteger(rpcTimeoutMs, DEFAULT_RPC_TIMEOUT_MS, 1, 60000);
+  const provider = providerFactory
+    ? providerFactory(rpcUrl)
+    : new ethers.JsonRpcProvider(rpcUrl, 8453, { staticNetwork: true, batchMaxCount: 1 });
+  const contract = contractFactory
+    ? contractFactory(CONTRACT_ADDRESS, CONTRACT_ABI, provider)
+    : new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+
+  try {
+    return await withRpcSnapshotTimeout((async () => {
+      const [totalAgentsRaw, mintPriceRaw, owner] = await Promise.all([
+        contract.totalAgents(),
+        contract.mintPrice(),
+        contract.owner(),
+      ]);
+      const totalAgents = Number(totalAgentsRaw);
+      let latestAgent = null;
+      if (totalAgents > 0) {
+        const latestTokenId = totalAgents - 1;
+        const agent = await contract.getAgent(latestTokenId);
+        latestAgent = {
+          tokenId: latestTokenId,
+          name: agent.name,
+          framework: agent.framework,
+          mintedAt: Number(agent.mintedAt),
+          mintedAtIso: new Date(Number(agent.mintedAt) * 1000).toISOString(),
+          origin: Number(agent.origin),
+        };
+      }
+      const ownerBalanceWei = await provider.getBalance(owner);
+      const lastMintAgeMinutes = latestAgent ? Number(((Date.now() - latestAgent.mintedAt * 1000) / 60_000).toFixed(2)) : null;
+      return {
+        contractAddress: CONTRACT_ADDRESS,
+        totalAgents,
+        mintPriceWei: mintPriceRaw.toString(),
+        mintPriceEth: Number(ethers.formatEther(mintPriceRaw)),
+        owner,
+        ownerEth: Number(ethers.formatEther(ownerBalanceWei)),
+        latestAgent,
+        lastMintAgeMinutes,
+      };
+    })(), timeoutMs, () => destroyProvider(provider));
+  } finally {
+    destroyProvider(provider);
+  }
 }
 
 function parseRpcUrlList(value) {
@@ -437,9 +463,9 @@ async function main(argv = process.argv.slice(2)) {
 
   if (args.alertOnly) {
     const message = emitAlert ? formatAlertMessage(report) : '';
-    if (message) console.log(message);
+    if (message) await writeStdoutLine(message);
   } else {
-    console.log(JSON.stringify(report, null, 2));
+    await writeStdoutLine(JSON.stringify(report, null, 2));
   }
 
   if (args.writeState !== false) {
@@ -467,11 +493,28 @@ async function main(argv = process.argv.slice(2)) {
   else if (args.strict && report.status === 'warning') process.exitCode = 1;
 }
 
-if (require.main === module) {
-  main().catch((error) => {
-    console.error(JSON.stringify({ status: 'critical', error: error.message, stack: error.stack }, null, 2));
-    process.exitCode = 2;
+function writeStdoutLine(message) {
+  return new Promise((resolve, reject) => {
+    process.stdout.write(`${message}\n`, (error) => {
+      if (error) reject(error);
+      else resolve();
+    });
   });
+}
+
+function writeStderrLine(message) {
+  return new Promise((resolve) => {
+    process.stderr.write(`${message}\n`, () => resolve());
+  });
+}
+
+if (require.main === module) {
+  main()
+    .then(() => process.exit(process.exitCode || 0))
+    .catch(async (error) => {
+      await writeStderrLine(JSON.stringify({ status: 'critical', error: error.message, stack: error.stack }, null, 2));
+      process.exit(2);
+    });
 }
 
 module.exports = {
@@ -485,5 +528,6 @@ module.exports = {
   schemaRequiresSignature,
   buildBankrSchemaUrl,
   collectContractSnapshot,
+  collectContractSnapshotFromRpc,
   collectHealth,
 };
