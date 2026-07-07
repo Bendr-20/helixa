@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
   shouldContinueOffchainAfterMintError,
   formatMintFallbackWarning,
+  shouldAllowServerSponsoredPrincipalMint,
 } = require('./principal-register-policy');
 
 test('onchain mint transport errors continue offchain', () => {
@@ -21,4 +22,10 @@ test('human validation and authorization errors do not continue offchain', () =>
 test('mint fallback warning is user safe', () => {
   assert.match(formatMintFallbackWarning(new Error('Mint creation error')), /saved offchain/i);
   assert.doesNotMatch(formatMintFallbackWarning(new Error('Mint creation error')), /-32603|eth_sendTransaction/i);
+});
+
+test('server sponsored principal mints are disabled by default', () => {
+  assert.equal(shouldAllowServerSponsoredPrincipalMint({}), false);
+  assert.equal(shouldAllowServerSponsoredPrincipalMint({ HELIXA_ALLOW_SERVER_SPONSORED_PRINCIPAL_MINTS: 'false' }), false);
+  assert.equal(shouldAllowServerSponsoredPrincipalMint({ HELIXA_ALLOW_SERVER_SPONSORED_PRINCIPAL_MINTS: 'true' }), true);
 });

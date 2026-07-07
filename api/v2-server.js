@@ -31,6 +31,7 @@ const {
 const {
     shouldContinueOffchainAfterMintError,
     formatMintFallbackWarning,
+    shouldAllowServerSponsoredPrincipalMint,
 } = require('./services/principal-register-policy');
 
 // ─── Services ───────────────────────────────────────────────────
@@ -4060,6 +4061,9 @@ app.post('/api/v2/principals/human/register', requireHumanAuth, async (req, res)
         let mintedOnchain = false;
         let mintWarning = null;
         if (mintOnchain) {
+            if (!shouldAllowServerSponsoredPrincipalMint()) {
+                return res.status(403).json({ error: 'Server-sponsored principal onchain minting is disabled. Register offchain or use a paid mint endpoint.' });
+            }
             if (!callerWallet) {
                 return res.status(403).json({ error: 'On-chain mint requires wallet authentication (SIWE)' });
             }
@@ -4225,6 +4229,9 @@ app.post('/api/v2/principals/organization/register', requireHumanAuth, async (re
 
         let mintTxHash = null;
         if (mintOnchain) {
+            if (!shouldAllowServerSponsoredPrincipalMint()) {
+                return res.status(403).json({ error: 'Server-sponsored principal onchain minting is disabled. Register offchain or use a paid mint endpoint.' });
+            }
             if (!callerWallet) {
                 return res.status(403).json({ error: 'On-chain mint requires wallet authentication (SIWE)' });
             }

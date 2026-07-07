@@ -39,7 +39,12 @@ function formatMintFallbackWarning(_error) {
   return 'Onchain minting failed, so this human profile was saved offchain instead.';
 }
 
+function shouldAllowServerSponsoredPrincipalMint(env = process.env) {
+  return env.HELIXA_ALLOW_SERVER_SPONSORED_PRINCIPAL_MINTS === 'true';
+}
+
 module.exports = {
   shouldContinueOffchainAfterMintError,
   formatMintFallbackWarning,
+  shouldAllowServerSponsoredPrincipalMint,
 };
