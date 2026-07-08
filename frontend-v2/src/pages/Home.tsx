@@ -94,6 +94,7 @@ export function Home() {
             style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', justifyContent: 'center' }}
           >
             <Link to="/agents" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Browse Directory →</Link>
+            <a href="/multipass/" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Multipass →</a>
             <a href="/terminal" style={{ color: '#6a6a8e', fontSize: '0.9rem', textDecoration: 'none' }}>Agent Terminal →</a>
           </motion.div>
         </motion.div>

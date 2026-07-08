@@ -12,6 +12,7 @@ const primaryLinks = [
 
 const moreLinks = [
   { href: '/mint', label: 'Register' },
+  { href: '/multipass/', label: 'Multipass', external: true },
   { href: '/token', label: '$CRED' },
   { href: '/docs', label: 'Docs' },
 ];

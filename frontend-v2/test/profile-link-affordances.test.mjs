@@ -29,3 +29,14 @@ test('directory human and org cards expose a copy affordance without hiding the 
   assert.match(directory, /Copy Profile Link/i);
   assert.match(directory, /Open profile/i);
 });
+
+test('main helixa homepage and nav expose Multipass as a real page link', () => {
+  const layout = read('components/Layout.tsx');
+  const home = read('pages/Home.tsx');
+
+  assert.match(layout, /href: '\/multipass\/'/);
+  assert.match(layout, /label: 'Multipass'/);
+  assert.match(layout, /external: true/);
+  assert.match(home, /href="\/multipass\/"/);
+  assert.match(home, /Multipass →/);
+});
