@@ -48,6 +48,9 @@ test('serves an ERC-8257 manifest for the Agent Auras lookup tool', async () => 
     assert.equal(manifest.endpoint, 'https://api.helixa.xyz/api/v2/tools/agent-aura-lookup');
     assert.equal(manifest.creatorAddress, '0x339559a2d1cd15059365fc7bd36b3047bba480e0');
     assert.deepEqual(manifest.tags, ['ai', 'nft', 'helixa', 'cred', 'agentdna']);
+    assert.equal(manifest.featuredImage, 'https://helixa.xyz/multipass/opensea/helixa-agentdna-tool.jpg');
+    assert.notEqual(manifest.featuredImage, manifest.image);
+    assert.doesNotMatch(manifest.featuredImage, /aura\/1\.png|api\/v2\/agent\/1|bendr/i);
     assert.equal(manifest.inputs.properties.tokenId.type, 'integer');
     assert.deepEqual(manifest.inputs.required, ['tokenId']);
     assert.equal(manifest.outputs.properties.credScore.type, 'integer');

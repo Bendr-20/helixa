@@ -14,6 +14,7 @@ const CONTRACT = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const CONTRACT_LOWER = CONTRACT.toLowerCase();
 const DEPLOYER_LOWER = DEPLOYER.toLowerCase();
 const PUBLIC_BASE_URL = 'https://api.helixa.xyz';
+const FEATURED_IMAGE_URL = 'https://helixa.xyz/multipass/opensea/helixa-agentdna-tool.jpg';
 const AGENT_AURAS_COLLECTION_URL = 'https://opensea.io/collection/helixa-376479287';
 const OPENSEA_TOOL_ID = '192';
 const OPENSEA_TOOL_REGISTRY = '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1';
@@ -34,6 +35,7 @@ function buildAgentAuraLookupManifest() {
     version: '1.0.0',
     endpoint: `${PUBLIC_BASE_URL}/api/v2/tools/agent-aura-lookup`,
     image: `${PUBLIC_BASE_URL}/api/v2/aura/1.png`,
+    featuredImage: FEATURED_IMAGE_URL,
     tags: ['ai', 'nft', 'helixa', 'cred', 'agentdna'],
     creatorAddress: DEPLOYER_LOWER,
     inputs: {
