@@ -10,6 +10,8 @@ const LFI = '0x3722264ab15a1dfce5a5af89e6547f7949a8aba3';
 const JUNO = '0x4e6c9f48f73e54ee5f3ab7e2992b2d733d0d0b07';
 const SURPLUS = '0xc52aedec3374422d7510e294cfaa90799595cba3';
 const AEON = '0xbf8e8f0e8866a7052f948c16508644347c57aba3';
+const CRED = '0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3';
+const CLAWD = '0x9f86db9fc6f7c9408e8fda3ff8ce4e78ac7a6b07';
 const UNSUPPORTED = '0x0000000000000000000000000000000000000001';
 
 function makeDb() {
@@ -233,6 +235,8 @@ async function run() {
     }
 
     assert.equal(metrics.isCoveredToken(token), true);
+    assert.equal(metrics.isCoveredToken(CRED), true);
+    assert.equal(metrics.isCoveredToken(CLAWD), true);
     assert.equal(metrics.isCoveredToken(UNSUPPORTED), false);
 
     let calledUrl = null;
