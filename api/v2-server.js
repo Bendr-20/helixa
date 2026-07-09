@@ -334,6 +334,7 @@ const {
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
 const { buildX402ErrorBody } = require('./services/x402-payment-errors');
+const { settleEip3009PaymentLocally } = require('./services/x402-local-settlement');
 
 const internalAuth = createInternalAuthConfig(process.env);
 const INTERNAL_API_KEY = internalAuth.internalApiKey;
@@ -368,6 +369,26 @@ function createX402HttpContext(req) {
         method: req.method,
         paymentHeader: adapter.getHeader('payment-signature') || adapter.getHeader('x-payment'),
     };
+}
+
+async function tryLocalX402MintSettlement(processResult, reason) {
+    try {
+        const result = await withDeadline(
+            settleEip3009PaymentLocally({
+                ethers,
+                signer: wallet,
+                paymentPayload: processResult.paymentPayload,
+                paymentRequirements: processResult.paymentRequirements,
+            }),
+            X402_SETTLEMENT_TIMEOUT_MS,
+            'local x402 mint settlement',
+        );
+        console.warn(`[X402 MINT] Local EIP-3009 settlement succeeded after ${reason}: ${result.transaction}`);
+        return { result };
+    } catch (error) {
+        console.warn(`[X402 MINT] Local EIP-3009 settlement failed after ${reason}: ${error.message}`);
+        return { error };
+    }
 }
 
 function sendX402PaymentError(req, res, response, fallbackError) {
@@ -890,20 +911,31 @@ if (Object.keys(x402Routes).length > 0) {
             );
         } catch (error) {
             console.warn(`[X402 MINT] Settlement timeout/failure before mint: ${error.message}`);
-            return res.status(504).json({
-                error: 'x402_settlement_timeout',
-                detail: error.message,
-                safe_to_retry: true,
-            });
+            const localSettlement = await tryLocalX402MintSettlement(processResult, 'facilitator timeout/failure');
+            if (!localSettlement.result) {
+                return res.status(504).json({
+                    error: 'x402_settlement_timeout',
+                    detail: error.message,
+                    local_detail: localSettlement.error?.message,
+                    safe_to_retry: true,
+                });
+            }
+            settleResult = localSettlement.result;
         }
 
         if (!settleResult.success) {
-            console.warn(`[X402 MINT] Settlement failed before mint: ${settleResult.errorReason || settleResult.errorMessage || 'unknown'}`);
-            return res.status(402).json({
-                error: 'x402_settlement_failed',
-                detail: settleResult.errorMessage || settleResult.errorReason || 'Settlement failed',
-                safe_to_retry: true,
-            });
+            const detail = settleResult.errorMessage || settleResult.errorReason || 'Settlement failed';
+            console.warn(`[X402 MINT] Settlement failed before mint: ${detail}`);
+            const localSettlement = await tryLocalX402MintSettlement(processResult, 'facilitator settlement failure');
+            if (!localSettlement.result) {
+                return res.status(402).json({
+                    error: 'x402_settlement_failed',
+                    detail,
+                    local_detail: localSettlement.error?.message,
+                    safe_to_retry: true,
+                });
+            }
+            settleResult = localSettlement.result;
         }
 
         Object.entries(settleResult.headers || {}).forEach(([key, value]) => res.setHeader(key, value));
