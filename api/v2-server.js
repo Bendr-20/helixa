@@ -28,6 +28,7 @@ const {
     normalizeNarrative,
     normalizePersonality,
 } = require('./services/public-profile-fallbacks');
+const { findIndexedAgentByAddress } = require('./services/agent-index-lookup');
 const {
     shouldContinueOffchainAfterMintError,
     formatMintFallbackWarning,
@@ -324,7 +325,13 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || (() => { try { return
 }
 
 // ─── x402 Official SDK Middleware ───────────────────────────────
-const { paymentMiddleware: x402PaymentMiddleware, x402ResourceServer: X402ResourceServer } = require('@x402/express');
+const {
+    ExpressAdapter,
+    paymentMiddleware: x402PaymentMiddleware,
+    x402HTTPResourceServer: X402HTTPResourceServer,
+    x402ResourceServer: X402ResourceServer,
+} = require('@x402/express');
+const { decodePaymentRequiredHeader } = require('@x402/core/http');
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
 
@@ -342,6 +349,74 @@ function hasValidInternalKey(req) {
 const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
+const X402_VERIFY_TIMEOUT_MS = Number(process.env.X402_VERIFY_TIMEOUT_MS || 10000);
+const X402_SETTLEMENT_TIMEOUT_MS = Number(process.env.X402_SETTLEMENT_TIMEOUT_MS || 20000);
+
+function withDeadline(promise, ms, label = 'operation') {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    });
+    return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
+
+function createX402HttpContext(req) {
+    const adapter = new ExpressAdapter(req);
+    return {
+        adapter,
+        path: req.path,
+        method: req.method,
+        paymentHeader: adapter.getHeader('payment-signature') || adapter.getHeader('x-payment'),
+    };
+}
+
+function decodePaymentRequiredFromHeaders(headers = {}) {
+    const encoded = headers['PAYMENT-REQUIRED'] || headers['payment-required'];
+    if (!encoded) return null;
+    try { return decodePaymentRequiredHeader(encoded); }
+    catch { return null; }
+}
+
+function isEmptyJsonObject(value) {
+    return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0;
+}
+
+function buildX402ErrorBody(response, fallbackError = 'payment_required') {
+    if (response?.body && !isEmptyJsonObject(response.body)) return response.body;
+    const paymentRequired = decodePaymentRequiredFromHeaders(response?.headers || {});
+    return {
+        error: paymentRequired?.error || fallbackError,
+        detail: paymentRequired?.error || 'Use the PAYMENT-REQUIRED header to complete x402 payment in USDC.',
+        payment: paymentRequired ? {
+            x402Version: paymentRequired.x402Version,
+            resource: paymentRequired.resource,
+            accepts: paymentRequired.accepts,
+        } : { header: 'PAYMENT-REQUIRED' },
+    };
+}
+
+function sendX402PaymentError(res, response, fallbackError) {
+    res.status(response.status || 402);
+    Object.entries(response.headers || {}).forEach(([key, value]) => res.setHeader(key, value));
+    if (response.isHtml) return res.send(response.body || 'Payment required');
+    return res.json(buildX402ErrorBody(response, fallbackError));
+}
+
+function buildMintUnpaidBody() {
+    return {
+        contentType: 'application/json',
+        body: {
+            error: 'payment_required',
+            service: 'agent-mint',
+            label: 'Helixa agent mint',
+            price: { usdc: formatUSDPrice(PRICING.agentMint) },
+            network: 'Base (eip155:8453)',
+            assets: { usdc: USDC_ADDRESS },
+            payTo: DEPLOYER_ADDRESS,
+            payment: 'Use the PAYMENT-REQUIRED header to complete x402 payment in USDC, or send USDC and retry with X-Payment-Proof: <txHash>.',
+        },
+    };
+}
 
 async function getCredReportCredPriceUSD() {
     let price = credOracle.getCredPriceUSDC();
@@ -373,6 +448,7 @@ if (PRICING.agentMint > 0) {
     x402Routes['POST /api/v2/mint'] = {
         accepts: [{ scheme: 'exact', price: `$${PRICING.agentMint}`, network: 'eip155:8453', payTo: DEPLOYER_ADDRESS }],
         description: 'Register a new Helixa agent identity', mimeType: 'application/json',
+        unpaidResponseBody: buildMintUnpaidBody,
     };
 }
 if (PRICING.update > 0) {
@@ -627,6 +703,17 @@ function paymentGate(priceUSD, recipient) {
 
 // Mount: Internal key bypass → TX hash bypass → x402 SDK
 if (Object.keys(x402Routes).length > 0) {
+    const x402MintHttpServer = x402Routes['POST /api/v2/mint']
+        ? new X402HTTPResourceServer(x402Server, { 'POST /api/v2/mint': x402Routes['POST /api/v2/mint'] })
+        : null;
+    let x402MintInitPromise = null;
+
+    function initializeX402MintHttpServer() {
+        if (!x402MintHttpServer) return null;
+        if (!x402MintInitPromise) x402MintInitPromise = x402MintHttpServer.initialize();
+        return x402MintInitPromise;
+    }
+
     // Header normalization during x402 client transition.
     // Accept legacy Payment / X-Payment request headers and map them to PAYMENT-SIGNATURE.
     app.use((req, res, next) => {
@@ -643,6 +730,25 @@ if (Object.keys(x402Routes).length > 0) {
         if (hasValidInternalKey(req)) {
             req.paymentVerified = { method: 'internal-key' };
         }
+        return next();
+    });
+
+    // Idempotent mint retry guard runs before x402 settlement. If a client timed out
+    // after a successful onchain mint, a retry should return the indexed token rather
+    // than charging again or forcing agents into contract-level fallback paths.
+    app.use(async (req, res, next) => {
+        if (req.method !== 'POST' || req.path !== '/api/v2/mint' || req.paymentVerified) return next();
+        const mintAddress = getValidatedSIWAAddress(req);
+        if (!mintAddress) return next();
+
+        const indexedExisting = findIndexedAgentByAddress(mintAddress);
+        if (indexedExisting) return returnExistingMintedAgent(res, mintAddress);
+
+        try {
+            const hasMinted = await withTimeout(readContract.hasMinted(mintAddress), 1200, false);
+            if (hasMinted) return returnExistingMintedAgent(res, mintAddress);
+        } catch {}
+
         return next();
     });
 
@@ -675,7 +781,7 @@ if (Object.keys(x402Routes).length > 0) {
             try {
                 const hasMinted = await readContract.hasMinted(mintAddress);
                 if (hasMinted) {
-                    return res.status(409).json({ error: 'This address already has an agent' });
+                    return returnExistingMintedAgent(res, mintAddress);
                 }
             } catch {}
             if (!acquireMintRequestLock(req, res, mintAddress)) {
@@ -751,11 +857,100 @@ if (Object.keys(x402Routes).length > 0) {
         });
     }
 
+    const x402PresettleMintMiddleware = async function x402PresettleMintMiddleware(req, res, next) {
+        if (!x402MintHttpServer || req.method !== 'POST' || req.path !== '/api/v2/mint') return next();
+        if (req.paymentVerified) return next();
+
+        const context = createX402HttpContext(req);
+        let processResult;
+        try {
+            await withDeadline(initializeX402MintHttpServer(), X402_VERIFY_TIMEOUT_MS, 'x402 facilitator init');
+            processResult = await withDeadline(
+                x402MintHttpServer.processHTTPRequest(context),
+                X402_VERIFY_TIMEOUT_MS,
+                'x402 mint verification',
+            );
+        } catch (error) {
+            return res.status(504).json({
+                error: 'x402_verification_unavailable',
+                detail: error.message,
+                safe_to_retry: true,
+            });
+        }
+
+        if (processResult.type === 'no-payment-required') {
+            return res.status(402).json({ error: 'payment_required', detail: 'Mint payment configuration did not return requirements; refusing to mint without payment.' });
+        }
+        if (processResult.type === 'payment-error') {
+            return sendX402PaymentError(res, processResult.response, 'payment_required');
+        }
+
+        const mintAddress = getValidatedSIWAAddress(req);
+        if (!mintAddress) {
+            return res.status(401).json({ error: 'Valid SIWA authentication required before payment settlement' });
+        }
+
+        try {
+            const indexedExisting = findIndexedAgentByAddress(mintAddress);
+            if (indexedExisting) return returnExistingMintedAgent(res, mintAddress);
+            const hasMinted = await withDeadline(readContract.hasMinted(mintAddress), 1500, 'existing mint check');
+            if (hasMinted) return returnExistingMintedAgent(res, mintAddress);
+        } catch {}
+
+        if (!acquireMintRequestLock(req, res, mintAddress)) {
+            return res.status(409).json({ error: 'Mint already in progress for this address' });
+        }
+
+        let settleResult;
+        try {
+            settleResult = await withDeadline(
+                x402MintHttpServer.processSettlement(
+                    processResult.paymentPayload,
+                    processResult.paymentRequirements,
+                    processResult.declaredExtensions,
+                    { request: context, responseBody: Buffer.alloc(0) },
+                ),
+                X402_SETTLEMENT_TIMEOUT_MS,
+                'x402 mint settlement',
+            );
+        } catch (error) {
+            console.warn(`[X402 MINT] Settlement timeout/failure before mint: ${error.message}`);
+            return res.status(504).json({
+                error: 'x402_settlement_timeout',
+                detail: error.message,
+                safe_to_retry: true,
+            });
+        }
+
+        if (!settleResult.success) {
+            console.warn(`[X402 MINT] Settlement failed before mint: ${settleResult.errorReason || settleResult.errorMessage || 'unknown'}`);
+            return res.status(402).json({
+                error: 'x402_settlement_failed',
+                detail: settleResult.errorMessage || settleResult.errorReason || 'Settlement failed',
+                safe_to_retry: true,
+            });
+        }
+
+        Object.entries(settleResult.headers || {}).forEach(([key, value]) => res.setHeader(key, value));
+        req.paymentVerified = {
+            method: 'x402',
+            amount: Number(settleResult.requirements?.amount || 0) / 1e6,
+            token: 'USDC',
+            payer: settleResult.payer || null,
+            txHash: settleResult.transaction || null,
+            network: settleResult.network,
+        };
+        return next();
+    };
+
+    app.use(x402PresettleMintMiddleware);
+
     // x402 SDK — skip if already paid via TX hash or MPP
     const x402Mw = x402PaymentMiddleware(x402Routes, x402Server);
     app.use((req, res, next) => {
         if (req.path.includes('cred-report')) console.log(`[X402-GATE] path=${req.path} paymentVerified=${JSON.stringify(req.paymentVerified)}`);
         if (req.paymentVerified) return next();
+        if (req.method === 'POST' && req.path === '/api/v2/mint') return next();
         // Skip x402 for non-API routes (dashboard pages, static assets)
         if (!req.path.startsWith('/api/')) return next();
         return x402Mw(req, res, next);
@@ -1903,6 +2098,56 @@ async function getAgentForResponse(tokenId, { timeoutMs = 5000 } = {}) {
 
     if (outcome?.error) throw outcome.error;
     throw new Error('Agent lookup timed out');
+}
+
+async function buildMintResponseAgentData(tokenId) {
+    if (tokenId === null || tokenId === undefined) return null;
+
+    const agentData = await withTimeout(
+        formatAgentPublicFast(tokenId).catch(error => {
+            console.warn(`[V2 MINT] Response profile fetch failed for #${tokenId}: ${error.message}`);
+            return null;
+        }),
+        2500,
+        null,
+    );
+
+    setImmediate(() => indexer.reindexAgent(tokenId).catch(error => {
+        console.warn(`[V2 MINT] Background reindex failed for #${tokenId}: ${error.message}`);
+    }));
+
+    return agentData;
+}
+
+async function returnExistingMintedAgent(res, agentAddress) {
+    const existing = findIndexedAgentByAddress(agentAddress);
+    if (!existing) {
+        return res.status(409).json({ error: 'This address already has an agent' });
+    }
+
+    const agentData = await withTimeout(
+        getAgentForResponse(existing.tokenId, { timeoutMs: 2500 }).catch(() => null),
+        3000,
+        null,
+    );
+
+    return res.status(200).json({
+        success: true,
+        existing: true,
+        tokenId: existing.tokenId,
+        message: `This address already has Helixa Agent #${existing.tokenId}`,
+        agent: agentData || {
+            id: existing.tokenId,
+            tokenId: existing.tokenId,
+            name: existing.name,
+            agentAddress: existing.agentAddress,
+            owner: existing.owner,
+            framework: existing.framework,
+            mintOrigin: existing.mintOrigin,
+            credScore: existing.credScore,
+            points: existing.points,
+        },
+    });
 }
 
 async function fetchCoinbaseAttestationStatus(walletAddress) {
@@ -3210,7 +3455,7 @@ async function mintHandler(req, res) {
         // Check if already minted
         const hasMinted = await readContract.hasMinted(agentAddress);
         if (hasMinted) {
-            return res.status(409).json({ error: 'This address already has an agent' });
+            return returnExistingMintedAgent(res, agentAddress);
         }
         
         // TODO: mintFor signature — verify this matches the deployed contract
@@ -3407,15 +3652,9 @@ async function mintHandler(req, res) {
             if (Object.keys(publicProfile).length) saveProfile(tokenId, publicProfile);
         }
 
-        // Fetch full agent data so callers don't need to poll
-        let agentData = null;
-        try {
-            agentData = await formatAgentV2(tokenId);
-            // Also update the indexer
-            try { await indexer.reindexAgent(tokenId); } catch {}
-        } catch (e) {
-            console.error(`[V2 MINT] Agent data fetch failed (non-fatal): ${e.message}`);
-        }
+        // Fetch bounded best-effort agent data so callers don't need to poll,
+        // but never let post-mint enrichment turn a mined mint into a timeout/500.
+        const agentData = await buildMintResponseAgentData(tokenId);
         
         const tierOf = s => s >= 91 ? 'PREFERRED' : s >= 76 ? 'PRIME' : s >= 51 ? 'QUALIFIED' : s >= 26 ? 'MARGINAL' : 'JUNK';
         
@@ -3469,7 +3708,7 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
     }
     try {
         const hasMinted = await readContract.hasMinted(req.agent.address);
-        if (hasMinted) return res.status(409).json({ error: 'This address already has an agent' });
+        if (hasMinted) return returnExistingMintedAgent(res, req.agent.address);
     } catch {}
     const mintPrice = resolvePrice('agentMint', req);
     if (mintPrice <= 0) {
@@ -4649,12 +4888,12 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
         const indexer = new ethers.Contract(COINBASE_INDEXER, COINBASE_INDEXER_ABI, provider);
         const eas = new ethers.Contract(EAS_CONTRACT, EAS_ABI, provider);
         
-        const attestationUid = await indexer.getAttestationUid(owner, COINBASE_VERIFIED_ACCOUNT_SCHEMA);
+        const attestationUid = await indexer.getAttestationUid(owner__, COINBASE_VERIFIED_ACCOUNT_SCHEMA);
         
         if (attestationUid === ethers.ZeroHash) {
             return res.status(404).json({
                 error: 'No Coinbase Verified Account attestation found',
-                wallet: owner,
+                wallet: owner__,
                 hint: 'The agent owner must verify their wallet at coinbase.com/onchain-verify',
             });
         }
@@ -4675,7 +4914,7 @@ app.post('/api/v2/agent/:id/coinbase-verify', requireSIWA, async (req, res) => {
         const tx = await contract.setCoinbaseVerified(tokenId, true);
         await tx.wait();
         
-        console.log(`[COINBASE] ✓ Agent #${tokenId} Coinbase verified (owner: ${owner})`);
+        console.log(`[COINBASE] ✓ Agent #${tokenId} Coinbase verified (owner: ${owner__})`);
         
         res.json({
             success: true,
