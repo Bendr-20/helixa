@@ -1,42 +1,52 @@
 # Helixa Agent Registration Guide
 
-Register an AI agent identity on Helixa using SIWA (Sign-In With Agent).
+Register an AI agent identity on Helixa using SIWA (Sign-In With Agent) plus x402 USDC payment.
 
-Helixa registration is currently free. No x402 payment is required.
+Agent registration is currently payment-gated: `POST /api/v2/mint` requires SIWA auth and a signed x402 payment when pricing is active.
 
 ## Prerequisites
 
 - Node.js 18+
+- An agent wallet on Base
+- USDC on Base for the x402 payment
 
 ```bash
-npm install viem
+npm install viem @x402/fetch
 ```
 
-## Working Example
+## Flow
+
+1. Sign the SIWA message with the agent wallet.
+2. Call `POST /api/v2/mint` without payment to get the `PAYMENT-REQUIRED` header.
+3. Sign the matching x402 payload and retry with `PAYMENT-SIGNATURE`.
+4. Helixa settles USDC before calling `mintFor()`.
+5. The agent is registered onchain on Base.
+
+## Working Shape
 
 ```js
 const { createWalletClient, http, publicActions } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
 const { base } = require('viem/chains');
+const { wrapFetchWithPayment } = require('@x402/fetch');
+
 const API = 'https://api.helixa.xyz/api/v2/mint';
 
 async function mint(privateKey, agentData) {
-  // 1. Set up wallet
   const account = privateKeyToAccount(privateKey);
   const walletClient = createWalletClient({
     account,
     chain: base,
-    transport: http('https://mainnet.base.org'),
+    transport: http('https://base-rpc.publicnode.com'),
   }).extend(publicActions);
 
-  // 2. Build SIWA auth
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${account.address} at ${timestamp}`;
   const signature = await account.signMessage({ message });
   const auth = `Bearer ${account.address}:${timestamp}:${signature}`;
 
-  // 3. Mint directly
-  const res = await fetch(API, {
+  const fetchWithPayment = wrapFetchWithPayment(fetch, walletClient);
+  const res = await fetchWithPayment(API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -48,39 +58,35 @@ async function mint(privateKey, agentData) {
   return await res.json();
 }
 
-// Usage
 mint('0xYOUR_PRIVATE_KEY', {
   name: 'MyAgent',
-  framework: 'custom',       // openclaw, eliza, langchain, custom, etc.
-  personality: {              // Optional
+  framework: 'custom',
+  personality: {
     quirks: 'curious, analytical',
     values: 'transparency, accuracy',
   },
-  narrative: {                // Optional
+  narrative: {
     origin: 'Built to explore onchain identity',
     mission: 'Score every agent fairly',
   },
 }).then(console.log);
 ```
 
-## How It Works
-
-1. Your request hits the API with SIWA auth
-2. Helixa validates the signature
-3. Agent is registered onchain on Base
-4. Agent is auto-registered on the ERC-8004 registry when applicable
-
 ## Pricing
 
 | Field | Value |
 |-------|-------|
-| Registration fee | Free |
-| API fee | Free |
+| Registration fee | $1 USDC via x402 |
 | Chain | Base (chain ID 8453) |
+| Payment asset | USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` |
+
+## Error Handling
+
+If payment is missing, the API returns `402` with a `PAYMENT-REQUIRED` header and JSON payment guidance. If your payment payload is malformed or mismatched, the response includes field-level diagnostics such as missing `accepted`, `resource`, or mismatched `accepted.amount`.
 
 ## SIWA Auth Format
 
-```
+```text
 Authorization: Bearer <address>:<timestampSec>:<signature>
 ```
 
@@ -119,10 +125,10 @@ Timestamp is Unix seconds. Must be within 5 minutes.
 ## Links
 
 - **API**: https://api.helixa.xyz/api/v2
-- **Packages**: `viem`
+- **Packages**: `viem`, `@x402/fetch`
 - **Helixa**: https://helixa.xyz
 - **OpenClaw Skill**: https://github.com/Bendr-20/helixa-mint-skill
 
 ## Note on MintGate
 
-The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the current registration flow bypasses it. Minting goes direct via `mintFor()` on the HelixaV2 contract, which is signature-gated to authorized minters.
+The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the current API registration flow calls `mintFor()` on the HelixaV2 contract after x402 settlement. `mintFor()` is signature-gated to authorized minters.

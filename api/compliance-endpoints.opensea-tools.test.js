@@ -62,6 +62,33 @@ test('serves an ERC-8257 manifest for the Agent Auras lookup tool', async () => 
   });
 });
 
+test('x402 discovery advertises paid agent mint instead of claiming everything is free', async () => {
+  await withServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/.well-known/x402.json`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.pricing.agentMint, '$1.00');
+    assert.equal(body.pricing.status, 'mixed');
+    assert.equal(body.accepts[0].method, 'POST');
+    assert.equal(body.accepts[0].path, '/api/v2/mint');
+    assert.equal(body.accepts[0].network, 'eip155:8453');
+    assert.equal(body.accepts[0].asset.symbol, 'USDC');
+    assert.equal(body.accepts[0].payTo, '0x339559A2d1CD15059365FC7bD36b3047BbA480E0');
+    assert.doesNotMatch(JSON.stringify(body), /all.*free|No x402 payment is required/i);
+  });
+});
+
+test('llms text calls out x402-gated minting', async () => {
+  await withServer(async (baseUrl) => {
+    const res = await fetch(`${baseUrl}/llms.txt`);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assert.match(text, /POST \/api\/v2\/mint .*x402 payment/i);
+    assert.match(text, /Read endpoints are free/i);
+    assert.doesNotMatch(text, /All public API endpoints are currently free\. No x402 payment required/i);
+  });
+});
+
 test('agent-aura-lookup endpoint returns a compact Agent Aura profile envelope', async () => {
   const previousBase = process.env.HELIXA_TOOL_PROFILE_BASE_URL;
   await withEnv({ HELIXA_TOOL_NFT_GATE_DISABLED: '1', OPENSEA_TOOL_USAGE_REPORTING_DISABLED: '1' }, () => withServer(async (baseUrl) => {

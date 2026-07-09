@@ -52,7 +52,7 @@ const PUBLIC_ENDPOINTS = [
 ];
 
 const AUTH_ENDPOINTS = [
-  ['POST /api/v2/mint', 'Register new agent via SIWA. Currently free.'],
+  ['POST /api/v2/mint', 'Register new agent via SIWA. $1 USDC x402 payment required when pricing is active.'],
   ['POST /api/v2/agent/:id/update', 'Update agent profile via SIWA.'],
   ['POST /api/v2/agent/:id/verify', 'Verify agent identity via SIWA.'],
   ['POST /api/v2/agent/:id/crossreg', 'Prepare canonical ERC-8004 registration payload.'],

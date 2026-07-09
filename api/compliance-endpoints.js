@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { z } = require('zod/v4');
+const { PRICING, formatUSDPrice } = require('./services/payments');
 
 const DEPLOYER = '0x339559A2d1CD15059365FC7bD36b3047BbA480E0';
 const BENDR_WALLET = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
@@ -20,6 +21,7 @@ const OPENSEA_TOOL_ID = '192';
 const OPENSEA_TOOL_REGISTRY = '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1';
 const ERC721_REQUIREMENT_KIND = '0xbdf8c428';
 const AGENT_AURAS_REQUIREMENT_DATA = `0x000000000000000000000000${CONTRACT_LOWER.slice(2)}`;
+const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
 function parsePositiveTokenId(value) {
   const tokenId = Number(value);
@@ -235,13 +237,29 @@ module.exports = function mountCompliance(app, options = {}) {
 
   // x402 discovery
   app.get('/.well-known/x402.json', (req, res) => {
+    const mintPrice = formatUSDPrice(PRICING.agentMint);
     res.json({
-      accepts: [],
-      facilitator: null,
+      accepts: [{
+        method: 'POST',
+        path: '/api/v2/mint',
+        resource: `${PUBLIC_BASE_URL}/api/v2/mint`,
+        scheme: 'exact',
+        network: 'eip155:8453',
+        price: mintPrice,
+        asset: {
+          symbol: 'USDC',
+          address: USDC_ADDRESS,
+          decimals: 6,
+        },
+        payTo: DEPLOYER,
+        auth: 'SIWA bearer token is required in Authorization plus x402 PAYMENT-SIGNATURE.',
+      }],
+      facilitator: 'https://x402.dexter.cash',
       pricing: {
-        enabled: false,
-        status: 'free',
-        message: 'Helixa API endpoints are currently free. No x402 payment is required.'
+        enabled: PRICING.agentMint > 0,
+        status: 'mixed',
+        agentMint: mintPrice,
+        message: 'Read endpoints are free; POST /api/v2/mint requires SIWA plus x402 USDC payment when pricing is active.'
       }
     });
   });
@@ -283,7 +301,7 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 - GET /api/v2/agents — Agent directory (paginated, filterable by tier/platform)
 - GET /api/v2/agent/:id — Single agent profile with cred score, traits, narrative
 - GET /api/v2/name/:name — Name availability check
-- POST /api/v2/mint — Register new agent (SIWA auth required)
+- POST /api/v2/mint — Register new agent (SIWA auth and ${formatUSDPrice(PRICING.agentMint)} x402 payment required)
 - POST /api/v2/agent/:id/update — Update agent metadata (SIWA auth required)
 - POST /api/v2/agent/:id/verify — Verify agent identity (SIWA auth required)
 - GET /api/v2/trust-graph — Trust graph data (agents + connections)
@@ -293,7 +311,7 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 Agent auth uses SIWA (Sign-In With Agent): Authorization: Bearer {address}:{timestamp}:{signature}
 
 ## Pricing
-All public API endpoints are currently free. No x402 payment required.
+Read endpoints are free. Agent minting and full Cred reports are x402-gated when pricing is active.
 
 ## Contract
 Base mainnet: ${CONTRACT}
@@ -610,7 +628,7 @@ Sitemap: https://helixa.xyz/sitemap.xml`
 <h2>Acceptable Use</h2>
 <p>You may not use the API to manipulate Cred Scores, impersonate other agents, or conduct automated attacks against the service.</p>
 <h2>Pricing</h2>
-<p>Helixa services are currently free while the platform is in growth mode.</p>
+<p>Most Helixa read services are currently free while the platform is in growth mode. Payment-gated actions, including agent minting when pricing is active, require the listed x402 fee.</p>
 <h2>Liability</h2>
 <p>Helixa is experimental software. We make no guarantees about uptime, score accuracy, or financial outcomes.</p>
 <h2>Contact</h2>

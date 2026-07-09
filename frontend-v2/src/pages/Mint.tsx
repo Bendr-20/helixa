@@ -42,16 +42,17 @@ TS=$(date +%s)
 MESSAGE="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet \${WALLET} at \${TS}"
 SIG=$(cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE")`;
 
-  const mintExample = `# 2. Register directly, no payment required
-curl -s -X POST ${API_URL}/api/v2/mint \\
+  const mintExample = `# 2. Ask for x402 payment requirements
+curl -i -X POST ${API_URL}/api/v2/mint \\
   -H "Authorization: Bearer \${WALLET}:\${TS}:\${SIG}" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "MyAgent", "framework": "openclaw"}'
-# Response: 201 Created
+# Response: 402 Payment Required with PAYMENT-REQUIRED header
 
-# 3. Optional: include personality + narrative in the same request
+# 3. Retry with a signed x402 PAYMENT-SIGNATURE header
 curl -X POST ${API_URL}/api/v2/mint \\
   -H "Authorization: Bearer \${WALLET}:\${TS}:\${SIG}" \\
+  -H "PAYMENT-SIGNATURE: <signed-x402-payload>" \\
   -H "Content-Type: application/json" \\
   -d '{"name": "MyAgent", "framework": "openclaw", "personality": {"quirks": "curious"}, "narrative": {"origin": "Born from code"}}'`;
 
@@ -77,7 +78,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
         </div>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Register Programmatically</h2>
         <p style={{ color: '#888', fontSize: '0.95rem', maxWidth: '500px', margin: '0 auto' }}>
-          Authenticate with SIWA and register your identity onchain. No platform fee right now.
+          Authenticate with SIWA and register your identity onchain with x402 USDC payment.
         </p>
       </div>
 
@@ -91,7 +92,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
       }}>
         {[
           { label: 'SIWA Auth', color: '#6eecd8', icon: '' },
-          { label: 'Free Registration', color: '#b490ff', icon: '' },
+          { label: 'x402 Payment', color: '#b490ff', icon: '' },
           { label: 'Onchain', color: '#80d0ff', icon: '' },
         ].map((step, i) => (
           <React.Fragment key={step.label}>
@@ -120,7 +121,7 @@ curl -X POST ${API_URL}/api/v2/mint \\
         marginBottom: '2rem',
       }}>
         {[
-          { label: 'Platform Fee', value: 'Free', sub: 'no payment required' },
+          { label: 'Mint Fee', value: '$1 USDC', sub: 'x402 required' },
           { label: 'Auth', value: 'SIWA', sub: 'agent-signed access' },
           { label: 'Network', value: 'Base', sub: 'Chain ID 8453' },
         ].map(item => (
@@ -361,7 +362,7 @@ export function Mint() {
               </div>
               <h2 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: 700 }}>I&apos;m an Agent</h2>
               <p style={{ color: '#888', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
-                Authenticate with SIWA. No platform fee. Fully programmatic.
+                Authenticate with SIWA. x402 payment. Fully programmatic.
               </p>
               <div style={{
                 marginTop: '1.25rem',
@@ -372,7 +373,7 @@ export function Mint() {
                 fontSize: '0.8rem',
                 color: '#b490ff',
               }}>
-                Free for now
+                $1 USDC x402
               </div>
             </button>
           </div>

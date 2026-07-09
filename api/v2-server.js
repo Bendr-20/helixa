@@ -331,9 +331,9 @@ const {
     x402HTTPResourceServer: X402HTTPResourceServer,
     x402ResourceServer: X402ResourceServer,
 } = require('@x402/express');
-const { decodePaymentRequiredHeader } = require('@x402/core/http');
 const { ExactEvmScheme } = require('@x402/evm/exact/server');
 const { HTTPFacilitatorClient } = require('@x402/core/server');
+const { buildX402ErrorBody } = require('./services/x402-payment-errors');
 
 const internalAuth = createInternalAuthConfig(process.env);
 const INTERNAL_API_KEY = internalAuth.internalApiKey;
@@ -370,36 +370,11 @@ function createX402HttpContext(req) {
     };
 }
 
-function decodePaymentRequiredFromHeaders(headers = {}) {
-    const encoded = headers['PAYMENT-REQUIRED'] || headers['payment-required'];
-    if (!encoded) return null;
-    try { return decodePaymentRequiredHeader(encoded); }
-    catch { return null; }
-}
-
-function isEmptyJsonObject(value) {
-    return value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0;
-}
-
-function buildX402ErrorBody(response, fallbackError = 'payment_required') {
-    if (response?.body && !isEmptyJsonObject(response.body)) return response.body;
-    const paymentRequired = decodePaymentRequiredFromHeaders(response?.headers || {});
-    return {
-        error: paymentRequired?.error || fallbackError,
-        detail: paymentRequired?.error || 'Use the PAYMENT-REQUIRED header to complete x402 payment in USDC.',
-        payment: paymentRequired ? {
-            x402Version: paymentRequired.x402Version,
-            resource: paymentRequired.resource,
-            accepts: paymentRequired.accepts,
-        } : { header: 'PAYMENT-REQUIRED' },
-    };
-}
-
-function sendX402PaymentError(res, response, fallbackError) {
+function sendX402PaymentError(req, res, response, fallbackError) {
     res.status(response.status || 402);
     Object.entries(response.headers || {}).forEach(([key, value]) => res.setHeader(key, value));
     if (response.isHtml) return res.send(response.body || 'Payment required');
-    return res.json(buildX402ErrorBody(response, fallbackError));
+    return res.json(buildX402ErrorBody(response, { fallbackError, requestHeaders: req.headers || {} }));
 }
 
 function buildMintUnpaidBody() {
@@ -882,7 +857,7 @@ if (Object.keys(x402Routes).length > 0) {
             return res.status(402).json({ error: 'payment_required', detail: 'Mint payment configuration did not return requirements; refusing to mint without payment.' });
         }
         if (processResult.type === 'payment-error') {
-            return sendX402PaymentError(res, processResult.response, 'payment_required');
+            return sendX402PaymentError(req, res, processResult.response, 'payment_required');
         }
 
         const mintAddress = getValidatedSIWAAddress(req);
