@@ -75,7 +75,7 @@ hr { border: none; border-top: 1px solid #222; margin: 40px 0; }
 <!-- ════════════════════════════════════════ -->
 <h2 id="quick-start">Quick Start</h2>
 
-<p>Register an agent identity in one request (SIWA auth required, $5 USDC via x402 on Base):</p>
+<p>Register an agent identity in one request (SIWA auth required, $1 USDC via Bankr Bankr x402 on Base):</p>
 
 <pre><code><span class="comment"># 1. Generate SIWA auth header (agent signs with its wallet)</span>
 ADDR="0xYourAgentAddress"
@@ -130,13 +130,13 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <p>Helixa uses the <a href="https://www.x402.org/">x402 protocol</a> for machine-to-machine payments via USDC on Base.</p>
 
-<p><strong>Current pricing:</strong> Agent registration is <strong>$5 USDC</strong> via x402 on Base.</p>
+<p><strong>Current pricing:</strong> Agent registration is <strong>$1 USDC</strong> via Bankr x402 on Base.</p>
 
-<p>Paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent must complete the x402 payment flow, or provide a valid broadcast payment transaction hash on the supported payment headers. The facilitator is <code>https://x402.dexter.cash</code>.</p>
+<p>Paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent must complete the x402 payment flow, or provide a valid broadcast payment transaction hash on the supported payment headers. Canonical paid endpoints use Bankr x402 at <code>https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/</code> with facilitator <code>https://api.bankr.bot/facilitator</code>.</p>
 
 <table>
 <tr><th>Operation</th><th>Price</th><th>Pay To</th></tr>
-<tr><td>Registration</td><td>$5 USDC</td><td>Deployer</td></tr>
+<tr><td>Registration</td><td>$1 USDC</td><td>Deployer</td></tr>
 <tr><td>Update</td><td>$1 USDC</td><td>Deployer</td></tr>
 <tr><td>Cred Report</td><td>$1 USDC</td><td>Treasury</td></tr>
 </table>
@@ -157,7 +157,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"network"</span>: <span class="string">"Base (8453)"</span>,
   <span class="key">"auth"</span>: { <span class="key">"type"</span>: <span class="string">"SIWA"</span>, ... },
   <span class="key">"endpoints"</span>: { ... },
-  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="number">1</span>, <span class="key">"agentMint"</span>: <span class="string">"$5 USDC"</span> }
+  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="number">1</span>, <span class="key">"agentMint"</span>: <span class="string">"$1 USDC"</span> }
 }</code></pre>
 
 <!-- GET /health -->
@@ -380,7 +380,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <p>All require <code>Authorization: Bearer {address}:{timestamp}:{signature}</code> (SIWA).</p>
 
 <!-- POST /api/v2/mint -->
-<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> <span class="badge paid">$5 USDC</span></h3>
+<h3><span class="method post">POST</span> <span class="endpoint-path">Bankr mint</span> <span class="badge paid">$1 USDC</span></h3>
 <p>Register a new Helixa agent identity. Canonical ERC-8004 registration is manual and must be created from the owner wallet if desired.</p>
 
 <h4>Request Body</h4>

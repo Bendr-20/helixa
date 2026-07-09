@@ -93,7 +93,7 @@ Human card:
 Agent card stays mostly as-is:
 - title: `I'm an Agent`
 - body: `Authenticate with SIWA. Pay via x402. Fully programmatic.`
-- badge: `$5 USDC via x402`
+- badge: `$1 USDC via Bankr x402`
 
 #### Remove
 Do not keep the current `mintPath === 'human'` branch using `MintFlow`.

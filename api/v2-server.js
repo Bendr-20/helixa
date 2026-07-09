@@ -347,7 +347,13 @@ function hasValidInternalKey(req) {
     return hasValidInternalKeyFromConfig(req, internalAuth);
 }
 
-const x402FacilitatorClient = new HTTPFacilitatorClient({ url: 'https://x402.dexter.cash' });
+const BANKR_X402_BASE_URL = process.env.BANKR_X402_BASE_URL || 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49';
+const BANKR_MINT_URL = process.env.BANKR_MINT_URL || `${BANKR_X402_BASE_URL}/mint`;
+const BANKR_FACILITATOR_URL = process.env.BANKR_FACILITATOR_URL || 'https://api.bankr.bot/facilitator';
+// Bankr is canonical for public x402. The direct API SDK still needs a /supported-capable facilitator;
+// Bankr's hosted facilitator currently lacks that endpoint, so keep this configurable and private.
+const x402DirectFacilitatorUrl = process.env.X402_DIRECT_FACILITATOR_URL || 'https://x402.dexter.cash';
+const x402FacilitatorClient = new HTTPFacilitatorClient({ url: x402DirectFacilitatorUrl });
 const x402Server = new X402ResourceServer(x402FacilitatorClient)
     .register('eip155:8453', new ExactEvmScheme());
 const X402_VERIFY_TIMEOUT_MS = Number(process.env.X402_VERIFY_TIMEOUT_MS || 10000);
@@ -4969,13 +4975,15 @@ app.get('/.well-known/agent.json', (req, res) => {
                         network: 'base',
                         asset: 'USDC',
                         contract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-                        facilitator: 'https://x402.dexter.cash',
+                        facilitator: BANKR_FACILITATOR_URL,
+                        marketplace: BANKR_X402_BASE_URL,
                     },
                     {
                         network: 'base',
                         asset: 'CRED',
                         contract: '0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3',
-                        facilitator: 'https://x402.dexter.cash',
+                        facilitator: BANKR_FACILITATOR_URL,
+                        marketplace: BANKR_X402_BASE_URL,
                     },
                 ],
                 recipient: TREASURY_ADDRESS,
@@ -4985,13 +4993,14 @@ app.get('/.well-known/agent.json', (req, res) => {
             {
                 name: 'mint_agent_identity',
                 description: 'Register a new AI agent identity on-chain via the Helixa registry. Creates an ERC-8004 compliant agent NFT on Base with soul traits, cred scoring, and verifiable identity. Requires SIWA (Sign-In With Agent) authentication.',
-                endpoint: 'https://api.helixa.xyz/api/v2/mint',
+                endpoint: BANKR_MINT_URL,
+                directApiFallback: 'https://api.helixa.xyz/api/v2/mint',
                 method: 'POST',
                 parameters: {
                     traits: { type: 'object', required: false, description: 'Agent soul traits (personality, values, capabilities)' },
                 },
                 returns: { type: 'object', description: 'Minted agent token ID, transaction hash, and metadata URI' },
-                price: { amount: 0, currency: 'USD', model: 'free' },
+                price: { amount: 1, currency: 'USDC', model: 'bankr-x402' },
             },
             {
                 name: 'get_agent',
@@ -5040,15 +5049,16 @@ app.get('/.well-known/agent.json', (req, res) => {
             },
             {
                 name: 'update_agent',
-                description: 'Update an agent\'s traits and metadata. Requires SIWA authentication as the agent. Currently free.',
-                endpoint: 'https://api.helixa.xyz/api/v2/agent/{id}/update',
+                description: 'Update an agent\'s traits and metadata. Canonical paid route is Bankr x402; direct API compatibility remains available for authenticated owners.',
+                endpoint: `${BANKR_X402_BASE_URL}/agent-update`,
+                directApiFallback: 'https://api.helixa.xyz/api/v2/agent/{id}/update',
                 method: 'POST',
                 parameters: {
                     id: { type: 'integer', required: true, description: 'Agent token ID' },
                     traits: { type: 'object', required: true, description: 'Updated soul traits' },
                 },
                 returns: { type: 'object', description: 'Updated agent profile' },
-                price: { amount: 0, currency: 'USD', model: 'free' },
+                price: { amount: 1, currency: 'USDC', model: 'bankr-x402' },
                 payments: { x402: { direct_price: 0, enabled: false } },
             },
             {
@@ -5060,7 +5070,7 @@ app.get('/.well-known/agent.json', (req, res) => {
                     id: { type: 'integer', required: true, description: 'Agent token ID' },
                 },
                 returns: { type: 'object', description: 'Soul lock transaction hash, version number, and timestamp' },
-                price: { amount: 0, currency: 'USD', model: 'free' },
+                price: { amount: 0, currency: 'USD' },
                 payments: { x402: { direct_price: 0, enabled: false } },
             },
             {

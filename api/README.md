@@ -19,7 +19,7 @@ Server runs on `http://localhost:3402`.
 | `RPC_URL` | `https://mainnet.base.org` | Base mainnet RPC |
 | `CONTRACT_ADDRESS` | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | HelixaV2 contract |
 | `PAYWALL_ADDRESS` | *(none)* | Your wallet for USDC payments. If unset, paywall is disabled. |
-| `FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
+| `FACILITATOR_URL` | `https://api.bankr.bot/facilitator` | Bankr x402 facilitator endpoint |
 | `INTERNAL_API_KEY` | *(required)* | Shared secret for internal Bankr/x402 proxy routes. Use 32+ characters. |
 | `INTERNAL_API_KEY_PREVIOUS` | *(optional)* | Previous internal key kept temporarily during rollover so callers can migrate cleanly. |
 | `RECEIPT_HMAC_SECRET` | *(required)* | HMAC secret for cred-report receipt signing and verification. Use 32+ characters. |

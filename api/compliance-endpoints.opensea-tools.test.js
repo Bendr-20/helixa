@@ -70,11 +70,14 @@ test('x402 discovery advertises paid agent mint instead of claiming everything i
     assert.equal(body.pricing.agentMint, '$1.00');
     assert.equal(body.pricing.status, 'mixed');
     assert.equal(body.accepts[0].method, 'POST');
-    assert.equal(body.accepts[0].path, '/api/v2/mint');
+    assert.equal(body.accepts[0].path, 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/mint');
+    assert.equal(body.accepts[0].resource, 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/mint');
     assert.equal(body.accepts[0].network, 'eip155:8453');
     assert.equal(body.accepts[0].asset.symbol, 'USDC');
-    assert.equal(body.accepts[0].payTo, '0x339559A2d1CD15059365FC7bD36b3047BbA480E0');
-    assert.doesNotMatch(JSON.stringify(body), /all.*free|No x402 payment is required/i);
+    assert.equal(body.accepts[0].payTo, '0x8AEE621035D93Deb3C0C1177fac252dC2dd501a0');
+    assert.equal(body.facilitator, 'https://api.bankr.bot/facilitator');
+    assert.equal(body.directApiFallback, 'https://api.helixa.xyz/api/v2/mint');
+    assert.doesNotMatch(JSON.stringify(body), /All public API endpoints are currently free|No x402 payment is required/i);
   });
 });
 
@@ -83,7 +86,7 @@ test('llms text calls out x402-gated minting', async () => {
     const res = await fetch(`${baseUrl}/llms.txt`);
     assert.equal(res.status, 200);
     const text = await res.text();
-    assert.match(text, /POST \/api\/v2\/mint .*x402 payment/i);
+    assert.match(text, /POST https:\/\/x402\.bankr\.bot\/0xb92d2ab129072890b23ee3b1baff7c501cff9e49\/mint .*Bankr x402/i);
     assert.match(text, /Read endpoints are free/i);
     assert.doesNotMatch(text, /All public API endpoints are currently free\. No x402 payment required/i);
   });

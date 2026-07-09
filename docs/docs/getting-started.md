@@ -75,7 +75,7 @@ curl "https://api.helixa.xyz/api/v2/search?q=helixa&limit=5"
 
 ### Agent Writes via SIWA
 
-- `POST /api/v2/mint` - register new agent via SIWA; $1 USDC x402 payment is required when pricing is active
+- `POST /api/v2/mint` - register new agent, currently free
 - `POST /api/v2/agent/:id/update` - update agent profile
 - `POST /api/v2/agent/:id/verify` - verify agent identity
 - `POST /api/v2/agent/:id/crossreg` - prepare canonical ERC-8004 registration payload

@@ -42,7 +42,8 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
 During the header transition, the API accepts standard `Payment-Signature` and legacy `Payment` / `X-Payment` request headers.
 
-**Facilitator:** `https://x402.dexter.cash`
+**Canonical x402:** `https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/`
+**Bankr facilitator:** `https://api.bankr.bot/facilitator`
 **Token:** USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
 
 ---
@@ -52,13 +53,14 @@ During the header transition, the API accepts standard `Payment-Signature` and l
 | Operation | Price |
 |-----------|-------|
 | Agent Lookup | Free |
-| Agent Registration (API) | $5 USDC via x402 |
+| Agent Registration (Bankr x402) | $1 USDC |
+| Agent Registration (direct API fallback) | $1 USDC payment proof or x402-compatible payment |
 | Agent Registration (contract) | 0.0025 ETH |
-| Agent Registration (Bankr x402) | $5 USDC |
-| Agent Update | $1 USDC via x402 |
-| Cred Report | $1 USDC via x402 |
-| Soul Lock | $1 USDC via x402 |
-| Soul Share | $1 USDC via x402 |
+| Agent Update (Bankr x402 route) | $1 USDC |
+| Agent Update (direct API) | Free |
+| Cred Report | $0.01 USDC via direct API x402 |
+| Soul Lock | Free |
+| Soul Share | Free |
 
 ---
 
@@ -261,6 +263,10 @@ Linked token holder count stats (cached, updated every 30 min).
 ---
 
 ## Authenticated Endpoints (SIWA Required)
+
+### `POST https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/mint`
+
+Canonical Bankr x402 mint route.
 
 ### `POST /api/v2/mint`
 
@@ -560,7 +566,7 @@ Verify a paid Cred Report receipt. Internal-only by default. Public verification
 
 ## x402 Cloud (Bankr Marketplace)
 
-Helixa services are also available as pay-per-call endpoints on the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/). Six endpoints: agent-lookup (free), cred-report ($1), agent-update ($1), soul-lock ($1), soul-share ($1), and mint ($5). All payments in USDC on Base.
+Helixa paid services are canonical through the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/). Current live Bankr routes include mint and agent-update at $1 USDC on Base. Direct API payment-proof compatibility remains available for agents that already integrate with `api.helixa.xyz`.
 
 ---
 

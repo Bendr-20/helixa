@@ -22,6 +22,10 @@ const OPENSEA_TOOL_REGISTRY = '0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1';
 const ERC721_REQUIREMENT_KIND = '0xbdf8c428';
 const AGENT_AURAS_REQUIREMENT_DATA = `0x000000000000000000000000${CONTRACT_LOWER.slice(2)}`;
 const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const BANKR_X402_BASE_URL = 'https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49';
+const BANKR_MINT_URL = `${BANKR_X402_BASE_URL}/mint`;
+const BANKR_FACILITATOR_URL = 'https://api.bankr.bot/facilitator';
+const BANKR_PAY_TO = '0x8AEE621035D93Deb3C0C1177fac252dC2dd501a0';
 
 function parsePositiveTokenId(value) {
   const tokenId = Number(value);
@@ -241,8 +245,8 @@ module.exports = function mountCompliance(app, options = {}) {
     res.json({
       accepts: [{
         method: 'POST',
-        path: '/api/v2/mint',
-        resource: `${PUBLIC_BASE_URL}/api/v2/mint`,
+        path: BANKR_MINT_URL,
+        resource: BANKR_MINT_URL,
         scheme: 'exact',
         network: 'eip155:8453',
         price: mintPrice,
@@ -251,15 +255,17 @@ module.exports = function mountCompliance(app, options = {}) {
           address: USDC_ADDRESS,
           decimals: 6,
         },
-        payTo: DEPLOYER,
-        auth: 'SIWA bearer token is required in Authorization plus x402 PAYMENT-SIGNATURE.',
+        payTo: BANKR_PAY_TO,
+        auth: 'Use the Bankr x402 route as the canonical paid mint surface. Direct API mint still requires SIWA bearer auth plus payment proof for compatibility.',
       }],
-      facilitator: 'https://x402.dexter.cash',
+      facilitator: BANKR_FACILITATOR_URL,
+      marketplace: BANKR_X402_BASE_URL,
+      directApiFallback: `${PUBLIC_BASE_URL}/api/v2/mint`,
       pricing: {
         enabled: PRICING.agentMint > 0,
         status: 'mixed',
         agentMint: mintPrice,
-        message: 'Read endpoints are free; POST /api/v2/mint requires SIWA plus x402 USDC payment when pricing is active.'
+        message: 'Read endpoints are free; paid minting is canonical through Bankr x402. Direct API compatibility remains available for SIWA plus payment proof.'
       }
     });
   });
@@ -301,7 +307,7 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 - GET /api/v2/agents — Agent directory (paginated, filterable by tier/platform)
 - GET /api/v2/agent/:id — Single agent profile with cred score, traits, narrative
 - GET /api/v2/name/:name — Name availability check
-- POST /api/v2/mint — Register new agent (SIWA auth and ${formatUSDPrice(PRICING.agentMint)} x402 payment required)
+- POST ${BANKR_MINT_URL} — Register new agent through canonical Bankr x402 (${formatUSDPrice(PRICING.agentMint)} USDC payment required)
 - POST /api/v2/agent/:id/update — Update agent metadata (SIWA auth required)
 - POST /api/v2/agent/:id/verify — Verify agent identity (SIWA auth required)
 - GET /api/v2/trust-graph — Trust graph data (agents + connections)
@@ -311,7 +317,7 @@ Canonical: https://api.helixa.xyz/.well-known/security.txt`
 Agent auth uses SIWA (Sign-In With Agent): Authorization: Bearer {address}:{timestamp}:{signature}
 
 ## Pricing
-Read endpoints are free. Agent minting and full Cred reports are x402-gated when pricing is active.
+Read endpoints are free. Agent minting is canonical through Bankr x402 when pricing is active; direct API payment-proof compatibility remains available.
 
 ## Contract
 Base mainnet: ${CONTRACT}

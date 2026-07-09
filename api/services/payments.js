@@ -59,7 +59,7 @@ async function verifyUSDCPayment(txHash, expectedAmountUSDC) {
     }
 }
 
-const FACILITATOR_URL = 'https://x402.dexter.cash';
+const FACILITATOR_URL = 'https://api.bankr.bot/facilitator';
 
 function requirePayment(amountUSDC) {
     return (req, res, next) => {
