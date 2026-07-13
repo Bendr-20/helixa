@@ -1,0 +1,24 @@
+{
+  "provider": {
+    "id": "helixa-cred",
+    "name": "Helixa Cred",
+    "uri": "ipfs://bafkreidvwul4k2oqovv7xuzu3euq3gnwio2krdaaell77evzm5pnxfla6q",
+    "url": "https://cred.exchange"
+  },
+  "assessmentSources": [
+    {
+      "canonicalChainId": 8453,
+      "canonicalTokenId": 18531,
+      "helixaTokenId": 1,
+      "name": "Helixa Cred assessment for ERC-8004 agent 8453:18531",
+      "uri": "ipfs://bafkreihbm4m7skpbd7grencn4z55qu4zv7vppvf6vpkbkshhyoqtwbhyoq",
+      "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json"
+    }
+  ],
+  "onchainStatus": {
+    "intuitionMainnetChainId": 1155,
+    "intuitionTestnetChainId": 13579,
+    "status": "pending_trust_funding",
+    "note": "Provider and first assessment-source metadata are pinned. Intuition Atom and four-Triple graph writes still need TRUST/tTRUST on the executor wallet."
+  }
+}

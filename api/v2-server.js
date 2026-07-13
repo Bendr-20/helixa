@@ -21,6 +21,7 @@ const {
 const { getXBearerToken } = require('./services/runtime-secrets');
 const blocktronicsTokenMetrics = require('./services/blocktronics-token-metrics');
 const deepCredReport = require('./services/deep-cred-report');
+const intuition8004 = require('./services/intuition-erc8004');
 const { resolveAuraSourceWithFallback } = require('./services/aura-fallback');
 const {
     mergePublicAgentProfile,
@@ -5118,6 +5119,50 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
         ],
         supportedTrust: ['reputation'],
     });
+});
+
+app.get('/.well-known/intuition/erc8004/agents/:chainId/:tokenId/trust-assessment.json', async (req, res) => {
+    try {
+        const mapping = intuition8004.resolveCanonical8004Mapping(req.params.chainId, req.params.tokenId);
+        if (!mapping) {
+            return res.status(404).json({
+                error: 'canonical_erc8004_agent_not_mapped',
+                chainId: Number(req.params.chainId),
+                tokenId: String(req.params.tokenId),
+                expectedRegistry: intuition8004.ERC8004_IDENTITY_REGISTRY,
+                note: 'This resolver expects the canonical ERC-8004 Identity Registry token ID, not the Helixa V2 token ID.',
+            });
+        }
+
+        const agent = await getAgentForResponse(mapping.helixaTokenId, { timeoutMs: 3500 });
+        let feedback = null;
+        try {
+            const { getAgentFeedback } = require('./services/reputation-8004');
+            feedback = await withTimeout(getAgentFeedback(mapping.canonicalTokenId), 1800, null);
+            if (feedback) agent._8004Feedback = feedback;
+        } catch {}
+
+        const credBreakdown = computeCredBreakdown(agent);
+        if (credBreakdown?.computedScore > Number(agent.credScore || 0)) {
+            agent.credScore = credBreakdown.computedScore;
+        }
+
+        const assessment = intuition8004.buildTrustAssessment({
+            canonicalChainId: mapping.canonicalChainId,
+            canonicalTokenId: mapping.canonicalTokenId,
+            helixaTokenId: mapping.helixaTokenId,
+            agent,
+            feedback,
+            credBreakdown,
+            publicBaseUrl: PUBLIC_BASE_URL,
+        });
+
+        res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
+        res.type('application/json').json(assessment);
+    } catch (e) {
+        console.error('[INTUITION 8004] trust assessment resolver failed:', e.message);
+        res.status(500).json({ error: 'trust_assessment_unavailable' });
+    }
 });
 
 app.get('/.well-known/agent-registry', (req, res) => {

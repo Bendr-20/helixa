@@ -27,3 +27,10 @@ test('x402 mint settles before irreversible route execution and is skipped by po
   assert(source.includes('processSettlement'), 'mint pre-settlement middleware should settle payment before route execution');
   assert(source.includes("if (req.method === 'POST' && req.path === '/api/v2/mint') return next();"), 'SDK post-response settlement must skip mint after pre-settlement middleware');
 });
+
+test('Intuition ERC-8004 trust assessment resolver uses canonical 8004 IDs', () => {
+  assert(source.includes("require('./services/intuition-erc8004')"), 'server should load the Intuition ERC-8004 service');
+  assert(source.includes("/.well-known/intuition/erc8004/agents/:chainId/:tokenId/trust-assessment.json"), 'well-known trust assessment resolver route missing');
+  assert(source.includes('resolveCanonical8004Mapping(req.params.chainId, req.params.tokenId)'), 'resolver must map canonical ERC-8004 IDs to Helixa token IDs');
+  assert(source.includes('canonical_erc8004_agent_not_mapped'), 'resolver should not silently treat Helixa V2 IDs as canonical ERC-8004 IDs');
+});
