@@ -39,6 +39,36 @@ function okPayload(token = '0x22aF33FE49fD1Fa80c7149773dDe5890D3c76F3b') {
     };
 }
 
+function flatOkPayload(token = BNKR) {
+    return {
+        chain: 'base',
+        token,
+        is_built: true,
+        computed_at: '2026-07-09T13:33:57.961Z',
+        active_holders: 12584,
+        holder_growth_7d: 10,
+        holders_in_profit: 5630,
+        netflow_direction: 'inflow',
+        holder_growth_7d_pct: 0.0795291872117067,
+        avg_daily_netflow_usd: -42134.82450261222,
+        pct_holders_in_profit: 40.32951289398281,
+        avg_weekly_netflow_usd: -294943.7715182855,
+        holders_counted_for_pl: 13960,
+        status: 'ok',
+        refreshed: false,
+        data_changed: false,
+        cached_at: '2026-07-09T13:33:57.961Z',
+        as_of: '2026-07-09T13:33:57.961Z',
+        stale: true,
+        window_note: {
+            holders_days: 14,
+            netflow_days: 7,
+            holder_growth_days: 7,
+            profit_pct_costbasis: 'cost-basis cache (incremental)'
+        }
+    };
+}
+
 function preparingPayload(token = '0x22aF33FE49fD1Fa80c7149773dDe5890D3c76F3b') {
     return {
         schema_version: '1.1',
@@ -109,6 +139,27 @@ async function run() {
         window_days: 14
     });
 
+    const flatNormalized = metrics.normalizeBlocktronicsResponse(flatOkPayload(), { fetchedAt });
+    assert.equal(flatNormalized.token_address, token);
+    assert.deepEqual(flatNormalized.public, {
+        source: 'blocktronics_x402',
+        status: 'ok',
+        active_holders: 12584,
+        weekly_active_holder_growth_pct: 0.0795291872117067,
+        weekly_active_holder_growth_count: 10,
+        avg_weekly_netflow_usd: -294943.7715182855,
+        avg_weekly_netflow_per_day_usd: -42134.82450261222,
+        avg_weekly_netflow_direction: 'inflow',
+        holders_in_profit_pct: 40.32951289398281,
+        holders_in_profit_count: 5630,
+        holders_counted: 13960,
+        as_of: '2026-07-09T13:33:57.961Z',
+        cached_at: '2026-07-09T13:33:57.961Z',
+        fetched_at: fetchedAt,
+        price_usdc: '0.04',
+        window_days: 14
+    });
+
     const normalizedWithRequestedToken = metrics.normalizeBlocktronicsResponse(okPayload(BNKR), { token: BNKR, fetchedAt });
     assert.equal(normalizedWithRequestedToken.token_address, BNKR);
     assert.throws(
@@ -134,10 +185,35 @@ async function run() {
         assert.equal(table.name, 'token_metrics_cache');
 
         metrics.upsertTokenMetricsCache(db, normalized);
+        const columns = new Set(db.prepare('PRAGMA table_info(token_metrics_cache)').all().map((column) => column.name));
+        assert.equal(columns.has('weekly_active_holder_growth_pct'), true);
+        assert.equal(columns.has('weekly_active_holder_growth_count'), true);
         const cached = metrics.readCachedTokenMetrics(db, token, 'base');
         assert.equal(cached.status, 'ok');
         assert.equal(cached.active_holders, 2735);
         assert.equal(cached.avg_weekly_netflow_direction, 'outflow');
+        metrics.upsertTokenMetricsCache(db, flatNormalized);
+        const flatCached = metrics.readCachedTokenMetrics(db, token, 'base');
+        assert.equal(flatCached.weekly_active_holder_growth_pct, 0.0795291872117067);
+        assert.equal(flatCached.weekly_active_holder_growth_count, 10);
+        assert.equal(flatCached.avg_weekly_netflow_usd, -294943.7715182855);
+        db.prepare(`
+            UPDATE token_metrics_cache
+            SET active_holders = NULL,
+                weekly_active_holder_growth_pct = NULL,
+                weekly_active_holder_growth_count = NULL,
+                avg_weekly_netflow_usd = NULL,
+                avg_weekly_netflow_per_day_usd = NULL,
+                avg_weekly_netflow_direction = NULL,
+                holders_in_profit_pct = NULL,
+                holders_in_profit_count = NULL,
+                holders_counted = NULL
+            WHERE chain = ? AND token_address = ?
+        `).run('base', token);
+        const payloadRecovered = metrics.readCachedTokenMetrics(db, token, 'base');
+        assert.equal(payloadRecovered.active_holders, 12584);
+        assert.equal(payloadRecovered.weekly_active_holder_growth_count, 10);
+        assert.equal(payloadRecovered.avg_weekly_netflow_direction, 'inflow');
         assert.throws(
             () => metrics.upsertTokenMetricsCache(db, {
                 public: {},
@@ -173,11 +249,47 @@ async function run() {
             { name: 'Other', chain_id: 1, token_address: token },
             { name: 'Missing', chain_id: 8453, token_address: UNSUPPORTED }
         ]);
-        assert.equal(attached[0].token_metrics.active_holders, 2735);
+        assert.equal(attached[0].token_metrics.active_holders, 12584);
+        assert.equal(attached[0].token_metrics.weekly_active_holder_growth_count, 10);
         assert.equal(attached[1].token_metrics, undefined);
         assert.equal(attached[2].token_metrics, undefined);
     } finally {
         db.close();
+    }
+
+    const legacyDb = makeDb();
+    try {
+        legacyDb.exec(`
+            CREATE TABLE token_metrics_cache (
+              chain TEXT NOT NULL DEFAULT 'base',
+              token_address TEXT NOT NULL,
+              token_symbol TEXT,
+              status TEXT NOT NULL,
+              active_holders INTEGER,
+              avg_weekly_netflow_usd REAL,
+              avg_weekly_netflow_per_day_usd REAL,
+              avg_weekly_netflow_direction TEXT,
+              holders_in_profit_pct REAL,
+              holders_in_profit_count INTEGER,
+              holders_counted INTEGER,
+              as_of TEXT,
+              cached_at TEXT,
+              fetched_at TEXT NOT NULL,
+              price_usdc TEXT,
+              window_days INTEGER,
+              payload_json TEXT NOT NULL,
+              error_code TEXT,
+              error_message TEXT,
+              source TEXT NOT NULL DEFAULT 'blocktronics_x402',
+              PRIMARY KEY (chain, token_address)
+            );
+        `);
+        metrics.ensureTokenMetricsTables(legacyDb);
+        const migratedColumns = new Set(legacyDb.prepare('PRAGMA table_info(token_metrics_cache)').all().map((column) => column.name));
+        assert.equal(migratedColumns.has('weekly_active_holder_growth_pct'), true);
+        assert.equal(migratedColumns.has('weekly_active_holder_growth_count'), true);
+    } finally {
+        legacyDb.close();
     }
 
     const noCacheDb = makeDb();
