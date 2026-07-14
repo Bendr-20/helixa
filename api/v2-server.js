@@ -6030,20 +6030,20 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.15, label: 'Agent Wallet Activity', description: 'Activity points from Base and Helixa interactions' },
-    external: { weight: 0.06, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
-    verify: { weight: 0.10, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
+    activity: { weight: 0.20, label: 'Agent Wallet Activity', description: 'Activity points from Base and Helixa interactions' },
+    external: { weight: 0.08, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    verify: { weight: 0.08, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.04, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
     age: { weight: 0.10, label: 'Account Age / Continuity', description: 'Days since registration and continuity' },
     traits: { weight: 0.06, label: 'Metadata Richness', description: 'Traits, skills, domains, framework, and capability metadata' },
     narrative: { weight: 0.03, label: 'Description Completeness', description: 'Description, origin, mission, lore, and manifesto fields' },
-    origin: { weight: 0.03, label: 'Registration Provenance', description: 'How the agent was registered or authenticated' },
+    origin: { weight: 0.02, label: 'Registration Provenance', description: 'How the agent was registered or authenticated' },
     soulbound: { weight: 0.03, label: 'Transfer Lock', description: 'Identity locked to wallet (soulbound/non-transferable)' },
-    soulCompleteness: { weight: 0.05, label: 'Profile Completeness', description: 'Public profile fields, shareable identity data, and narrative depth' },
-    reputation8004: { weight: 0.15, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
-    workHistory: { weight: 0.08, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
+    soulCompleteness: { weight: 0.04, label: 'Profile Completeness', description: 'Public profile fields, shareable identity data, and narrative depth' },
+    reputation8004: { weight: 0.05, label: 'ERC-8004 Reputation', description: 'Early feedback signals from the official ERC-8004 Reputation Registry on Base' },
+    workHistory: { weight: 0.10, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
     intuition: { weight: 0.05, label: 'Intuition Graph Publication', description: 'Published Intuition assessment source and ERC-8004 graph linkage' },
-    serviceReadiness: { weight: 0.05, label: 'Service Readiness', description: 'Registered services, capabilities, supported trust modes, and x402 readiness' },
+    serviceReadiness: { weight: 0.10, label: 'Service Readiness', description: 'Registered services, capabilities, supported trust modes, and x402 readiness' },
     bankr: { weight: 0.02, label: 'Agent Economy', description: 'Bankr profile, linked token, and market activity' },
 };
 
@@ -6135,14 +6135,14 @@ function computeEvidenceCoverage(agent, components) {
     const checks = [
         { key: 'erc8004Identity', label: 'ERC-8004 identity', weight: 0.12, value: hasValue(agent.tokenId) && hasValue(agent.agentAddress || agent.owner) && hasValue(agent.name) ? 100 : 0 },
         { key: 'metadata', label: 'Registration metadata', weight: 0.12, value: Math.max(components.traits.rawScore, components.narrative.rawScore, components.soulCompleteness.rawScore) },
-        { key: 'services', label: 'Services and capabilities', weight: 0.12, value: Math.max(components.serviceReadiness.rawScore, serviceCount > 0 ? 60 : 0) },
-        { key: 'walletActivity', label: 'Wallet activity', weight: 0.10, value: components.activity.rawScore },
+        { key: 'services', label: 'Services and capabilities', weight: 0.14, value: Math.max(components.serviceReadiness.rawScore, serviceCount > 0 ? 60 : 0) },
+        { key: 'walletActivity', label: 'Wallet activity', weight: 0.12, value: components.activity.rawScore },
         { key: 'continuity', label: 'Age and continuity', weight: 0.08, value: hasValue(agent.mintedAt) ? Math.max(35, components.age.rawScore) : 0 },
-        { key: 'reputation8004', label: 'ERC-8004 reputation feedback', weight: 0.14, value: components.reputation8004.rawScore },
-        { key: 'attestations', label: 'Verifications and attestations', weight: 0.12, value: Math.max(components.verify.rawScore, components.coinbase.rawScore) },
+        { key: 'reputation8004', label: 'ERC-8004 reputation feedback', weight: 0.06, value: components.reputation8004.rawScore },
+        { key: 'attestations', label: 'Verifications and attestations', weight: 0.10, value: Math.max(components.verify.rawScore, components.coinbase.rawScore) },
         { key: 'externalGraph', label: 'External trust graph publication', weight: 0.10, value: Math.max(components.intuition.rawScore, components.external.rawScore) },
-        { key: 'workHistory', label: 'Work or execution history', weight: 0.06, value: components.workHistory.rawScore },
-        { key: 'economy', label: 'Agent economy data', weight: 0.04, value: components.bankr.rawScore },
+        { key: 'workHistory', label: 'Work or execution history', weight: 0.10, value: components.workHistory.rawScore },
+        { key: 'economy', label: 'Agent economy data', weight: 0.06, value: components.bankr.rawScore },
     ];
 
     const score = Math.round(checks.reduce((sum, check) => sum + (Math.max(0, Math.min(100, check.value)) * check.weight), 0));

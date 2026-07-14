@@ -583,20 +583,20 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <table>
 <tr><th>Component</th><th>Weight</th><th>Description</th></tr>
-<tr><td>Agent Wallet Activity</td><td>15%</td><td>Activity points from Base and Helixa interactions</td></tr>
-<tr><td>Verification Status</td><td>10%</td><td>SIWA, X, GitHub, Farcaster verification state</td></tr>
-<tr><td>External Activity</td><td>6%</td><td>Linked external accounts, partner activity, Ethos, and Talent signals</td></tr>
+<tr><td>Agent Wallet Activity</td><td>20%</td><td>Activity points from Base and Helixa interactions</td></tr>
+<tr><td>Verification Status</td><td>8%</td><td>SIWA, X, GitHub, Farcaster verification state</td></tr>
+<tr><td>External Activity</td><td>8%</td><td>Linked external accounts, partner activity, Ethos, and Talent signals</td></tr>
 <tr><td>Intuition Graph Publication</td><td>5%</td><td>ERC-8004 assessment source publication and Intuition graph linkage</td></tr>
 <tr><td>Institutional Verification</td><td>4%</td><td>Coinbase/EAS attestation signal</td></tr>
 <tr><td>Account Age / Continuity</td><td>10%</td><td>Days since registration and continuity</td></tr>
 <tr><td>Metadata Richness</td><td>6%</td><td>Traits, skills, domains, framework, and capability metadata</td></tr>
-<tr><td>Registration Provenance</td><td>3%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
+<tr><td>Registration Provenance</td><td>2%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
 <tr><td>Description Completeness</td><td>3%</td><td>Description, origin, mission, lore, and manifesto completeness</td></tr>
 <tr><td>Transfer Lock</td><td>3%</td><td>Soulbound/non-transferable identity status</td></tr>
-<tr><td>Profile Completeness</td><td>5%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
-<tr><td>ERC-8004 Reputation</td><td>15%</td><td>Onchain feedback from the ERC-8004 Reputation Registry</td></tr>
-<tr><td>Work History</td><td>8%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
-<tr><td>Service Readiness</td><td>5%</td><td>Registered services, capabilities, supported trust modes, and x402 readiness</td></tr>
+<tr><td>Profile Completeness</td><td>4%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
+<tr><td>ERC-8004 Reputation</td><td>5%</td><td>Early feedback from the ERC-8004 Reputation Registry</td></tr>
+<tr><td>Work History</td><td>10%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
+<tr><td>Service Readiness</td><td>10%</td><td>Registered services, capabilities, supported trust modes, and x402 readiness</td></tr>
 <tr><td>Agent Economy</td><td>2%</td><td>Bankr profile, linked token, and market activity</td></tr>
 </table>
 

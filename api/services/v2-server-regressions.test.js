@@ -42,8 +42,9 @@ test('Cred scoring includes a separate Intuition graph component', () => {
 });
 
 test('Cred scoring is universal-first for ERC-8004 agents', () => {
-  assert(source.includes("reputation8004: { weight: 0.15, label: 'ERC-8004 Reputation'"), 'ERC-8004 reputation should be a primary score component');
-  assert(source.includes("serviceReadiness: { weight: 0.05, label: 'Service Readiness'"), 'Cred weights should include ERC-8004 service readiness');
+  assert(source.includes("activity: { weight: 0.20, label: 'Agent Wallet Activity'"), 'Agent wallet activity should be a primary score component');
+  assert(source.includes("reputation8004: { weight: 0.05, label: 'ERC-8004 Reputation'"), 'ERC-8004 reputation should stay visible without dominating the score');
+  assert(source.includes("serviceReadiness: { weight: 0.10, label: 'Service Readiness'"), 'Cred weights should include ERC-8004 service readiness');
   assert(source.includes('function computeEvidenceCoverage(agent, components)'), 'Cred API should expose evidence coverage separately from score strength');
   assert(source.includes('evidenceCoverage'), 'Cred responses should include evidence coverage');
 });
