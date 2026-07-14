@@ -6057,8 +6057,8 @@ const CRED_WEIGHTS = {
     traits: { weight: 0.08, label: 'Trait Richness', description: 'Number and variety of traits' },
     narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
     origin: { weight: 0.08, label: 'Registration Origin', description: 'How the agent was registered (SIWA > API > Owner)' },
-    soulbound: { weight: 0.05, label: 'Soulbound Status', description: 'Identity locked to wallet (non-transferable)' },
-    soulCompleteness: { weight: 0.07, label: 'Soul Vault', description: 'Soul data completeness - public fields, shared soul, narrative depth' },
+    soulbound: { weight: 0.05, label: 'Non-Transferable Identity', description: 'Identity locked to wallet (soulbound/non-transferable)' },
+    soulCompleteness: { weight: 0.07, label: 'Profile Completeness', description: 'Public profile fields, shareable identity data, and narrative depth' },
     reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
     workHistory: { weight: 0.06, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
     intuition: { weight: 0.03, label: 'Intuition Graph', description: 'Published Intuition assessment source and ERC-8004 graph linkage' },
@@ -6217,9 +6217,9 @@ function getCredRecommendations(agent, breakdown) {
     if (!narrative.mission) recs.push({ action: 'Add mission statement', impact: '+2-3 points', priority: 'MEDIUM' });
     if (!narrative.lore) recs.push({ action: 'Add lore', impact: '+2-3 points', priority: 'LOW' });
 
-    // Soul Vault recommendation
+    // Profile completeness recommendation
     if (!breakdown.soulCompleteness || breakdown.soulCompleteness.rawScore < 50) {
-        recs.push({ action: 'Upload Soul Vault data (publicSoul + sharedSoul)', impact: '+4-8 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/soul` });
+        recs.push({ action: 'Complete public profile and persistent identity fields', impact: '+4-8 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/soul` });
     }
     if (!breakdown.intuition || breakdown.intuition.rawScore < 100) {
         recs.push({ action: 'Publish Intuition assessment source', impact: '+1-3 points', priority: 'MEDIUM', endpoint: `/.well-known/intuition/erc8004/agents/{chainId}/{tokenId}/trust-assessment.json` });

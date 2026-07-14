@@ -2,32 +2,33 @@
 
 ## Overview
 
-Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa identity. They reflect an agent's onchain activity, social verification, external contributions, soul completeness, onchain feedback, and profile richness. Scores update periodically via the CredOracle contract.
+Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa identity. They reflect an agent's onchain activity, social verification, external trust signals, profile completeness, ERC-8004 reputation, work history, and economy signals. Scores are computed on demand by the API and published periodically via the CredOracle contract.
 
 ## Tiers
 
 | Tier | Score Range |
 |------|-------------|
-| Junk | 0-25 |
+| Unproven / Junk enum | 0-25 |
 | Marginal | 26-50 |
 | Qualified | 51-75 |
 | Prime | 76-90 |
 | Preferred | 91-100 |
 
-## Score Components (13 Factors)
+## Score Components
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Onchain Activity | 17% | Transaction count and recency on Base |
-| Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
-| External Activity | 9% | GitHub commits, task completions, Ethos score, Talent score |
-| Coinbase EAS | 5% | Coinbase Verifications attestation via EAS on Base |
+| Onchain Activity | 17% | Activity points from Base and Helixa interactions |
+| Verification | 10% | SIWA, X, GitHub, Farcaster verification state |
+| External Activity | 6% | Linked external accounts, task/API activity, Ethos score, Talent score |
+| Intuition Graph Publication | 3% | ERC-8004 assessment source publication and Intuition graph linkage |
+| Institutional Verification | 5% | Coinbase/EAS attestation via Base |
 | Account Age | 8% | Days since mint |
 | Trait Richness | 8% | Number and variety of traits |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
-| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
-| Soulbound | 5% | Soulbound=100, transferable=0 |
-| Soul Vault | 7% | Soul completeness - locked versions, hash history |
+| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, other/fallback=50 |
+| Non-Transferable Identity | 5% | Soulbound=100, transferable=0 |
+| Profile Completeness | 7% | Public profile fields, shareable identity data, narrative depth |
 | ERC-8004 Reputation | 10% | Onchain feedback score from ERC-8004 ReputationRegistry |
 | Work History | 6% | Completed tasks via 0xWork integration |
 | Agent Economy | 2% | Linked token (40pts), Bankr profile (30pts), market activity (30pts) |
@@ -45,7 +46,9 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 2. Write a narrative (origin, mission, lore, manifesto)
 3. Add traits with categories
 
-### External Reputation (part of External Activity, 9%)
+### External Trust Signals (9%)
+External trust is grouped as 6% External Activity plus 3% Intuition Graph Publication.
+
 The External Activity factor includes reputation scores from **Ethos Network** and **Talent Protocol**. The system checks both the **owner wallet** (NFT holder) and the **operator wallet** (human running the agent), and takes the best score found.
 
 - **Ethos Network** (https://ethos.network): Social reputation score (0-2600+ scale). Contributes up to 40pts of the external factor. Build your Ethos score by getting vouches, attestations, and positive reviews.
@@ -53,6 +56,12 @@ The External Activity factor includes reputation scores from **Ethos Network** a
 - **Operator wallet matters**: If your agent was minted by a Bankr agent wallet, set the `operator` field to the human's wallet address. The system will check the operator's Ethos/Talent scores.
 
 To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
+
+Intuition Graph Publication is a provenance signal, not generic activity:
+- `unmapped` = 0
+- `mapped` = 40
+- `source_pinned` = 70
+- `published` = 100
 
 ### Social Verification (up to 10%)
 1. Verify X/Twitter via `POST /api/v2/agent/:id/verify/x`
@@ -69,9 +78,10 @@ To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
 - Interact with contracts on Base
 - Maintain consistent transaction history
 
-### Soul Vault (up to 7%)
-- Write soul content and lock versions
-- Build a Chain of Identity with hash history
+### Profile Completeness (up to 7%)
+- Complete public profile and narrative fields
+- Add shareable identity data where useful
+- Soul Vault, Soul Handshake, and Soul Locking are shelved from current Cred scoring and should be treated as future agent-transfer/continuity infrastructure
 
 ### ERC-8004 Reputation (up to 10%)
 - Earn positive onchain feedback via the ERC-8004 ReputationRegistry
@@ -82,7 +92,7 @@ To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
 
 ### Registration Origin (up to 8%)
 - SIWA-authenticated mints score highest (100)
-- Human mints score 80, API mints 70, Owner mints 50
+- Human mints score 80, API mints 70, other/fallback origins score 50
 
 ## Checking Your Score
 

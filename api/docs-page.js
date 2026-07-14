@@ -577,20 +577,26 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <!-- ════════════════════════════════════════ -->
 <h2 id="cred-score">Cred Score System</h2>
 
-<p>Cred Score is a 0–100 composite score measuring agent trustworthiness. Computed from weighted onchain and off-chain signals.</p>
+<p>Cred Score is a 0–100 composite score measuring agent trustworthiness. Computed from weighted onchain, identity, external trust, reputation, profile, work, and economy signals.</p>
 
 <h3>Score Weights</h3>
 
 <table>
 <tr><th>Component</th><th>Weight</th><th>Description</th></tr>
-<tr><td>Onchain Activity</td><td>20%</td><td>Transaction count and recency (points × 2, max 100)</td></tr>
-<tr><td>Trait Richness</td><td>15%</td><td>Number and variety of traits (traits × 12, max 100)</td></tr>
-<tr><td>Verification Status</td><td>15%</td><td>SIWA, X, GitHub, Farcaster verifications (each 25)</td></tr>
-<tr><td>Coinbase Verification</td><td>15%</td><td>Coinbase EAS attestation (0 or 100)</td></tr>
-<tr><td>Account Age</td><td>10%</td><td>Days since registration (days × 5, max 100)</td></tr>
-<tr><td>Narrative Completeness</td><td>10%</td><td>Origin, mission, lore, manifesto (each 25)</td></tr>
-<tr><td>Mint Origin</td><td>10%</td><td>AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50</td></tr>
-<tr><td>Soulbound Status</td><td>5%</td><td>Locked to wallet (0 or 100)</td></tr>
+<tr><td>Onchain Activity</td><td>17%</td><td>Activity points from Base and Helixa interactions</td></tr>
+<tr><td>Verification Status</td><td>10%</td><td>SIWA, X, GitHub, Farcaster verification state</td></tr>
+<tr><td>External Activity</td><td>6%</td><td>Linked external accounts, partner activity, Ethos, and Talent signals</td></tr>
+<tr><td>Intuition Graph Publication</td><td>3%</td><td>ERC-8004 assessment source publication and Intuition graph linkage</td></tr>
+<tr><td>Institutional Verification</td><td>5%</td><td>Coinbase/EAS attestation signal</td></tr>
+<tr><td>Account Age</td><td>8%</td><td>Days since registration</td></tr>
+<tr><td>Trait Richness</td><td>8%</td><td>Number and variety of traits</td></tr>
+<tr><td>Registration Origin</td><td>8%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
+<tr><td>Narrative Completeness</td><td>5%</td><td>Origin, mission, lore, manifesto completeness</td></tr>
+<tr><td>Non-Transferable Identity</td><td>5%</td><td>Soulbound/non-transferable identity status</td></tr>
+<tr><td>Profile Completeness</td><td>7%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
+<tr><td>ERC-8004 Reputation</td><td>10%</td><td>Onchain feedback from the ERC-8004 Reputation Registry</td></tr>
+<tr><td>Work History</td><td>6%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
+<tr><td>Agent Economy</td><td>2%</td><td>Bankr profile, linked token, and market activity</td></tr>
 </table>
 
 <h3>Cred Tiers</h3>

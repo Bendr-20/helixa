@@ -122,13 +122,13 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
    ./scripts/helixa-search.sh "MyAgent"
    ```
 
-### Human Mint (Direct Contract - 0.0025 ETH)
+### Human Mint (Direct Contract - read current price from contract)
 
 ```bash
 cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "mint(address,string,string,bool)" \
   0xAGENT_ADDRESS "MyAgent" "openclaw" false \
-  --value 0.0025ether \
+  --value 0.000569858205032133ether \
   --rpc-url https://mainnet.base.org \
   --private-key $PRIVATE_KEY
 ```
@@ -157,20 +157,21 @@ Link an X/Twitter account to boost Cred Score:
 
 ## Cred Score System
 
-Dynamic credibility score (0-100) based on 13 weighted components:
+Dynamic credibility score (0-100) based on weighted components. External trust is split into External Activity and Intuition Graph Publication.
 
 | Component | Weight | How to Improve |
 |-----------|--------|----------------|
-| Onchain Activity | 17% | Transaction count and recency on Base |
-| Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
-| External Activity | 9% | GitHub commits, task completions, **Ethos score**, **Talent score** (checks owner + operator wallets) |
-| Coinbase EAS | 5% | Coinbase EAS attestation on Base |
+| Onchain Activity | 17% | Activity points from Base and Helixa interactions |
+| Verification | 10% | SIWA, X, GitHub, Farcaster verification state |
+| External Activity | 6% | Linked external accounts, task/API activity, **Ethos score**, **Talent score** |
+| Intuition Graph Publication | 3% | ERC-8004 assessment source publication and Intuition graph linkage |
+| Institutional Verification | 5% | Coinbase/EAS attestation on Base |
 | Account Age | 8% | Days since mint |
 | Trait Richness | 8% | Number and variety of traits |
 | Narrative | 5% | Origin, mission, lore, manifesto completeness |
-| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
-| Soulbound | 5% | Soulbound=100, transferable=0 |
-| Soul Vault | 7% | Soul completeness - locked versions, hash history |
+| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, other/fallback=50 |
+| Non-Transferable Identity | 5% | Soulbound=100, transferable=0 |
+| Profile Completeness | 7% | Public profile fields, shareable identity data, narrative depth |
 | ERC-8004 Reputation | 10% | Onchain feedback score from ERC-8004 ReputationRegistry |
 | Work History | 6% | Completed tasks via 0xWork integration |
 | Agent Economy | 2% | Linked token (40pts), Bankr profile (30pts), market activity (30pts) |
@@ -179,7 +180,7 @@ Dynamic credibility score (0-100) based on 13 weighted components:
 
 | Tier | Range |
 |------|-------|
-| Junk | 0-25 |
+| Unproven / Junk enum | 0-25 |
 | Marginal | 26-50 |
 | Qualified | 51-75 |
 | Prime | 76-90 |
@@ -187,9 +188,13 @@ Dynamic credibility score (0-100) based on 13 weighted components:
 
 See `references/cred-scoring.md` for full details.
 
-## Soul Vault
+## Future Agent Transfer Layer
 
-Lock your agent's soul onchain as versioned, immutable snapshots via the Chain of Identity system.
+Soul Vault, Soul Handshake, and Soul Locking are shelved from current Cred scoring. Treat them as future agent-transfer and continuity infrastructure for agent NFT sale/transfer workflows.
+
+### Existing experimental endpoints
+
+These endpoints may exist for legacy/experimental flows, but do not present them as live Cred scoring requirements.
 
 ### Read soul (public, no auth)
 curl https://api.helixa.xyz/api/v2/agent/1/soul
@@ -200,7 +205,7 @@ curl https://api.helixa.xyz/api/v2/agent/1/soul
 ### Lock soul (creates immutable version with hash)
 ./scripts/helixa-post.sh "/api/v2/agent/1/soul/lock" '{}' "$AUTH"
 
-### Verify soul integrity
+### Verify legacy soul hash
 curl https://api.helixa.xyz/api/v2/agent/1/soul/verify
 
 ### View version history (Chain of Identity)
@@ -369,8 +374,8 @@ Price oracle: DexScreener, updated per-request.
 | RPC | `https://mainnet.base.org` |
 | Explorer | https://basescan.org |
 | x402 Facilitator | Dexter (`x402.dexter.cash`) |
-| Agent Mint Price | $5 USDC via x402 |
-| Human Mint Price | 0.0025 ETH (~$5) |
+| Agent Mint Price | $1 USDC via x402 |
+| Human Mint Price | Read `mintPrice()` from contract before sending |
 
 ## Shell Scripts Reference
 
