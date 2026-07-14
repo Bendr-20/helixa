@@ -1769,6 +1769,14 @@ function applyComputedCredFloor(agent) {
     return agent;
 }
 
+function attachIntuitionContext(agent) {
+    if (!agent || typeof agent !== 'object') return agent;
+    try {
+        agent.intuition = intuition8004.getIntuitionCredSignal(agent);
+    } catch {}
+    return agent;
+}
+
 async function formatAgentV2(tokenId) {
     if (!isContractDeployed()) throw new Error('V2 contract not yet deployed');
     
@@ -1994,7 +2002,7 @@ async function formatAgentV2(tokenId) {
         if (computedScore > result.credScore) result.credScore = computedScore;
     } catch {}
 
-    return result;
+    return attachIntuitionContext(result);
 }
 
 async function formatAgentPublicFast(tokenId) {
@@ -2094,7 +2102,7 @@ async function formatAgentPublicFast(tokenId) {
         if (computedScore > result.credScore) result.credScore = computedScore;
     } catch {}
 
-    return result;
+    return attachIntuitionContext(result);
 }
 
 async function getAgentForResponse(tokenId, { timeoutMs = 5000 } = {}) {
@@ -2105,10 +2113,10 @@ async function getAgentForResponse(tokenId, { timeoutMs = 5000 } = {}) {
         new Promise(resolve => setTimeout(() => resolve({ ok: false, timeout: true }), timeoutMs)),
     ]);
 
-    if (outcome?.ok && outcome.agent) return outcome.agent;
+    if (outcome?.ok && outcome.agent) return attachIntuitionContext(outcome.agent);
 
     const snapshot = getIndexedAgentSnapshot(tokenId);
-    if (snapshot) return snapshot;
+    if (snapshot) return attachIntuitionContext(snapshot);
 
     if (outcome?.error) throw outcome.error;
     throw new Error('Agent lookup timed out');
@@ -6042,7 +6050,7 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 
 const CRED_WEIGHTS = {
     activity: { weight: 0.17, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
-    external: { weight: 0.09, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
+    external: { weight: 0.06, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.10, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
     coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
     age: { weight: 0.08, label: 'Account Age', description: 'Days since registration' },
@@ -6053,6 +6061,7 @@ const CRED_WEIGHTS = {
     soulCompleteness: { weight: 0.07, label: 'Soul Vault', description: 'Soul data completeness - public fields, shared soul, narrative depth' },
     reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
     workHistory: { weight: 0.06, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
+    intuition: { weight: 0.03, label: 'Intuition Graph', description: 'Published Intuition assessment source and ERC-8004 graph linkage' },
     bankr: { weight: 0.02, label: 'Agent Economy', description: 'Bankr profile, linked token, and market activity' },
 };
 
@@ -6137,6 +6146,10 @@ function computeCredBreakdown(agent) {
             const { calculateWorkScore } = require('./services/work-stats');
             return calculateWorkScore(agent._workStats || null);
         })(), maxRaw: 100 },
+        intuition: { raw: (() => {
+            // Intuition graph publication signal for ERC-8004 partner discovery.
+            return intuition8004.getIntuitionCredSignal(agent).rawScore;
+        })(), maxRaw: 100 },
         bankr: { raw: (() => {
             // Bankr agent economy: linked token + profile + market activity
             let score = 0;
@@ -6208,6 +6221,9 @@ function getCredRecommendations(agent, breakdown) {
     if (!breakdown.soulCompleteness || breakdown.soulCompleteness.rawScore < 50) {
         recs.push({ action: 'Upload Soul Vault data (publicSoul + sharedSoul)', impact: '+4-8 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/soul` });
     }
+    if (!breakdown.intuition || breakdown.intuition.rawScore < 100) {
+        recs.push({ action: 'Publish Intuition assessment source', impact: '+1-3 points', priority: 'MEDIUM', endpoint: `/.well-known/intuition/erc8004/agents/{chainId}/{tokenId}/trust-assessment.json` });
+    }
 
     return recs.slice(0, 8);
 }
@@ -6248,6 +6264,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
             tier: tierInfo.tier,
             tierLabel: tierInfo.label,
             scale: { junk: '0-25', marginal: '26-50', qualified: '51-75', prime: '76-90', preferred: '91-100' },
+            intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
             fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
             fullReportPrice: `${formatUSDPrice(PRICING.credReport)} USDC`,
             hint: 'Full CRED report with breakdown, recommendations, and signed receipt available via x402.',
@@ -6300,6 +6317,7 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
             agent: { tokenId, name: agent.name, framework: agent.framework, owner: agent.owner, agentAddress: agent.agentAddress, mintOrigin: agent.mintOrigin, mintedAt: agent.mintedAt, ageDays, soulbound: agent.soulbound, verified: agent.verified, points: agent.points },
             credScore: { score: agent.credScore, computedScore, tier: tierInfo.tier, tierLabel: tierInfo.label, rank, totalAgents, percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null },
             scoreBreakdown: components,
+            intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
             verifications: verificationStatus,
             narrativeAnalysis: { completeness: `${narrativeCompleteness}/4`, fields: narrativeAnalysis },
             personality: agent.personality,
@@ -6430,6 +6448,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
             // Full breakdown with weights
             scoreBreakdown: components,
             totalWeight: Object.values(CRED_WEIGHTS).reduce((s, w) => s + w.weight, 0),
+            intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
 
             // Verification details
             verifications: verificationStatus,

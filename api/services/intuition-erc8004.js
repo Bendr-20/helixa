@@ -7,6 +7,7 @@ const HELIXA_V2_REGISTRY = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60';
 const ERC8004_IDENTITY_REGISTRY = '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432';
 const INTUITION_PINNING_ENDPOINT = 'https://pin.intuition.systems/v1/graphql';
 const DEFAULT_MAPPING_PATH = path.resolve(__dirname, '..', '..', 'data', '8004-transfers.json');
+const DEFAULT_SETUP_STATE_PATH = path.resolve(__dirname, '..', 'config', 'intuition-erc8004.json');
 const DEFAULT_SECRET_PATH = path.join(os.homedir(), '.config', 'helixa', 'intuition.env');
 
 const PROVIDER = {
@@ -97,6 +98,106 @@ function resolveCanonical8004Mapping(chainId, tokenId, mappings = loadCanonical8
     if (normalizedChainId !== BASE_CHAIN_ID) return null;
 
     return mappings.find(row => row.canonicalTokenId === normalizedTokenId) || null;
+}
+
+function resolveHelixa8004Mapping(helixaTokenId, mappings = loadCanonical8004Mappings()) {
+    const normalizedTokenId = Number(helixaTokenId);
+    if (!Number.isSafeInteger(normalizedTokenId) || normalizedTokenId < 0) return null;
+    return mappings.find(row => row.helixaTokenId === normalizedTokenId) || null;
+}
+
+function loadIntuitionSetupState(filePath = DEFAULT_SETUP_STATE_PATH) {
+    try {
+        const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function findAssessmentSourceForHelixaToken(helixaTokenId, setupState = loadIntuitionSetupState()) {
+    const normalizedTokenId = Number(helixaTokenId);
+    if (!Number.isSafeInteger(normalizedTokenId) || normalizedTokenId < 0) return null;
+    const sources = Array.isArray(setupState?.assessmentSources) ? setupState.assessmentSources : [];
+    return sources.find(source => Number(source?.helixaTokenId) === normalizedTokenId) || null;
+}
+
+function getIntuitionCredSignal(agent, options = {}) {
+    const tokenId = Number(agent?.tokenId ?? agent?.helixaTokenId);
+    if (!Number.isSafeInteger(tokenId) || tokenId < 0) {
+        return { status: 'unmapped', label: 'No Helixa token', rawScore: 0 };
+    }
+
+    const setupState = options.setupState || loadIntuitionSetupState(options.setupPath);
+    const assessmentSource = findAssessmentSourceForHelixaToken(tokenId, setupState);
+    const mapping = assessmentSource
+        ? {
+            canonicalChainId: Number(assessmentSource.canonicalChainId || BASE_CHAIN_ID),
+            canonicalTokenId: Number(assessmentSource.canonicalTokenId),
+            helixaTokenId: tokenId,
+        }
+        : (() => {
+            try {
+                return resolveHelixa8004Mapping(tokenId, options.mappings || loadCanonical8004Mappings(options.mappingPath));
+            } catch {
+                return null;
+            }
+        })();
+
+    const onchainStatus = setupState?.onchainStatus || {};
+    const published = Boolean(
+        assessmentSource
+        && String(onchainStatus.status || '').toLowerCase() === 'published'
+    );
+
+    if (published) {
+        return {
+            status: 'published',
+            label: 'Published',
+            rawScore: 100,
+            provider: setupState?.provider?.id || PROVIDER.id,
+            canonicalAgentId: `${assessmentSource.canonicalChainId}:${assessmentSource.canonicalTokenId}`,
+            resolver: assessmentSource.resolver || null,
+            assessmentSourceUri: assessmentSource.uri || null,
+            publishedAt: onchainStatus.publishedAt || null,
+            atomTransactionHash: onchainStatus.atomTransactionHash || null,
+            tripleTransactionHash: onchainStatus.tripleTransactionHash || null,
+        };
+    }
+
+    if (assessmentSource) {
+        return {
+            status: 'source_pinned',
+            label: 'Source pinned',
+            rawScore: 70,
+            provider: setupState?.provider?.id || PROVIDER.id,
+            canonicalAgentId: `${assessmentSource.canonicalChainId}:${assessmentSource.canonicalTokenId}`,
+            resolver: assessmentSource.resolver || null,
+            assessmentSourceUri: assessmentSource.uri || null,
+        };
+    }
+
+    if (mapping) {
+        return {
+            status: 'mapped',
+            label: 'Mapped',
+            rawScore: 40,
+            provider: setupState?.provider?.id || PROVIDER.id,
+            canonicalAgentId: `${mapping.canonicalChainId}:${mapping.canonicalTokenId}`,
+            resolver: buildResolverUrl({
+                publicBaseUrl: options.publicBaseUrl || 'https://api.helixa.xyz',
+                chainId: mapping.canonicalChainId,
+                tokenId: mapping.canonicalTokenId,
+            }),
+        };
+    }
+
+    return {
+        status: 'unmapped',
+        label: 'Mapping needed',
+        rawScore: 0,
+        provider: setupState?.provider?.id || PROVIDER.id,
+    };
 }
 
 function clampScore(value) {
@@ -304,9 +405,13 @@ module.exports = {
     buildResolverUrl,
     buildTrustAssessment,
     credTier,
+    findAssessmentSourceForHelixaToken,
+    getIntuitionCredSignal,
     loadCanonical8004Mappings,
+    loadIntuitionSetupState,
     pinThing,
     readIntuitionApiKey,
     resolveCanonical8004Mapping,
+    resolveHelixa8004Mapping,
     riskLevelForScore,
 };

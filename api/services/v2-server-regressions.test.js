@@ -34,3 +34,9 @@ test('Intuition ERC-8004 trust assessment resolver uses canonical 8004 IDs', () 
   assert(source.includes('resolveCanonical8004Mapping(req.params.chainId, req.params.tokenId)'), 'resolver must map canonical ERC-8004 IDs to Helixa token IDs');
   assert(source.includes('canonical_erc8004_agent_not_mapped'), 'resolver should not silently treat Helixa V2 IDs as canonical ERC-8004 IDs');
 });
+
+test('Cred scoring includes a separate Intuition graph component', () => {
+  assert(source.includes("intuition: { weight: 0.03, label: 'Intuition Graph'"), 'Cred weights should include Intuition graph publication');
+  assert(source.includes('intuition8004.getIntuitionCredSignal(agent).rawScore'), 'Cred scoring should use Intuition publication status');
+  assert(source.includes('Publish Intuition assessment source'), 'Cred recommendations should include the Intuition publication path');
+});

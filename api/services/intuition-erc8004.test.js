@@ -97,6 +97,54 @@ test('builds provider and assessment-source pinThing payloads', () => {
     );
 });
 
+test('reports Intuition Cred signal from published setup state', () => {
+    withTempJson({
+        provider: { id: 'helixa-cred' },
+        assessmentSources: [
+            {
+                canonicalChainId: 8453,
+                canonicalTokenId: 18531,
+                helixaTokenId: 1,
+                uri: 'ipfs://source',
+                resolver: 'https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json',
+            },
+        ],
+        onchainStatus: {
+            status: 'published',
+            publishedAt: '2026-07-13T23:18:34Z',
+            atomTransactionHash: '0xatom',
+            tripleTransactionHash: '0xtriple',
+        },
+    }, (filePath) => {
+        const setupState = intuition.loadIntuitionSetupState(filePath);
+        const signal = intuition.getIntuitionCredSignal({ tokenId: 1 }, { setupState });
+
+        assert.equal(signal.status, 'published');
+        assert.equal(signal.rawScore, 100);
+        assert.equal(signal.canonicalAgentId, '8453:18531');
+        assert.equal(signal.assessmentSourceUri, 'ipfs://source');
+        assert.equal(signal.tripleTransactionHash, '0xtriple');
+    });
+});
+
+test('reports mapping-required Intuition signal without overclaiming', () => {
+    withTempJson({
+        provider: { id: 'helixa-cred' },
+        assessmentSources: [],
+        onchainStatus: { status: 'published' },
+    }, (filePath) => {
+        const setupState = intuition.loadIntuitionSetupState(filePath);
+        const signal = intuition.getIntuitionCredSignal(
+            { tokenId: 1069 },
+            { setupState, mappings: [] },
+        );
+
+        assert.equal(signal.status, 'unmapped');
+        assert.equal(signal.label, 'Mapping needed');
+        assert.equal(signal.rawScore, 0);
+    });
+});
+
 test('pinThing sends apikey header and returns the pinned URI', async () => {
     const calls = [];
     const fetchImpl = async (endpoint, options) => {
