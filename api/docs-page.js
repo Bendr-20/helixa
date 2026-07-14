@@ -577,25 +577,26 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <!-- ════════════════════════════════════════ -->
 <h2 id="cred-score">Cred Score System</h2>
 
-<p>Cred Score is a 0–100 composite score measuring agent trustworthiness. Computed from weighted onchain, identity, external trust, reputation, profile, work, and economy signals.</p>
+<p>Cred Score is a 0–100 composite score measuring agent trustworthiness across universal ERC-8004 evidence, identity, external trust, reputation, service readiness, work, and economy signals. Responses also include Evidence Coverage so partners can separate score strength from evidence completeness.</p>
 
 <h3>Score Weights</h3>
 
 <table>
 <tr><th>Component</th><th>Weight</th><th>Description</th></tr>
-<tr><td>Onchain Activity</td><td>17%</td><td>Activity points from Base and Helixa interactions</td></tr>
+<tr><td>Agent Wallet Activity</td><td>15%</td><td>Activity points from Base and Helixa interactions</td></tr>
 <tr><td>Verification Status</td><td>10%</td><td>SIWA, X, GitHub, Farcaster verification state</td></tr>
 <tr><td>External Activity</td><td>6%</td><td>Linked external accounts, partner activity, Ethos, and Talent signals</td></tr>
-<tr><td>Intuition Graph Publication</td><td>3%</td><td>ERC-8004 assessment source publication and Intuition graph linkage</td></tr>
-<tr><td>Institutional Verification</td><td>5%</td><td>Coinbase/EAS attestation signal</td></tr>
-<tr><td>Account Age</td><td>8%</td><td>Days since registration</td></tr>
-<tr><td>Trait Richness</td><td>8%</td><td>Number and variety of traits</td></tr>
-<tr><td>Registration Origin</td><td>8%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
-<tr><td>Narrative Completeness</td><td>5%</td><td>Origin, mission, lore, manifesto completeness</td></tr>
-<tr><td>Non-Transferable Identity</td><td>5%</td><td>Soulbound/non-transferable identity status</td></tr>
-<tr><td>Profile Completeness</td><td>7%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
-<tr><td>ERC-8004 Reputation</td><td>10%</td><td>Onchain feedback from the ERC-8004 Reputation Registry</td></tr>
-<tr><td>Work History</td><td>6%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
+<tr><td>Intuition Graph Publication</td><td>5%</td><td>ERC-8004 assessment source publication and Intuition graph linkage</td></tr>
+<tr><td>Institutional Verification</td><td>4%</td><td>Coinbase/EAS attestation signal</td></tr>
+<tr><td>Account Age / Continuity</td><td>10%</td><td>Days since registration and continuity</td></tr>
+<tr><td>Metadata Richness</td><td>6%</td><td>Traits, skills, domains, framework, and capability metadata</td></tr>
+<tr><td>Registration Provenance</td><td>3%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
+<tr><td>Description Completeness</td><td>3%</td><td>Description, origin, mission, lore, and manifesto completeness</td></tr>
+<tr><td>Transfer Lock</td><td>3%</td><td>Soulbound/non-transferable identity status</td></tr>
+<tr><td>Profile Completeness</td><td>5%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
+<tr><td>ERC-8004 Reputation</td><td>15%</td><td>Onchain feedback from the ERC-8004 Reputation Registry</td></tr>
+<tr><td>Work History</td><td>8%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
+<tr><td>Service Readiness</td><td>5%</td><td>Registered services, capabilities, supported trust modes, and x402 readiness</td></tr>
 <tr><td>Agent Economy</td><td>2%</td><td>Bankr profile, linked token, and market activity</td></tr>
 </table>
 

@@ -1568,7 +1568,7 @@ async function formatAgentAuraSource(tokenId) {
 
         try {
             const { computedScore } = computeCredBreakdown(mergedLocalAgent);
-            if (computedScore > mergedLocalAgent.credScore) mergedLocalAgent.credScore = computedScore;
+            if (Number.isFinite(Number(computedScore))) mergedLocalAgent.credScore = computedScore;
         } catch {}
 
         return mergedLocalAgent;
@@ -1645,7 +1645,7 @@ async function formatAgentAuraSource(tokenId) {
 
     try {
         const { computedScore } = computeCredBreakdown(mergedResolvedAgent);
-        if (computedScore > mergedResolvedAgent.credScore) mergedResolvedAgent.credScore = computedScore;
+        if (Number.isFinite(Number(computedScore))) mergedResolvedAgent.credScore = computedScore;
     } catch {}
 
     return mergedResolvedAgent;
@@ -1710,7 +1710,7 @@ function getIndexedAgentSnapshot(tokenId) {
 
         try {
             const { computedScore } = computeCredBreakdown(mergedSnapshot);
-            if (computedScore > mergedSnapshot.credScore) mergedSnapshot.credScore = computedScore;
+            if (Number.isFinite(Number(computedScore))) mergedSnapshot.credScore = computedScore;
         } catch {}
 
         return mergedSnapshot;
@@ -1730,27 +1730,7 @@ function applyComputedCredFloor(agent) {
     const narrative = agent.narrative && Object.keys(agent.narrative || {}).length > 0
         ? agent.narrative
         : (profile.narrative || {});
-    const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
-    const ageDays = mintDate && !Number.isNaN(mintDate.getTime())
-        ? Math.floor((Date.now() - mintDate.getTime()) / 86400000)
-        : 0;
-    const hasVerif = (name) => traits.some((t) => (typeof t === 'string' ? t : t?.name) === name);
-    const verifCount = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
-        .filter(hasVerif).length;
     const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
-
-    const computedScore = Math.round(
-        Math.min(100, Number(agent.points || 0) * 2) * CRED_WEIGHTS.activity.weight +
-        0 * CRED_WEIGHTS.external.weight +
-        Math.min(100, verifCount * 25) * CRED_WEIGHTS.verify.weight +
-        (hasVerif('coinbase-verified') ? 100 : 0) * CRED_WEIGHTS.coinbase.weight +
-        Math.min(100, ageDays * 5) * CRED_WEIGHTS.age.weight +
-        Math.min(100, traits.length * 12) * CRED_WEIGHTS.traits.weight +
-        Math.min(100, narrativeFields.length * 25) * CRED_WEIGHTS.narrative.weight +
-        ((agent.mintOrigin === 'AGENT_SIWA' || hasVerif('siwa-verified')) ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50) * CRED_WEIGHTS.origin.weight +
-        (agent.soulbound ? 100 : 0) * CRED_WEIGHTS.soulbound.weight
-    );
-
     if (!Array.isArray(agent.traits) || agent.traits.length === 0) {
         agent.traits = traits;
         agent.traitCount = Array.isArray(traits) ? traits.length : 0;
@@ -1762,7 +1742,8 @@ function applyComputedCredFloor(agent) {
         agent.narrative = narrative;
     }
 
-    if (computedScore > Number(agent.credScore || 0)) {
+    const { computedScore } = computeCredBreakdown(agent);
+    if (Number.isFinite(Number(computedScore))) {
         agent.credScore = computedScore;
     }
 
@@ -1999,7 +1980,7 @@ async function formatAgentV2(tokenId) {
     // Recompute cred score from merged data (onchain score may be stale)
     try {
         const { computedScore } = computeCredBreakdown(result);
-        if (computedScore > result.credScore) result.credScore = computedScore;
+        if (Number.isFinite(Number(computedScore))) result.credScore = computedScore;
     } catch {}
 
     return attachIntuitionContext(result);
@@ -2099,7 +2080,7 @@ async function formatAgentPublicFast(tokenId) {
 
     try {
         const { computedScore } = computeCredBreakdown(result);
-        if (computedScore > result.credScore) result.credScore = computedScore;
+        if (Number.isFinite(Number(computedScore))) result.credScore = computedScore;
     } catch {}
 
     return attachIntuitionContext(result);
@@ -5151,7 +5132,7 @@ app.get('/.well-known/intuition/erc8004/agents/:chainId/:tokenId/trust-assessmen
         } catch {}
 
         const credBreakdown = computeCredBreakdown(agent);
-        if (credBreakdown?.computedScore > Number(agent.credScore || 0)) {
+        if (Number.isFinite(Number(credBreakdown?.computedScore))) {
             agent.credScore = credBreakdown.computedScore;
         }
 
@@ -6049,35 +6030,150 @@ app.post('/api/v2/messages/groups', requireSIWA, (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 
 const CRED_WEIGHTS = {
-    activity: { weight: 0.17, label: 'Onchain Activity', description: 'Transactions, contract deploys, protocol interactions' },
+    activity: { weight: 0.15, label: 'Agent Wallet Activity', description: 'Activity points from Base and Helixa interactions' },
     external: { weight: 0.06, label: 'External Activity', description: 'GitHub commits, task completions, integrations' },
     verify: { weight: 0.10, label: 'Verification Status', description: 'SIWA, X, GitHub, Farcaster verifications' },
-    coinbase: { weight: 0.05, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
-    age: { weight: 0.08, label: 'Account Age', description: 'Days since registration' },
-    traits: { weight: 0.08, label: 'Trait Richness', description: 'Number and variety of traits' },
-    narrative: { weight: 0.05, label: 'Narrative Completeness', description: 'Origin, mission, lore, manifesto fields' },
-    origin: { weight: 0.08, label: 'Registration Origin', description: 'How the agent was registered (SIWA > API > Owner)' },
-    soulbound: { weight: 0.05, label: 'Non-Transferable Identity', description: 'Identity locked to wallet (soulbound/non-transferable)' },
-    soulCompleteness: { weight: 0.07, label: 'Profile Completeness', description: 'Public profile fields, shareable identity data, and narrative depth' },
-    reputation8004: { weight: 0.10, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
-    workHistory: { weight: 0.06, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
-    intuition: { weight: 0.03, label: 'Intuition Graph', description: 'Published Intuition assessment source and ERC-8004 graph linkage' },
+    coinbase: { weight: 0.04, label: 'Institutional Verification', description: 'EAS attestations from recognized issuers (Coinbase, etc.)' },
+    age: { weight: 0.10, label: 'Account Age / Continuity', description: 'Days since registration and continuity' },
+    traits: { weight: 0.06, label: 'Metadata Richness', description: 'Traits, skills, domains, framework, and capability metadata' },
+    narrative: { weight: 0.03, label: 'Description Completeness', description: 'Description, origin, mission, lore, and manifesto fields' },
+    origin: { weight: 0.03, label: 'Registration Provenance', description: 'How the agent was registered or authenticated' },
+    soulbound: { weight: 0.03, label: 'Transfer Lock', description: 'Identity locked to wallet (soulbound/non-transferable)' },
+    soulCompleteness: { weight: 0.05, label: 'Profile Completeness', description: 'Public profile fields, shareable identity data, and narrative depth' },
+    reputation8004: { weight: 0.15, label: 'ERC-8004 Reputation', description: 'Feedback signals from the official ERC-8004 Reputation Registry on Base' },
+    workHistory: { weight: 0.08, label: 'Work History', description: 'Task completions, reliability, and earnings from 0xWork' },
+    intuition: { weight: 0.05, label: 'Intuition Graph Publication', description: 'Published Intuition assessment source and ERC-8004 graph linkage' },
+    serviceReadiness: { weight: 0.05, label: 'Service Readiness', description: 'Registered services, capabilities, supported trust modes, and x402 readiness' },
     bankr: { weight: 0.02, label: 'Agent Economy', description: 'Bankr profile, linked token, and market activity' },
 };
+
+function getTraitName(trait) {
+    return typeof trait === 'string' ? trait : trait?.name;
+}
+
+function hasValue(value) {
+    if (value === null || value === undefined) return false;
+    if (typeof value === 'string') return value.trim().length > 0;
+    if (typeof value === 'number') return Number.isFinite(value);
+    if (typeof value === 'bigint') return true;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === 'object') return Object.keys(value).length > 0;
+    return Boolean(value);
+}
+
+function countNonEmptyObjectValues(obj) {
+    if (!obj || typeof obj !== 'object') return 0;
+    return Object.values(obj).filter(hasValue).length;
+}
+
+function calculateMetadataRichness(agent, traits, narrative) {
+    let score = 0;
+    score += Math.min(35, (traits || []).length * 6);
+    score += Math.min(20, (agent.skills || []).length * 8);
+    score += Math.min(20, (agent.domains || []).length * 8);
+    if (hasValue(agent.framework)) score += 10;
+    if (hasValue(agent.agentName) || hasValue(agent.name)) score += 5;
+    if (hasValue(agent.metadata)) score += Math.min(10, countNonEmptyObjectValues(agent.metadata) * 3);
+    if (hasValue(narrative?.mission) || hasValue(agent.description)) score += 5;
+    return Math.min(100, score);
+}
+
+function calculateDescriptionCompleteness(agent, narrative) {
+    const fields = [
+        agent.description,
+        narrative?.origin,
+        narrative?.mission,
+        narrative?.lore,
+        narrative?.manifesto,
+    ].filter(hasValue);
+    return Math.min(100, fields.length * 20);
+}
+
+function calculateServiceReadiness(agent) {
+    const services = agent.services && typeof agent.services === 'object' ? agent.services : {};
+    const serviceCount = Object.values(services).filter((service) => {
+        if (!service || typeof service !== 'object') return false;
+        return hasValue(service.url) || hasValue(service.address) || hasValue(service.id) || hasValue(service.name) || hasValue(service.handle);
+    }).length;
+    const supportedTrust = Array.isArray(agent.supportedTrust)
+        ? agent.supportedTrust
+        : Array.isArray(agent.metadata?.supportedTrust)
+            ? agent.metadata.supportedTrust
+            : [];
+    const x402Ready = Boolean(agent.x402 || agent.metadata?.x402 || services.x402 || services.payment);
+
+    let score = 0;
+    if (agent.active !== false) score += 10;
+    if (hasValue(agent.agentAddress) || hasValue(agent.owner)) score += 10;
+    score += Math.min(35, serviceCount * 12);
+    score += Math.min(25, ((agent.skills || []).length + (agent.domains || []).length) * 8);
+    if (supportedTrust.length > 0) score += 10;
+    if (x402Ready) score += 10;
+    return Math.min(100, score);
+}
+
+function calculateProfileCompleteness(agent, narrative, traits) {
+    let score = 0;
+    if (hasValue(agent.name)) score += 10;
+    if (hasValue(agent.framework)) score += 10;
+    score += Math.min(20, (traits || []).length * 4);
+    score += Math.min(20, [narrative?.origin, narrative?.mission, narrative?.lore, narrative?.manifesto, agent.description].filter(hasValue).length * 5);
+    score += Math.min(15, ((agent.skills || []).length + (agent.domains || []).length) * 5);
+    score += Math.min(15, countNonEmptyObjectValues(agent.socials) * 5);
+    score += Math.min(10, countNonEmptyObjectValues(agent.services) * 5);
+    if (hasValue(agent.image) || hasValue(agent.avatar) || hasValue(agent.profileImage)) score += 5;
+    if (hasValue(agent.metadata)) score += 5;
+
+    return Math.min(100, score);
+}
+
+function computeEvidenceCoverage(agent, components) {
+    const services = agent.services && typeof agent.services === 'object' ? agent.services : {};
+    const serviceCount = Object.values(services).filter(hasValue).length;
+    const intuitionSignal = agent.intuition || intuition8004.getIntuitionCredSignal(agent);
+
+    const checks = [
+        { key: 'erc8004Identity', label: 'ERC-8004 identity', weight: 0.12, value: hasValue(agent.tokenId) && hasValue(agent.agentAddress || agent.owner) && hasValue(agent.name) ? 100 : 0 },
+        { key: 'metadata', label: 'Registration metadata', weight: 0.12, value: Math.max(components.traits.rawScore, components.narrative.rawScore, components.soulCompleteness.rawScore) },
+        { key: 'services', label: 'Services and capabilities', weight: 0.12, value: Math.max(components.serviceReadiness.rawScore, serviceCount > 0 ? 60 : 0) },
+        { key: 'walletActivity', label: 'Wallet activity', weight: 0.10, value: components.activity.rawScore },
+        { key: 'continuity', label: 'Age and continuity', weight: 0.08, value: hasValue(agent.mintedAt) ? Math.max(35, components.age.rawScore) : 0 },
+        { key: 'reputation8004', label: 'ERC-8004 reputation feedback', weight: 0.14, value: components.reputation8004.rawScore },
+        { key: 'attestations', label: 'Verifications and attestations', weight: 0.12, value: Math.max(components.verify.rawScore, components.coinbase.rawScore) },
+        { key: 'externalGraph', label: 'External trust graph publication', weight: 0.10, value: Math.max(components.intuition.rawScore, components.external.rawScore) },
+        { key: 'workHistory', label: 'Work or execution history', weight: 0.06, value: components.workHistory.rawScore },
+        { key: 'economy', label: 'Agent economy data', weight: 0.04, value: components.bankr.rawScore },
+    ];
+
+    const score = Math.round(checks.reduce((sum, check) => sum + (Math.max(0, Math.min(100, check.value)) * check.weight), 0));
+    return {
+        score,
+        label: score >= 80 ? 'Strong' : score >= 60 ? 'Good' : score >= 40 ? 'Partial' : 'Thin',
+        helixaNative: hasValue(agent.tokenId) && hasValue(agent.explorer) && String(agent.explorer).includes(V2_CONTRACT_ADDRESS),
+        intuitionStatus: intuitionSignal?.status || 'unmapped',
+        signals: checks.map(check => ({
+            key: check.key,
+            label: check.label,
+            weight: check.weight,
+            coverage: Math.round(Math.max(0, Math.min(100, check.value))),
+        })),
+        missing: checks
+            .filter(check => Math.max(0, Math.min(100, check.value)) < 35)
+            .map(check => check.label),
+    };
+}
 
 function computeCredBreakdown(agent) {
     const { calculateReputationBonus } = require('./services/reputation-8004');
     const traits = agent.traits || [];
-    const personality = agent.personality || {};
     const narrative = agent.narrative || {};
     const mintDate = agent.mintedAt ? new Date(agent.mintedAt) : null;
-    const ageDays = mintDate ? Math.floor((Date.now() - mintDate.getTime()) / 86400000) : 0;
+    const mintTime = mintDate && !Number.isNaN(mintDate.getTime()) ? mintDate.getTime() : null;
+    const ageDays = mintTime ? Math.max(0, Math.floor((Date.now() - mintTime) / 86400000)) : 0;
 
-    const hasVerif = (name) => traits.some(t => t.name === name);
-    const verifCount = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified', 'coinbase-verified']
+    const hasVerif = (name) => traits.some(t => getTraitName(t) === name);
+    const verifCount = ['siwa-verified', 'x-verified', 'github-verified', 'farcaster-verified']
         .filter(v => hasVerif(v)).length;
-
-    const narrativeFields = [narrative.origin, narrative.mission, narrative.lore, narrative.manifesto].filter(Boolean);
 
     // External activity: GitHub commits, task completions, integrations, Ethos & Talent scores
     const externalSignals = [
@@ -6104,36 +6200,11 @@ function computeCredBreakdown(agent) {
         verify: { raw: Math.min(100, verifCount * 25), maxRaw: 100 },
         coinbase: { raw: hasVerif('coinbase-verified') ? 100 : 0, maxRaw: 100 },
         age: { raw: Math.min(100, ageDays * 5), maxRaw: 100 },
-        traits: { raw: Math.min(100, traits.length * 12), maxRaw: 100 },
-        narrative: { raw: Math.min(100, narrativeFields.length * 25), maxRaw: 100 },
+        traits: { raw: calculateMetadataRichness(agent, traits, narrative), maxRaw: 100 },
+        narrative: { raw: calculateDescriptionCompleteness(agent, narrative), maxRaw: 100 },
         origin: { raw: (agent.mintOrigin === 'AGENT_SIWA' || hasVerif('siwa-verified')) ? 100 : agent.mintOrigin === 'API' ? 70 : agent.mintOrigin === 'HUMAN' ? 80 : 50, maxRaw: 100 },
         soulbound: { raw: agent.soulbound ? 100 : 0, maxRaw: 100 },
-        soulCompleteness: { raw: (() => {
-            try {
-                const Database = require('better-sqlite3');
-                const sdb = new Database(path.join(__dirname, '..', 'data', 'agents.db'));
-                const sv = sdb.prepare('SELECT publicSoul, sharedSoul FROM soul_vault WHERE tokenId = ?').get(Number(agent.tokenId));
-                sdb.close();
-                if (!sv) return 0;
-                let score = 0;
-                // 40%: publicSoul fields populated
-                if (sv.publicSoul) {
-                    try {
-                        const ps = JSON.parse(sv.publicSoul);
-                        const fields = Object.values(ps).filter(v => v !== null && v !== undefined && v !== '');
-                        score += Math.min(40, fields.length * 10);
-                    } catch { }
-                }
-                // 30%: sharedSoul exists
-                if (sv.sharedSoul) score += 30;
-                // 30%: narrative depth (length of publicSoul text)
-                if (sv.publicSoul) {
-                    const len = sv.publicSoul.length;
-                    score += Math.min(30, Math.floor(len / 50) * 5);
-                }
-                return score;
-            } catch { return 0; }
-        })(), maxRaw: 100 },
+        soulCompleteness: { raw: calculateProfileCompleteness(agent, narrative, traits), maxRaw: 100 },
         reputation8004: { raw: (() => {
             // ERC-8004 Reputation Registry feedback score
             // Uses cached data from reputation-8004.js (populated by periodic scan)
@@ -6150,14 +6221,15 @@ function computeCredBreakdown(agent) {
             // Intuition graph publication signal for ERC-8004 partner discovery.
             return intuition8004.getIntuitionCredSignal(agent).rawScore;
         })(), maxRaw: 100 },
+        serviceReadiness: { raw: calculateServiceReadiness(agent), maxRaw: 100 },
         bankr: { raw: (() => {
             // Bankr agent economy: linked token + profile + market activity
             let score = 0;
             // 40pts: has a linked token onchain (check both traits array and linkedToken object)
-            const hasLinkedToken = traits.some(t => t.name === 'linked-token') || !!agent.linkedToken?.contractAddress;
+            const hasLinkedToken = traits.some(t => getTraitName(t) === 'linked-token') || !!agent.linkedToken?.contractAddress;
             if (hasLinkedToken) score += 40;
             // 30pts: has a Bankr profile (checked via trait or _bankrProfile flag)
-            const hasBankrProfile = traits.some(t => t.name === 'bankr-profile') || !!agent._bankrProfile;
+            const hasBankrProfile = traits.some(t => getTraitName(t) === 'bankr-profile') || !!agent._bankrProfile;
             if (hasBankrProfile) score += 30;
             // 30pts: token has market activity (market cap > 0)
             if (agent._tokenMarketCap && agent._tokenMarketCap > 0) score += 30;
@@ -6181,7 +6253,7 @@ function computeCredBreakdown(agent) {
         };
     }
 
-    return { components: breakdown, computedScore: Math.round(totalWeighted) };
+    return { components: breakdown, computedScore: Math.round(totalWeighted), evidenceCoverage: computeEvidenceCoverage(agent, breakdown) };
 }
 
 function getCredTier(score) {
@@ -6256,6 +6328,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
         const tokenId = parseInt(req.params.id);
         const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
+        const { evidenceCoverage } = computeCredBreakdown(agent);
 
         res.json({
             tokenId,
@@ -6263,6 +6336,7 @@ app.get('/api/v2/agent/:id/cred', async (req, res) => {
             credScore: agent.credScore,
             tier: tierInfo.tier,
             tierLabel: tierInfo.label,
+            evidenceCoverage,
             scale: { junk: '0-25', marginal: '26-50', qualified: '51-75', prime: '76-90', preferred: '91-100' },
             intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
             fullReportEndpoint: `/api/v2/agent/${tokenId}/cred-report`,
@@ -6286,7 +6360,7 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
         const tokenId = parseInt(req.params.id);
         const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
-        const { components, computedScore } = computeCredBreakdown(agent);
+        const { components, computedScore, evidenceCoverage } = computeCredBreakdown(agent);
         const recommendations = getCredRecommendations(agent, components);
         let rank = null, totalAgents = 0;
         try {
@@ -6315,7 +6389,8 @@ app.get('/api/v2/internal/agent/:id/cred-report', (req, res, next) => {
         const report = {
             generatedAt: new Date().toISOString(),
             agent: { tokenId, name: agent.name, framework: agent.framework, owner: agent.owner, agentAddress: agent.agentAddress, mintOrigin: agent.mintOrigin, mintedAt: agent.mintedAt, ageDays, soulbound: agent.soulbound, verified: agent.verified, points: agent.points },
-            credScore: { score: agent.credScore, computedScore, tier: tierInfo.tier, tierLabel: tierInfo.label, rank, totalAgents, percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null },
+            credScore: { score: agent.credScore, computedScore, tier: tierInfo.tier, tierLabel: tierInfo.label, evidenceCoverage: evidenceCoverage.score, rank, totalAgents, percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null },
+            evidenceCoverage,
             scoreBreakdown: components,
             intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
             verifications: verificationStatus,
@@ -6342,7 +6417,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
         const tokenId = parseInt(req.params.id);
         const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
         const tierInfo = getCredTier(agent.credScore);
-        const { components, computedScore } = computeCredBreakdown(agent);
+        const { components, computedScore, evidenceCoverage } = computeCredBreakdown(agent);
         const recommendations = getCredRecommendations(agent, components);
 
         // Ranking
@@ -6440,6 +6515,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
                 computedScore,
                 tier: tierInfo.tier,
                 tierLabel: tierInfo.label,
+                evidenceCoverage: evidenceCoverage.score,
                 rank,
                 totalAgents,
                 percentile: rank && totalAgents ? Math.round((1 - rank / totalAgents) * 100) : null,
@@ -6447,6 +6523,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
 
             // Full breakdown with weights
             scoreBreakdown: components,
+            evidenceCoverage,
             totalWeight: Object.values(CRED_WEIGHTS).reduce((s, w) => s + w.weight, 0),
             intuition: agent.intuition || intuition8004.getIntuitionCredSignal(agent),
 

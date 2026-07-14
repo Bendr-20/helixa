@@ -36,7 +36,14 @@ test('Intuition ERC-8004 trust assessment resolver uses canonical 8004 IDs', () 
 });
 
 test('Cred scoring includes a separate Intuition graph component', () => {
-  assert(source.includes("intuition: { weight: 0.03, label: 'Intuition Graph'"), 'Cred weights should include Intuition graph publication');
+  assert(source.includes("intuition: { weight: 0.05, label: 'Intuition Graph Publication'"), 'Cred weights should include Intuition graph publication');
   assert(source.includes('intuition8004.getIntuitionCredSignal(agent).rawScore'), 'Cred scoring should use Intuition publication status');
   assert(source.includes('Publish Intuition assessment source'), 'Cred recommendations should include the Intuition publication path');
+});
+
+test('Cred scoring is universal-first for ERC-8004 agents', () => {
+  assert(source.includes("reputation8004: { weight: 0.15, label: 'ERC-8004 Reputation'"), 'ERC-8004 reputation should be a primary score component');
+  assert(source.includes("serviceReadiness: { weight: 0.05, label: 'Service Readiness'"), 'Cred weights should include ERC-8004 service readiness');
+  assert(source.includes('function computeEvidenceCoverage(agent, components)'), 'Cred API should expose evidence coverage separately from score strength');
+  assert(source.includes('evidenceCoverage'), 'Cred responses should include evidence coverage');
 });
