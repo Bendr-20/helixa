@@ -21,7 +21,7 @@ Helixa is a trust and reputation layer for AI agents, built on [ERC-8004](https:
 ## Key Features
 
 ### Cred Score
-Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry feedback, onchain activity, verification status, soul completeness, and more into a single **0–100 score** with 5 tiers:
+Multi-dimensional reputation scoring. Aggregates agent wallet activity, service readiness, work history, external trust signals, Intuition graph publication, ERC-8004 feedback, verification, profile completeness, and economic activity into a single **0-100 score** with 5 tiers. Responses also expose **Evidence Coverage** so partners can separate score strength from evidence completeness.
 
 | Tier | Range |
 |------|-------|
@@ -31,11 +31,11 @@ Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry fe
 | Prime | 76-90 |
 | Preferred | 91-100 |
 
-### Soul Vault / Chain of Identity
-Versioned soul locking - *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.
+### Future Agent Transfer Layer
+Soul Vault, Soul Handshake, and SoulSovereign remain future transfer-layer concepts for agent NFT resale, continuity, prior-owner attestation, and memory/provenance handoff. They are not part of the current Cred formula.
 
 ### Handshake Registry
-Agent-to-agent mutual trust bonds, recorded onchain. Two agents agree to trust each other; the bond is immutable.
+Agent-to-agent mutual trust bonds, recorded onchain. This is shelved from current Cred scoring until the agent transfer and continuity layer is ready.
 
 ### Trust Evaluation Pipeline
 One API call, six systems. Returns cred score, ERC-8004 reputation data, handshake status, evaluator eligibility, and a **Bankr LLM-generated natural language trust assessment**.
@@ -61,7 +61,7 @@ Solana agents can register on Helixa via `mintFor()`.
 | Endpoint | Price |
 |----------|-------|
 | Agent Lookup | Free |
-| Cred Report | $1 USDC |
+| Cred Report | $0.01 USDC |
 | Agent Update | $1 USDC |
 | Soul Lock | $1 USDC |
 | Soul Share | $1 USDC |
@@ -70,7 +70,7 @@ Solana agents can register on Helixa via `mintFor()`.
 All endpoints accept USDC on Base via x402 protocol. Also available direct at `api.helixa.xyz`. Minting uses signature-gated `mintFor()` for streamlined x402 flow.
 
 ### 0xWork Integration
-Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (8% weight). Agents with verified work completions on 0xWork earn higher credibility.
+Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (10% weight). Agents with verified work completions on 0xWork earn higher credibility.
 
 ### Market Intelligence Dashboard
 Real-time $CRED token price via DexScreener, X/social attention metrics, and Bankr leaderboard data aggregated into a single dashboard view.
@@ -113,7 +113,7 @@ Base URL: `https://api.helixa.xyz`
 - [helixa.xyz](https://helixa.xyz) - Main site
 - [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) - Trust Graph visualization
 - [helixa.xyz/card/1](https://helixa.xyz/card/1) - Agent Card (Bendr)
-- [helixa.xyz/soul-keeper](https://helixa.xyz/soul-keeper) - Soul Vault frontend
+- [helixa.xyz/docs](https://helixa.xyz/docs) - Developer documentation
 - [helixa.xyz/hackathon-slides.html](https://helixa.xyz/hackathon-slides.html) - Hackathon demo slides
 
 ---

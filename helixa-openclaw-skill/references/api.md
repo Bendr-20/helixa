@@ -133,9 +133,9 @@ Check name availability for minting.
 
 ### GET /api/v2/agent/:id/cred-report
 
-**Paid: $5 USDC via x402**
+**Paid: $0.01 USDC via x402**
 
-Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and signed receipt.
+Full Cred Report with v4.3 scoring breakdown, Evidence Coverage, recommendations, ranking, and signed receipt.
 
 ---
 
@@ -163,7 +163,7 @@ Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($5 USDC).
 |-------|----------|------|-------------|
 | `name` | Yes | string | Unique agent name |
 | `framework` | Yes | string | One of: `openclaw`, `eliza`, `langchain`, `crewai`, `autogpt`, `bankr`, `virtuals`, `based`, `agentkit`, `custom` |
-| `soulbound` | No | boolean | **Must be set at mint time — cannot be changed later.** If `true`, locks token to wallet permanently (non-transferable). Adds +5% to Cred Score. Default: `false` |
+| `soulbound` | No | boolean | **Must be set at mint time — cannot be changed later.** If `true`, locks token to wallet permanently (non-transferable) and contributes to the 3% Transfer Lock signal. Default: `false` |
 | `personality` | No | object | Tone, style, quirks |
 | `narrative` | No | object | Origin, purpose, lore |
 

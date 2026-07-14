@@ -483,9 +483,9 @@ async function refreshScores() {
     try {
         const totalRows = db.prepare('SELECT COUNT(*) as cnt FROM agents').get().cnt;
         const rows = db.prepare('SELECT tokenId, credScore, points, lastUpdated FROM agents ORDER BY COALESCE(lastUpdated, 0) ASC, tokenId DESC LIMIT ?').all(SCORE_REFRESH_BATCH_LIMIT);
-        console.log(`[INDEXER] Refreshing cred scores for ${rows.length}/${totalRows} oldest agents...`);
+        console.log(`[INDEXER] Refreshing activity points for ${rows.length}/${totalRows} oldest agents...`);
 
-        const updateStmt = db.prepare('UPDATE agents SET credScore = ?, points = ?, lastUpdated = ? WHERE tokenId = ?');
+        const updateStmt = db.prepare('UPDATE agents SET points = ?, lastUpdated = ? WHERE tokenId = ?');
         const CONCURRENCY = Math.max(1, Math.min(12, parseInt(process.env.INDEXER_SCORE_REFRESH_CONCURRENCY || '3', 10) || 3));
         let updated = 0;
 
@@ -493,17 +493,12 @@ async function refreshScores() {
             const batch = rows.slice(i, i + CONCURRENCY);
             const results = await Promise.all(batch.map(async (row) => {
                 try {
-                    const [credRead, pointsRead] = await Promise.all([
-                        readWithTimeout(readContract.getCredScore(row.tokenId)),
-                        readWithTimeout(readContract.points(row.tokenId)),
-                    ]);
-                    const credOk = credRead.ok;
+                    const pointsRead = await readWithTimeout(readContract.points(row.tokenId));
                     const pointsOk = pointsRead.ok;
-                    if (!credOk && !pointsOk) return null;
+                    if (!pointsOk) return null;
                     return {
                         tokenId: row.tokenId,
-                        credScore: credOk ? Number(credRead.value || 0) : Number(row.credScore || 0),
-                        points: pointsOk ? Number(pointsRead.value || 0) : Number(row.points || 0),
+                        points: Number(pointsRead.value || 0),
                     };
                 } catch {
                     return null;
@@ -513,12 +508,12 @@ async function refreshScores() {
             const now = Date.now();
             for (const result of results) {
                 if (!result) continue;
-                updateStmt.run(result.credScore, result.points, now, result.tokenId);
+                updateStmt.run(result.points, now, result.tokenId);
                 updated++;
             }
         }
 
-        console.log(`[INDEXER] Score refresh done: ${updated} agents updated`);
+        console.log(`[INDEXER] Activity refresh done: ${updated} agents updated`);
     } finally {
         scoreRefreshInFlight = false;
     }

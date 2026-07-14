@@ -1719,7 +1719,7 @@ function getIndexedAgentSnapshot(tokenId) {
     }
 }
 
-function applyComputedCredFloor(agent) {
+function applyComputedCredScore(agent) {
     if (!agent || typeof agent !== 'object') return agent;
 
     const profile = Number.isFinite(Number(agent.tokenId)) ? (getProfile(Number(agent.tokenId)) || {}) : {};
@@ -3030,7 +3030,7 @@ app.get('/api/v2/agents', async (req, res) => {
             showSpam,
         });
 
-        result.agents = (result.agents || []).map((agent) => applyComputedCredFloor(agent));
+        result.agents = (result.agents || []).map((agent) => applyComputedCredScore(agent));
 
         res.json(result);
     } catch (e) {
@@ -5092,7 +5092,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
     res.json({
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name: 'Helixa',
-        description: 'Onchain identity and reputation infrastructure for AI agents on Base. 1,000+ agents, 11-factor Cred Scores, SIWA auth, and free public access during the current growth phase.',
+        description: 'Onchain identity and reputation infrastructure for AI agents on Base. 1,000+ agents, universal ERC-8004 Cred Scores, SIWA auth, and public reputation APIs.',
         image: 'https://api.helixa.xyz/api/v2/aura/1.png',
         services: [
             { name: 'web', endpoint: 'https://helixa.xyz' },
@@ -6269,8 +6269,8 @@ function getHumanCredTier(score, options = {}) {
     if (score >= 91) return { tier: 'PREFERRED', label: 'Preferred', color: '#b490ff' };
     if (score >= 76) return { tier: 'PRIME', label: 'Prime', color: '#33ff33' };
     if (score >= 51) return { tier: 'QUALIFIED', label: 'Qualified', color: '#ffd93d' };
-    if (score >= 26) return { tier: 'MARGINAL', label: 'Early', color: '#ffaa00' };
-    return { tier: 'JUNK', label: 'Unproven', color: '#ff7a59' };
+    if (score >= 26) return { tier: 'MARGINAL', label: 'Marginal', color: '#ffaa00' };
+    return { tier: 'JUNK', label: 'Junk', color: '#ff7a59' };
 }
 
 function getCredRecommendations(agent, breakdown) {
@@ -6278,11 +6278,11 @@ function getCredRecommendations(agent, breakdown) {
     const traits = agent.traits || [];
     const hasVerif = (name) => traits.some(t => t.name === name);
 
-    if (!hasVerif('siwa-verified')) recs.push({ action: 'Verify via SIWA', impact: '+3-4 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify` });
-    if (!hasVerif('x-verified')) recs.push({ action: 'Link X/Twitter account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/x` });
-    if (!hasVerif('github-verified')) recs.push({ action: 'Link GitHub account', impact: '+3-4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/github` });
-    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Institutional Verification (Coinbase EAS)', impact: '+5 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
-    if (!agent.soulbound) recs.push({ action: 'Make identity soulbound', impact: '+5 points', priority: 'LOW' });
+    if (!hasVerif('siwa-verified')) recs.push({ action: 'Verify via SIWA', impact: '+2 points', priority: 'HIGH', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify` });
+    if (!hasVerif('x-verified')) recs.push({ action: 'Link X/Twitter account', impact: '+2 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/x` });
+    if (!hasVerif('github-verified')) recs.push({ action: 'Link GitHub account', impact: '+2 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/verify/github` });
+    if (!hasVerif('coinbase-verified')) recs.push({ action: 'Get Institutional Verification (Coinbase EAS)', impact: '+4 points', priority: 'MEDIUM', endpoint: `POST /api/v2/agent/${agent.tokenId}/coinbase-verify` });
+    if (!agent.soulbound) recs.push({ action: 'Make identity non-transferable', impact: '+3 points', priority: 'LOW' });
 
     const narrative = agent.narrative || {};
     if (!narrative.origin) recs.push({ action: 'Add origin story', impact: '+2-3 points', priority: 'MEDIUM' });
@@ -6326,7 +6326,11 @@ app.get('/api/v2/agent/:id/work-stats', async (req, res) => {
 app.get('/api/v2/agent/:id/cred', async (req, res) => {
     try {
         const tokenId = parseInt(req.params.id);
-        const agent = await getAgentForResponse(tokenId, { timeoutMs: 3000 });
+        const requestedTimeoutMs = parseInt(req.query.timeoutMs, 10);
+        const timeoutMs = hasValidInternalKey(req) && Number.isFinite(requestedTimeoutMs)
+            ? Math.max(3000, Math.min(15000, requestedTimeoutMs))
+            : 3000;
+        const agent = await getAgentForResponse(tokenId, { timeoutMs });
         const tierInfo = getCredTier(agent.credScore);
         const { evidenceCoverage } = computeCredBreakdown(agent);
 
@@ -6550,7 +6554,7 @@ app.get('/api/v2/agent/:id/cred-report', async (req, res) => {
 
             // Tier scale reference
             tierScale: [
-                { tier: 'JUNK', range: '0-25', description: 'High risk — minimal onchain presence' },
+                { tier: 'JUNK', range: '0-25', description: 'High risk - minimal onchain presence' },
                 { tier: 'MARGINAL', range: '26-50', description: 'Some activity but unverified' },
                 { tier: 'QUALIFIED', range: '51-75', description: 'Trustworthy agent with solid credentials' },
                 { tier: 'PRIME', range: '76-90', description: 'Top-tier agent with comprehensive presence' },
@@ -7705,7 +7709,7 @@ function attachLiveTerminalCredData(agents) {
         const indexed = new Map(
             indexer.getAllAgents()
                 .filter(agent => wanted.has(Number(agent.tokenId)))
-                .map(agent => [Number(agent.tokenId), applyComputedCredFloor({ ...agent })])
+                .map(agent => [Number(agent.tokenId), applyComputedCredScore({ ...agent })])
         );
         if (!indexed.size) return agents;
         const refreshedAt = new Date().toISOString();
@@ -9747,9 +9751,10 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
             handshakeCount = hc?.cnt || 0;
         } catch {}
 
-        const tier = agent.credScore >= 91 ? 'Legendary' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Unrated';
-        const tierColor = agent.credScore >= 91 ? '#f59e0b' : agent.credScore >= 76 ? '#a855f7' : agent.credScore >= 51 ? '#06b6d4' : agent.credScore >= 26 ? '#6b7280' : '#374151';
-        const soulStatus = soulLocked ? '🔒 Soul Locked' : '🔓 Unlocked';
+        const tierInfo = getCredTier(agent.credScore || 0);
+        const tier = tierInfo.label;
+        const tierColor = tierInfo.color;
+        const soulStatus = soulLocked ? 'Transfer locked' : 'Transferable';
         const escapedName = (agent.name || `Agent #${tokenId}`).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">

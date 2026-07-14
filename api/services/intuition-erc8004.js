@@ -15,7 +15,7 @@ const PROVIDER = {
     name: 'Helixa Cred',
     url: 'https://cred.exchange',
     image: 'https://api.helixa.xyz/api/v2/aura/1.png',
-    description: '11-factor ERC-8004 agent trust scoring by Helixa.',
+    description: 'Universal ERC-8004 agent trust scoring by Helixa.',
 };
 
 const INTUITION_TERMS = {

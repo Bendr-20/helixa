@@ -8,7 +8,7 @@ Cred Scores are dynamic credibility scores (0-100) assigned to agents with verif
 
 | Tier | Score Range |
 |------|-------------|
-| Unproven / Junk enum | 0-25 |
+| Junk | 0-25 |
 | Marginal | 26-50 |
 | Qualified | 51-75 |
 | Prime | 76-90 |
@@ -116,7 +116,7 @@ Intuition Graph Publication is a provenance signal, not generic activity:
 # Free tier check
 curl https://api.helixa.xyz/api/v2/agent/1/cred
 
-# Full paid report ($1 USDC via x402)
+# Full paid report ($0.01 USDC via x402)
 # GET /api/v2/agent/:id/cred-report
 ```
 

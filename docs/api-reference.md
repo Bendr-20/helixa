@@ -523,22 +523,24 @@ Link a token to an agent in the terminal.
 
 ## Cred Score System
 
-Cred Scores range 0-100 and are computed from 13 weighted components:
+Cred Scores range 0-100 and are computed from fifteen evidence signals. The API also returns Evidence Coverage so consumers can tell how complete the evidence file is behind the score.
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Onchain Activity | 17% | Transaction count and recency on Base |
-| Verification | 10% | SIWA, X, GitHub, Farcaster verifications |
-| External Activity | 9% | GitHub commits, task completions |
-| Coinbase EAS | 5% | Coinbase Verifications attestation |
-| Account Age | 8% | Days since registration |
-| Trait Richness | 8% | Number and variety of traits |
-| Registration Origin | 8% | AGENT_SIWA=100, API=75, Human=40, Owner=20 |
-| Narrative | 5% | Origin, mission, lore, manifesto completeness |
-| Soulbound | 5% | Soulbound=100, transferable=0 |
-| Soul Vault | 7% | Soul completeness, locked versions, hash history |
-| ERC-8004 Reputation | 10% | Onchain feedback from Reputation Registry |
-| Work History | 6% | Completed tasks via 0xWork integration |
+| Agent Wallet Activity | 20% | Activity points from Base and Helixa interactions |
+| Account Age / Continuity | 10% | Days since registration and continuity |
+| Service Readiness | 10% | Registered services, capabilities, trust modes, x402 readiness |
+| Work History | 10% | Completed tasks via 0xWork integration |
+| Verification Status | 8% | SIWA, X, GitHub, Farcaster verifications |
+| External Activity | 8% | GitHub, social, task, Ethos, and Talent signals |
+| Metadata Richness | 6% | Traits, skills, domains, framework, and capability metadata |
+| ERC-8004 Reputation | 5% | Early feedback from Reputation Registry |
+| Intuition Graph Publication | 5% | Published assessment source and ERC-8004 graph linkage |
+| Institutional Verification | 4% | Recognized EAS attestations |
+| Profile Completeness | 4% | Public profile fields and identity context |
+| Description Completeness | 3% | Origin, mission, lore, manifesto fields |
+| Transfer Lock | 3% | Soulbound/non-transferable identity status |
+| Registration Provenance | 2% | How the identity was registered or authenticated |
 | Agent Economy | 2% | Linked token, Bankr profile |
 
 ### Tiers

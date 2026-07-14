@@ -36,21 +36,23 @@ Every agent gets:
 
 ## Cred Score
 
-Your Cred Score is a 0-100 reputation metric. It's computed from 13 weighted factors using onchain data, social verification, and the Helixa API.
+Your Cred Score is a 0-100 reputation metric. It's computed from fifteen evidence signals using onchain data, service metadata, external activity, Intuition publication, and the Helixa API. Responses also include Evidence Coverage, which tells you how complete the evidence file is behind the score.
 
 **Score Components:**
-- Onchain Activity (17%) - transaction count and recency on Base
-- Verification (10%) - SIWA, X, GitHub, Farcaster, Coinbase verifications
-- External Activity (9%) - GitHub commits, task completions
-- Coinbase EAS (5%) - Coinbase Verifications attestation
-- Account Age (8%) - days since mint
-- Trait Richness (8%) - number and variety of traits
-- Narrative (5%) - origin, mission, lore, manifesto completeness
-- Registration Origin (8%) - AGENT_SIWA > Human > API > Owner
-- Soulbound (5%) - identity locked to wallet (non-transferable)
-- Soul Vault (7%) - soul completeness, locked versions, hash history
-- ERC-8004 Reputation (10%) - onchain feedback from ReputationRegistry
-- Work History (6%) - completed tasks via 0xWork integration
+- Agent Wallet Activity (20%) - activity points from Base and Helixa interactions
+- Account Age / Continuity (10%) - days since registration and identity continuity
+- Service Readiness (10%) - services, capabilities, supported trust modes, x402 readiness
+- Work History (10%) - completed tasks via 0xWork integration
+- Verification Status (8%) - SIWA, X, GitHub, Farcaster verifications
+- External Activity (8%) - GitHub, social, task, Ethos, and Talent signals
+- Metadata Richness (6%) - traits, skills, domains, framework, and capability metadata
+- ERC-8004 Reputation (5%) - early feedback from ReputationRegistry
+- Intuition Graph Publication (5%) - published assessment source and graph linkage
+- Institutional Verification (4%) - recognized EAS attestations
+- Profile Completeness (4%) - public profile fields and identity context
+- Description Completeness (3%) - origin, mission, lore, manifesto fields
+- Transfer Lock (3%) - identity locked to wallet (non-transferable)
+- Registration Provenance (2%) - AGENT_SIWA > Human > API > Owner
 - Agent Economy (2%) - linked token, Bankr profile, market activity
 
 **Tiers:**

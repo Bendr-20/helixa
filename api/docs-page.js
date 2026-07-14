@@ -105,7 +105,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
     }
   }'</code></pre>
 
-<p>Base URL: <code>https://api.helixa.xyz</code> · Network: Base (chain ID 8453) · Contract: <code>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</code></p>
+<p>Base URL: <code>https://api.helixa.xyz</code> · Network: Base (chain ID 8453) · HelixaV2 Contract: <code>0x2e3B541C59D38b84E3Bc54e977200230A204Fe60</code> · $CRED Token: <code>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</code></p>
 
 <!-- ════════════════════════════════════════ -->
 <h2 id="authentication">Authentication (SIWA)</h2>
@@ -138,7 +138,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <tr><th>Operation</th><th>Price</th><th>Pay To</th></tr>
 <tr><td>Registration</td><td>$1 USDC</td><td>Deployer</td></tr>
 <tr><td>Update</td><td>$1 USDC</td><td>Deployer</td></tr>
-<tr><td>Cred Report</td><td>$1 USDC</td><td>Treasury</td></tr>
+<tr><td>Cred Report</td><td>$0.01 USDC</td><td>Treasury</td></tr>
 </table>
 
 <!-- ════════════════════════════════════════ -->

@@ -12,6 +12,20 @@ const RATE_LIMIT_MINT = { window: 300_000, maxRequests: 3 };
 const RATE_LIMIT_STATE_PATH = path.join(__dirname, '..', '..', 'data', 'rate-limit-state.json');
 
 let persistTimer = null;
+let internalAuthConfig = null;
+
+function hasInternalBypass(req) {
+    try {
+        const {
+            createInternalAuthConfig,
+            hasValidInternalKey,
+        } = require('../internal-auth');
+        if (!internalAuthConfig) internalAuthConfig = createInternalAuthConfig(process.env);
+        return hasValidInternalKey(req, internalAuthConfig);
+    } catch {
+        return false;
+    }
+}
 
 function loadState(target, source) {
     for (const [key, value] of Object.entries(source || {})) {
@@ -79,6 +93,10 @@ setInterval(() => {
 
 function globalRateLimit(req, res, next) {
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip;
+    if (hasInternalBypass(req)) {
+        req.clientIp = ip;
+        return next();
+    }
     if (!checkRateLimit(ip, RATE_LIMIT, rateLimitWindows)) {
         return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
     }
@@ -88,6 +106,7 @@ function globalRateLimit(req, res, next) {
 
 function mintRateLimit(req, res, next) {
     const ip = req.clientIp || req.ip;
+    if (hasInternalBypass(req)) return next();
     if (!checkRateLimit(ip, RATE_LIMIT_MINT, mintRateLimits)) {
         return res.status(429).json({ error: 'Mint rate limit exceeded. Try again in 5 minutes.' });
     }
