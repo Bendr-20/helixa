@@ -164,6 +164,27 @@ function findAssessmentSourceForHelixaToken(helixaTokenId, setupState = loadIntu
     return sources.find(source => Number(source?.helixaTokenId) === normalizedTokenId) || null;
 }
 
+function sameAssessmentSource(left, right) {
+    return Boolean(left && right)
+        && Number(left.canonicalChainId) === Number(right.canonicalChainId)
+        && Number(left.canonicalTokenId) === Number(right.canonicalTokenId)
+        && Number(left.helixaTokenId) === Number(right.helixaTokenId);
+}
+
+function getAssessmentSourceOnchainStatus(setupState, assessmentSource) {
+    if (assessmentSource?.onchainStatus && typeof assessmentSource.onchainStatus === 'object') {
+        return assessmentSource.onchainStatus;
+    }
+
+    const sources = Array.isArray(setupState?.assessmentSources) ? setupState.assessmentSources : [];
+    const legacyFirstSource = sources[0];
+    if (sameAssessmentSource(legacyFirstSource, assessmentSource)) {
+        return setupState?.onchainStatus || {};
+    }
+
+    return {};
+}
+
 function getIntuitionCredSignal(agent, options = {}) {
     const tokenId = Number(agent?.tokenId ?? agent?.helixaTokenId);
     if (!Number.isSafeInteger(tokenId) || tokenId < 0) {
@@ -189,7 +210,9 @@ function getIntuitionCredSignal(agent, options = {}) {
             }
         })();
 
-    const onchainStatus = setupState?.onchainStatus || {};
+    const onchainStatus = assessmentSource
+        ? getAssessmentSourceOnchainStatus(setupState, assessmentSource)
+        : {};
     const published = Boolean(
         assessmentSource
         && String(onchainStatus.status || '').toLowerCase() === 'published'
@@ -206,7 +229,9 @@ function getIntuitionCredSignal(agent, options = {}) {
             assessmentSourceUri: assessmentSource.uri || null,
             publishedAt: onchainStatus.publishedAt || null,
             atomTransactionHash: onchainStatus.atomTransactionHash || null,
-            tripleTransactionHash: onchainStatus.tripleTransactionHash || null,
+            tripleTransactionHash: onchainStatus.tripleTransactionHash
+                || onchainStatus.canonicalTripleTransactionHash
+                || null,
         };
     }
 

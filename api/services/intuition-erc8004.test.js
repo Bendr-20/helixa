@@ -171,6 +171,72 @@ test('reports Intuition Cred signal from published setup state', () => {
     });
 });
 
+test('does not mark later pinned sources as published from legacy global status', () => {
+    const setupState = {
+        provider: { id: 'helixa-cred' },
+        assessmentSources: [
+            {
+                canonicalChainId: 8453,
+                canonicalTokenId: 18531,
+                helixaTokenId: 1,
+                uri: 'ipfs://bendr-source',
+                resolver: 'https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json',
+            },
+            {
+                canonicalChainId: 1,
+                canonicalTokenId: 25068,
+                helixaTokenId: 73,
+                uri: 'ipfs://mfergpt-source',
+                resolver: 'https://api.helixa.xyz/.well-known/intuition/erc8004/agents/1/25068/trust-assessment.json',
+            },
+        ],
+        onchainStatus: {
+            status: 'published',
+            tripleTransactionHash: '0xbendr',
+        },
+    };
+
+    const legacySignal = intuition.getIntuitionCredSignal({ tokenId: 1 }, { setupState });
+    const laterSignal = intuition.getIntuitionCredSignal({ tokenId: 73 }, { setupState });
+
+    assert.equal(legacySignal.status, 'published');
+    assert.equal(legacySignal.tripleTransactionHash, '0xbendr');
+    assert.equal(laterSignal.status, 'source_pinned');
+    assert.equal(laterSignal.rawScore, 70);
+});
+
+test('reports published status from source-specific onchain status', () => {
+    const setupState = {
+        provider: { id: 'helixa-cred' },
+        assessmentSources: [
+            {
+                canonicalChainId: 1,
+                canonicalTokenId: 25068,
+                helixaTokenId: 73,
+                uri: 'ipfs://mfergpt-source',
+                resolver: 'https://api.helixa.xyz/.well-known/intuition/erc8004/agents/1/25068/trust-assessment.json',
+                onchainStatus: {
+                    status: 'published',
+                    publishedAt: '2026-07-16T17:00:00.000Z',
+                    atomTransactionHash: '0xatom-batch',
+                    tripleTransactionHash: '0xtriple-batch',
+                },
+            },
+        ],
+        onchainStatus: {
+            status: 'published',
+            tripleTransactionHash: '0xbendr',
+        },
+    };
+
+    const signal = intuition.getIntuitionCredSignal({ tokenId: 73 }, { setupState });
+
+    assert.equal(signal.status, 'published');
+    assert.equal(signal.rawScore, 100);
+    assert.equal(signal.tripleTransactionHash, '0xtriple-batch');
+    assert.equal(signal.atomTransactionHash, '0xatom-batch');
+});
+
 test('reports mapping-required Intuition signal without overclaiming', () => {
     withTempJson({
         provider: { id: 'helixa-cred' },

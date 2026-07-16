@@ -10,8 +10,10 @@ const SETUP_STATE_PATH = process.env.INTUITION_SETUP_STATE_PATH
 const MULTIVAULT_ABI = [
     'function calculateAtomId(bytes data) pure returns (bytes32)',
     'function calculateTripleId(bytes32 subjectId, bytes32 predicateId, bytes32 objectId) pure returns (bytes32)',
+    'function createAtoms(bytes[] atomData, uint256[] assets) payable returns (bytes32[])',
     'function createTriples(bytes32[] subjectIds, bytes32[] predicateIds, bytes32[] objectIds, uint256[] assets) payable returns (bytes32[])',
     'function getAtom(bytes32 atomId) view returns (bytes)',
+    'function getAtomCost() view returns (uint256)',
     'function getGeneralConfig() view returns (tuple(address admin,address protocolMultisig,uint256 feeDenominator,address trustBonding,uint256 minDeposit,uint256 minShare,uint256 atomDataMaxLength,uint256 feeThreshold))',
     'function getTriple(bytes32 tripleId) view returns (bytes32, bytes32, bytes32)',
     'function getTripleCost() view returns (uint256)',
@@ -21,7 +23,9 @@ function printUsage() {
     console.log(`Usage:
   node api/scripts/intuition-8004-setup.js --pin-provider
   node api/scripts/intuition-8004-setup.js --pin-assessment-source <chainId> <canonicalTokenId>
+  node api/scripts/intuition-8004-setup.js --pin-mapped-assessment-sources
   node api/scripts/intuition-8004-setup.js --publish-canonical-triples <chainId> <canonicalTokenId> [--dry-run]
+  node api/scripts/intuition-8004-setup.js --publish-canonical-batch [--dry-run]
 
 Environment:
   INTUITION_API_KEY or INTUITION_PARTNER_API_KEY
@@ -57,6 +61,17 @@ function findAssessmentSource(setupState, chainId, tokenId) {
     return source;
 }
 
+function maybeFindAssessmentSource(setupState, chainId, tokenId) {
+    const normalizedChainId = Number(chainId);
+    const normalizedTokenId = Number(tokenId);
+    return Array.isArray(setupState.assessmentSources)
+        ? setupState.assessmentSources.find(item => (
+            Number(item?.canonicalChainId) === normalizedChainId
+            && Number(item?.canonicalTokenId) === normalizedTokenId
+        )) || null
+        : null;
+}
+
 async function readDeployerKey() {
     if (process.env.DEPLOYER_KEY) return process.env.DEPLOYER_KEY;
     const client = new SecretsManagerClient({ region: process.env.AWS_REGION || 'us-east-2' });
@@ -66,14 +81,6 @@ async function readDeployerKey() {
     return secret.DEPLOYER_PRIVATE_KEY;
 }
 
-async function ensureAtom(contract, label, termId) {
-    try {
-        await contract.getAtom(termId);
-    } catch {
-        throw new Error(`Missing required Intuition atom for ${label}: ${termId}`);
-    }
-}
-
 async function getTripleExists(contract, tripleId) {
     try {
         await contract.getTriple(tripleId);
@@ -81,6 +88,39 @@ async function getTripleExists(contract, tripleId) {
     } catch {
         return false;
     }
+}
+
+async function getAtomExists(contract, atomId) {
+    try {
+        await contract.getAtom(atomId);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function sameAssessmentSource(left, right) {
+    return Boolean(left && right)
+        && Number(left.canonicalChainId) === Number(right.canonicalChainId)
+        && Number(left.canonicalTokenId) === Number(right.canonicalTokenId)
+        && Number(left.helixaTokenId) === Number(right.helixaTokenId);
+}
+
+function upsertAssessmentSource(setupState, source) {
+    if (!Array.isArray(setupState.assessmentSources)) setupState.assessmentSources = [];
+    const existing = setupState.assessmentSources.find(item => sameAssessmentSource(item, source));
+    if (existing) {
+        Object.assign(existing, source, {
+            onchainStatus: existing.onchainStatus || source.onchainStatus,
+        });
+        return existing;
+    }
+    setupState.assessmentSources.push(source);
+    return source;
+}
+
+function findPlanSource(setupState, plan) {
+    return setupState.assessmentSources.find(source => sameAssessmentSource(source, plan.source));
 }
 
 async function buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract }) {
@@ -95,8 +135,10 @@ async function buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract
     const agentAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(canonicalAgentData));
     const providerAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(providerUri));
     const sourceAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(source.uri));
+    const atomCost = await contract.getAtomCost();
     const tripleCost = await contract.getTripleCost();
     const generalConfig = await contract.getGeneralConfig();
+    const assetPerAtom = atomCost + generalConfig.minDeposit;
     const assetPerTriple = tripleCost + generalConfig.minDeposit;
 
     const triples = [
@@ -127,17 +169,21 @@ async function buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract
     ];
 
     const atoms = [
-        ['canonical agent', agentAtom],
-        ['Helixa Cred provider', providerAtom],
-        ['assessment source', sourceAtom],
-        ['has trust provider', terms.hasTrustProvider],
-        ['has trust assessment', terms.hasTrustAssessment],
-        ['provided by', terms.providedBy],
-        ['has type', terms.hasType],
-        ['Trust Assessment Source', terms.trustAssessmentSource],
+        { label: 'canonical agent', atomId: agentAtom, data: canonicalAgentData, createIfMissing: true },
+        { label: 'Helixa Cred provider', atomId: providerAtom, data: providerUri, createIfMissing: false },
+        { label: 'assessment source', atomId: sourceAtom, data: source.uri, createIfMissing: true },
+        { label: 'has trust provider', atomId: terms.hasTrustProvider, createIfMissing: false },
+        { label: 'has trust assessment', atomId: terms.hasTrustAssessment, createIfMissing: false },
+        { label: 'provided by', atomId: terms.providedBy, createIfMissing: false },
+        { label: 'has type', atomId: terms.hasType, createIfMissing: false },
+        { label: 'Trust Assessment Source', atomId: terms.trustAssessmentSource, createIfMissing: false },
     ];
-    for (const [label, termId] of atoms) {
-        await ensureAtom(contract, label, termId);
+    for (const atom of atoms) {
+        atom.exists = await getAtomExists(contract, atom.atomId);
+        atom.asset = assetPerAtom;
+        if (!atom.exists && !atom.createIfMissing) {
+            throw new Error(`Missing required Intuition atom for ${atom.label}: ${atom.atomId}`);
+        }
     }
 
     for (const triple of triples) {
@@ -149,9 +195,12 @@ async function buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract
     return {
         source,
         terms: { agentAtom, providerAtom, sourceAtom },
+        atoms,
+        atomCost,
         triples,
         tripleCost,
         minDeposit: generalConfig.minDeposit,
+        assetPerAtom,
         assetPerTriple,
     };
 }
@@ -164,12 +213,24 @@ function summarizePlan(plan) {
             helixaTokenId: plan.source.helixaTokenId,
         },
         terms: plan.terms,
+        atomCostTrust: ethers.formatEther(plan.atomCost),
         tripleCostTrust: ethers.formatEther(plan.tripleCost),
         minDepositTrust: ethers.formatEther(plan.minDeposit),
+        assetPerAtomTrust: ethers.formatEther(plan.assetPerAtom),
         assetPerTripleTrust: ethers.formatEther(plan.assetPerTriple),
+        totalAtomValueTrust: ethers.formatEther(plan.atoms
+            .filter(atom => atom.createIfMissing && !atom.exists)
+            .reduce((sum, atom) => sum + atom.asset, 0n)),
         totalValueTrust: ethers.formatEther(plan.triples
             .filter(triple => !triple.exists)
             .reduce((sum, triple) => sum + triple.asset, 0n)),
+        atoms: plan.atoms.map(atom => ({
+            label: atom.label,
+            atomId: atom.atomId,
+            data: atom.data || null,
+            createIfMissing: atom.createIfMissing,
+            exists: atom.exists,
+        })),
         triples: plan.triples.map(triple => ({
             label: triple.label,
             tripleId: triple.tripleId,
@@ -181,8 +242,7 @@ function summarizePlan(plan) {
     };
 }
 
-function updateSetupStateAfterCanonicalPublish(setupState, plan, receipt, balanceAfter) {
-    const previousTripleTransactionHash = setupState.onchainStatus?.tripleTransactionHash || null;
+function buildSourceOnchainStatus({ plan, atomReceipt, tripleReceipt, balanceAfter, atomValue, tripleValue }) {
     const canonicalTriples = plan.triples.map(triple => ({
         predicate: triple.label,
         tripleId: triple.tripleId,
@@ -191,16 +251,18 @@ function updateSetupStateAfterCanonicalPublish(setupState, plan, receipt, balanc
         object: triple.object,
     }));
 
-    setupState.onchainStatus = {
-        ...(setupState.onchainStatus || {}),
+    return {
         status: 'published',
-        canonicalTriplesPublishedAt: new Date().toISOString(),
-        legacyTripleTransactionHash: previousTripleTransactionHash,
-        tripleTransactionHash: receipt.hash,
-        canonicalTripleTransactionHash: receipt.hash,
-        canonicalTripleBlockNumber: receipt.blockNumber,
-        canonicalTripleGasUsed: receipt.gasUsed?.toString() || null,
-        canonicalTripleProtocolCostTrust: ethers.formatEther(plan.triples.reduce((sum, triple) => sum + triple.asset, 0n)),
+        publishedAt: new Date().toISOString(),
+        atomTransactionHash: atomReceipt?.hash || plan.source.onchainStatus?.atomTransactionHash || null,
+        atomBlockNumber: atomReceipt?.blockNumber || plan.source.onchainStatus?.atomBlockNumber || null,
+        atomGasUsed: atomReceipt?.gasUsed?.toString() || plan.source.onchainStatus?.atomGasUsed || null,
+        tripleTransactionHash: tripleReceipt?.hash || plan.source.onchainStatus?.tripleTransactionHash || null,
+        canonicalTripleTransactionHash: tripleReceipt?.hash || plan.source.onchainStatus?.canonicalTripleTransactionHash || null,
+        canonicalTripleBlockNumber: tripleReceipt?.blockNumber || plan.source.onchainStatus?.canonicalTripleBlockNumber || null,
+        canonicalTripleGasUsed: tripleReceipt?.gasUsed?.toString() || plan.source.onchainStatus?.canonicalTripleGasUsed || null,
+        atomProtocolCostTrust: ethers.formatEther(atomValue || 0n),
+        canonicalTripleProtocolCostTrust: ethers.formatEther(tripleValue || 0n),
         balanceAfterTrust: ethers.formatEther(balanceAfter),
         canonicalTerms: {
             agent: plan.terms.agentAtom,
@@ -214,8 +276,31 @@ function updateSetupStateAfterCanonicalPublish(setupState, plan, receipt, balanc
             tripleId: triple.tripleId,
         })),
         canonicalTriples,
-        note: 'Provider and first assessment-source metadata are pinned. Mainnet Intuition Atoms and the four canonical Appendix B Triples are published.',
+        note: 'Assessment-source metadata is pinned. Mainnet Intuition atoms and four canonical Appendix B triples are published.',
     };
+}
+
+function updateAssessmentSourceAfterCanonicalPublish(setupState, plan, receipts) {
+    const source = findPlanSource(setupState, plan);
+    if (!source) throw new Error(`Missing setup state source for ERC-8004 agent ${plan.source.canonicalChainId}:${plan.source.canonicalTokenId}`);
+    source.onchainStatus = buildSourceOnchainStatus({ plan, ...receipts });
+
+    const firstSource = setupState.assessmentSources?.[0];
+    if (sameAssessmentSource(firstSource, source)) {
+        setupState.onchainStatus = {
+            ...(setupState.onchainStatus || {}),
+            ...source.onchainStatus,
+        };
+    }
+}
+
+function dedupeBy(items, keyFn) {
+    const byKey = new Map();
+    for (const item of items) {
+        const key = keyFn(item);
+        if (!byKey.has(key)) byKey.set(key, item);
+    }
+    return Array.from(byKey.values());
 }
 
 async function publishCanonicalTriples({ chainId, tokenId, dryRun }) {
@@ -225,13 +310,14 @@ async function publishCanonicalTriples({ chainId, tokenId, dryRun }) {
     const provider = new ethers.JsonRpcProvider(terms.rpcUrl, terms.chainId);
     const readContract = new ethers.Contract(terms.multiVault, MULTIVAULT_ABI, provider);
     const plan = await buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract: readContract });
+    const missingAtoms = plan.atoms.filter(atom => atom.createIfMissing && !atom.exists);
     const missingTriples = plan.triples.filter(triple => !triple.exists);
 
-    if (dryRun || !missingTriples.length) {
+    if (dryRun || (!missingAtoms.length && !missingTriples.length)) {
         return {
             ok: true,
             dryRun: true,
-            skipped: !missingTriples.length,
+            skipped: !missingAtoms.length && !missingTriples.length,
             ...summarizePlan(plan),
         };
     }
@@ -239,22 +325,56 @@ async function publishCanonicalTriples({ chainId, tokenId, dryRun }) {
     const key = await readDeployerKey();
     const wallet = new ethers.Wallet(key, provider);
     const contract = readContract.connect(wallet);
+    let atomReceipt = null;
+    let atomValue = 0n;
+
+    if (missingAtoms.length) {
+        const atomData = missingAtoms.map(atom => ethers.toUtf8Bytes(atom.data));
+        const atomAssets = missingAtoms.map(atom => atom.asset);
+        atomValue = atomAssets.reduce((sum, asset) => sum + asset, 0n);
+        const expectedAtomIds = await contract.createAtoms.staticCall(atomData, atomAssets, { value: atomValue });
+        const expectedAtomIdSet = new Set(expectedAtomIds.map(String));
+        for (const atom of missingAtoms) {
+            if (!expectedAtomIdSet.has(atom.atomId)) {
+                throw new Error(`createAtoms static call missing expected ${atom.label}: ${atom.atomId}`);
+            }
+        }
+        const gasEstimate = await contract.createAtoms.estimateGas(atomData, atomAssets, { value: atomValue });
+        const tx = await contract.createAtoms(atomData, atomAssets, {
+            value: atomValue,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        atomReceipt = await tx.wait();
+        if (atomReceipt.status !== 1) throw new Error(`canonical atom transaction failed: ${tx.hash}`);
+        for (const atom of missingAtoms) atom.exists = true;
+    }
+
     const subjects = missingTriples.map(triple => triple.subject);
     const predicates = missingTriples.map(triple => triple.predicate);
     const objects = missingTriples.map(triple => triple.object);
     const assets = missingTriples.map(triple => triple.asset);
     const value = assets.reduce((sum, asset) => sum + asset, 0n);
 
-    const expectedIds = await contract.createTriples.staticCall(subjects, predicates, objects, assets, { value });
-    const gasEstimate = await contract.createTriples.estimateGas(subjects, predicates, objects, assets, { value });
-    const tx = await contract.createTriples(subjects, predicates, objects, assets, {
-        value,
-        gasLimit: gasEstimate + (gasEstimate / 5n),
-    });
-    const receipt = await tx.wait();
-    if (receipt.status !== 1) throw new Error(`canonical triple transaction failed: ${tx.hash}`);
+    let expectedIds = [];
+    let tx = null;
+    let receipt = null;
+    if (missingTriples.length) {
+        expectedIds = await contract.createTriples.staticCall(subjects, predicates, objects, assets, { value });
+        const gasEstimate = await contract.createTriples.estimateGas(subjects, predicates, objects, assets, { value });
+        tx = await contract.createTriples(subjects, predicates, objects, assets, {
+            value,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        receipt = await tx.wait();
+        if (receipt.status !== 1) throw new Error(`canonical triple transaction failed: ${tx.hash}`);
+    }
 
     const balanceAfter = await provider.getBalance(wallet.address);
+    for (const atom of missingAtoms) {
+        if (!await getAtomExists(readContract, atom.atomId)) {
+            throw new Error(`published transaction missing atom ${atom.label}: ${atom.atomId}`);
+        }
+    }
     for (const triple of missingTriples) {
         if (!await getTripleExists(readContract, triple.tripleId)) {
             throw new Error(`published transaction missing triple ${triple.label}: ${triple.tripleId}`);
@@ -262,19 +382,239 @@ async function publishCanonicalTriples({ chainId, tokenId, dryRun }) {
         triple.exists = true;
     }
 
-    updateSetupStateAfterCanonicalPublish(setupState, plan, receipt, balanceAfter);
+    updateAssessmentSourceAfterCanonicalPublish(setupState, plan, {
+        atomReceipt,
+        tripleReceipt: receipt,
+        balanceAfter,
+        atomValue,
+        tripleValue: value,
+    });
     writeSetupState(setupState);
 
     return {
         ok: true,
         dryRun: false,
         executor: wallet.address,
-        hash: tx.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
+        atomHash: atomReceipt?.hash || null,
+        hash: tx?.hash || null,
+        blockNumber: receipt?.blockNumber || null,
+        gasUsed: receipt?.gasUsed?.toString() || null,
         expectedIds: expectedIds.map(String),
         balanceAfterTrust: ethers.formatEther(balanceAfter),
         ...summarizePlan(plan),
+    };
+}
+
+async function pinMappedAssessmentSources() {
+    const apiKey = intuition.readIntuitionApiKey();
+    if (!apiKey) throw new Error('Missing Intuition API key. Expected ~/.config/helixa/intuition.env or INTUITION_API_KEY.');
+
+    const setupState = readSetupState();
+    const mappings = intuition.loadConfiguredCanonical8004Mappings(setupState);
+    const results = [];
+
+    for (const mapping of mappings) {
+        const existing = maybeFindAssessmentSource(setupState, mapping.canonicalChainId, mapping.canonicalTokenId);
+        if (existing?.uri) {
+            results.push({
+                ok: true,
+                skipped: true,
+                canonicalChainId: mapping.canonicalChainId,
+                canonicalTokenId: mapping.canonicalTokenId,
+                helixaTokenId: mapping.helixaTokenId,
+                name: existing.name,
+                uri: existing.uri,
+                resolver: existing.resolver,
+            });
+            continue;
+        }
+
+        const result = await intuition.pinThing(
+            intuition.buildAssessmentSourceThing({
+                chainId: mapping.canonicalChainId,
+                tokenId: mapping.canonicalTokenId,
+                publicBaseUrl: process.env.PUBLIC_BASE_URL || 'https://api.helixa.xyz',
+            }),
+            { apiKey },
+        );
+        const source = upsertAssessmentSource(setupState, {
+            canonicalChainId: mapping.canonicalChainId,
+            canonicalTokenId: mapping.canonicalTokenId,
+            helixaTokenId: mapping.helixaTokenId,
+            name: result.thing.name,
+            uri: result.uri,
+            resolver: result.thing.url,
+        });
+        results.push({
+            ok: true,
+            skipped: false,
+            canonicalChainId: source.canonicalChainId,
+            canonicalTokenId: source.canonicalTokenId,
+            helixaTokenId: source.helixaTokenId,
+            name: source.name,
+            uri: source.uri,
+            resolver: source.resolver,
+        });
+    }
+
+    writeSetupState(setupState);
+    return { ok: true, results };
+}
+
+async function publishCanonicalBatch({ dryRun }) {
+    const setupState = readSetupState();
+    const terms = intuition.INTUITION_TERMS.mainnet;
+    const provider = new ethers.JsonRpcProvider(terms.rpcUrl, terms.chainId);
+    const readContract = new ethers.Contract(terms.multiVault, MULTIVAULT_ABI, provider);
+    const plans = [];
+    for (const source of setupState.assessmentSources || []) {
+        plans.push(await buildCanonicalTriplePlan({
+            setupState,
+            chainId: source.canonicalChainId,
+            tokenId: source.canonicalTokenId,
+            contract: readContract,
+        }));
+    }
+
+    const missingAtoms = dedupeBy(
+        plans.flatMap(plan => plan.atoms.filter(atom => atom.createIfMissing && !atom.exists)),
+        atom => atom.atomId,
+    );
+    const missingTriples = dedupeBy(
+        plans.flatMap(plan => plan.triples.filter(triple => !triple.exists)),
+        triple => triple.tripleId,
+    );
+    const atomValue = missingAtoms.reduce((sum, atom) => sum + atom.asset, 0n);
+    const tripleValue = missingTriples.reduce((sum, triple) => sum + triple.asset, 0n);
+
+    if (dryRun || (!missingAtoms.length && !missingTriples.length)) {
+        return {
+            ok: true,
+            dryRun: true,
+            skipped: !missingAtoms.length && !missingTriples.length,
+            missingAtomCount: missingAtoms.length,
+            missingTripleCount: missingTriples.length,
+            atomValueTrust: ethers.formatEther(atomValue),
+            tripleValueTrust: ethers.formatEther(tripleValue),
+            totalValueTrust: ethers.formatEther(atomValue + tripleValue),
+            plans: plans.map(summarizePlan),
+        };
+    }
+
+    const key = await readDeployerKey();
+    const wallet = new ethers.Wallet(key, provider);
+    const contract = readContract.connect(wallet);
+    const balanceBefore = await provider.getBalance(wallet.address);
+    if (balanceBefore < atomValue + tripleValue) {
+        throw new Error(`insufficient TRUST balance: have ${ethers.formatEther(balanceBefore)}, need ${ethers.formatEther(atomValue + tripleValue)}`);
+    }
+
+    let atomReceipt = null;
+    if (missingAtoms.length) {
+        const atomData = missingAtoms.map(atom => ethers.toUtf8Bytes(atom.data));
+        const atomAssets = missingAtoms.map(atom => atom.asset);
+        const expectedAtomIds = await contract.createAtoms.staticCall(atomData, atomAssets, { value: atomValue });
+        const expectedAtomIdSet = new Set(expectedAtomIds.map(String));
+        for (const atom of missingAtoms) {
+            if (!expectedAtomIdSet.has(atom.atomId)) {
+                throw new Error(`createAtoms static call missing expected ${atom.label}: ${atom.atomId}`);
+            }
+        }
+        const gasEstimate = await contract.createAtoms.estimateGas(atomData, atomAssets, { value: atomValue });
+        const tx = await contract.createAtoms(atomData, atomAssets, {
+            value: atomValue,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        atomReceipt = await tx.wait();
+        if (atomReceipt.status !== 1) throw new Error(`canonical atom transaction failed: ${tx.hash}`);
+        for (const atom of missingAtoms) atom.exists = true;
+    }
+
+    let tripleReceipt = null;
+    let expectedIds = [];
+    if (missingTriples.length) {
+        const subjects = missingTriples.map(triple => triple.subject);
+        const predicates = missingTriples.map(triple => triple.predicate);
+        const objects = missingTriples.map(triple => triple.object);
+        const assets = missingTriples.map(triple => triple.asset);
+        expectedIds = await contract.createTriples.staticCall(subjects, predicates, objects, assets, { value: tripleValue });
+        const gasEstimate = await contract.createTriples.estimateGas(subjects, predicates, objects, assets, { value: tripleValue });
+        const tx = await contract.createTriples(subjects, predicates, objects, assets, {
+            value: tripleValue,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        tripleReceipt = await tx.wait();
+        if (tripleReceipt.status !== 1) throw new Error(`canonical triple transaction failed: ${tx.hash}`);
+        for (const triple of missingTriples) triple.exists = true;
+    }
+
+    const balanceAfter = await provider.getBalance(wallet.address);
+    for (const atom of missingAtoms) {
+        if (!await getAtomExists(readContract, atom.atomId)) {
+            throw new Error(`published transaction missing atom ${atom.label}: ${atom.atomId}`);
+        }
+    }
+    for (const triple of missingTriples) {
+        if (!await getTripleExists(readContract, triple.tripleId)) {
+            throw new Error(`published transaction missing triple ${triple.label}: ${triple.tripleId}`);
+        }
+    }
+
+    const touchedPlanKeys = new Set([
+        ...missingAtoms.map(atom => atom.atomId),
+        ...missingTriples.map(triple => triple.tripleId),
+    ]);
+    const publishedPlans = plans.filter(plan => (
+        plan.atoms.some(atom => touchedPlanKeys.has(atom.atomId))
+        || plan.triples.some(triple => touchedPlanKeys.has(triple.tripleId))
+    ));
+    for (const plan of publishedPlans) {
+        updateAssessmentSourceAfterCanonicalPublish(setupState, plan, {
+            atomReceipt,
+            tripleReceipt,
+            balanceAfter,
+            atomValue: plan.atoms
+                .filter(atom => missingAtoms.some(missing => missing.atomId === atom.atomId))
+                .reduce((sum, atom) => sum + atom.asset, 0n),
+            tripleValue: plan.triples
+                .filter(triple => missingTriples.some(missing => missing.tripleId === triple.tripleId))
+                .reduce((sum, triple) => sum + triple.asset, 0n),
+        });
+    }
+    setupState.lastCanonicalBatchPublish = {
+        publishedAt: new Date().toISOString(),
+        atomTransactionHash: atomReceipt?.hash || null,
+        tripleTransactionHash: tripleReceipt?.hash || null,
+        atomCount: missingAtoms.length,
+        tripleCount: missingTriples.length,
+        totalProtocolCostTrust: ethers.formatEther(atomValue + tripleValue),
+        balanceAfterTrust: ethers.formatEther(balanceAfter),
+    };
+    writeSetupState(setupState);
+
+    return {
+        ok: true,
+        dryRun: false,
+        executor: wallet.address,
+        atomHash: atomReceipt?.hash || null,
+        atomBlockNumber: atomReceipt?.blockNumber || null,
+        tripleHash: tripleReceipt?.hash || null,
+        tripleBlockNumber: tripleReceipt?.blockNumber || null,
+        expectedIds: expectedIds.map(String),
+        balanceBeforeTrust: ethers.formatEther(balanceBefore),
+        balanceAfterTrust: ethers.formatEther(balanceAfter),
+        atomValueTrust: ethers.formatEther(atomValue),
+        tripleValueTrust: ethers.formatEther(tripleValue),
+        totalValueTrust: ethers.formatEther(atomValue + tripleValue),
+        publishedSources: publishedPlans.map(plan => ({
+            canonicalChainId: plan.source.canonicalChainId,
+            canonicalTokenId: plan.source.canonicalTokenId,
+            helixaTokenId: plan.source.helixaTokenId,
+            name: plan.source.name,
+            atomId: plan.terms.agentAtom,
+            assessmentSourceAtomId: plan.terms.sourceAtom,
+            tripleIds: plan.triples.map(triple => triple.tripleId),
+        })),
     };
 }
 
@@ -312,21 +652,43 @@ async function main() {
             }),
             { apiKey },
         );
-        console.log(JSON.stringify({
-            ok: true,
-            type: 'assessment-source',
+        const setupState = readSetupState();
+        const source = upsertAssessmentSource(setupState, {
             canonicalChainId: mapping.canonicalChainId,
             canonicalTokenId: mapping.canonicalTokenId,
             helixaTokenId: mapping.helixaTokenId,
             name: result.thing.name,
             uri: result.uri,
             resolver: result.thing.url,
+        });
+        writeSetupState(setupState);
+        console.log(JSON.stringify({
+            ok: true,
+            type: 'assessment-source',
+            canonicalChainId: source.canonicalChainId,
+            canonicalTokenId: source.canonicalTokenId,
+            helixaTokenId: source.helixaTokenId,
+            name: source.name,
+            uri: source.uri,
+            resolver: source.resolver,
         }, null, 2));
+        return;
+    }
+
+    if (command === '--pin-mapped-assessment-sources') {
+        const result = await pinMappedAssessmentSources();
+        console.log(JSON.stringify(result, null, 2));
         return;
     }
 
     if (command === '--publish-canonical-triples') {
         const result = await publishCanonicalTriples({ chainId, tokenId, dryRun });
+        console.log(JSON.stringify(result, null, 2));
+        return;
+    }
+
+    if (command === '--publish-canonical-batch') {
+        const result = await publishCanonicalBatch({ dryRun });
         console.log(JSON.stringify(result, null, 2));
         return;
     }
