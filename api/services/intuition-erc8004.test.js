@@ -20,7 +20,7 @@ test('resolves canonical ERC-8004 token IDs to Helixa token IDs', () => {
         { regId: 18531, v2Id: 1, name: 'Bendr 2.0', to: '0xabc' },
         { regId: 18532, v2Id: 2, name: 'AncnBot', to: '0xdef' },
     ], (filePath) => {
-        const mappings = intuition.loadCanonical8004Mappings(filePath);
+        const mappings = intuition.loadCanonical8004Mappings(filePath, { setupState: {} });
         assert.deepEqual(intuition.resolveCanonical8004Mapping(8453, 18531, mappings), {
             canonicalChainId: 8453,
             canonicalTokenId: 18531,
@@ -30,6 +30,50 @@ test('resolves canonical ERC-8004 token IDs to Helixa token IDs', () => {
         });
         assert.equal(intuition.resolveCanonical8004Mapping(1, 18531, mappings), null);
         assert.equal(intuition.resolveCanonical8004Mapping(8453, 999, mappings), null);
+    });
+});
+
+test('loads configured cross-chain ERC-8004 mappings', () => {
+    withTempJson([], (filePath) => {
+        const setupState = {
+            canonicalMappings: [
+                {
+                    canonicalChainId: 1,
+                    canonicalTokenId: 23121,
+                    helixaTokenId: 1035,
+                    name: 'DegenAI',
+                    owner: '0xcd1baf2B33781c088B30106289e745972E41b0E8',
+                    evidence: ['https://degenai.dev/erc8004.md'],
+                },
+                {
+                    canonicalChainId: 1,
+                    canonicalTokenId: 25068,
+                    helixaTokenId: 73,
+                    name: 'mferGPT',
+                    owner: '0x39225d40C7a7157A838ecCdB05D09208d47Fd523',
+                },
+                {
+                    canonicalChainId: 8453,
+                    canonicalTokenId: 20880,
+                    helixaTokenId: 1037,
+                    name: 'SIBYL',
+                    owner: '0x4069ef1afC8A9b2a29117A3740fCAB2912499fBe',
+                },
+            ],
+        };
+        const mappings = intuition.loadCanonical8004Mappings(filePath, { setupState });
+
+        assert.deepEqual(intuition.resolveCanonical8004Mapping(1, 23121, mappings), {
+            canonicalChainId: 1,
+            canonicalTokenId: 23121,
+            helixaTokenId: 1035,
+            name: 'DegenAI',
+            owner: '0xcd1baf2B33781c088B30106289e745972E41b0E8',
+            evidence: ['https://degenai.dev/erc8004.md'],
+        });
+        assert.equal(intuition.resolveCanonical8004Mapping(1, 25068, mappings)?.helixaTokenId, 73);
+        assert.equal(intuition.resolveCanonical8004Mapping(8453, 20880, mappings)?.helixaTokenId, 1037);
+        assert.equal(intuition.resolveCanonical8004Mapping(8453, 25068, mappings), null);
     });
 });
 
@@ -142,6 +186,37 @@ test('reports mapping-required Intuition signal without overclaiming', () => {
         assert.equal(signal.status, 'unmapped');
         assert.equal(signal.label, 'Mapping needed');
         assert.equal(signal.rawScore, 0);
+    });
+});
+
+test('reports mapped Intuition signal from configured cross-chain setup state', () => {
+    withTempJson([], (filePath) => {
+        const setupState = {
+            provider: { id: 'helixa-cred' },
+            canonicalMappings: [
+                {
+                    canonicalChainId: 1,
+                    canonicalTokenId: 25068,
+                    helixaTokenId: 73,
+                    name: 'mferGPT',
+                    owner: '0x39225d40C7a7157A838ecCdB05D09208d47Fd523',
+                },
+            ],
+            onchainStatus: { status: 'published' },
+        };
+        const signal = intuition.getIntuitionCredSignal(
+            { tokenId: 73 },
+            { setupState, mappingPath: filePath, publicBaseUrl: 'https://api.helixa.xyz' },
+        );
+
+        assert.equal(signal.status, 'mapped');
+        assert.equal(signal.label, 'Mapped');
+        assert.equal(signal.rawScore, 40);
+        assert.equal(signal.canonicalAgentId, '1:25068');
+        assert.equal(
+            signal.resolver,
+            'https://api.helixa.xyz/.well-known/intuition/erc8004/agents/1/25068/trust-assessment.json',
+        );
     });
 });
 

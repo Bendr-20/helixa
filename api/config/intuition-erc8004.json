@@ -15,6 +15,40 @@
       "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json"
     }
   ],
+  "canonicalMappings": [
+    {
+      "canonicalChainId": 1,
+      "canonicalTokenId": 23121,
+      "helixaTokenId": 1035,
+      "name": "DegenAI",
+      "owner": "0xcd1baf2B33781c088B30106289e745972E41b0E8",
+      "evidence": [
+        "https://degenai.dev/erc8004.md"
+      ]
+    },
+    {
+      "canonicalChainId": 1,
+      "canonicalTokenId": 25068,
+      "helixaTokenId": 73,
+      "name": "mferGPT",
+      "owner": "0x39225d40C7a7157A838ecCdB05D09208d47Fd523",
+      "evidence": [
+        "https://x402.mfergpt.lol/.well-known/agent-card.json",
+        "https://skill.mfergpt.lol",
+        "ipfs://QmdxxUPeWzX2sGAKN35npjmXDMt97LNvrAzHVu5zW6CoTT"
+      ]
+    },
+    {
+      "canonicalChainId": 8453,
+      "canonicalTokenId": 20880,
+      "helixaTokenId": 1037,
+      "name": "SIBYL",
+      "owner": "0x4069ef1afC8A9b2a29117A3740fCAB2912499fBe",
+      "evidence": [
+        "https://sibylcap.com/8004.json"
+      ]
+    }
+  ],
   "onchainStatus": {
     "intuitionMainnetChainId": 1155,
     "intuitionTestnetChainId": 13579,
@@ -22,29 +56,76 @@
     "executor": "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
     "publishedAt": "2026-07-13T23:18:34Z",
     "atomTransactionHash": "0x693ba1a2f2fa9bccf55436c372e7aac581449a655afbe5b71554a92c5f10d9d1",
-    "tripleTransactionHash": "0x7a56fe91a43dcd7e2dc7274b22151ec16406d15a808a17da27cd4d2305762227",
-    "protocolCostTrust": "1.320000000016",
-    "balanceAfterTrust": "1.179965292594",
+    "tripleTransactionHash": "0xb98d0926aae0c902629d29b4da9efccc060fdc7470d9b94616a3b2cfa00d5f94",
+    "legacyProtocolCostTrust": "1.320000000016",
+    "protocolCostTrust": "1.760000000024",
+    "balanceAfterTrust": "0.739946849256",
     "atomCount": 8,
     "tripleCount": 4,
     "triples": [
       {
         "predicate": "has trust provider",
-        "termId": "0xd6aaf88d4438589507c716d585987b5ed1806412e467b7fbff6b2252fd0d36c3"
+        "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+        "tripleId": "0x518737bf3ac3c4ac70d417afe10bc0a861e3bd1a73980fc813546e5132bd5685"
       },
       {
         "predicate": "has trust assessment",
-        "termId": "0xfd0a498d769e59db2d94af17e2277cf27f23ac0ed10835ad4f7e6d1ccbbe6538"
+        "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+        "tripleId": "0x3d3af0d7554fb59b13cc7373d9eb44e5c8b21a39092153d932a4b6e2fd9713ec"
       },
       {
         "predicate": "provided by",
-        "termId": "0x101fbd6f6264218cd7d97dfd7a6aee28d9c6289d64f91642dbac1814df55898b"
+        "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+        "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917"
       },
       {
         "predicate": "has type",
-        "termId": "0x2c55bfe777f4ec7f79bf28f4e865b4b746f05a0fbe321e00d52752ba4fb210b6"
+        "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+        "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11"
       }
     ],
-    "note": "Provider and first assessment-source metadata are pinned. Mainnet Intuition Atoms and the four partner-guide Triples are published."
+    "note": "Provider and first assessment-source metadata are pinned. Mainnet Intuition Atoms and the four canonical Appendix B Triples are published.",
+    "canonicalTriplesPublishedAt": "2026-07-16T15:22:31.818Z",
+    "legacyTripleTransactionHash": "0x7a56fe91a43dcd7e2dc7274b22151ec16406d15a808a17da27cd4d2305762227",
+    "canonicalTripleTransactionHash": "0xb98d0926aae0c902629d29b4da9efccc060fdc7470d9b94616a3b2cfa00d5f94",
+    "canonicalTripleBlockNumber": 7447687,
+    "canonicalTripleGasUsed": "1844333",
+    "canonicalTripleProtocolCostTrust": "0.440000000008",
+    "canonicalTerms": {
+      "agent": "0x5bba97619830396e5164367c083face6889c81d46150b2a15ffc6a0883b7b9a1",
+      "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+      "assessmentSource": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+      "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+    },
+    "canonicalTriples": [
+      {
+        "predicate": "has trust provider",
+        "tripleId": "0x518737bf3ac3c4ac70d417afe10bc0a861e3bd1a73980fc813546e5132bd5685",
+        "subject": "0x5bba97619830396e5164367c083face6889c81d46150b2a15ffc6a0883b7b9a1",
+        "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+        "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+      },
+      {
+        "predicate": "has trust assessment",
+        "tripleId": "0x3d3af0d7554fb59b13cc7373d9eb44e5c8b21a39092153d932a4b6e2fd9713ec",
+        "subject": "0x5bba97619830396e5164367c083face6889c81d46150b2a15ffc6a0883b7b9a1",
+        "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+        "object": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4"
+      },
+      {
+        "predicate": "provided by",
+        "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917",
+        "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+        "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+        "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+      },
+      {
+        "predicate": "has type",
+        "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11",
+        "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+        "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+        "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+      }
+    ]
   }
 }

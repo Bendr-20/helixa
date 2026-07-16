@@ -77,27 +77,69 @@ function parsePositiveInt(value, label) {
     return parsed;
 }
 
-function loadCanonical8004Mappings(filePath = DEFAULT_MAPPING_PATH) {
+function normalizeCanonical8004Mapping(row) {
+    const canonicalChainId = Number(row.canonicalChainId ?? row.chainId ?? BASE_CHAIN_ID);
+    const canonicalTokenId = Number(row.canonicalTokenId ?? row.regId);
+    const helixaTokenId = Number(row.helixaTokenId ?? row.v2Id);
+    if (
+        !Number.isSafeInteger(canonicalChainId)
+        || canonicalChainId < 0
+        || !Number.isSafeInteger(canonicalTokenId)
+        || canonicalTokenId < 0
+        || !Number.isSafeInteger(helixaTokenId)
+        || helixaTokenId < 0
+    ) {
+        return null;
+    }
+
+    const mapping = {
+        canonicalChainId,
+        canonicalTokenId,
+        helixaTokenId,
+        name: trim(row.name),
+        owner: trim(row.owner ?? row.to),
+    };
+    const evidence = Array.isArray(row.evidence)
+        ? row.evidence.map(item => trim(item)).filter(Boolean)
+        : [];
+    if (evidence.length) mapping.evidence = evidence;
+    return mapping;
+}
+
+function loadConfiguredCanonical8004Mappings(setupState = loadIntuitionSetupState()) {
+    const rows = Array.isArray(setupState?.canonicalMappings) ? setupState.canonicalMappings : [];
+    return rows.map(normalizeCanonical8004Mapping).filter(Boolean);
+}
+
+function dedupeCanonical8004Mappings(mappings) {
+    const byCanonicalId = new Map();
+    for (const mapping of mappings) {
+        byCanonicalId.set(`${mapping.canonicalChainId}:${mapping.canonicalTokenId}`, mapping);
+    }
+    return Array.from(byCanonicalId.values());
+}
+
+function loadCanonical8004Mappings(filePath = DEFAULT_MAPPING_PATH, options = {}) {
     const raw = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     if (!Array.isArray(raw)) throw new Error('invalid_8004_mapping_file');
 
-    return raw
-        .filter(row => Number.isSafeInteger(Number(row.regId)) && Number.isSafeInteger(Number(row.v2Id)))
-        .map(row => ({
-            canonicalChainId: BASE_CHAIN_ID,
-            canonicalTokenId: Number(row.regId),
-            helixaTokenId: Number(row.v2Id),
-            name: trim(row.name),
-            owner: trim(row.to),
-        }));
+    const setupState = Object.prototype.hasOwnProperty.call(options, 'setupState')
+        ? options.setupState
+        : loadIntuitionSetupState(options.setupPath);
+    return dedupeCanonical8004Mappings([
+        ...raw.map(normalizeCanonical8004Mapping).filter(Boolean),
+        ...loadConfiguredCanonical8004Mappings(setupState),
+    ]);
 }
 
 function resolveCanonical8004Mapping(chainId, tokenId, mappings = loadCanonical8004Mappings()) {
     const normalizedChainId = parsePositiveInt(chainId, 'chain_id');
     const normalizedTokenId = parsePositiveInt(tokenId, 'token_id');
-    if (normalizedChainId !== BASE_CHAIN_ID) return null;
 
-    return mappings.find(row => row.canonicalTokenId === normalizedTokenId) || null;
+    return mappings.find(row => (
+        row.canonicalChainId === normalizedChainId
+        && row.canonicalTokenId === normalizedTokenId
+    )) || null;
 }
 
 function resolveHelixa8004Mapping(helixaTokenId, mappings = loadCanonical8004Mappings()) {
@@ -138,7 +180,10 @@ function getIntuitionCredSignal(agent, options = {}) {
         }
         : (() => {
             try {
-                return resolveHelixa8004Mapping(tokenId, options.mappings || loadCanonical8004Mappings(options.mappingPath));
+                return resolveHelixa8004Mapping(
+                    tokenId,
+                    options.mappings || loadCanonical8004Mappings(options.mappingPath, { setupState }),
+                );
             } catch {
                 return null;
             }
@@ -408,6 +453,7 @@ module.exports = {
     findAssessmentSourceForHelixaToken,
     getIntuitionCredSignal,
     loadCanonical8004Mappings,
+    loadConfiguredCanonical8004Mappings,
     loadIntuitionSetupState,
     pinThing,
     readIntuitionApiKey,
