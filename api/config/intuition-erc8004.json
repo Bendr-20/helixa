@@ -12,7 +12,190 @@
       "helixaTokenId": 1,
       "name": "Helixa Cred assessment for ERC-8004 agent 8453:18531",
       "uri": "ipfs://bafkreihbm4m7skpbd7grencn4z55qu4zv7vppvf6vpkbkshhyoqtwbhyoq",
-      "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json"
+      "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/18531/trust-assessment.json",
+      "onchainStatus": {
+        "status": "published",
+        "publishedAt": "2026-07-17T15:28:37.248Z",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleBlockNumber": 7504420,
+        "canonicalTripleGasUsed": "8409312",
+        "canonicalTripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
+        "canonicalTerms": {
+          "agent": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+          "caip": "0x1b6cd370ff1160a22df2ac94b23804d39c423c6b2657ed77ff9ef36bc777a8a3",
+          "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+          "assessmentSource": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+        },
+        "triples": [
+          {
+            "predicate": "has trust provider",
+            "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28"
+          },
+          {
+            "predicate": "has trust assessment",
+            "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1"
+          },
+          {
+            "predicate": "provided by",
+            "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917"
+          },
+          {
+            "predicate": "has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11"
+          }
+        ],
+        "canonicalTriples": [
+          {
+            "predicate": "has trust provider",
+            "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has trust assessment",
+            "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "object": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4"
+          },
+          {
+            "predicate": "provided by",
+            "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917",
+            "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+            "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has type",
+            "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11",
+            "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          }
+        ],
+        "identityLayer": {
+          "status": "published",
+          "publishedAt": "2026-07-17T15:28:37.248Z",
+          "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+          "atomBlockNumber": 7504418,
+          "atomGasUsed": "2118889",
+          "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+          "tripleBlockNumber": 7504420,
+          "tripleGasUsed": "8409312",
+          "atomProtocolCostTrust": "0.220000000002",
+          "tripleProtocolCostTrust": "0.55000000001",
+          "balanceAfterTrust": "0.679777596838",
+          "identityUri": "ipfs://bafkreihrvlecsjamsb4rh7rujezugzznqxcdysck2etplwsqzt2iwvryna",
+          "caipUri": "ipfs://bafkreieqqcpmproveaw2i4axkwzccn32godpgrfftbzheffmaiuabdi4eu",
+          "canonicalTerms": {
+            "agent": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "caip": "0x1b6cd370ff1160a22df2ac94b23804d39c423c6b2657ed77ff9ef36bc777a8a3",
+            "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+            "assessmentSource": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+            "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+            "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+            "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          },
+          "triples": [
+            {
+              "predicate": "same as",
+              "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "tripleId": "0xef10fc9d652dfbfbd54dfab4cc2304a662a71dc87a28abcd28ee2557e97f7913"
+            },
+            {
+              "predicate": "agent has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0x3af8cfb82c7454efcaa79c5a88ec3ab9f0b4af9b1e3abfaf4505055572047c92"
+            },
+            {
+              "predicate": "implement",
+              "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "tripleId": "0x51946255cc5a3df09ce517b75b6813b6a5f84b651df759c1ad6064daadf1951a"
+            },
+            {
+              "predicate": "has trust provider",
+              "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28"
+            },
+            {
+              "predicate": "has trust assessment",
+              "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1"
+            },
+            {
+              "predicate": "provided by",
+              "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917"
+            },
+            {
+              "predicate": "assessment source has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11"
+            }
+          ],
+          "canonicalTriples": [
+            {
+              "predicate": "same as",
+              "tripleId": "0xef10fc9d652dfbfbd54dfab4cc2304a662a71dc87a28abcd28ee2557e97f7913",
+              "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+              "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "object": "0x1b6cd370ff1160a22df2ac94b23804d39c423c6b2657ed77ff9ef36bc777a8a3"
+            },
+            {
+              "predicate": "agent has type",
+              "tripleId": "0x3af8cfb82c7454efcaa79c5a88ec3ab9f0b4af9b1e3abfaf4505055572047c92",
+              "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+            },
+            {
+              "predicate": "implement",
+              "tripleId": "0x51946255cc5a3df09ce517b75b6813b6a5f84b651df759c1ad6064daadf1951a",
+              "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+              "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+            },
+            {
+              "predicate": "has trust provider",
+              "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28",
+              "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+              "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "has trust assessment",
+              "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1",
+              "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+              "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "object": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4"
+            },
+            {
+              "predicate": "provided by",
+              "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917",
+              "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+              "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "assessment source has type",
+              "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11",
+              "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+            }
+          ],
+          "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+        },
+        "note": "Assessment-source metadata is pinned. Mainnet Intuition identity atom and canonical identity-subject trust triples are published."
+      }
     },
     {
       "canonicalChainId": 1,
@@ -23,33 +206,34 @@
       "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/1/23121/trust-assessment.json",
       "onchainStatus": {
         "status": "published",
-        "publishedAt": "2026-07-16T16:58:00.241Z",
+        "publishedAt": "2026-07-17T15:28:37.250Z",
         "atomTransactionHash": "0xeb739cae297bb53619b5df42ab9583a475443e5af7cdcf9979f54defd55e20fa",
         "atomBlockNumber": 7451236,
         "atomGasUsed": "1580537",
-        "tripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleBlockNumber": 7451241,
-        "canonicalTripleGasUsed": "5104628",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleBlockNumber": 7504420,
+        "canonicalTripleGasUsed": "8409312",
         "atomProtocolCostTrust": "0.220000000002",
-        "canonicalTripleProtocolCostTrust": "0.440000000008",
-        "balanceAfterTrust": "1.259881438236",
+        "canonicalTripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
         "canonicalTerms": {
-          "agent": "0x38bb93b7cc822b3bc138e05c519a2ac2b81272a05c4222d9d69f8f374e816fa1",
+          "agent": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
           "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
           "assessmentSource": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
-          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07",
+          "caip": "0x2f72896a89ec76e1b17f4be499febe68fe0d411a6d02eb859eb83a7e36b624f7"
         },
         "triples": [
           {
             "predicate": "has trust provider",
             "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
-            "tripleId": "0x1bf034af900e6d2c63a78b4d06cc5078c99f794bfa357028e688574b58f9308a"
+            "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794"
           },
           {
             "predicate": "has trust assessment",
             "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
-            "tripleId": "0x522826272ca234de268778604a3249b211a617fb5dfa0e3604c08e0e601be6ec"
+            "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad"
           },
           {
             "predicate": "provided by",
@@ -65,15 +249,15 @@
         "canonicalTriples": [
           {
             "predicate": "has trust provider",
-            "tripleId": "0x1bf034af900e6d2c63a78b4d06cc5078c99f794bfa357028e688574b58f9308a",
-            "subject": "0x38bb93b7cc822b3bc138e05c519a2ac2b81272a05c4222d9d69f8f374e816fa1",
+            "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
             "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
             "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
           },
           {
             "predicate": "has trust assessment",
-            "tripleId": "0x522826272ca234de268778604a3249b211a617fb5dfa0e3604c08e0e601be6ec",
-            "subject": "0x38bb93b7cc822b3bc138e05c519a2ac2b81272a05c4222d9d69f8f374e816fa1",
+            "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
             "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
             "object": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a"
           },
@@ -92,7 +276,120 @@
             "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
           }
         ],
-        "note": "Assessment-source metadata is pinned. Mainnet Intuition atoms and four canonical Appendix B triples are published."
+        "note": "Assessment-source metadata is pinned. Mainnet Intuition identity atom and canonical identity-subject trust triples are published.",
+        "identityLayer": {
+          "status": "published",
+          "publishedAt": "2026-07-17T15:28:37.250Z",
+          "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+          "atomBlockNumber": 7504418,
+          "atomGasUsed": "2118889",
+          "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+          "tripleBlockNumber": 7504420,
+          "tripleGasUsed": "8409312",
+          "atomProtocolCostTrust": "0.220000000002",
+          "tripleProtocolCostTrust": "0.55000000001",
+          "balanceAfterTrust": "0.679777596838",
+          "identityUri": "ipfs://bafkreige4xfbduowkwh24qphlwl6rkjglhqtrx2krt3mumfpyg2kpuzoay",
+          "caipUri": "ipfs://bafkreihqgxx4dpm3hztg2ypdb2txeqpn3v2uaqfdo4aezpvpiecsflqyzi",
+          "canonicalTerms": {
+            "agent": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "caip": "0x2f72896a89ec76e1b17f4be499febe68fe0d411a6d02eb859eb83a7e36b624f7",
+            "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+            "assessmentSource": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+            "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+            "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+            "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          },
+          "triples": [
+            {
+              "predicate": "same as",
+              "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "tripleId": "0x11be2926eb57cf79060ea302d485f2d8c141869d4b22abb76d07971bc4eea0a4"
+            },
+            {
+              "predicate": "agent has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0x0f90ca6f56b862325b6f25d28df5f3723883fa58301f2f6094f462d435878e9a"
+            },
+            {
+              "predicate": "implement",
+              "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "tripleId": "0x02a82f13f9e0419ed1afc852cbb1bb1ec2c9d2b99febdfad2d70b66262bdfde8"
+            },
+            {
+              "predicate": "has trust provider",
+              "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794"
+            },
+            {
+              "predicate": "has trust assessment",
+              "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad"
+            },
+            {
+              "predicate": "provided by",
+              "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "tripleId": "0x1531bfbd5ac9c2a952a4157d54548665f3f99e5cb1ff5e224239549d8d2a6dac"
+            },
+            {
+              "predicate": "assessment source has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0xfbc5867967f0b4ed663ecd10cda822c21976acfcc212c663c70b7378c4dbc0f6"
+            }
+          ],
+          "canonicalTriples": [
+            {
+              "predicate": "same as",
+              "tripleId": "0x11be2926eb57cf79060ea302d485f2d8c141869d4b22abb76d07971bc4eea0a4",
+              "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+              "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "object": "0x2f72896a89ec76e1b17f4be499febe68fe0d411a6d02eb859eb83a7e36b624f7"
+            },
+            {
+              "predicate": "agent has type",
+              "tripleId": "0x0f90ca6f56b862325b6f25d28df5f3723883fa58301f2f6094f462d435878e9a",
+              "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+            },
+            {
+              "predicate": "implement",
+              "tripleId": "0x02a82f13f9e0419ed1afc852cbb1bb1ec2c9d2b99febdfad2d70b66262bdfde8",
+              "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+              "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+            },
+            {
+              "predicate": "has trust provider",
+              "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794",
+              "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+              "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "has trust assessment",
+              "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad",
+              "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+              "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "object": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a"
+            },
+            {
+              "predicate": "provided by",
+              "tripleId": "0x1531bfbd5ac9c2a952a4157d54548665f3f99e5cb1ff5e224239549d8d2a6dac",
+              "subject": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+              "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "assessment source has type",
+              "tripleId": "0xfbc5867967f0b4ed663ecd10cda822c21976acfcc212c663c70b7378c4dbc0f6",
+              "subject": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+            }
+          ],
+          "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+        }
       }
     },
     {
@@ -104,33 +401,34 @@
       "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/1/25068/trust-assessment.json",
       "onchainStatus": {
         "status": "published",
-        "publishedAt": "2026-07-16T16:58:00.241Z",
+        "publishedAt": "2026-07-17T15:28:37.251Z",
         "atomTransactionHash": "0xeb739cae297bb53619b5df42ab9583a475443e5af7cdcf9979f54defd55e20fa",
         "atomBlockNumber": 7451236,
         "atomGasUsed": "1580537",
-        "tripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleBlockNumber": 7451241,
-        "canonicalTripleGasUsed": "5104628",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleBlockNumber": 7504420,
+        "canonicalTripleGasUsed": "8409312",
         "atomProtocolCostTrust": "0.220000000002",
-        "canonicalTripleProtocolCostTrust": "0.440000000008",
-        "balanceAfterTrust": "1.259881438236",
+        "canonicalTripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
         "canonicalTerms": {
-          "agent": "0xb8362a46a82f7b7c1f8abeda5e2e6bfa1cc670981eefc39971df9458dd0fbe79",
+          "agent": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
           "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
           "assessmentSource": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
-          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07",
+          "caip": "0x6e7be354ef6d770508ea5db10dadfe5b96466a7081d081f99bb2965ac7533ec6"
         },
         "triples": [
           {
             "predicate": "has trust provider",
             "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
-            "tripleId": "0xe94c0aa0f3317bde3cc1182d11332955960167ddeae057c2d49c3fafaa0db33b"
+            "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43"
           },
           {
             "predicate": "has trust assessment",
             "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
-            "tripleId": "0xd0553837d288cb81a1d627926b9e42474e1482fbb3999c0e18e2466b3ec3f5d7"
+            "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af"
           },
           {
             "predicate": "provided by",
@@ -146,15 +444,15 @@
         "canonicalTriples": [
           {
             "predicate": "has trust provider",
-            "tripleId": "0xe94c0aa0f3317bde3cc1182d11332955960167ddeae057c2d49c3fafaa0db33b",
-            "subject": "0xb8362a46a82f7b7c1f8abeda5e2e6bfa1cc670981eefc39971df9458dd0fbe79",
+            "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
             "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
             "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
           },
           {
             "predicate": "has trust assessment",
-            "tripleId": "0xd0553837d288cb81a1d627926b9e42474e1482fbb3999c0e18e2466b3ec3f5d7",
-            "subject": "0xb8362a46a82f7b7c1f8abeda5e2e6bfa1cc670981eefc39971df9458dd0fbe79",
+            "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
             "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
             "object": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9"
           },
@@ -173,7 +471,120 @@
             "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
           }
         ],
-        "note": "Assessment-source metadata is pinned. Mainnet Intuition atoms and four canonical Appendix B triples are published."
+        "note": "Assessment-source metadata is pinned. Mainnet Intuition identity atom and canonical identity-subject trust triples are published.",
+        "identityLayer": {
+          "status": "published",
+          "publishedAt": "2026-07-17T15:28:37.251Z",
+          "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+          "atomBlockNumber": 7504418,
+          "atomGasUsed": "2118889",
+          "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+          "tripleBlockNumber": 7504420,
+          "tripleGasUsed": "8409312",
+          "atomProtocolCostTrust": "0.220000000002",
+          "tripleProtocolCostTrust": "0.55000000001",
+          "balanceAfterTrust": "0.679777596838",
+          "identityUri": "ipfs://bafkreifxtmqba5rn7cazd3xmjoy5hfhqvm4vi37hvzlc2yxynzdicdkgg4",
+          "caipUri": "ipfs://bafkreic7eodm7iixtzv4pey65kckzeukv6nx2r6w4vtxrkvk5ypftk75dm",
+          "canonicalTerms": {
+            "agent": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "caip": "0x6e7be354ef6d770508ea5db10dadfe5b96466a7081d081f99bb2965ac7533ec6",
+            "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+            "assessmentSource": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+            "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+            "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+            "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          },
+          "triples": [
+            {
+              "predicate": "same as",
+              "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "tripleId": "0xfe061b8ccc8cf291150cde1e2f629ade8b608de3452d1085e5187f28ce87603c"
+            },
+            {
+              "predicate": "agent has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0x2198104d2277df44d7423ecafbdc67d6934286d6ecfae11aef245dd1adacb982"
+            },
+            {
+              "predicate": "implement",
+              "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "tripleId": "0x662bb93e121449c6441befe4a8cb97b68eff0644f35252ac7cfa51d4e9d5cd04"
+            },
+            {
+              "predicate": "has trust provider",
+              "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43"
+            },
+            {
+              "predicate": "has trust assessment",
+              "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af"
+            },
+            {
+              "predicate": "provided by",
+              "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "tripleId": "0xaefd8ae827bcf28e378a4e47345bbe65758e6cacf2df9f9228fa9f46e9137e5a"
+            },
+            {
+              "predicate": "assessment source has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0xf92d5fcb0755ea46be47d6f64e33c2f51b583ee52e45d51b4178a45fae6d9111"
+            }
+          ],
+          "canonicalTriples": [
+            {
+              "predicate": "same as",
+              "tripleId": "0xfe061b8ccc8cf291150cde1e2f629ade8b608de3452d1085e5187f28ce87603c",
+              "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+              "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "object": "0x6e7be354ef6d770508ea5db10dadfe5b96466a7081d081f99bb2965ac7533ec6"
+            },
+            {
+              "predicate": "agent has type",
+              "tripleId": "0x2198104d2277df44d7423ecafbdc67d6934286d6ecfae11aef245dd1adacb982",
+              "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+            },
+            {
+              "predicate": "implement",
+              "tripleId": "0x662bb93e121449c6441befe4a8cb97b68eff0644f35252ac7cfa51d4e9d5cd04",
+              "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+              "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+            },
+            {
+              "predicate": "has trust provider",
+              "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43",
+              "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+              "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "has trust assessment",
+              "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af",
+              "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+              "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "object": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9"
+            },
+            {
+              "predicate": "provided by",
+              "tripleId": "0xaefd8ae827bcf28e378a4e47345bbe65758e6cacf2df9f9228fa9f46e9137e5a",
+              "subject": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+              "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "assessment source has type",
+              "tripleId": "0xf92d5fcb0755ea46be47d6f64e33c2f51b583ee52e45d51b4178a45fae6d9111",
+              "subject": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+            }
+          ],
+          "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+        }
       }
     },
     {
@@ -185,33 +596,34 @@
       "resolver": "https://api.helixa.xyz/.well-known/intuition/erc8004/agents/8453/20880/trust-assessment.json",
       "onchainStatus": {
         "status": "published",
-        "publishedAt": "2026-07-16T16:58:00.242Z",
+        "publishedAt": "2026-07-17T15:28:37.249Z",
         "atomTransactionHash": "0xeb739cae297bb53619b5df42ab9583a475443e5af7cdcf9979f54defd55e20fa",
         "atomBlockNumber": 7451236,
         "atomGasUsed": "1580537",
-        "tripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleTransactionHash": "0x24400f6b8c7caa19de230f604440edbb59511f580709e7c410b70c99679c9a29",
-        "canonicalTripleBlockNumber": 7451241,
-        "canonicalTripleGasUsed": "5104628",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "canonicalTripleBlockNumber": 7504420,
+        "canonicalTripleGasUsed": "8409312",
         "atomProtocolCostTrust": "0.220000000002",
-        "canonicalTripleProtocolCostTrust": "0.440000000008",
-        "balanceAfterTrust": "1.259881438236",
+        "canonicalTripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
         "canonicalTerms": {
-          "agent": "0x46efb17de1e694f4f27ca4128257b5c0c56daf47d0ca28e472e0ce8cfaddef2b",
+          "agent": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
           "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
           "assessmentSource": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
-          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07",
+          "caip": "0xddec98be7fd21b43da225a69f6f32c8050f7ca5db8620919e5ea62202dd2551c"
         },
         "triples": [
           {
             "predicate": "has trust provider",
             "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
-            "tripleId": "0x3992463bb8e81861da046df53f9749dd63390bda625e0c2ecf15973b53ce9f07"
+            "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca"
           },
           {
             "predicate": "has trust assessment",
             "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
-            "tripleId": "0x1b88854b7c4a6c083a761828203acf0dc4b7c3e5589647fef781e3ea2643d6de"
+            "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af"
           },
           {
             "predicate": "provided by",
@@ -227,15 +639,15 @@
         "canonicalTriples": [
           {
             "predicate": "has trust provider",
-            "tripleId": "0x3992463bb8e81861da046df53f9749dd63390bda625e0c2ecf15973b53ce9f07",
-            "subject": "0x46efb17de1e694f4f27ca4128257b5c0c56daf47d0ca28e472e0ce8cfaddef2b",
+            "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
             "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
             "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
           },
           {
             "predicate": "has trust assessment",
-            "tripleId": "0x1b88854b7c4a6c083a761828203acf0dc4b7c3e5589647fef781e3ea2643d6de",
-            "subject": "0x46efb17de1e694f4f27ca4128257b5c0c56daf47d0ca28e472e0ce8cfaddef2b",
+            "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
             "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
             "object": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60"
           },
@@ -254,7 +666,650 @@
             "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
           }
         ],
-        "note": "Assessment-source metadata is pinned. Mainnet Intuition atoms and four canonical Appendix B triples are published."
+        "note": "Assessment-source metadata is pinned. Mainnet Intuition identity atom and canonical identity-subject trust triples are published.",
+        "identityLayer": {
+          "status": "published",
+          "publishedAt": "2026-07-17T15:28:37.249Z",
+          "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+          "atomBlockNumber": 7504418,
+          "atomGasUsed": "2118889",
+          "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+          "tripleBlockNumber": 7504420,
+          "tripleGasUsed": "8409312",
+          "atomProtocolCostTrust": "0.220000000002",
+          "tripleProtocolCostTrust": "0.55000000001",
+          "balanceAfterTrust": "0.679777596838",
+          "identityUri": "ipfs://bafkreif4r5okwrlkf3qvub5y5txiyhbmnbonrsgp6kf6j5pgkp2nybolbq",
+          "caipUri": "ipfs://bafkreic6buizdsqkacvejkj5e4zivjeds4jryp77wosjk2ptstfgnz7twu",
+          "canonicalTerms": {
+            "agent": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "caip": "0xddec98be7fd21b43da225a69f6f32c8050f7ca5db8620919e5ea62202dd2551c",
+            "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+            "assessmentSource": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+            "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+            "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+            "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          },
+          "triples": [
+            {
+              "predicate": "same as",
+              "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "tripleId": "0x9f5bce0be026b921b43e0d9e2f254b11f5fe4b11e7c49a1249320434983ba19f"
+            },
+            {
+              "predicate": "agent has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0xa79fa7ce5f87ba6c02b0a095409b25527b5f455d0bea3a9f7cc8d01fffc1cb27"
+            },
+            {
+              "predicate": "implement",
+              "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "tripleId": "0x644914d3392a7af5e39791ed0556190af623b0b1b8d0a8f15b77f8e9ba27e747"
+            },
+            {
+              "predicate": "has trust provider",
+              "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca"
+            },
+            {
+              "predicate": "has trust assessment",
+              "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af"
+            },
+            {
+              "predicate": "provided by",
+              "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "tripleId": "0x31dbdefa7481b2e2dc6b18d764e3eca948532ac32cdef59938a717a93e0ec961"
+            },
+            {
+              "predicate": "assessment source has type",
+              "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "tripleId": "0x45d98d2fb3372cfab298db37f117d0026bfe84dd9ff9b5c7f0f3254b99e5e0b0"
+            }
+          ],
+          "canonicalTriples": [
+            {
+              "predicate": "same as",
+              "tripleId": "0x9f5bce0be026b921b43e0d9e2f254b11f5fe4b11e7c49a1249320434983ba19f",
+              "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+              "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+              "object": "0xddec98be7fd21b43da225a69f6f32c8050f7ca5db8620919e5ea62202dd2551c"
+            },
+            {
+              "predicate": "agent has type",
+              "tripleId": "0xa79fa7ce5f87ba6c02b0a095409b25527b5f455d0bea3a9f7cc8d01fffc1cb27",
+              "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+            },
+            {
+              "predicate": "implement",
+              "tripleId": "0x644914d3392a7af5e39791ed0556190af623b0b1b8d0a8f15b77f8e9ba27e747",
+              "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+              "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+              "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+            },
+            {
+              "predicate": "has trust provider",
+              "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca",
+              "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+              "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "has trust assessment",
+              "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af",
+              "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+              "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+              "object": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60"
+            },
+            {
+              "predicate": "provided by",
+              "tripleId": "0x31dbdefa7481b2e2dc6b18d764e3eca948532ac32cdef59938a717a93e0ec961",
+              "subject": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+              "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+              "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+            },
+            {
+              "predicate": "assessment source has type",
+              "tripleId": "0x45d98d2fb3372cfab298db37f117d0026bfe84dd9ff9b5c7f0f3254b99e5e0b0",
+              "subject": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+              "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+              "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+            }
+          ],
+          "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+        }
+      }
+    }
+  ],
+  "agentIdentities": [
+    {
+      "canonicalChainId": 8453,
+      "canonicalTokenId": 18531,
+      "helixaTokenId": 1,
+      "payload": {
+        "name": "Bendr 2.0",
+        "description": "Build the identity layer for AI agents. Ship fast, break nothing. Make onchain identity actually matter.",
+        "image": "https://api.helixa.xyz/api/v2/agent/1/card.png",
+        "url": "https://helixa.xyz/agent/1"
+      },
+      "identityUri": "ipfs://bafkreihrvlecsjamsb4rh7rujezugzznqxcdysck2etplwsqzt2iwvryna",
+      "caipPayload": {
+        "name": "eip155:8453/erc721:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/18531",
+        "description": "CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.",
+        "image": "",
+        "url": ""
+      },
+      "caipUri": "ipfs://bafkreieqqcpmproveaw2i4axkwzccn32godpgrfftbzheffmaiuabdi4eu",
+      "onchainStatus": {
+        "status": "published",
+        "publishedAt": "2026-07-17T15:28:37.248Z",
+        "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+        "atomBlockNumber": 7504418,
+        "atomGasUsed": "2118889",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "tripleBlockNumber": 7504420,
+        "tripleGasUsed": "8409312",
+        "atomProtocolCostTrust": "0.220000000002",
+        "tripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
+        "identityUri": "ipfs://bafkreihrvlecsjamsb4rh7rujezugzznqxcdysck2etplwsqzt2iwvryna",
+        "caipUri": "ipfs://bafkreieqqcpmproveaw2i4axkwzccn32godpgrfftbzheffmaiuabdi4eu",
+        "canonicalTerms": {
+          "agent": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+          "caip": "0x1b6cd370ff1160a22df2ac94b23804d39c423c6b2657ed77ff9ef36bc777a8a3",
+          "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+          "assessmentSource": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+          "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+          "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+        },
+        "triples": [
+          {
+            "predicate": "same as",
+            "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "tripleId": "0xef10fc9d652dfbfbd54dfab4cc2304a662a71dc87a28abcd28ee2557e97f7913"
+          },
+          {
+            "predicate": "agent has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x3af8cfb82c7454efcaa79c5a88ec3ab9f0b4af9b1e3abfaf4505055572047c92"
+          },
+          {
+            "predicate": "implement",
+            "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "tripleId": "0x51946255cc5a3df09ce517b75b6813b6a5f84b651df759c1ad6064daadf1951a"
+          },
+          {
+            "predicate": "has trust provider",
+            "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28"
+          },
+          {
+            "predicate": "has trust assessment",
+            "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1"
+          },
+          {
+            "predicate": "provided by",
+            "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917"
+          },
+          {
+            "predicate": "assessment source has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11"
+          }
+        ],
+        "canonicalTriples": [
+          {
+            "predicate": "same as",
+            "tripleId": "0xef10fc9d652dfbfbd54dfab4cc2304a662a71dc87a28abcd28ee2557e97f7913",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "object": "0x1b6cd370ff1160a22df2ac94b23804d39c423c6b2657ed77ff9ef36bc777a8a3"
+          },
+          {
+            "predicate": "agent has type",
+            "tripleId": "0x3af8cfb82c7454efcaa79c5a88ec3ab9f0b4af9b1e3abfaf4505055572047c92",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+          },
+          {
+            "predicate": "implement",
+            "tripleId": "0x51946255cc5a3df09ce517b75b6813b6a5f84b651df759c1ad6064daadf1951a",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+          },
+          {
+            "predicate": "has trust provider",
+            "tripleId": "0x863a520be7101e6f98007a183bece3592a1dcc777ee54b3b756e42bc263e5d28",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has trust assessment",
+            "tripleId": "0x98b4aa7eac2f36bcb0abe3f181ff57af64530ca13113e587a67cb24a4818e7b1",
+            "subject": "0x2895b1f14c87e04c2c57e0a22be202236a3c9f0ca7b6c24fb1b14c2ae96ccf37",
+            "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "object": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4"
+          },
+          {
+            "predicate": "provided by",
+            "tripleId": "0xb610df21966d489c5b9dba5cc9409995f165587783f9fe38f7549db679584917",
+            "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+            "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "assessment source has type",
+            "tripleId": "0x833c84a345e1810ab324b9d730ae0db89d965c7e6610d9353821b1857ff15d11",
+            "subject": "0x1a916e34c6eb62262a232bb562f840c5b349b99e90182fdfd21dc23933d950a4",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          }
+        ],
+        "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+      }
+    },
+    {
+      "canonicalChainId": 8453,
+      "canonicalTokenId": 20880,
+      "helixaTokenId": 1037,
+      "payload": {
+        "name": "SIBYL",
+        "description": "Autonomous crypto intelligence agent on Base. Offers paid safety checks, project evaluations, advisory analysis, agent messaging (Ping), and live portfolio data via x402 micropayments. Advises early-stage builders and acquires stakes in projects with real on-chain proof of work.",
+        "image": "https://sibylcap.com/images/sibyl-persona.jpg",
+        "url": "https://sibylcap.com"
+      },
+      "identityUri": "ipfs://bafkreif4r5okwrlkf3qvub5y5txiyhbmnbonrsgp6kf6j5pgkp2nybolbq",
+      "caipPayload": {
+        "name": "eip155:8453/erc721:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/20880",
+        "description": "CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.",
+        "image": "",
+        "url": ""
+      },
+      "caipUri": "ipfs://bafkreic6buizdsqkacvejkj5e4zivjeds4jryp77wosjk2ptstfgnz7twu",
+      "onchainStatus": {
+        "status": "published",
+        "publishedAt": "2026-07-17T15:28:37.249Z",
+        "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+        "atomBlockNumber": 7504418,
+        "atomGasUsed": "2118889",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "tripleBlockNumber": 7504420,
+        "tripleGasUsed": "8409312",
+        "atomProtocolCostTrust": "0.220000000002",
+        "tripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
+        "identityUri": "ipfs://bafkreif4r5okwrlkf3qvub5y5txiyhbmnbonrsgp6kf6j5pgkp2nybolbq",
+        "caipUri": "ipfs://bafkreic6buizdsqkacvejkj5e4zivjeds4jryp77wosjk2ptstfgnz7twu",
+        "canonicalTerms": {
+          "agent": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+          "caip": "0xddec98be7fd21b43da225a69f6f32c8050f7ca5db8620919e5ea62202dd2551c",
+          "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+          "assessmentSource": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+          "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+          "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+        },
+        "triples": [
+          {
+            "predicate": "same as",
+            "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "tripleId": "0x9f5bce0be026b921b43e0d9e2f254b11f5fe4b11e7c49a1249320434983ba19f"
+          },
+          {
+            "predicate": "agent has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0xa79fa7ce5f87ba6c02b0a095409b25527b5f455d0bea3a9f7cc8d01fffc1cb27"
+          },
+          {
+            "predicate": "implement",
+            "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "tripleId": "0x644914d3392a7af5e39791ed0556190af623b0b1b8d0a8f15b77f8e9ba27e747"
+          },
+          {
+            "predicate": "has trust provider",
+            "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca"
+          },
+          {
+            "predicate": "has trust assessment",
+            "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af"
+          },
+          {
+            "predicate": "provided by",
+            "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "tripleId": "0x31dbdefa7481b2e2dc6b18d764e3eca948532ac32cdef59938a717a93e0ec961"
+          },
+          {
+            "predicate": "assessment source has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x45d98d2fb3372cfab298db37f117d0026bfe84dd9ff9b5c7f0f3254b99e5e0b0"
+          }
+        ],
+        "canonicalTriples": [
+          {
+            "predicate": "same as",
+            "tripleId": "0x9f5bce0be026b921b43e0d9e2f254b11f5fe4b11e7c49a1249320434983ba19f",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "object": "0xddec98be7fd21b43da225a69f6f32c8050f7ca5db8620919e5ea62202dd2551c"
+          },
+          {
+            "predicate": "agent has type",
+            "tripleId": "0xa79fa7ce5f87ba6c02b0a095409b25527b5f455d0bea3a9f7cc8d01fffc1cb27",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+          },
+          {
+            "predicate": "implement",
+            "tripleId": "0x644914d3392a7af5e39791ed0556190af623b0b1b8d0a8f15b77f8e9ba27e747",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+          },
+          {
+            "predicate": "has trust provider",
+            "tripleId": "0x50261ddf4745d7f271cb76d0a9f22c0707688f2234e902df3b9cfc63dc5822ca",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has trust assessment",
+            "tripleId": "0xf2ad53763b7f9ac8ae63e18a18b0a0c3c831a269fadb23b8b68cead7056f03af",
+            "subject": "0x983b082001302e295dd39f3b799f04e918b0b1188ad190527f88f4679c164503",
+            "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "object": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60"
+          },
+          {
+            "predicate": "provided by",
+            "tripleId": "0x31dbdefa7481b2e2dc6b18d764e3eca948532ac32cdef59938a717a93e0ec961",
+            "subject": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+            "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "assessment source has type",
+            "tripleId": "0x45d98d2fb3372cfab298db37f117d0026bfe84dd9ff9b5c7f0f3254b99e5e0b0",
+            "subject": "0xbc1f16177f5039f1b3a75da07b884351cd7bb700ce55adc322e7c4500dfc1b60",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          }
+        ],
+        "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+      }
+    },
+    {
+      "canonicalChainId": 1,
+      "canonicalTokenId": 23121,
+      "helixaTokenId": 1035,
+      "payload": {
+        "name": "DegenAI",
+        "description": "AI-powered trading agent for HyperLiquid perpetual futures. Executes limit, market, and stop orders with multi-level take-profit. Supports natural language trading commands via Agent Commerce Protocol.",
+        "image": "https://degenai.dev/logo.png",
+        "url": "https://8004scan.io/agents/1/23121"
+      },
+      "identityUri": "ipfs://bafkreige4xfbduowkwh24qphlwl6rkjglhqtrx2krt3mumfpyg2kpuzoay",
+      "caipPayload": {
+        "name": "eip155:1/erc721:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/23121",
+        "description": "CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.",
+        "image": "",
+        "url": ""
+      },
+      "caipUri": "ipfs://bafkreihqgxx4dpm3hztg2ypdb2txeqpn3v2uaqfdo4aezpvpiecsflqyzi",
+      "onchainStatus": {
+        "status": "published",
+        "publishedAt": "2026-07-17T15:28:37.250Z",
+        "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+        "atomBlockNumber": 7504418,
+        "atomGasUsed": "2118889",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "tripleBlockNumber": 7504420,
+        "tripleGasUsed": "8409312",
+        "atomProtocolCostTrust": "0.220000000002",
+        "tripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
+        "identityUri": "ipfs://bafkreige4xfbduowkwh24qphlwl6rkjglhqtrx2krt3mumfpyg2kpuzoay",
+        "caipUri": "ipfs://bafkreihqgxx4dpm3hztg2ypdb2txeqpn3v2uaqfdo4aezpvpiecsflqyzi",
+        "canonicalTerms": {
+          "agent": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+          "caip": "0x2f72896a89ec76e1b17f4be499febe68fe0d411a6d02eb859eb83a7e36b624f7",
+          "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+          "assessmentSource": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+          "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+          "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+        },
+        "triples": [
+          {
+            "predicate": "same as",
+            "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "tripleId": "0x11be2926eb57cf79060ea302d485f2d8c141869d4b22abb76d07971bc4eea0a4"
+          },
+          {
+            "predicate": "agent has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x0f90ca6f56b862325b6f25d28df5f3723883fa58301f2f6094f462d435878e9a"
+          },
+          {
+            "predicate": "implement",
+            "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "tripleId": "0x02a82f13f9e0419ed1afc852cbb1bb1ec2c9d2b99febdfad2d70b66262bdfde8"
+          },
+          {
+            "predicate": "has trust provider",
+            "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794"
+          },
+          {
+            "predicate": "has trust assessment",
+            "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad"
+          },
+          {
+            "predicate": "provided by",
+            "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "tripleId": "0x1531bfbd5ac9c2a952a4157d54548665f3f99e5cb1ff5e224239549d8d2a6dac"
+          },
+          {
+            "predicate": "assessment source has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0xfbc5867967f0b4ed663ecd10cda822c21976acfcc212c663c70b7378c4dbc0f6"
+          }
+        ],
+        "canonicalTriples": [
+          {
+            "predicate": "same as",
+            "tripleId": "0x11be2926eb57cf79060ea302d485f2d8c141869d4b22abb76d07971bc4eea0a4",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "object": "0x2f72896a89ec76e1b17f4be499febe68fe0d411a6d02eb859eb83a7e36b624f7"
+          },
+          {
+            "predicate": "agent has type",
+            "tripleId": "0x0f90ca6f56b862325b6f25d28df5f3723883fa58301f2f6094f462d435878e9a",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+          },
+          {
+            "predicate": "implement",
+            "tripleId": "0x02a82f13f9e0419ed1afc852cbb1bb1ec2c9d2b99febdfad2d70b66262bdfde8",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+          },
+          {
+            "predicate": "has trust provider",
+            "tripleId": "0x7608f09bd879b20f5c41b8c610e4df92157043e5bd5be1b05b341bb3e15e9794",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has trust assessment",
+            "tripleId": "0x1698c23af66f751c4642a9fdac99eb009ccfaeb16eb1d4f1db958c72832645ad",
+            "subject": "0x072005adc81519263d778bab6fc992f77aa990cfa4717047d7a73c10b948d3db",
+            "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "object": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a"
+          },
+          {
+            "predicate": "provided by",
+            "tripleId": "0x1531bfbd5ac9c2a952a4157d54548665f3f99e5cb1ff5e224239549d8d2a6dac",
+            "subject": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+            "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "assessment source has type",
+            "tripleId": "0xfbc5867967f0b4ed663ecd10cda822c21976acfcc212c663c70b7378c4dbc0f6",
+            "subject": "0x6a2df9779b602baef4373fb95ad7aeba16b4b879a482584a6e3295aedff2c58a",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          }
+        ],
+        "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
+      }
+    },
+    {
+      "canonicalChainId": 1,
+      "canonicalTokenId": 25068,
+      "helixaTokenId": 73,
+      "payload": {
+        "name": "mferGPT",
+        "description": "AI agent, shitposter, community tool, and web3 developer for the mfers ecosystem. renders mfer NFT artwork in 60+ themes across 10 derivative collections, generates custom AI-designed themes, creates 3D videos, maintains the onchain lore archive, and provides micropayment APIs via x402.",
+        "image": "ipfs://QmVWZLP5az4M3weSKsmz4yoRvsYuu2p32FUUrKts8r68Tn",
+        "url": "https://8004scan.io/agents/1/25068"
+      },
+      "identityUri": "ipfs://bafkreifxtmqba5rn7cazd3xmjoy5hfhqvm4vi37hvzlc2yxynzdicdkgg4",
+      "caipPayload": {
+        "name": "eip155:1/erc721:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/25068",
+        "description": "CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.",
+        "image": "",
+        "url": ""
+      },
+      "caipUri": "ipfs://bafkreic7eodm7iixtzv4pey65kckzeukv6nx2r6w4vtxrkvk5ypftk75dm",
+      "onchainStatus": {
+        "status": "published",
+        "publishedAt": "2026-07-17T15:28:37.251Z",
+        "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+        "atomBlockNumber": 7504418,
+        "atomGasUsed": "2118889",
+        "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+        "tripleBlockNumber": 7504420,
+        "tripleGasUsed": "8409312",
+        "atomProtocolCostTrust": "0.220000000002",
+        "tripleProtocolCostTrust": "0.55000000001",
+        "balanceAfterTrust": "0.679777596838",
+        "identityUri": "ipfs://bafkreifxtmqba5rn7cazd3xmjoy5hfhqvm4vi37hvzlc2yxynzdicdkgg4",
+        "caipUri": "ipfs://bafkreic7eodm7iixtzv4pey65kckzeukv6nx2r6w4vtxrkvk5ypftk75dm",
+        "canonicalTerms": {
+          "agent": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+          "caip": "0x6e7be354ef6d770508ea5db10dadfe5b96466a7081d081f99bb2965ac7533ec6",
+          "provider": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627",
+          "assessmentSource": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+          "aiAgent": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9",
+          "erc8004": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2",
+          "trustAssessmentSource": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+        },
+        "triples": [
+          {
+            "predicate": "same as",
+            "termId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "tripleId": "0xfe061b8ccc8cf291150cde1e2f629ade8b608de3452d1085e5187f28ce87603c"
+          },
+          {
+            "predicate": "agent has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0x2198104d2277df44d7423ecafbdc67d6934286d6ecfae11aef245dd1adacb982"
+          },
+          {
+            "predicate": "implement",
+            "termId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "tripleId": "0x662bb93e121449c6441befe4a8cb97b68eff0644f35252ac7cfa51d4e9d5cd04"
+          },
+          {
+            "predicate": "has trust provider",
+            "termId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43"
+          },
+          {
+            "predicate": "has trust assessment",
+            "termId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af"
+          },
+          {
+            "predicate": "provided by",
+            "termId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "tripleId": "0xaefd8ae827bcf28e378a4e47345bbe65758e6cacf2df9f9228fa9f46e9137e5a"
+          },
+          {
+            "predicate": "assessment source has type",
+            "termId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "tripleId": "0xf92d5fcb0755ea46be47d6f64e33c2f51b583ee52e45d51b4178a45fae6d9111"
+          }
+        ],
+        "canonicalTriples": [
+          {
+            "predicate": "same as",
+            "tripleId": "0xfe061b8ccc8cf291150cde1e2f629ade8b608de3452d1085e5187f28ce87603c",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "predicateTermId": "0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0",
+            "object": "0x6e7be354ef6d770508ea5db10dadfe5b96466a7081d081f99bb2965ac7533ec6"
+          },
+          {
+            "predicate": "agent has type",
+            "tripleId": "0x2198104d2277df44d7423ecafbdc67d6934286d6ecfae11aef245dd1adacb982",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9"
+          },
+          {
+            "predicate": "implement",
+            "tripleId": "0x662bb93e121449c6441befe4a8cb97b68eff0644f35252ac7cfa51d4e9d5cd04",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "predicateTermId": "0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324",
+            "object": "0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2"
+          },
+          {
+            "predicate": "has trust provider",
+            "tripleId": "0x1561caad099e674d7bcd0601031d421827492a855362fc2383240c15a164cd43",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "predicateTermId": "0xdc3c5639b39f9b6553b75b37c47fa4810961392b28956234ba9f401a98f43888",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "has trust assessment",
+            "tripleId": "0x581fa53e4d0c4479a58dba6f66edb4b40adf22579c680eab287c0d37bf0218af",
+            "subject": "0x0e3f2e40ed9558d0b0b7c3df5ceddffb0388d2797c781fb852bc5159b01d9e2f",
+            "predicateTermId": "0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c",
+            "object": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9"
+          },
+          {
+            "predicate": "provided by",
+            "tripleId": "0xaefd8ae827bcf28e378a4e47345bbe65758e6cacf2df9f9228fa9f46e9137e5a",
+            "subject": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+            "predicateTermId": "0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19",
+            "object": "0x88717033bf14ed78a2aba7296578458e48b4ad82b156987cc4feaa3b36424627"
+          },
+          {
+            "predicate": "assessment source has type",
+            "tripleId": "0xf92d5fcb0755ea46be47d6f64e33c2f51b583ee52e45d51b4178a45fae6d9111",
+            "subject": "0x5a0e667f14065a9ee7fc86578c8d42a7081e50ddb859874bc7539282ce9093c9",
+            "predicateTermId": "0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced",
+            "object": "0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07"
+          }
+        ],
+        "note": "Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published."
       }
     }
   ],
@@ -379,5 +1434,14 @@
     "tripleCount": 12,
     "totalProtocolCostTrust": "1.98000000003",
     "balanceAfterTrust": "1.259881438236"
+  },
+  "lastAgentIdentityBatchPublish": {
+    "publishedAt": "2026-07-17T15:28:37.251Z",
+    "atomTransactionHash": "0x3b652c4aa1d4e5cb99462332446f5ddf0506e2e86b600a5cabb6e25d3d774dd7",
+    "tripleTransactionHash": "0xfec3c2e79ab210fae9a5a4a26a00d08139266c2a99ae25e2cf01732edb26e101",
+    "atomCount": 8,
+    "tripleCount": 20,
+    "totalProtocolCostTrust": "3.080000000048",
+    "balanceAfterTrust": "0.679777596838"
   }
 }

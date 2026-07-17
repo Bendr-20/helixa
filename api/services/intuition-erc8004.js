@@ -29,6 +29,9 @@ const INTUITION_TERMS = {
         hasTrustAssessment: '0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c',
         providedBy: '0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19',
         hasType: '0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced',
+        aiAgent: '0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9',
+        implement: '0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324',
+        erc8004: '0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2',
         trustAssessmentSource: '0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07',
     },
     testnet: {
@@ -41,6 +44,9 @@ const INTUITION_TERMS = {
         hasTrustAssessment: '0x7f455fb041f766c3f24552db4c943888c6778c2475d4f2d434b84ad03298457c',
         providedBy: '0x9a310b5ca895009792e5b1dc0131539f36c054e8e32987989367ec73a1a3ef19',
         hasType: '0xa632a94306ab1d56911cff8c06473659a7caa2dfec6de3921bc23ec8ebf96ced',
+        aiAgent: '0x800342c0ded1c288e69f39a2dc96d8cff9b242e9f573193e6e0a849e5315d3e9',
+        implement: '0xfa02609bfde5a9a7ba18fa8afc1c42bc643edfaf7d44e3ce9e50835290d03324',
+        erc8004: '0x595ba5059b23a9aa4d64deff324ff3d957866715d5b7b8015eebc9009bab78b2',
         trustAssessmentSource: '0xf8a0ea34c8e7195b63d1641141166cc56e9128e25cf8c9f68ac6b81527b78f07',
     },
 };
@@ -425,7 +431,11 @@ async function pinThing(thing, options = {}) {
         image: trim(thing?.image),
         url: trim(thing?.url),
     };
-    for (const [key, value] of Object.entries(input)) {
+    const requiredKeys = options.allowEmptyImageUrl
+        ? ['name', 'description']
+        : ['name', 'description', 'image', 'url'];
+    for (const key of requiredKeys) {
+        const value = input[key];
         if (!value) {
             const err = new Error(`missing_pin_thing_${key}`);
             err.code = `missing_pin_thing_${key}`;
@@ -463,6 +473,17 @@ function buildAssessmentSourceThing({ chainId, tokenId, publicBaseUrl = 'https:/
     };
 }
 
+function buildCaipIdentityThing({ chainId, tokenId }) {
+    const normalizedChainId = parsePositiveInt(chainId, 'chain_id');
+    const normalizedTokenId = parsePositiveInt(tokenId, 'token_id');
+    return {
+        name: `eip155:${normalizedChainId}/erc721:${ERC8004_IDENTITY_REGISTRY}/${normalizedTokenId}`,
+        description: 'CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.',
+        image: '',
+        url: '',
+    };
+}
+
 module.exports = {
     BASE_CHAIN_ID,
     HELIXA_V2_REGISTRY,
@@ -471,6 +492,7 @@ module.exports = {
     INTUITION_TERMS,
     PROVIDER,
     buildAssessmentSourceThing,
+    buildCaipIdentityThing,
     buildProviderThing,
     buildResolverUrl,
     buildTrustAssessment,

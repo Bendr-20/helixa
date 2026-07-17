@@ -26,6 +26,8 @@ function printUsage() {
   node api/scripts/intuition-8004-setup.js --pin-mapped-assessment-sources
   node api/scripts/intuition-8004-setup.js --publish-canonical-triples <chainId> <canonicalTokenId> [--dry-run]
   node api/scripts/intuition-8004-setup.js --publish-canonical-batch [--dry-run]
+  node api/scripts/intuition-8004-setup.js --pin-agent-identities
+  node api/scripts/intuition-8004-setup.js --publish-agent-identity-batch [--dry-run]
 
 Environment:
   INTUITION_API_KEY or INTUITION_PARTNER_API_KEY
@@ -106,6 +108,13 @@ function sameAssessmentSource(left, right) {
         && Number(left.helixaTokenId) === Number(right.helixaTokenId);
 }
 
+function sameCanonicalAgent(left, right) {
+    return Boolean(left && right)
+        && Number(left.canonicalChainId) === Number(right.canonicalChainId)
+        && Number(left.canonicalTokenId) === Number(right.canonicalTokenId)
+        && Number(left.helixaTokenId) === Number(right.helixaTokenId);
+}
+
 function upsertAssessmentSource(setupState, source) {
     if (!Array.isArray(setupState.assessmentSources)) setupState.assessmentSources = [];
     const existing = setupState.assessmentSources.find(item => sameAssessmentSource(item, source));
@@ -121,6 +130,12 @@ function upsertAssessmentSource(setupState, source) {
 
 function findPlanSource(setupState, plan) {
     return setupState.assessmentSources.find(source => sameAssessmentSource(source, plan.source));
+}
+
+function findAgentIdentity(setupState, source) {
+    return Array.isArray(setupState.agentIdentities)
+        ? setupState.agentIdentities.find(identity => sameCanonicalAgent(identity, source)) || null
+        : null;
 }
 
 async function buildCanonicalTriplePlan({ setupState, chainId, tokenId, contract }) {
@@ -618,6 +633,489 @@ async function publishCanonicalBatch({ dryRun }) {
     };
 }
 
+function requiredAgentIdentities(setupState) {
+    const identities = Array.isArray(setupState.agentIdentities) ? setupState.agentIdentities : [];
+    if (!identities.length) throw new Error('Missing agentIdentities in Intuition setup state');
+    return identities;
+}
+
+function validateAgentIdentityPayload(identity) {
+    const payload = identity?.payload || {};
+    for (const key of ['name', 'description', 'image', 'url']) {
+        if (typeof payload[key] !== 'string' || !payload[key]) {
+            throw new Error(`Missing agent identity payload ${key} for ERC-8004 agent ${identity?.canonicalChainId}:${identity?.canonicalTokenId}`);
+        }
+    }
+    return {
+        name: payload.name,
+        description: payload.description,
+        image: payload.image,
+        url: payload.url,
+    };
+}
+
+async function pinStableThing(thing, options = {}) {
+    const first = await intuition.pinThing(thing, options);
+    const second = await intuition.pinThing(thing, options);
+    if (first.uri !== second.uri) {
+        throw new Error(`pinThing returned non-deterministic URIs for ${thing.name}: ${first.uri} !== ${second.uri}`);
+    }
+    return first;
+}
+
+async function pinAgentIdentities() {
+    const apiKey = intuition.readIntuitionApiKey();
+    if (!apiKey) throw new Error('Missing Intuition API key. Expected ~/.config/helixa/intuition.env or INTUITION_API_KEY.');
+
+    const setupState = readSetupState();
+    const identities = requiredAgentIdentities(setupState);
+    const results = [];
+
+    for (const identity of identities) {
+        const payload = validateAgentIdentityPayload(identity);
+        const identityPin = await pinStableThing(payload, { apiKey });
+        if (identity.identityUri && identity.identityUri !== identityPin.uri) {
+            throw new Error(`Pinned identity URI changed for ${identity.canonicalChainId}:${identity.canonicalTokenId}: ${identity.identityUri} !== ${identityPin.uri}`);
+        }
+
+        const caipPayload = intuition.buildCaipIdentityThing({
+            chainId: identity.canonicalChainId,
+            tokenId: identity.canonicalTokenId,
+        });
+        const caipPin = await pinStableThing(caipPayload, {
+            apiKey,
+            allowEmptyImageUrl: true,
+        });
+        if (identity.caipUri && identity.caipUri !== caipPin.uri) {
+            throw new Error(`Pinned CAIP URI changed for ${identity.canonicalChainId}:${identity.canonicalTokenId}: ${identity.caipUri} !== ${caipPin.uri}`);
+        }
+
+        identity.identityUri = identityPin.uri;
+        identity.caipPayload = caipPayload;
+        identity.caipUri = caipPin.uri;
+        results.push({
+            ok: true,
+            canonicalChainId: identity.canonicalChainId,
+            canonicalTokenId: identity.canonicalTokenId,
+            helixaTokenId: identity.helixaTokenId,
+            name: payload.name,
+            identityUri: identity.identityUri,
+            caipUri: identity.caipUri,
+        });
+    }
+
+    writeSetupState(setupState);
+    return { ok: true, results };
+}
+
+async function buildAgentIdentityPlan({ setupState, identity, contract }) {
+    const source = findAssessmentSource(setupState, identity.canonicalChainId, identity.canonicalTokenId);
+    const payload = validateAgentIdentityPayload(identity);
+    const providerUri = setupState?.provider?.uri;
+    if (!providerUri) throw new Error('Missing provider.uri in Intuition setup state');
+    if (!source.uri) throw new Error(`Missing assessment source URI for ERC-8004 agent ${identity.canonicalChainId}:${identity.canonicalTokenId}`);
+    if (!identity.identityUri) throw new Error(`Missing pinned identity URI for ERC-8004 agent ${identity.canonicalChainId}:${identity.canonicalTokenId}`);
+    if (!identity.caipUri) throw new Error(`Missing pinned CAIP URI for ERC-8004 agent ${identity.canonicalChainId}:${identity.canonicalTokenId}`);
+
+    const terms = intuition.INTUITION_TERMS.mainnet;
+    const identityAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(identity.identityUri));
+    const caipAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(identity.caipUri));
+    const providerAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(providerUri));
+    const sourceAtom = await contract.calculateAtomId(ethers.toUtf8Bytes(source.uri));
+    const atomCost = await contract.getAtomCost();
+    const tripleCost = await contract.getTripleCost();
+    const generalConfig = await contract.getGeneralConfig();
+    const assetPerAtom = atomCost + generalConfig.minDeposit;
+    const assetPerTriple = tripleCost + generalConfig.minDeposit;
+
+    const triples = [
+        {
+            label: 'same as',
+            subject: identityAtom,
+            predicate: terms.sameAs,
+            object: caipAtom,
+        },
+        {
+            label: 'agent has type',
+            subject: identityAtom,
+            predicate: terms.hasType,
+            object: terms.aiAgent,
+        },
+        {
+            label: 'implement',
+            subject: identityAtom,
+            predicate: terms.implement,
+            object: terms.erc8004,
+        },
+        {
+            label: 'has trust provider',
+            subject: identityAtom,
+            predicate: terms.hasTrustProvider,
+            object: providerAtom,
+        },
+        {
+            label: 'has trust assessment',
+            subject: identityAtom,
+            predicate: terms.hasTrustAssessment,
+            object: sourceAtom,
+        },
+        {
+            label: 'provided by',
+            subject: sourceAtom,
+            predicate: terms.providedBy,
+            object: providerAtom,
+        },
+        {
+            label: 'assessment source has type',
+            subject: sourceAtom,
+            predicate: terms.hasType,
+            object: terms.trustAssessmentSource,
+        },
+    ];
+
+    const atoms = [
+        { label: 'agent identity', atomId: identityAtom, data: identity.identityUri, createIfMissing: true },
+        { label: 'CAIP identity', atomId: caipAtom, data: identity.caipUri, createIfMissing: true },
+        { label: 'Helixa Cred provider', atomId: providerAtom, data: providerUri, createIfMissing: false },
+        { label: 'assessment source', atomId: sourceAtom, data: source.uri, createIfMissing: false },
+        { label: 'same as', atomId: terms.sameAs, createIfMissing: false },
+        { label: 'has trust provider', atomId: terms.hasTrustProvider, createIfMissing: false },
+        { label: 'has trust assessment', atomId: terms.hasTrustAssessment, createIfMissing: false },
+        { label: 'provided by', atomId: terms.providedBy, createIfMissing: false },
+        { label: 'has type', atomId: terms.hasType, createIfMissing: false },
+        { label: 'AIAgent', atomId: terms.aiAgent, createIfMissing: false },
+        { label: 'implement', atomId: terms.implement, createIfMissing: false },
+        { label: 'ERC-8004', atomId: terms.erc8004, createIfMissing: false },
+        { label: 'Trust Assessment Source', atomId: terms.trustAssessmentSource, createIfMissing: false },
+    ];
+    for (const atom of atoms) {
+        atom.exists = await getAtomExists(contract, atom.atomId);
+        atom.asset = assetPerAtom;
+        if (!atom.exists && !atom.createIfMissing) {
+            throw new Error(`Missing required Intuition atom for ${atom.label}: ${atom.atomId}`);
+        }
+    }
+
+    for (const triple of triples) {
+        triple.tripleId = await contract.calculateTripleId(triple.subject, triple.predicate, triple.object);
+        triple.exists = await getTripleExists(contract, triple.tripleId);
+        triple.asset = assetPerTriple;
+    }
+
+    return {
+        source,
+        identity,
+        payload,
+        terms: {
+            identityAtom,
+            caipAtom,
+            providerAtom,
+            sourceAtom,
+        },
+        atoms,
+        atomCost,
+        triples,
+        tripleCost,
+        minDeposit: generalConfig.minDeposit,
+        assetPerAtom,
+        assetPerTriple,
+    };
+}
+
+function summarizeAgentIdentityPlan(plan) {
+    return {
+        source: {
+            canonicalChainId: plan.source.canonicalChainId,
+            canonicalTokenId: plan.source.canonicalTokenId,
+            helixaTokenId: plan.source.helixaTokenId,
+        },
+        name: plan.payload.name,
+        identityUri: plan.identity.identityUri,
+        caipUri: plan.identity.caipUri,
+        terms: plan.terms,
+        atomCostTrust: ethers.formatEther(plan.atomCost),
+        tripleCostTrust: ethers.formatEther(plan.tripleCost),
+        minDepositTrust: ethers.formatEther(plan.minDeposit),
+        assetPerAtomTrust: ethers.formatEther(plan.assetPerAtom),
+        assetPerTripleTrust: ethers.formatEther(plan.assetPerTriple),
+        totalAtomValueTrust: ethers.formatEther(plan.atoms
+            .filter(atom => atom.createIfMissing && !atom.exists)
+            .reduce((sum, atom) => sum + atom.asset, 0n)),
+        totalTripleValueTrust: ethers.formatEther(plan.triples
+            .filter(triple => !triple.exists)
+            .reduce((sum, triple) => sum + triple.asset, 0n)),
+        atoms: plan.atoms.map(atom => ({
+            label: atom.label,
+            atomId: atom.atomId,
+            data: atom.data || null,
+            createIfMissing: atom.createIfMissing,
+            exists: atom.exists,
+        })),
+        triples: plan.triples.map(triple => ({
+            label: triple.label,
+            tripleId: triple.tripleId,
+            subject: triple.subject,
+            predicate: triple.predicate,
+            object: triple.object,
+            exists: triple.exists,
+        })),
+    };
+}
+
+function buildAgentIdentityStatus({ plan, atomReceipt, tripleReceipt, balanceAfter, atomValue, tripleValue }) {
+    const canonicalTerms = {
+        agent: plan.terms.identityAtom,
+        caip: plan.terms.caipAtom,
+        provider: plan.terms.providerAtom,
+        assessmentSource: plan.terms.sourceAtom,
+        aiAgent: intuition.INTUITION_TERMS.mainnet.aiAgent,
+        erc8004: intuition.INTUITION_TERMS.mainnet.erc8004,
+        trustAssessmentSource: intuition.INTUITION_TERMS.mainnet.trustAssessmentSource,
+    };
+    const triples = plan.triples.map(triple => ({
+        predicate: triple.label,
+        tripleId: triple.tripleId,
+        subject: triple.subject,
+        predicateTermId: triple.predicate,
+        object: triple.object,
+    }));
+
+    return {
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        atomTransactionHash: atomReceipt?.hash || plan.identity.onchainStatus?.atomTransactionHash || null,
+        atomBlockNumber: atomReceipt?.blockNumber || plan.identity.onchainStatus?.atomBlockNumber || null,
+        atomGasUsed: atomReceipt?.gasUsed?.toString() || plan.identity.onchainStatus?.atomGasUsed || null,
+        tripleTransactionHash: tripleReceipt?.hash || plan.identity.onchainStatus?.tripleTransactionHash || null,
+        tripleBlockNumber: tripleReceipt?.blockNumber || plan.identity.onchainStatus?.tripleBlockNumber || null,
+        tripleGasUsed: tripleReceipt?.gasUsed?.toString() || plan.identity.onchainStatus?.tripleGasUsed || null,
+        atomProtocolCostTrust: ethers.formatEther(atomValue || 0n),
+        tripleProtocolCostTrust: ethers.formatEther(tripleValue || 0n),
+        balanceAfterTrust: ethers.formatEther(balanceAfter),
+        identityUri: plan.identity.identityUri,
+        caipUri: plan.identity.caipUri,
+        canonicalTerms,
+        triples: triples.map(triple => ({
+            predicate: triple.predicate,
+            termId: triple.predicateTermId,
+            tripleId: triple.tripleId,
+        })),
+        canonicalTriples: triples,
+        note: 'Human-readable ERC-8004 identity atom, CAIP object atom, same-as link, classification edges, and identity-subject trust edges are published.',
+    };
+}
+
+function updateAgentIdentityAfterPublish(setupState, plan, receipts) {
+    const identity = findAgentIdentity(setupState, plan.source);
+    if (!identity) throw new Error(`Missing setup state identity for ERC-8004 agent ${plan.source.canonicalChainId}:${plan.source.canonicalTokenId}`);
+    identity.onchainStatus = buildAgentIdentityStatus({ plan, ...receipts });
+
+    const source = findPlanSource(setupState, plan);
+    if (!source) throw new Error(`Missing setup state source for ERC-8004 agent ${plan.source.canonicalChainId}:${plan.source.canonicalTokenId}`);
+    const previousSourceStatus = source.onchainStatus || {};
+    const trustPattern = plan.triples.filter(triple => (
+        triple.label === 'has trust provider'
+        || triple.label === 'has trust assessment'
+        || triple.label === 'provided by'
+        || triple.label === 'assessment source has type'
+    ));
+    const canonicalTrustTriples = trustPattern.map(triple => ({
+        predicate: triple.label === 'assessment source has type' ? 'has type' : triple.label,
+        tripleId: triple.tripleId,
+        subject: triple.subject,
+        predicateTermId: triple.predicate,
+        object: triple.object,
+    }));
+
+    source.onchainStatus = {
+        ...previousSourceStatus,
+        status: 'published',
+        publishedAt: identity.onchainStatus.publishedAt,
+        tripleTransactionHash: receipts.tripleReceipt?.hash || previousSourceStatus.tripleTransactionHash || null,
+        canonicalTripleTransactionHash: receipts.tripleReceipt?.hash || previousSourceStatus.canonicalTripleTransactionHash || null,
+        canonicalTripleBlockNumber: receipts.tripleReceipt?.blockNumber || previousSourceStatus.canonicalTripleBlockNumber || null,
+        canonicalTripleGasUsed: receipts.tripleReceipt?.gasUsed?.toString() || previousSourceStatus.canonicalTripleGasUsed || null,
+        canonicalTripleProtocolCostTrust: ethers.formatEther(receipts.tripleValue || 0n),
+        balanceAfterTrust: ethers.formatEther(receipts.balanceAfter),
+        canonicalTerms: {
+            ...previousSourceStatus.canonicalTerms,
+            agent: plan.terms.identityAtom,
+            caip: plan.terms.caipAtom,
+            provider: plan.terms.providerAtom,
+            assessmentSource: plan.terms.sourceAtom,
+            trustAssessmentSource: intuition.INTUITION_TERMS.mainnet.trustAssessmentSource,
+        },
+        triples: canonicalTrustTriples.map(triple => ({
+            predicate: triple.predicate,
+            termId: triple.predicateTermId,
+            tripleId: triple.tripleId,
+        })),
+        canonicalTriples: canonicalTrustTriples,
+        identityLayer: identity.onchainStatus,
+        note: 'Assessment-source metadata is pinned. Mainnet Intuition identity atom and canonical identity-subject trust triples are published.',
+    };
+}
+
+async function publishAgentIdentityBatch({ dryRun }) {
+    const setupState = readSetupState();
+    const identities = requiredAgentIdentities(setupState);
+    const terms = intuition.INTUITION_TERMS.mainnet;
+    const provider = new ethers.JsonRpcProvider(terms.rpcUrl, terms.chainId);
+    const readContract = new ethers.Contract(terms.multiVault, MULTIVAULT_ABI, provider);
+    const plans = [];
+
+    for (const identity of identities) {
+        plans.push(await buildAgentIdentityPlan({
+            setupState,
+            identity,
+            contract: readContract,
+        }));
+    }
+
+    const missingAtoms = dedupeBy(
+        plans.flatMap(plan => plan.atoms.filter(atom => atom.createIfMissing && !atom.exists)),
+        atom => atom.atomId,
+    );
+    const missingTriples = dedupeBy(
+        plans.flatMap(plan => plan.triples.filter(triple => !triple.exists)),
+        triple => triple.tripleId,
+    );
+    const atomValue = missingAtoms.reduce((sum, atom) => sum + atom.asset, 0n);
+    const tripleValue = missingTriples.reduce((sum, triple) => sum + triple.asset, 0n);
+
+    if (dryRun || (!missingAtoms.length && !missingTriples.length)) {
+        return {
+            ok: true,
+            dryRun: true,
+            skipped: !missingAtoms.length && !missingTriples.length,
+            missingAtomCount: missingAtoms.length,
+            missingTripleCount: missingTriples.length,
+            atomValueTrust: ethers.formatEther(atomValue),
+            tripleValueTrust: ethers.formatEther(tripleValue),
+            totalValueTrust: ethers.formatEther(atomValue + tripleValue),
+            plans: plans.map(summarizeAgentIdentityPlan),
+        };
+    }
+
+    const key = await readDeployerKey();
+    const wallet = new ethers.Wallet(key, provider);
+    const contract = readContract.connect(wallet);
+    const balanceBefore = await provider.getBalance(wallet.address);
+    if (balanceBefore < atomValue + tripleValue) {
+        throw new Error(`insufficient TRUST balance: have ${ethers.formatEther(balanceBefore)}, need ${ethers.formatEther(atomValue + tripleValue)}`);
+    }
+
+    let atomReceipt = null;
+    if (missingAtoms.length) {
+        const atomData = missingAtoms.map(atom => ethers.toUtf8Bytes(atom.data));
+        const atomAssets = missingAtoms.map(atom => atom.asset);
+        const expectedAtomIds = await contract.createAtoms.staticCall(atomData, atomAssets, { value: atomValue });
+        const expectedAtomIdSet = new Set(expectedAtomIds.map(String));
+        for (const atom of missingAtoms) {
+            if (!expectedAtomIdSet.has(atom.atomId)) {
+                throw new Error(`createAtoms static call missing expected ${atom.label}: ${atom.atomId}`);
+            }
+        }
+        const gasEstimate = await contract.createAtoms.estimateGas(atomData, atomAssets, { value: atomValue });
+        const tx = await contract.createAtoms(atomData, atomAssets, {
+            value: atomValue,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        atomReceipt = await tx.wait();
+        if (atomReceipt.status !== 1) throw new Error(`agent identity atom transaction failed: ${tx.hash}`);
+        for (const atom of missingAtoms) atom.exists = true;
+    }
+
+    let tripleReceipt = null;
+    let expectedIds = [];
+    if (missingTriples.length) {
+        const subjects = missingTriples.map(triple => triple.subject);
+        const predicates = missingTriples.map(triple => triple.predicate);
+        const objects = missingTriples.map(triple => triple.object);
+        const assets = missingTriples.map(triple => triple.asset);
+        expectedIds = await contract.createTriples.staticCall(subjects, predicates, objects, assets, { value: tripleValue });
+        const gasEstimate = await contract.createTriples.estimateGas(subjects, predicates, objects, assets, { value: tripleValue });
+        const tx = await contract.createTriples(subjects, predicates, objects, assets, {
+            value: tripleValue,
+            gasLimit: gasEstimate + (gasEstimate / 5n),
+        });
+        tripleReceipt = await tx.wait();
+        if (tripleReceipt.status !== 1) throw new Error(`agent identity triple transaction failed: ${tx.hash}`);
+        for (const triple of missingTriples) triple.exists = true;
+    }
+
+    const balanceAfter = await provider.getBalance(wallet.address);
+    for (const atom of missingAtoms) {
+        if (!await getAtomExists(readContract, atom.atomId)) {
+            throw new Error(`published transaction missing atom ${atom.label}: ${atom.atomId}`);
+        }
+    }
+    for (const triple of missingTriples) {
+        if (!await getTripleExists(readContract, triple.tripleId)) {
+            throw new Error(`published transaction missing triple ${triple.label}: ${triple.tripleId}`);
+        }
+    }
+
+    const touchedPlanKeys = new Set([
+        ...missingAtoms.map(atom => atom.atomId),
+        ...missingTriples.map(triple => triple.tripleId),
+    ]);
+    const publishedPlans = plans.filter(plan => (
+        plan.atoms.some(atom => touchedPlanKeys.has(atom.atomId))
+        || plan.triples.some(triple => touchedPlanKeys.has(triple.tripleId))
+    ));
+    for (const plan of publishedPlans) {
+        updateAgentIdentityAfterPublish(setupState, plan, {
+            atomReceipt,
+            tripleReceipt,
+            balanceAfter,
+            atomValue: plan.atoms
+                .filter(atom => missingAtoms.some(missing => missing.atomId === atom.atomId))
+                .reduce((sum, atom) => sum + atom.asset, 0n),
+            tripleValue: plan.triples
+                .filter(triple => missingTriples.some(missing => missing.tripleId === triple.tripleId))
+                .reduce((sum, triple) => sum + triple.asset, 0n),
+        });
+    }
+    setupState.lastAgentIdentityBatchPublish = {
+        publishedAt: new Date().toISOString(),
+        atomTransactionHash: atomReceipt?.hash || null,
+        tripleTransactionHash: tripleReceipt?.hash || null,
+        atomCount: missingAtoms.length,
+        tripleCount: missingTriples.length,
+        totalProtocolCostTrust: ethers.formatEther(atomValue + tripleValue),
+        balanceAfterTrust: ethers.formatEther(balanceAfter),
+    };
+    writeSetupState(setupState);
+
+    return {
+        ok: true,
+        dryRun: false,
+        executor: wallet.address,
+        atomHash: atomReceipt?.hash || null,
+        atomBlockNumber: atomReceipt?.blockNumber || null,
+        tripleHash: tripleReceipt?.hash || null,
+        tripleBlockNumber: tripleReceipt?.blockNumber || null,
+        expectedIds: expectedIds.map(String),
+        balanceBeforeTrust: ethers.formatEther(balanceBefore),
+        balanceAfterTrust: ethers.formatEther(balanceAfter),
+        atomValueTrust: ethers.formatEther(atomValue),
+        tripleValueTrust: ethers.formatEther(tripleValue),
+        totalValueTrust: ethers.formatEther(atomValue + tripleValue),
+        publishedIdentities: publishedPlans.map(plan => ({
+            canonicalChainId: plan.source.canonicalChainId,
+            canonicalTokenId: plan.source.canonicalTokenId,
+            helixaTokenId: plan.source.helixaTokenId,
+            name: plan.payload.name,
+            identityAtomId: plan.terms.identityAtom,
+            caipAtomId: plan.terms.caipAtom,
+            identityUri: plan.identity.identityUri,
+            caipUri: plan.identity.caipUri,
+            tripleIds: plan.triples.map(triple => triple.tripleId),
+        })),
+    };
+}
+
 async function main() {
     const { command, chainId, tokenId, dryRun } = parseArgs(process.argv.slice(2));
     if (!command || command === '--help' || command === '-h') {
@@ -689,6 +1187,18 @@ async function main() {
 
     if (command === '--publish-canonical-batch') {
         const result = await publishCanonicalBatch({ dryRun });
+        console.log(JSON.stringify(result, null, 2));
+        return;
+    }
+
+    if (command === '--pin-agent-identities') {
+        const result = await pinAgentIdentities();
+        console.log(JSON.stringify(result, null, 2));
+        return;
+    }
+
+    if (command === '--publish-agent-identity-batch') {
+        const result = await publishAgentIdentityBatch({ dryRun });
         console.log(JSON.stringify(result, null, 2));
         return;
     }

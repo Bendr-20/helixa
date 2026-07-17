@@ -141,6 +141,17 @@ test('builds provider and assessment-source pinThing payloads', () => {
     );
 });
 
+test('builds CAIP identity pinThing payload with frozen empty media fields', () => {
+    const caip = intuition.buildCaipIdentityThing({ chainId: 1, tokenId: 25068 });
+
+    assert.deepEqual(caip, {
+        name: 'eip155:1/erc721:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432/25068',
+        description: 'CAIP-style external identifier atom for linking an Intuition atom to an ERC-8004 registry identity.',
+        image: '',
+        url: '',
+    });
+});
+
 test('reports Intuition Cred signal from published setup state', () => {
     withTempJson({
         provider: { id: 'helixa-cred' },
@@ -308,4 +319,29 @@ test('pinThing sends apikey header and returns the pinned URI', async () => {
     assert.equal(calls[0].endpoint, intuition.INTUITION_PINNING_ENDPOINT);
     assert.equal(calls[0].options.headers.apikey, 'test-key');
     assert.doesNotMatch(calls[0].options.body, /test-key/);
+});
+
+test('pinThing can send intentionally empty image and url fields for CAIP objects', async () => {
+    const calls = [];
+    const fetchImpl = async (endpoint, options) => {
+        calls.push({ endpoint, options });
+        return {
+            ok: true,
+            status: 200,
+            async text() {
+                return JSON.stringify({ data: { pinThing: { uri: 'ipfs://bafk-caip' } } });
+            },
+        };
+    };
+
+    const result = await intuition.pinThing(intuition.buildCaipIdentityThing({ chainId: 8453, tokenId: 18531 }), {
+        apiKey: 'test-key',
+        fetchImpl,
+        allowEmptyImageUrl: true,
+    });
+    const body = JSON.parse(calls[0].options.body);
+
+    assert.equal(result.uri, 'ipfs://bafk-caip');
+    assert.equal(body.variables.t.image, '');
+    assert.equal(body.variables.t.url, '');
 });
