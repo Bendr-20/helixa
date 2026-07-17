@@ -169,6 +169,32 @@ test('reports Intuition Cred signal from published setup state', () => {
             publishedAt: '2026-07-13T23:18:34Z',
             atomTransactionHash: '0xatom',
             tripleTransactionHash: '0xtriple',
+            identityLayer: {
+                status: 'published',
+                publishedAt: '2026-07-17T15:28:37.248Z',
+                atomTransactionHash: '0xidentity-atom',
+                tripleTransactionHash: '0xidentity-triples',
+                identityUri: 'ipfs://identity',
+                caipUri: 'ipfs://caip',
+                canonicalTerms: {
+                    agent: '0xagent',
+                    caip: '0xcaip',
+                    provider: '0xprovider',
+                    assessmentSource: '0xsource',
+                },
+                triples: [
+                    {
+                        predicate: 'same as',
+                        termId: '0xsameas',
+                        tripleId: '0xsameastriple',
+                    },
+                    {
+                        predicate: 'has trust assessment',
+                        termId: '0xtrustassessment',
+                        tripleId: '0xtrusttriple',
+                    },
+                ],
+            },
         },
     }, (filePath) => {
         const setupState = intuition.loadIntuitionSetupState(filePath);
@@ -179,6 +205,11 @@ test('reports Intuition Cred signal from published setup state', () => {
         assert.equal(signal.canonicalAgentId, '8453:18531');
         assert.equal(signal.assessmentSourceUri, 'ipfs://source');
         assert.equal(signal.tripleTransactionHash, '0xtriple');
+        assert.equal(signal.identityLayer.identityAtomId, '0xagent');
+        assert.equal(signal.identityLayer.caipAtomId, '0xcaip');
+        assert.equal(signal.identityLayer.trustAssessmentTripleId, '0xtrusttriple');
+        assert.equal(signal.identityLayer.portalLinks.has_trust_assessment, 'https://portal.intuition.systems/explore/triple/0xtrusttriple');
+        assert.equal(signal.identityLayer.portalLinks.tripleTransaction, 'https://explorer.intuition.systems/tx/0xidentity-triples');
     });
 });
 

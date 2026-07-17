@@ -225,6 +225,7 @@ function getIntuitionCredSignal(agent, options = {}) {
     );
 
     if (published) {
+        const identityLayer = normalizeIntuitionIdentityLayer(onchainStatus.identityLayer);
         return {
             status: 'published',
             label: 'Published',
@@ -238,6 +239,7 @@ function getIntuitionCredSignal(agent, options = {}) {
             tripleTransactionHash: onchainStatus.tripleTransactionHash
                 || onchainStatus.canonicalTripleTransactionHash
                 || null,
+            ...(identityLayer ? { identityLayer } : {}),
         };
     }
 
@@ -274,6 +276,105 @@ function getIntuitionCredSignal(agent, options = {}) {
         rawScore: 0,
         provider: setupState?.provider?.id || PROVIDER.id,
     };
+}
+
+function normalizeIntuitionIdentityLayer(identityLayer) {
+    if (!identityLayer || typeof identityLayer !== 'object') return null;
+
+    const status = trim(identityLayer.status);
+    const publishedAt = trim(identityLayer.publishedAt);
+    const identityUri = trim(identityLayer.identityUri);
+    const caipUri = trim(identityLayer.caipUri);
+    const atomTransactionHash = trim(identityLayer.atomTransactionHash);
+    const tripleTransactionHash = trim(identityLayer.tripleTransactionHash);
+    const canonicalTerms = normalizeIntuitionTermMap(identityLayer.canonicalTerms);
+    const triples = normalizeIntuitionTriples(identityLayer.triples);
+    const trustAssessmentTriple = findIntuitionTriple(triples, 'has trust assessment');
+
+    if (!status && !identityUri && !caipUri && !Object.keys(canonicalTerms).length && !triples.length) {
+        return null;
+    }
+
+    return {
+        status: status || null,
+        publishedAt: publishedAt || null,
+        identityUri: identityUri || null,
+        caipUri: caipUri || null,
+        atomTransactionHash: atomTransactionHash || null,
+        tripleTransactionHash: tripleTransactionHash || null,
+        identityAtomId: canonicalTerms.agent || null,
+        caipAtomId: canonicalTerms.caip || null,
+        providerAtomId: canonicalTerms.provider || null,
+        assessmentSourceAtomId: canonicalTerms.assessmentSource || null,
+        trustAssessmentTripleId: trustAssessmentTriple?.tripleId || null,
+        triples,
+        portalLinks: createIntuitionPortalLinks({
+            atomTransactionHash,
+            tripleTransactionHash,
+            triples,
+        }),
+    };
+}
+
+function normalizeIntuitionTermMap(value) {
+    if (!value || typeof value !== 'object') return {};
+    const allowed = new Set(['agent', 'caip', 'provider', 'assessmentSource', 'aiAgent', 'erc8004', 'trustAssessmentSource']);
+    return Object.fromEntries(
+        Object.entries(value)
+            .filter(([key, termId]) => allowed.has(key) && trim(termId))
+            .map(([key, termId]) => [key, trim(termId)]),
+    );
+}
+
+function normalizeIntuitionTriples(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((triple) => {
+            if (!triple || typeof triple !== 'object') return null;
+            const predicate = trim(triple.predicate);
+            const termId = trim(triple.termId || triple.predicateTermId);
+            const tripleId = trim(triple.tripleId);
+            if (!predicate || !tripleId) return null;
+            return {
+                predicate,
+                termId: termId || null,
+                tripleId,
+                portalUrl: intuitionPortalTripleUrl(tripleId),
+            };
+        })
+        .filter(Boolean);
+}
+
+function findIntuitionTriple(triples, predicate) {
+    const target = trim(predicate).toLowerCase();
+    return triples.find((triple) => trim(triple.predicate).toLowerCase() === target) || null;
+}
+
+function createIntuitionPortalLinks({ atomTransactionHash, tripleTransactionHash, triples }) {
+    const byPredicate = Object.fromEntries(
+        triples
+            .filter((triple) => triple.portalUrl)
+            .map((triple) => [safeKey(triple.predicate), triple.portalUrl]),
+    );
+    return {
+        ...byPredicate,
+        atomTransaction: atomTransactionHash ? intuitionExplorerTxUrl(atomTransactionHash) : null,
+        tripleTransaction: tripleTransactionHash ? intuitionExplorerTxUrl(tripleTransactionHash) : null,
+    };
+}
+
+function intuitionPortalTripleUrl(tripleId) {
+    const id = trim(tripleId);
+    return id ? `https://portal.intuition.systems/explore/triple/${id}` : null;
+}
+
+function intuitionExplorerTxUrl(transactionHash) {
+    const hash = trim(transactionHash);
+    return hash ? `https://explorer.intuition.systems/tx/${hash}` : null;
+}
+
+function safeKey(value) {
+    return trim(value).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'unknown';
 }
 
 function clampScore(value) {
