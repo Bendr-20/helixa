@@ -138,6 +138,11 @@ function classifyMintOpsHealth(input, thresholds = {}) {
   };
 }
 
+function ownerGasBelowThreshold(snapshot, threshold = DEFAULT_MIN_OWNER_ETH) {
+  const ownerEth = Number(snapshot?.ownerEth);
+  return Number.isFinite(ownerEth) && ownerEth < threshold;
+}
+
 function formatAlertMessage(report) {
   if (!report || report.status === 'ok') return '';
   const lines = ['Mint ops alert'];
@@ -225,6 +230,7 @@ async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcT
   const urls = normalizeRpcUrls(rpcUrls ?? [rpcUrl, ...DEFAULT_RPC_FALLBACK_URLS]);
   const timeoutMs = normalizePositiveInteger(rpcTimeoutMs, DEFAULT_RPC_TIMEOUT_MS, 1, 60000);
   const rpcFailures = [];
+  let lowOwnerGasResult = null;
   const usesCustomCollector = typeof collectFromRpc === 'function';
   const snapshotCollector = collectFromRpc || collectContractSnapshotFromRpc;
 
@@ -232,11 +238,27 @@ async function collectContractSnapshot({ rpcUrl = DEFAULT_RPC_URL, rpcUrls, rpcT
     try {
       const snapshotPromise = Promise.resolve().then(() => snapshotCollector(url, { rpcTimeoutMs: timeoutMs }));
       const snapshot = usesCustomCollector ? await withRpcSnapshotTimeout(snapshotPromise, timeoutMs) : await snapshotPromise;
-      return { ...snapshot, rpcUrl: url, rpcFailures };
+      const result = { ...snapshot, rpcUrl: url, rpcFailures };
+      if (urls.length > 1 && ownerGasBelowThreshold(snapshot)) {
+        lowOwnerGasResult = {
+          ...result,
+          lowOwnerGasSnapshots: [
+            ...(lowOwnerGasResult?.lowOwnerGasSnapshots || []),
+            { rpcUrl: url, ownerEth: snapshot.ownerEth },
+          ],
+        };
+        continue;
+      }
+      if (lowOwnerGasResult?.lowOwnerGasSnapshots?.length) {
+        return { ...result, lowOwnerGasSnapshots: lowOwnerGasResult.lowOwnerGasSnapshots };
+      }
+      return result;
     } catch (error) {
       rpcFailures.push({ rpcUrl: url, error: error?.message || String(error) });
     }
   }
+
+  if (lowOwnerGasResult) return lowOwnerGasResult;
 
   throw new Error(`All Base RPC snapshots failed: ${rpcFailures.map((failure) => `${failure.rpcUrl}: ${failure.error}`).join('; ')}`);
 }

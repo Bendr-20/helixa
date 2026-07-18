@@ -170,6 +170,46 @@ test('collectContractSnapshot falls back to the next RPC before failing the moni
   assert.deepEqual(result.rpcFailures, [{ rpcUrl: 'https://bad-rpc.example', error: '408 Request Timeout' }]);
 });
 
+test('collectContractSnapshot confirms low owner gas across RPC fallbacks before returning a warning snapshot', async () => {
+  const calls = [];
+  const result = await collectContractSnapshot({
+    rpcUrls: ['https://zero-rpc.example', 'https://good-rpc.example'],
+    collectFromRpc: async (rpcUrl) => {
+      calls.push(rpcUrl);
+      if (rpcUrl.includes('zero-rpc')) return { totalAgents: 5220, mintPriceWei: '569858205032133', ownerEth: 0 };
+      return { totalAgents: 5220, mintPriceWei: '569858205032133', ownerEth: 0.004238159419461653 };
+    },
+  });
+
+  assert.deepEqual(calls, ['https://zero-rpc.example', 'https://good-rpc.example']);
+  assert.equal(result.rpcUrl, 'https://good-rpc.example');
+  assert.equal(result.ownerEth, 0.004238159419461653);
+  assert.deepEqual(result.lowOwnerGasSnapshots, [{ rpcUrl: 'https://zero-rpc.example', ownerEth: 0 }]);
+});
+
+test('collectContractSnapshot returns a low owner gas snapshot when every RPC agrees it is low', async () => {
+  const calls = [];
+  const result = await collectContractSnapshot({
+    rpcUrls: ['https://low-rpc-a.example', 'https://low-rpc-b.example'],
+    collectFromRpc: async (rpcUrl) => {
+      calls.push(rpcUrl);
+      return {
+        totalAgents: 5220,
+        mintPriceWei: '569858205032133',
+        ownerEth: rpcUrl.includes('low-rpc-a') ? 0 : 0.00001,
+      };
+    },
+  });
+
+  assert.deepEqual(calls, ['https://low-rpc-a.example', 'https://low-rpc-b.example']);
+  assert.equal(result.rpcUrl, 'https://low-rpc-b.example');
+  assert.equal(result.ownerEth, 0.00001);
+  assert.deepEqual(result.lowOwnerGasSnapshots, [
+    { rpcUrl: 'https://low-rpc-a.example', ownerEth: 0 },
+    { rpcUrl: 'https://low-rpc-b.example', ownerEth: 0.00001 },
+  ]);
+});
+
 test('collectContractSnapshot timeboxes a stuck RPC before trying the next fallback', async () => {
   const calls = [];
   const result = await collectContractSnapshot({
