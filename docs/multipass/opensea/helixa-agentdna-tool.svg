@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Helixa AgentDNA OpenSea feature image">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07080c" />
+      <stop offset="0.46" stop-color="#11131b" />
+      <stop offset="1" stop-color="#211727" />
+    </linearGradient>
+    <radialGradient id="goldGlow" cx="0.16" cy="0.18" r="0.72">
+      <stop offset="0" stop-color="#f3c064" stop-opacity="0.62" />
+      <stop offset="0.42" stop-color="#f3a95c" stop-opacity="0.18" />
+      <stop offset="1" stop-color="#f3a95c" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="violetGlow" cx="0.86" cy="0.18" r="0.72">
+      <stop offset="0" stop-color="#9d7bff" stop-opacity="0.72" />
+      <stop offset="0.48" stop-color="#624cff" stop-opacity="0.18" />
+      <stop offset="1" stop-color="#624cff" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="cyanGlow" cx="0.74" cy="0.76" r="0.62">
+      <stop offset="0" stop-color="#58e7d0" stop-opacity="0.36" />
+      <stop offset="1" stop-color="#58e7d0" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7e8" stop-opacity="0.16" />
+      <stop offset="1" stop-color="#d8c5ff" stop-opacity="0.09" />
+    </linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4c46c" />
+      <stop offset="0.48" stop-color="#fff4d2" />
+      <stop offset="1" stop-color="#9d7bff" />
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.12" />
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04" />
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#000000" flood-opacity="0.38" />
+    </filter>
+    <filter id="nodeGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <clipPath id="rounded">
+      <rect x="44" y="42" width="1112" height="546" rx="42" />
+    </clipPath>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect width="1200" height="630" fill="url(#goldGlow)" />
+  <rect width="1200" height="630" fill="url(#violetGlow)" />
+  <rect width="1200" height="630" fill="url(#cyanGlow)" />
+
+  <g clip-path="url(#rounded)" opacity="0.54">
+    <path d="M-20 500 C142 390 255 545 418 443 C566 350 667 168 822 219 C956 263 1016 460 1236 344" fill="none" stroke="#fff6d7" stroke-opacity="0.12" stroke-width="2" />
+    <path d="M-40 136 C135 208 241 43 389 126 C543 213 541 421 713 410 C870 400 930 211 1248 188" fill="none" stroke="#a990ff" stroke-opacity="0.18" stroke-width="2" />
+    <g fill="#ffffff" opacity="0.42">
+      <circle cx="102" cy="118" r="1.4" />
+      <circle cx="176" cy="444" r="1.1" />
+      <circle cx="279" cy="86" r="1.2" />
+      <circle cx="390" cy="514" r="1.4" />
+      <circle cx="522" cy="146" r="1.1" />
+      <circle cx="648" cy="534" r="1.2" />
+      <circle cx="785" cy="86" r="1.3" />
+      <circle cx="946" cy="525" r="1.4" />
+      <circle cx="1094" cy="132" r="1.2" />
+    </g>
+  </g>
+
+  <rect x="44" y="42" width="1112" height="546" rx="42" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.14" />
+  <rect x="46" y="44" width="1108" height="542" rx="40" fill="none" stroke="url(#stroke)" stroke-opacity="0.42" />
+
+  <g font-family="Inter, Arial, Helvetica, sans-serif">
+    <g transform="translate(88 86)">
+      <text x="0" y="0" font-size="24" font-weight="900" letter-spacing="6" fill="#f6c66d">HELIXA</text>
+      <text x="0" y="70" font-size="72" font-weight="950" fill="#fff8ec">AgentDNA</text>
+      <text x="0" y="116" font-size="31" font-weight="850" fill="#d7ccf8">Agent Tool Registry</text>
+      <text x="0" y="166" font-size="23" font-weight="650" fill="#aeb2c4">Public identity, tool metadata, and trust signals</text>
+      <text x="0" y="199" font-size="23" font-weight="650" fill="#aeb2c4">for agents on Multipass.</text>
+    </g>
+
+    <g transform="translate(88 354)">
+      <rect x="0" y="0" width="188" height="82" rx="22" fill="url(#chip)" stroke="#ffffff" stroke-opacity="0.13" />
+      <text x="22" y="33" font-size="18" font-weight="850" letter-spacing="2.5" fill="#f6c66d">AGENT ID</text>
+      <text x="22" y="62" font-size="25" font-weight="950" fill="#fff8ec">8453:{id}</text>
+
+      <rect x="210" y="0" width="188" height="82" rx="22" fill="url(#chip)" stroke="#ffffff" stroke-opacity="0.13" />
+      <text x="232" y="33" font-size="18" font-weight="850" letter-spacing="2.5" fill="#f6c66d">CRED</text>
+      <text x="232" y="62" font-size="25" font-weight="950" fill="#fff8ec">Trust tier</text>
+
+      <rect x="0" y="104" width="188" height="82" rx="22" fill="url(#chip)" stroke="#ffffff" stroke-opacity="0.13" />
+      <text x="22" y="137" font-size="18" font-weight="850" letter-spacing="2.5" fill="#f6c66d">TOOLS</text>
+      <text x="22" y="166" font-size="25" font-weight="950" fill="#fff8ec">Public refs</text>
+
+      <rect x="210" y="104" width="188" height="82" rx="22" fill="url(#chip)" stroke="#ffffff" stroke-opacity="0.13" />
+      <text x="232" y="137" font-size="18" font-weight="850" letter-spacing="2.5" fill="#f6c66d">ROUTES</text>
+      <text x="232" y="166" font-size="25" font-weight="950" fill="#fff8ec">API / x402</text>
+    </g>
+
+    <g transform="translate(664 88)" filter="url(#softShadow)">
+      <rect x="0" y="0" width="404" height="404" rx="48" fill="#0c0f16" stroke="#ffffff" stroke-opacity="0.16" />
+      <rect x="18" y="18" width="368" height="368" rx="38" fill="#111827" stroke="url(#stroke)" stroke-opacity="0.56" />
+      <circle cx="202" cy="202" r="126" fill="none" stroke="#f6c66d" stroke-width="2" stroke-opacity="0.68" />
+      <circle cx="202" cy="202" r="88" fill="none" stroke="#9d7bff" stroke-width="2" stroke-opacity="0.74" />
+      <path d="M105 204 C142 106 262 104 299 204 C262 304 142 306 105 204 Z" fill="none" stroke="#fff8ec" stroke-opacity="0.58" stroke-width="4" />
+      <path d="M105 204 C142 304 262 306 299 204 C262 104 142 106 105 204 Z" fill="none" stroke="#55ead7" stroke-opacity="0.55" stroke-width="4" />
+      <line x1="202" y1="70" x2="202" y2="334" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2" />
+      <line x1="70" y1="202" x2="334" y2="202" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2" />
+      <circle cx="202" cy="202" r="46" fill="#fff8ec" fill-opacity="0.92" />
+      <text x="202" y="194" text-anchor="middle" font-size="17" font-weight="950" letter-spacing="2.5" fill="#161821">AGENT</text>
+      <text x="202" y="222" text-anchor="middle" font-size="23" font-weight="950" fill="#161821">DNA</text>
+      <circle cx="105" cy="204" r="12" fill="#f6c66d" filter="url(#nodeGlow)" />
+      <circle cx="299" cy="204" r="12" fill="#9d7bff" filter="url(#nodeGlow)" />
+      <circle cx="202" cy="78" r="10" fill="#55ead7" filter="url(#nodeGlow)" />
+      <circle cx="202" cy="326" r="10" fill="#fff8ec" filter="url(#nodeGlow)" />
+      <text x="202" y="355" text-anchor="middle" font-size="17" font-weight="900" letter-spacing="4" fill="#aeb2c4">TRUST PROFILE</text>
+    </g>
+
+    <g transform="translate(664 522)">
+      <rect x="0" y="0" width="404" height="42" rx="21" fill="#fff8ec" fill-opacity="0.1" stroke="#ffffff" stroke-opacity="0.12" />
+      <text x="202" y="28" text-anchor="middle" font-size="18" font-weight="850" letter-spacing="1.4" fill="#fff8ec">helixa.xyz / Multipass / AgentDNA</text>
+    </g>
+  </g>
+</svg>

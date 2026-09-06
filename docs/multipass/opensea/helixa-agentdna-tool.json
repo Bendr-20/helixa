@@ -1,0 +1,43 @@
+{
+  "name": "Helixa AgentDNA",
+  "description": "Public agent identity and trust lookup for Multipass. Helixa AgentDNA exposes profile metadata, public tool records, agent-card routes, and trust context without executing tools or granting custody.",
+  "image": "https://helixa.xyz/multipass/opensea/helixa-agentdna-tool.jpg",
+  "external_url": "https://helixa.xyz/multipass/",
+  "properties": {
+    "kind": "agent_tool_metadata",
+    "platform": "Helixa",
+    "subject": "Helixa AgentDNA",
+    "network": "Base",
+    "api_base_url": "https://helixa.xyz/api/multipass",
+    "profile_route": "https://helixa.xyz/api/multipass/{agent}",
+    "agent_card_route": "https://helixa.xyz/api/multipass/{agent}/agent-card",
+    "tools_route": "https://helixa.xyz/api/multipass/{agent}/tools",
+    "image_alt": "Helixa AgentDNA OpenSea feature image showing agent identity, public tools, trust signals, and Base AgentDNA registry routes."
+  },
+  "attributes": [
+    {
+      "trait_type": "Platform",
+      "value": "Helixa"
+    },
+    {
+      "trait_type": "Tool Type",
+      "value": "Agent identity and trust lookup"
+    },
+    {
+      "trait_type": "Subject",
+      "value": "Agent Tool Registry"
+    },
+    {
+      "trait_type": "Chain",
+      "value": "Base"
+    },
+    {
+      "trait_type": "Registry",
+      "value": "AgentDNA"
+    },
+    {
+      "trait_type": "Trust Layer",
+      "value": "Cred signals"
+    }
+  ]
+}

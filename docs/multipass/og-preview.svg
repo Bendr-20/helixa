@@ -1,43 +1,87 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Multipass - Portable Agent Identity</title>
-  <desc id="desc">Identity, proof, custody, Cred, and discovery context for agents and AI-native systems.</desc>
+  <title id="title">Multipass - Agent Trust Profile Example</title>
+  <desc id="desc">A generic Multipass credential frame with the live Bendr 2.0 profile clipped inside.</desc>
   <defs>
-    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fffaf1" />
-      <stop offset="1" stop-color="#eadfcb" />
+    <linearGradient id="topline" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#68e8d4" />
+      <stop offset="0.48" stop-color="#80d0ff" />
+      <stop offset="1" stop-color="#f29bcf" />
     </linearGradient>
     <linearGradient id="ink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#18202f" />
-      <stop offset="1" stop-color="#35566f" />
+      <stop offset="0" stop-color="#101827" />
+      <stop offset="1" stop-color="#314e67" />
     </linearGradient>
-    <linearGradient id="aura" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#6eecd8" />
-      <stop offset="0.52" stop-color="#b490ff" />
-      <stop offset="1" stop-color="#f5a0d0" />
+    <linearGradient id="aura" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6fe8d6" />
+      <stop offset="0.5" stop-color="#78c9ff" />
+      <stop offset="1" stop-color="#ee8bc8" />
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#18202f" flood-opacity="0.18" />
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M 42 0 L 0 0 0 42" fill="none" stroke="#d9e1dc" stroke-width="1" opacity="0.45" />
+    </pattern>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#18202f" flood-opacity="0.2" />
     </filter>
+    <clipPath id="profileClip">
+      <rect x="30" y="116" width="500" height="300" rx="22" />
+    </clipPath>
   </defs>
-  <rect width="1200" height="630" fill="url(#paper)" />
-  <circle cx="990" cy="115" r="220" fill="#6eecd8" opacity="0.16" />
-  <circle cx="1060" cy="520" r="260" fill="#b490ff" opacity="0.14" />
-  <circle cx="105" cy="525" r="230" fill="#f5a0d0" opacity="0.12" />
-  <rect x="72" y="70" width="1056" height="490" rx="34" fill="rgba(255,255,255,0.54)" stroke="#18202f" stroke-width="3" filter="url(#shadow)" />
-  <g transform="translate(824 134)">
-    <rect x="0" y="0" width="218" height="318" rx="30" fill="#fffaf1" stroke="#18202f" stroke-width="3" />
-    <circle cx="109" cy="96" r="62" fill="url(#aura)" opacity="0.92" />
-    <rect x="42" y="192" width="134" height="16" rx="8" fill="#18202f" opacity="0.88" />
-    <rect x="42" y="228" width="96" height="14" rx="7" fill="#35566f" opacity="0.7" />
-    <rect x="42" y="262" width="118" height="14" rx="7" fill="#35566f" opacity="0.42" />
+
+  <rect width="1200" height="630" fill="#f5f1e9" />
+  <rect width="1200" height="630" fill="url(#grid)" />
+  <rect width="1200" height="11" fill="url(#topline)" />
+  <rect x="0" y="548" width="1200" height="82" fill="#eef4f0" opacity="0.62" />
+
+  <g transform="translate(72 58)">
+    <text x="0" y="20" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="7" fill="#2f5068">HELIXA / MULTIPASS</text>
+    <text x="0" y="132" font-family="Inter, Arial, sans-serif" font-size="86" font-weight="900" fill="url(#ink)">MULTIPASS</text>
+    <text x="0" y="194" font-family="Inter, Arial, sans-serif" font-size="37" font-weight="800" fill="#2f5068">Agent trust profile</text>
+    <text x="0" y="258" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700" fill="#334c5d">A portable credential for identity,</text>
+    <text x="0" y="294" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="700" fill="#334c5d">Cred, proof, routes, and discovery.</text>
+
+    <g transform="translate(0 348)" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" fill="#121a27">
+      <rect x="0" y="-23" width="142" height="44" rx="22" fill="#fbfcfa" stroke="#bfd2d2" />
+      <circle cx="23" cy="-1" r="7" fill="#68e1d3" />
+      <text x="43" y="5">Cred Score</text>
+      <rect x="156" y="-23" width="136" height="44" rx="22" fill="#fbfcfa" stroke="#bfd2d2" />
+      <circle cx="179" cy="-1" r="7" fill="#70c4f5" />
+      <text x="199" y="5">ERC-8004</text>
+      <rect x="0" y="34" width="106" height="44" rx="22" fill="#fbfcfa" stroke="#bfd2d2" />
+      <circle cx="23" cy="56" r="7" fill="#a989ff" />
+      <text x="43" y="62">x402</text>
+      <rect x="120" y="34" width="152" height="44" rx="22" fill="#fbfcfa" stroke="#bfd2d2" />
+      <circle cx="143" cy="56" r="7" fill="#ed8dc8" />
+      <text x="163" y="62">Public Routes</text>
+    </g>
+
+    <rect x="0" y="456" width="255" height="48" rx="24" fill="#111a29" />
+    <text x="128" y="486" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="900" letter-spacing="2" fill="#fffaf1">HELIXA.XYZ/MULTIPASS</text>
   </g>
-  <text x="116" y="150" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="6" fill="#35566f">MULTIPASS</text>
-  <text x="116" y="258" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="900" fill="url(#ink)">Portable Agent</text>
-  <text x="116" y="338" font-family="Inter, Arial, sans-serif" font-size="70" font-weight="900" fill="url(#ink)">Identity</text>
-  <text x="116" y="414" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="600" fill="#35566f">Identity, proof, custody, Cred, and discovery context</text>
-  <text x="116" y="456" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="600" fill="#35566f">for agents and AI-native systems.</text>
-  <g transform="translate(116 498)">
-    <rect width="172" height="44" rx="22" fill="#18202f" />
-    <text x="86" y="29" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="900" letter-spacing="2" fill="#fffaf1">HELIXA.XYZ</text>
+
+  <g transform="translate(590 72) rotate(-2 280 246)" filter="url(#shadow)">
+    <rect x="0" y="0" width="560" height="486" rx="32" fill="#fffdf8" stroke="#162234" stroke-width="4" />
+    <path d="M0 32 Q0 0 32 0 H528 Q560 0 560 32 V92 H0 Z" fill="#142033" />
+    <rect x="33" y="34" width="118" height="17" rx="9" fill="url(#aura)" />
+    <text x="528" y="55" text-anchor="end" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="900" letter-spacing="9" fill="#fffaf1">MULTIPASS</text>
+    <text x="30" y="106" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="900" letter-spacing="3" fill="#53697a">LIVE EXAMPLE / BENDR 2.0 / 8453:1</text>
+
+    <rect x="30" y="116" width="500" height="300" rx="22" fill="#f3eee6" stroke="#cfdbd8" stroke-width="2" />
+    <g clip-path="url(#profileClip)">
+      <svg x="30" y="116" width="500" height="300" viewBox="20 130 1160 422" preserveAspectRatio="xMidYMid slice">
+        <image href="og-bendr-profile-capture.png" x="0" y="0" width="1200" height="630" />
+      </svg>
+      <rect x="30" y="116" width="500" height="300" fill="#fffaf1" opacity="0.05" />
+    </g>
+    <rect x="30" y="116" width="500" height="300" rx="22" fill="none" stroke="#172235" stroke-width="2" opacity="0.55" />
+
+    <g font-family="Inter, Arial, sans-serif" font-size="16" font-weight="900" fill="#142033">
+      <rect x="50" y="436" width="120" height="36" rx="18" fill="#ddfbf5" stroke="#6adccd" />
+      <text x="110" y="459" text-anchor="middle">Cred 65</text>
+      <rect x="184" y="436" width="106" height="36" rx="18" fill="#fffdf8" stroke="#cbd6d2" />
+      <text x="237" y="459" text-anchor="middle">verified</text>
+      <rect x="304" y="436" width="152" height="36" rx="18" fill="#fffdf8" stroke="#cbd6d2" />
+      <text x="380" y="459" text-anchor="middle">Owner verified</text>
+    </g>
+    <rect x="50" y="416" width="460" height="5" rx="3" fill="url(#aura)" opacity="0.9" />
   </g>
 </svg>

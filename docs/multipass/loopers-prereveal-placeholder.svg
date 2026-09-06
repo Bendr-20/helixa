@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Loopers pre-reveal placeholder</title>
+  <desc id="desc">A branded Loopers collage card used as the public placeholder image before reveal.</desc>
+  <defs>
+    <linearGradient id="paperGlow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8d6" />
+      <stop offset="1" stop-color="#f6ead2" />
+    </linearGradient>
+    <linearGradient id="mesh" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00dcff" stop-opacity="0.22" />
+      <stop offset="1" stop-color="#ff2ea6" stop-opacity="0.16" />
+    </linearGradient>
+    <linearGradient id="sticker" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff14d" />
+      <stop offset="1" stop-color="#ffb300" />
+    </linearGradient>
+    <pattern id="microGrid" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#7a7a7a" stroke-width="1.2" opacity="0.22" />
+    </pattern>
+    <pattern id="zig" width="28" height="14" patternUnits="userSpaceOnUse">
+      <path d="M0 8 L7 2 L14 8 L21 2 L28 8" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.18" />
+    </pattern>
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#000000" flood-opacity="0.42" />
+    </filter>
+  </defs>
+
+  <rect width="1200" height="1200" fill="#090909" />
+  <rect width="1200" height="1200" fill="url(#zig)" />
+  <rect width="1200" height="1200" fill="url(#microGrid)" />
+  <rect width="1200" height="1200" fill="url(#mesh)" />
+  <circle cx="218" cy="220" r="148" fill="#ff2d20" opacity="0.22" />
+  <circle cx="994" cy="242" r="166" fill="#1b82ff" opacity="0.22" />
+  <circle cx="938" cy="958" r="188" fill="#ffe14d" opacity="0.18" />
+  <circle cx="174" cy="916" r="144" fill="#34d314" opacity="0.2" />
+
+  <g transform="translate(124 118) rotate(-2 476 476)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="952" height="952" rx="46" fill="url(#paperGlow)" stroke="#000000" stroke-width="6" />
+    <rect x="30" y="30" width="892" height="892" rx="28" fill="none" stroke="#191919" stroke-width="2.5" stroke-dasharray="10 11" opacity="0.42" />
+
+    <g transform="translate(88 74)">
+      <rect x="-30" y="-18" width="192" height="56" rx="14" fill="#111111" />
+      <text x="66" y="19" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" letter-spacing="4" fill="#f8f0dd">AGENTDNA</text>
+
+      <image href="loopers-logo.png" x="0" y="70" width="700" height="168" preserveAspectRatio="xMinYMin meet" />
+
+      <g transform="translate(0 288)">
+        <rect x="0" y="0" width="272" height="78" rx="18" fill="#101010" />
+        <rect x="14" y="14" width="244" height="50" rx="12" fill="url(#sticker)" stroke="#000000" stroke-width="3" />
+        <text x="136" y="49" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="900" letter-spacing="3" fill="#0d0d0d">PRE-REVEAL</text>
+      </g>
+
+      <g transform="translate(0 414)">
+        <text x="0" y="0" font-family="Arial, Helvetica, sans-serif" font-size="118" font-weight="900" fill="#0f0f0f">MINT FIRST.</text>
+        <text x="0" y="112" font-family="Arial, Helvetica, sans-serif" font-size="118" font-weight="900" fill="#0f0f0f">REVEAL LATER.</text>
+        <rect x="4" y="148" width="524" height="18" rx="9" fill="#0e0e0e" />
+        <text x="2" y="232" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="800" fill="#2a2a2a">FINAL LOOPERS ART STAYS HIDDEN UNTIL PUBLIC MINT.</text>
+      </g>
+
+      <g transform="translate(534 308) rotate(5 142 178)">
+        <rect x="0" y="0" width="286" height="360" rx="26" fill="#fffdf8" stroke="#000000" stroke-width="5" />
+        <rect x="24" y="24" width="238" height="232" rx="18" fill="#111111" />
+        <rect x="42" y="42" width="202" height="196" rx="14" fill="#f6ead2" />
+        <path d="M72 169 C105 108 181 108 214 169" fill="none" stroke="#111111" stroke-width="16" stroke-linecap="round" />
+        <circle cx="116" cy="169" r="34" fill="none" stroke="#111111" stroke-width="16" />
+        <circle cx="170" cy="169" r="34" fill="none" stroke="#111111" stroke-width="16" />
+        <rect x="38" y="276" width="210" height="44" rx="10" fill="#ff2d20" stroke="#111111" stroke-width="4" />
+        <text x="143" y="305" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="900" letter-spacing="2" fill="#fffaf1">NOT FINAL TOKEN ART</text>
+        <text x="34" y="344" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#111111">PLACEHOLDER IMAGE</text>
+      </g>
+    </g>
+
+    <g transform="translate(98 814)" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="900" letter-spacing="2">
+      <rect x="0" y="0" width="142" height="54" rx="12" fill="#1b82ff" stroke="#000000" stroke-width="3" />
+      <text x="71" y="35" text-anchor="middle" fill="#fff9ef">BASE</text>
+      <rect x="160" y="0" width="172" height="54" rx="12" fill="#34d314" stroke="#000000" stroke-width="3" />
+      <text x="246" y="35" text-anchor="middle" fill="#fff9ef">BANKR</text>
+      <rect x="352" y="0" width="212" height="54" rx="12" fill="#ff2ea6" stroke="#000000" stroke-width="3" />
+      <text x="458" y="35" text-anchor="middle" fill="#fff9ef">OPENCLAW</text>
+      <rect x="584" y="0" width="150" height="54" rx="12" fill="#111111" stroke="#000000" stroke-width="3" />
+      <text x="659" y="35" text-anchor="middle" fill="#fff9ef">$CRED</text>
+      <rect x="754" y="0" width="120" height="54" rx="12" fill="#fff14d" stroke="#000000" stroke-width="3" />
+      <text x="814" y="35" text-anchor="middle" fill="#111111">8004</text>
+    </g>
+
+    <g opacity="0.9">
+      <rect x="80" y="64" width="116" height="34" rx="6" fill="#fff8c1" stroke="#000000" stroke-width="2.5" transform="rotate(-17 138 81)" />
+      <rect x="758" y="78" width="114" height="34" rx="6" fill="#fff8c1" stroke="#000000" stroke-width="2.5" transform="rotate(14 815 95)" />
+      <rect x="108" y="860" width="124" height="34" rx="6" fill="#fff8c1" stroke="#000000" stroke-width="2.5" transform="rotate(14 170 877)" />
+      <rect x="760" y="846" width="116" height="34" rx="6" fill="#fff8c1" stroke="#000000" stroke-width="2.5" transform="rotate(-12 818 863)" />
+    </g>
+  </g>
+</svg>
