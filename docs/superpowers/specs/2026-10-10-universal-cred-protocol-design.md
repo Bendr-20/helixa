@@ -1,6 +1,6 @@
 # Universal CRED Protocol Design
 
-Status: approved design
+Status: architecture approved; scoring methodology pending calibration and separate approval
 Date: 2026-10-10
 Owner: Helixa
 
@@ -16,6 +16,8 @@ The system has two related products:
 Canonical CRED is free and public. Helixa monetizes detailed reports, proof bundles, predictions, historical data, bulk access, webhooks, integrations, certification, analytics, and service guarantees. Partners that run incentivized agent campaigns separately fund campaign vaults. Payment never purchases score weight or favorable treatment.
 
 The initial ecosystem includes Helixa and ERC-8004 data, Regents, AdapterScan, ChainAware, Deep3, Intuition, and economic-outcome partners such as Credify. Each source has a bounded role. CRED—not any provider's native score—remains the canonical methodology.
+
+This document approves the protocol scaffolding and safety boundaries. It does **not** approve the numerical scoring methodology. Priors, curves, multipliers, caps, decay functions, confidence math, and rating gates require a separate methodology specification, historical replay, published migration deltas, and explicit approval before any score-affecting production launch.
 
 ## 2. Problem
 
@@ -192,6 +194,19 @@ Behavior is always attributed to the subject and the actor epoch in which it occ
 - Unverified links remain visible as claims but do not establish authority.
 - Claiming an agent proves control and can improve identity confidence; the act of claiming does not directly raise canonical CRED.
 
+### 6.5 Transfer and wallet-reissuance reverification
+
+An NFT transfer or authoritative controller change creates a new epoch and sets sensitive eligibility to `TRANSFER_PENDING`. The new controller has a bounded self-service path:
+
+1. Wait for the configured chain-finality threshold on the transfer/control event.
+2. Resolve the current controller from the authoritative registry or `ownerOf` read at a finalized block.
+3. Sign a short-lived EIP-712 control challenge with the current EOA owner or an EIP-1271-compatible smart account/Safe.
+4. Resolve and verify the current ERC-6551/TBA, operating wallet, and any replacement-wallet binding against pinned registry, implementation, collection, token, chain, and code-hash policy.
+5. Disclose or resolve open encumbrances; obligations remain attached to their original borrower/agreement/epoch unless explicitly assumed.
+6. Open the new epoch, reactivate eligible read/write policy, and issue a signed reverification receipt.
+
+For a wallet reissuance, the same current owner proves the replacement binding. The old wallet becomes historical or recovery-only; authority and balances are never assumed to migrate automatically. If the prior wallet cannot sign, current authoritative NFT/controller ownership can open the new epoch, but it cannot move assets from or erase approvals on the old wallet. A transfer must not require manual Helixa intervention unless identity proofs conflict or an encumbrance/dispute blocks automatic activation.
+
 ## 7. Provider and Schema Governance
 
 ### 7.1 Two-lane evidence model
@@ -232,6 +247,20 @@ Commercial payment cannot grant approval, schema authority, influence, or favora
 6. Operate in observation mode with zero score influence.
 7. Compare submissions against verifiable outcomes.
 8. Enable bounded production influence after review.
+
+### 7.4 Permissionless queue economics and abuse controls
+
+Permissionless submission is not an unlimited free verification service.
+
+- Authenticated submitters receive a small published daily quota and strict per-subject, per-origin, and duplicate-content limits.
+- Higher-volume or high-impact negative claims require a refundable anti-spam bond and a verification fee or approved verification sponsor.
+- Exact duplicates and known-related incidents are coalesced before queue admission.
+- Claims with no sponsor, bond, or independent verifier expire from the active queue after a published retention window while their receipt hash remains auditable.
+- Bonds may be reduced or forfeited under a published policy for provable spam, fabricated proof references, replay, or repeated abusive submissions; rejected good-faith claims are not automatically penalized.
+- No bond purchases score influence. A bonded claim remains quarantined until independently verified.
+- Queue priority is determined by objective severity, proof completeness, affected-value exposure, age, and verifier capacity—not payment size alone.
+
+Before launch, Helixa must publish the quota, bond/fee schedule, retention period, appeal path, and anti-griefing limits. These parameters are operational policy and may change without changing score math, but changes are versioned and publicly logged.
 
 ## 8. Evidence Ontology and Ledger
 
@@ -304,6 +333,21 @@ Rejected records retain a bounded audit receipt but never enter the active evide
 - **Zero-knowledge:** supported when a proof can establish a relevant fact without revealing the underlying data.
 
 Every score effect remains attributable to a provider, schema, timestamp, state, and commitment.
+
+### 8.5 Verified meaningful outcome standard
+
+Campaign activity can affect CRED only when its evidence schema is approved **before** the campaign or season begins and the event satisfies every applicable condition:
+
+1. **Precommitted objective:** the terminal success/failure condition, unit, direction, materiality threshold, and proof source are published before participation.
+2. **Attributable actor:** the subject, operator/custody epoch, counterparty, and provider authority are resolved.
+3. **Terminal outcome:** the evidence records a completed, failed, settled, defaulted, accepted, rejected, or independently measured service result—not mere enrollment, staking, clicks, heartbeats without an SLA, or raw transaction count.
+4. **Verifiable proof:** an onchain receipt, signed counterparty result, reproducible evaluation bundle, or approved private commitment supports the claim.
+5. **Materiality:** the outcome clears the schema's minimum difficulty, duration, value-at-risk, or service-level threshold.
+6. **Anti-collusion:** self-dealing, related-party loops, wash activity, duplicated incidents, and campaign-funded circular activity are excluded or clustered.
+7. **Bounded influence:** campaign, provider, counterparty cluster, and evidence-family caps prevent farming from dominating a category.
+8. **Challengeability:** correction, revocation, dispute, and audit rules are defined before the event becomes score-eligible.
+
+The CRED methodology owner approves universal schema semantics under the public governance process; a paying campaign partner may propose outcomes but cannot unilaterally define them. Every campaign ships an **Evidence Measurement Plan** before funding or public launch. It lists eligible events, excluded behavior, proofs, materiality, caps, related-party rules, observation period, and audit sample. Campaign events begin in observation mode and receive no score influence until the plan and conformance fixtures pass. Criteria cannot be loosened retroactively for already-earned activity.
 
 ## 9. Initial Integration Roles
 
@@ -408,7 +452,7 @@ Weights are methodology-versioned. Consumers may apply CRED outputs to their own
 - Missing evidence affects confidence or coverage, not score direction.
 - Integer-only deterministic math and canonical serialization are required.
 
-Exact priors, saturation curves, severity multipliers, rating gates, decay functions, and caps will be set in the implementation methodology after replaying historical data. They must ship as public fixtures, not undocumented constants.
+Exact priors, saturation curves, severity multipliers, rating gates, decay functions, confidence math, and caps remain **unapproved**. They will be proposed in a separate Canonical CRED Methodology specification after historical replay and calibration. That specification must include public formulas, fixtures, sensitivity analysis, segment-level error analysis, legacy-to-candidate score deltas, tier-transition counts, and known limitations. No candidate score may affect production APIs, privileges, rewards, or onchain state before those artifacts are published and the methodology is explicitly approved.
 
 ### 10.4 Confidence and coverage
 
@@ -430,13 +474,13 @@ Prime and Preferred privileges require stronger confidence and coverage than low
 
 Compatibility tiers remain:
 
-- 0–25: Unproven / High Risk
+- 0–25: Junk
 - 26–50: Marginal
 - 51–75: Qualified
 - 76–90: Prime
 - 91–100: Preferred
 
-An Unrated subject has no tier. Provisional estimates are visibly labeled and cannot unlock high-trust policy gates.
+The public whitepaper/API mapping above is the compatibility source of truth. The repository also contains legacy helpers and a registry contract that use 20/40/60/80 boundaries; those are divergent implementations to inventory and correct, not an alternate tier model to inherit silently. `Unproven / High Risk` may be displayed only as explanatory text for the legacy `Junk` tier; it is not a renamed tier. `Unrated` is not a sixth numeric tier and carries no canonical score. A Provisional subject may expose an `estimatedScore` and `estimatedTier`, but `tier` remains null and it cannot unlock rated policy gates. Every affected consumer receives an explicit old-threshold/new-threshold compatibility test and published migration result.
 
 ### 10.7 Status flags
 
@@ -509,7 +553,7 @@ The canonical artifact includes:
   "evidenceSetRoot": "0x...",
   "snapshotId": "snapshot_...",
   "computedAt": "2026-10-10T00:00:00Z",
-  "validUntil": "2026-10-11T00:00:00Z",
+  "validUntil": "2026-10-10T01:00:00Z",
   "issuer": "helixa",
   "signature": "0x..."
 }
@@ -611,6 +655,16 @@ Onchain state should include:
 
 The existing token-ID-only oracle is not the universal endpoint. Migration must preserve compatibility while introducing subject-qualified, confidence-aware, versioned results.
 
+### 14.1 Cadence and freshness compatibility
+
+The current production oracle publishes hourly. Universal CRED v1 preserves that hourly maximum artifact lifetime and onchain publication target during migration:
+
+- eligible evidence may trigger continuous offchain recomputation;
+- signed public artifacts are refreshed at least hourly when healthy;
+- `validUntil` is no later than `computedAt + 60 minutes` and may be earlier when an evidence schema has a tighter freshness boundary;
+- missing the publication window marks the artifact and oracle state `STALE`; consumers receive the last valid artifact plus explicit staleness, never a silently extended 24-hour validity;
+- a future cadence change requires a versioned release, consumer-impact analysis, public notice, and migration plan.
+
 ## 15. Corrections, Disputes, and Provider Accountability
 
 ### 15.1 Corrections and revocations
@@ -692,7 +746,8 @@ Loopers and Pantheon can be early CRED consumers and campaign participants, but 
 - Season Points are temporary participation and reward accounting.
 - Season activity may create evidence only when it represents a verified meaningful outcome.
 - Staking size, reward spend, or campaign participation does not directly raise CRED.
-- CRED may determine eligibility or a small capped reward multiplier, while Pantheon owns vault accounting and settlement policy.
+- For the approved Looper Season, CRED is an eligibility gate only. It does not multiply Season Points, principal, yield, or vault rewards.
+- Any future proposal to introduce a CRED-based reward multiplier requires a separate reviewed season-policy change and cannot be inferred from this protocol design.
 
 ## 18. Rollout
 
@@ -757,11 +812,11 @@ The current public system remains available during migration.
 2. Build the new scorer in shadow mode using existing data without changing live scores.
 3. Map existing agents to canonical subjects and flag unresolved identity links.
 4. Reclassify product-adoption/profile signals as metadata rather than trust inputs.
-5. Compare legacy and universal scores with published reasoned deltas.
+5. Run the candidate methodology in shadow mode and publish reproducible legacy-to-candidate deltas before any score-affecting launch. The release packet includes per-subject old/new score and tier, reason codes, distribution shifts, tier-transition counts, unresolved identities, excluded evidence, category deltas, confidence/coverage changes, and aggregate segment/error analysis. Privacy-sensitive rows may use commitments, but every affected subject can retrieve its own explanation.
 6. Introduce Unrated/Provisional states before removing misleading low scores.
 7. Publish signed artifacts and API versioning alongside the legacy API.
 8. Upgrade onchain publication while maintaining a compatibility reader.
-9. Migrate consumers only after parity, replay, and consistency gates pass.
+9. Migrate consumers only after the delta packet is public, the scoring methodology is separately approved, and parity, replay, and consistency gates pass.
 10. Deprecate legacy writes on a public schedule; retain historical verification.
 
 No live score, contract, or consumer changes are authorized by this design document alone.
@@ -795,6 +850,7 @@ No live score, contract, or consumer changes are authorized by this design docum
 - custody/operator epoch transitions
 - debt and liability non-transfer
 - conflicting and revoked control proofs
+- finalized transfer detection, EOA/EIP-1271 control challenge, replacement-wallet verification, encumbrance check, and automatic epoch activation
 
 ### 21.3 Evidence integrity
 
@@ -804,6 +860,8 @@ No live score, contract, or consumer changes are authorized by this design docum
 - schema direction and unit validation
 - correction, revocation, expiration, and dispute replay
 - privacy commitment and selective-disclosure verification
+- campaign Evidence Measurement Plan conformance, materiality, wash/collusion rejection, and retroactive-rule-change rejection
+- permissionless quotas, duplicate coalescing, bond/fee handling, expiry, appeals, and queue-exhaustion resistance
 
 ### 21.4 Scoring
 
@@ -813,6 +871,8 @@ No live score, contract, or consumer changes are authorized by this design docum
 - provider and category caps
 - Unrated/Provisional/rated gates
 - stable reason codes
+- published legacy-to-candidate per-subject deltas, tier transitions, distribution shifts, and segment/error analysis
+- separate explicit approval of the numerical methodology after replay and shadow evaluation
 
 ### 21.5 Distribution
 
@@ -860,6 +920,12 @@ Adoption alone is not a quality metric. The system succeeds only if its ratings 
 - One signed artifact across REST, x402, SDKs, agent tools, webhooks, and onchain roots.
 - Deterministic canonical score plus separate calibrated prediction models.
 - Product-specific monetization and separately funded campaign vaults.
+- Permissionless claims are quota-bound; scaled/high-impact submissions require anti-spam economics or a verification sponsor.
 - Progressive governance from Helixa multisig toward onchain control.
 - Index all discoverable agents but separate discovery from rating eligibility.
+- Legacy tier names remain Junk, Marginal, Qualified, Prime, and Preferred; Unrated is a non-numeric state.
+- Hourly oracle/artifact freshness is preserved during migration; 24-hour silent validity is prohibited.
+- The approved Looper Season uses CRED as an eligibility gate only, with no reward multiplier.
+- Transfer reverification has a finalized owner/controller proof, signed challenge, wallet-binding verification, encumbrance check, and automatic new-epoch activation path.
+- Architecture approval does not approve score math; the canonical numerical methodology requires a separate specification, published replay deltas, and explicit approval.
 - Regents, AdapterScan, ChainAware, Deep3, Intuition, ERC-8004, Helixa, and economic partners retain distinct bounded roles.
