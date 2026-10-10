@@ -1,0 +1,134 @@
+{
+  "category": [
+    {
+      "name": "no evidence",
+      "positiveMicroEu": "0",
+      "negativeMicroEu": "0",
+      "expected": 50
+    },
+    {
+      "name": "one success",
+      "positiveMicroEu": "1000000",
+      "negativeMicroEu": "0",
+      "expected": 56
+    },
+    {
+      "name": "four successes",
+      "positiveMicroEu": "4000000",
+      "negativeMicroEu": "0",
+      "expected": 67
+    },
+    {
+      "name": "eight successes",
+      "positiveMicroEu": "8000000",
+      "negativeMicroEu": "0",
+      "expected": 75
+    },
+    {
+      "name": "twelve successes",
+      "positiveMicroEu": "12000000",
+      "negativeMicroEu": "0",
+      "expected": 80
+    },
+    {
+      "name": "thirty-two successes",
+      "positiveMicroEu": "32000000",
+      "negativeMicroEu": "0",
+      "expected": 90
+    },
+    {
+      "name": "thirty-six successes",
+      "positiveMicroEu": "36000000",
+      "negativeMicroEu": "0",
+      "expected": 91
+    },
+    {
+      "name": "four successes plus minor failure",
+      "positiveMicroEu": "4000000",
+      "negativeMicroEu": "1000000",
+      "expected": 62
+    },
+    {
+      "name": "four successes plus material failure",
+      "positiveMicroEu": "4000000",
+      "negativeMicroEu": "2000000",
+      "expected": 57
+    },
+    {
+      "name": "four successes plus severe failure",
+      "positiveMicroEu": "4000000",
+      "negativeMicroEu": "4000000",
+      "expected": 50
+    },
+    {
+      "name": "four successes plus critical failure",
+      "positiveMicroEu": "4000000",
+      "negativeMicroEu": "8000000",
+      "expected": 40
+    },
+    {
+      "name": "twelve successes plus critical failure",
+      "positiveMicroEu": "12000000",
+      "negativeMicroEu": "8000000",
+      "expected": 57
+    },
+    {
+      "name": "one old operational success",
+      "positiveMicroEu": "500000",
+      "negativeMicroEu": "0",
+      "expected": 53
+    }
+  ],
+  "weighted": {
+    "categories": {
+      "operational": 70,
+      "financial": 50,
+      "onchain": 60,
+      "identity": 80
+    },
+    "expected": 65
+  },
+  "missing": {
+    "categories": {
+      "operational": 70,
+      "financial": 50,
+      "onchain": 50,
+      "identity": 50
+    },
+    "coverage": {
+      "operational": 100,
+      "financial": 0,
+      "onchain": 0,
+      "identity": 0
+    },
+    "expectedScore": 56,
+    "expectedCoverage": 30
+  },
+  "decay": [
+    {
+      "ageDays": 0,
+      "halfLifeDays": 90,
+      "expectedMicro": 1000000
+    },
+    {
+      "ageDays": 30,
+      "halfLifeDays": 90,
+      "expectedMicro": 750000
+    },
+    {
+      "ageDays": 90,
+      "halfLifeDays": 90,
+      "expectedMicro": 500000
+    },
+    {
+      "ageDays": 180,
+      "halfLifeDays": 90,
+      "expectedMicro": 333333
+    },
+    {
+      "ageDays": 270,
+      "halfLifeDays": 90,
+      "expectedMicro": 250000
+    }
+  ]
+}
