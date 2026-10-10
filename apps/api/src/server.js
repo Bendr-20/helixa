@@ -17,6 +17,7 @@ import {
 } from './looper-cred-client.js';
 import { createLooperCodexRuntime } from './looper-codex-runtime.js';
 import { createLooperMarketplaceListingsLoader } from './looper-marketplace.js';
+import { createLooperMarketplacePreviewLoader } from './looper-marketplace-preview.js';
 import { createSqliteLooperNameStore } from './looper-name-store.js';
 import { readOpenSeaApiKey } from './loopers-sales/opensea.js';
 import { createSqliteSavedRecords } from './saved-records.js';
@@ -236,6 +237,9 @@ export async function startServer(options = {}) {
   let looperCodexRuntime;
   let looperMarketplaceListingsLoader = typeof options.looperMarketplaceListingsLoader === 'function'
     ? options.looperMarketplaceListingsLoader
+    : null;
+  let looperMarketplacePreviewLoader = typeof options.looperMarketplacePreviewLoader === 'function'
+    ? options.looperMarketplacePreviewLoader
     : null;
   let restapPublicSessions;
   let restapNewsStore;
@@ -508,6 +512,14 @@ export async function startServer(options = {}) {
       });
     }
 
+    if (!looperMarketplacePreviewLoader && Array.isArray(consoleBootstrap.publicClients) && consoleBootstrap.publicClients.length > 0) {
+      looperMarketplacePreviewLoader = createLooperMarketplacePreviewLoader({
+        publicClients: consoleBootstrap.publicClients,
+        listingsLoader: looperMarketplaceListingsLoader,
+        fetchImpl: parsed.fetchImpl ?? fetch,
+      });
+    }
+
     const createApi = () => apiFactory({
       store,
       baseUrl: apiBaseUrl,
@@ -527,6 +539,7 @@ export async function startServer(options = {}) {
       loopersAllowlistGlobalRateLimit: parsed.loopersAllowlistGlobalRateLimit,
       loopersTurnstileSecretKey: parsed.loopersTurnstileSecretKey,
       looperMarketplaceListingsLoader,
+      looperMarketplacePreviewLoader,
       loopersCredApiBaseUrl: parsed.loopersCredApiBaseUrl,
       loopersCredTimeoutMs: parsed.loopersCredTimeoutMs,
       loopersCredConcurrency: parsed.loopersCredConcurrency,

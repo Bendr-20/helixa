@@ -244,6 +244,7 @@ export function createMultipassApi({
   loopersAllowlistBlockedSources = [],
   loopersTurnstileSecretKey,
   looperMarketplaceListingsLoader,
+  looperMarketplacePreviewLoader,
   loopersOwnedAgentLoader,
   loopersOwnedRpcUrl,
   loopersOwnedMetadataBaseUrl,
@@ -397,6 +398,9 @@ export function createMultipassApi({
     loopersTurnstileSecretKey: String(loopersTurnstileSecretKey ?? '').trim() || null,
     looperMarketplaceListingsLoader: typeof looperMarketplaceListingsLoader === 'function'
       ? looperMarketplaceListingsLoader
+      : null,
+    looperMarketplacePreviewLoader: typeof looperMarketplacePreviewLoader === 'function'
+      ? looperMarketplacePreviewLoader
       : null,
     loopersOwnedAgentLoader: ownedLoopersLoader,
     loopersAuthorizer: authorizeLooper,
@@ -1496,6 +1500,21 @@ async function handleLooperPost(request, parts, context) {
 }
 
 async function handleLooperRead(request, url, parts, context) {
+  const previewMatch = url.pathname.match(/^\/api\/loopers\/marketplace\/preview\/([1-9]\d*)\.jpg$/u);
+  if (previewMatch) {
+    const tokenId = previewMatch[1];
+    if (BigInt(tokenId) > 7_777n) return errorResponse(404, 'not_found', 'Route not found.');
+    if (!context.looperMarketplacePreviewLoader) {
+      return errorResponse(503, 'preview_unavailable', 'Looper marketplace preview is temporarily unavailable.', undefined, { 'cache-control': 'no-store' });
+    }
+    try {
+      const jpeg = await context.looperMarketplacePreviewLoader(tokenId);
+      return binaryResponse(jpeg, 'image/jpeg', { 'cache-control': 'public, max-age=300' });
+    } catch {
+      return errorResponse(503, 'preview_unavailable', 'Looper marketplace preview is temporarily unavailable.', undefined, { 'cache-control': 'no-store' });
+    }
+  }
+
   if (url.pathname === '/api/loopers/marketplace/listings') {
     if (!context.looperMarketplaceListingsLoader) {
       return errorResponse(503, 'marketplace_unavailable', 'Looper marketplace listings are temporarily unavailable.', undefined, { 'cache-control': 'no-store' });
