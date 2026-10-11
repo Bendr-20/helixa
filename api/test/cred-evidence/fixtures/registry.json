@@ -1,0 +1,279 @@
+{
+  "registry": {
+    "registryType": "cred-evidence-registry-v1",
+    "canonicalSerializationVersion": "cred-cjson-v1",
+    "registryVersion": "registry-2026-10-11.1",
+    "generatedAt": "2026-10-11T18:00:00.000Z",
+    "previousRegistryHash": null,
+    "versions": {
+      "providerRegistry": "providers-2026-10-11.1",
+      "schemaRegistry": "schemas-2026-10-11.1",
+      "identityGraph": "identity-2026-10-11.1",
+      "empRegistry": "emps-2026-10-11.1",
+      "ontology": "cred-ontology-1.0.0"
+    },
+    "roots": {
+      "empRegistryRoot": "sha256:f4b1ea4b72339a494578ce773d8654307762dbc7b13be2c99dd9baaf1dc0d7b5",
+      "ontologyHash": "sha256:26652c05912564d0f680e7a987f24fb3744155dd8396c7dbe6d3990c216c7d02"
+    },
+    "providers": [
+      {
+        "providerId": "provider_alpha",
+        "controlGroupId": "group_alpha",
+        "state": "active",
+        "stateEffectiveAt": "2026-01-01T00:00:00.000Z",
+        "keyEpochs": [
+          {
+            "keyId": "key_2026_1",
+            "suite": "Ed25519",
+            "publicKey": "ERERERERERERERERERERERERERERERERERERERERERE",
+            "validFrom": "2026-01-01T00:00:00.000Z",
+            "validUntil": null,
+            "revokedAt": null
+          }
+        ],
+        "schemaAuthorizations": [
+          {
+            "schemaId": "schema_task_outcome",
+            "schemaVersion": "1.0.0",
+            "validFrom": "2026-01-01T00:00:00.000Z",
+            "validUntil": null
+          }
+        ],
+        "evidenceFamilies": [
+          "operational"
+        ],
+        "categories": [
+          "operational"
+        ],
+        "domains": [
+          "coding"
+        ],
+        "ratePolicy": {
+          "windowSeconds": "3600",
+          "maxEvents": "1000"
+        },
+        "volumePolicy": {
+          "windowSeconds": "86400",
+          "maxEvents": "10000"
+        },
+        "observationOnly": false,
+        "influencePolicyRef": "influence-standard-v1"
+      }
+    ],
+    "schemas": [
+      {
+        "schemaId": "schema_task_outcome",
+        "schemaVersion": "1.0.0",
+        "schemaFamilyId": "schema-family_task",
+        "adapterId": "generic-signed-outcome",
+        "adapterVersion": "1.0.0",
+        "eventType": "task-outcome",
+        "evidenceFamily": "operational",
+        "category": "operational",
+        "allowedDirections": [
+          "negative",
+          "positive"
+        ],
+        "allowedProofClasses": [
+          "P1",
+          "P2"
+        ],
+        "materialityMapping": [
+          {
+            "nativeValue": "high",
+            "materiality": "meaningful"
+          },
+          {
+            "nativeValue": "low",
+            "materiality": "standard"
+          }
+        ],
+        "privacyClass": "public-or-committed",
+        "correctionPolicy": "append-only-reference",
+        "finalityPolicy": "final-or-pending",
+        "empId": "emp_operational",
+        "empVersion": "1.0.0",
+        "subjectCoordinateNamespaces": [
+          "erc8004",
+          "evm"
+        ],
+        "allowedDomains": [
+          "coding"
+        ]
+      }
+    ],
+    "identityIssuers": [
+      {
+        "issuerId": "issuer_helixa",
+        "state": "active",
+        "validFrom": "2026-01-01T00:00:00.000Z",
+        "validUntil": null,
+        "authorizedCoordinateNamespaces": [
+          "erc8004",
+          "evm"
+        ],
+        "authorizedRelationshipTypes": [
+          "controlled-by",
+          "identifies"
+        ]
+      }
+    ],
+    "subjects": [
+      {
+        "subjectId": "subject_alpha",
+        "state": "active",
+        "currentActorEpochId": "epoch_2",
+        "coordinates": [
+          {
+            "namespace": "erc8004",
+            "network": "eip155:8453",
+            "value": "18531"
+          },
+          {
+            "namespace": "evm",
+            "network": "eip155:8453",
+            "value": "0x1111111111111111111111111111111111111111"
+          }
+        ]
+      }
+    ],
+    "identityEdges": [
+      {
+        "edgeId": "edge_control",
+        "issuerId": "issuer_helixa",
+        "subjectId": "subject_alpha",
+        "coordinate": {
+          "namespace": "evm",
+          "network": "eip155:8453",
+          "value": "0x1111111111111111111111111111111111111111"
+        },
+        "relationshipType": "controlled-by",
+        "validFrom": "2026-06-01T00:00:00.000Z",
+        "validUntil": null,
+        "verifiedAt": "2026-06-01T00:00:00.000Z",
+        "revokedAt": null,
+        "proofHash": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      {
+        "edgeId": "edge_identity",
+        "issuerId": "issuer_helixa",
+        "subjectId": "subject_alpha",
+        "coordinate": {
+          "namespace": "erc8004",
+          "network": "eip155:8453",
+          "value": "18531"
+        },
+        "relationshipType": "identifies",
+        "validFrom": "2026-01-01T00:00:00.000Z",
+        "validUntil": null,
+        "verifiedAt": "2026-01-01T00:00:00.000Z",
+        "revokedAt": null,
+        "proofHash": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    ],
+    "actorEpochs": [
+      {
+        "actorEpochId": "epoch_1",
+        "subjectId": "subject_alpha",
+        "startsAt": "2026-01-01T00:00:00.000Z",
+        "endsAt": "2026-06-01T00:00:00.000Z",
+        "controllerCoordinates": [
+          {
+            "namespace": "evm",
+            "network": "eip155:8453",
+            "value": "0x2222222222222222222222222222222222222222"
+          }
+        ],
+        "transitionHash": null,
+        "encumbrance": "clear",
+        "assumptionOf": null
+      },
+      {
+        "actorEpochId": "epoch_2",
+        "subjectId": "subject_alpha",
+        "startsAt": "2026-06-01T00:00:00.000Z",
+        "endsAt": null,
+        "controllerCoordinates": [
+          {
+            "namespace": "evm",
+            "network": "eip155:8453",
+            "value": "0x1111111111111111111111111111111111111111"
+          }
+        ],
+        "transitionHash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "encumbrance": "clear",
+        "assumptionOf": null
+      }
+    ],
+    "empPolicies": [
+      {
+        "empId": "emp_operational",
+        "empVersion": "1.0.0",
+        "policyHash": "sha256:f4b1ea4b72339a494578ce773d8654307762dbc7b13be2c99dd9baaf1dc0d7b5",
+        "registryLeafIndex": 0,
+        "registryProof": [],
+        "evidenceFamily": "operational",
+        "positiveHalfLifeDays": 90,
+        "negativeHalfLifeDays": 180,
+        "correlationWindowSeconds": 7776000,
+        "clusterCapMicroEu": "2000000",
+        "providerBucket": {
+          "capacityMicroEu": "4000000",
+          "refillSeconds": 7776000
+        },
+        "schemaBucket": {
+          "capacityMicroEu": "6000000",
+          "refillSeconds": 7776000
+        },
+        "p4Bucket": {
+          "capacityMicroEu": "1000000",
+          "refillSeconds": 7776000
+        }
+      }
+    ],
+    "ontology": {
+      "ontologyId": "cred-evidence-ontology",
+      "ontologyVersion": "cred-ontology-1.0.0",
+      "ontologyHash": "sha256:26652c05912564d0f680e7a987f24fb3744155dd8396c7dbe6d3990c216c7d02",
+      "categories": [
+        "financial",
+        "identity",
+        "onchain",
+        "operational"
+      ],
+      "evidenceFamilies": [
+        "comparative",
+        "financial",
+        "identity",
+        "onchain",
+        "operational",
+        "severe-critical"
+      ],
+      "domains": [
+        "coding",
+        "payments",
+        "research",
+        "security",
+        "trading"
+      ],
+      "coordinateNamespaces": [
+        "did",
+        "endpoint",
+        "erc8004",
+        "evm",
+        "looper",
+        "platform",
+        "solana",
+        "ubid"
+      ],
+      "relationshipTypes": [
+        "controlled-by",
+        "identifies",
+        "operated-by"
+      ]
+    }
+  },
+  "canonicalBytes": "{\"actorEpochs\":[{\"actorEpochId\":\"epoch_1\",\"assumptionOf\":null,\"controllerCoordinates\":[{\"namespace\":\"evm\",\"network\":\"eip155:8453\",\"value\":\"0x2222222222222222222222222222222222222222\"}],\"encumbrance\":\"clear\",\"endsAt\":\"2026-06-01T00:00:00.000Z\",\"startsAt\":\"2026-01-01T00:00:00.000Z\",\"subjectId\":\"subject_alpha\",\"transitionHash\":null},{\"actorEpochId\":\"epoch_2\",\"assumptionOf\":null,\"controllerCoordinates\":[{\"namespace\":\"evm\",\"network\":\"eip155:8453\",\"value\":\"0x1111111111111111111111111111111111111111\"}],\"encumbrance\":\"clear\",\"endsAt\":null,\"startsAt\":\"2026-06-01T00:00:00.000Z\",\"subjectId\":\"subject_alpha\",\"transitionHash\":\"sha256:5555555555555555555555555555555555555555555555555555555555555555\"}],\"canonicalSerializationVersion\":\"cred-cjson-v1\",\"empPolicies\":[{\"clusterCapMicroEu\":\"2000000\",\"correlationWindowSeconds\":7776000,\"empId\":\"emp_operational\",\"empVersion\":\"1.0.0\",\"evidenceFamily\":\"operational\",\"negativeHalfLifeDays\":180,\"p4Bucket\":{\"capacityMicroEu\":\"1000000\",\"refillSeconds\":7776000},\"policyHash\":\"sha256:f4b1ea4b72339a494578ce773d8654307762dbc7b13be2c99dd9baaf1dc0d7b5\",\"positiveHalfLifeDays\":90,\"providerBucket\":{\"capacityMicroEu\":\"4000000\",\"refillSeconds\":7776000},\"registryLeafIndex\":0,\"registryProof\":[],\"schemaBucket\":{\"capacityMicroEu\":\"6000000\",\"refillSeconds\":7776000}}],\"generatedAt\":\"2026-10-11T18:00:00.000Z\",\"identityEdges\":[{\"coordinate\":{\"namespace\":\"evm\",\"network\":\"eip155:8453\",\"value\":\"0x1111111111111111111111111111111111111111\"},\"edgeId\":\"edge_control\",\"issuerId\":\"issuer_helixa\",\"proofHash\":\"sha256:3333333333333333333333333333333333333333333333333333333333333333\",\"relationshipType\":\"controlled-by\",\"revokedAt\":null,\"subjectId\":\"subject_alpha\",\"validFrom\":\"2026-06-01T00:00:00.000Z\",\"validUntil\":null,\"verifiedAt\":\"2026-06-01T00:00:00.000Z\"},{\"coordinate\":{\"namespace\":\"erc8004\",\"network\":\"eip155:8453\",\"value\":\"18531\"},\"edgeId\":\"edge_identity\",\"issuerId\":\"issuer_helixa\",\"proofHash\":\"sha256:4444444444444444444444444444444444444444444444444444444444444444\",\"relationshipType\":\"identifies\",\"revokedAt\":null,\"subjectId\":\"subject_alpha\",\"validFrom\":\"2026-01-01T00:00:00.000Z\",\"validUntil\":null,\"verifiedAt\":\"2026-01-01T00:00:00.000Z\"}],\"identityIssuers\":[{\"authorizedCoordinateNamespaces\":[\"erc8004\",\"evm\"],\"authorizedRelationshipTypes\":[\"controlled-by\",\"identifies\"],\"issuerId\":\"issuer_helixa\",\"state\":\"active\",\"validFrom\":\"2026-01-01T00:00:00.000Z\",\"validUntil\":null}],\"ontology\":{\"categories\":[\"financial\",\"identity\",\"onchain\",\"operational\"],\"coordinateNamespaces\":[\"did\",\"endpoint\",\"erc8004\",\"evm\",\"looper\",\"platform\",\"solana\",\"ubid\"],\"domains\":[\"coding\",\"payments\",\"research\",\"security\",\"trading\"],\"evidenceFamilies\":[\"comparative\",\"financial\",\"identity\",\"onchain\",\"operational\",\"severe-critical\"],\"ontologyHash\":\"sha256:26652c05912564d0f680e7a987f24fb3744155dd8396c7dbe6d3990c216c7d02\",\"ontologyId\":\"cred-evidence-ontology\",\"ontologyVersion\":\"cred-ontology-1.0.0\",\"relationshipTypes\":[\"controlled-by\",\"identifies\",\"operated-by\"]},\"previousRegistryHash\":null,\"providers\":[{\"categories\":[\"operational\"],\"controlGroupId\":\"group_alpha\",\"domains\":[\"coding\"],\"evidenceFamilies\":[\"operational\"],\"influencePolicyRef\":\"influence-standard-v1\",\"keyEpochs\":[{\"keyId\":\"key_2026_1\",\"publicKey\":\"ERERERERERERERERERERERERERERERERERERERERERE\",\"revokedAt\":null,\"suite\":\"Ed25519\",\"validFrom\":\"2026-01-01T00:00:00.000Z\",\"validUntil\":null}],\"observationOnly\":false,\"providerId\":\"provider_alpha\",\"ratePolicy\":{\"maxEvents\":\"1000\",\"windowSeconds\":\"3600\"},\"schemaAuthorizations\":[{\"schemaId\":\"schema_task_outcome\",\"schemaVersion\":\"1.0.0\",\"validFrom\":\"2026-01-01T00:00:00.000Z\",\"validUntil\":null}],\"state\":\"active\",\"stateEffectiveAt\":\"2026-01-01T00:00:00.000Z\",\"volumePolicy\":{\"maxEvents\":\"10000\",\"windowSeconds\":\"86400\"}}],\"registryType\":\"cred-evidence-registry-v1\",\"registryVersion\":\"registry-2026-10-11.1\",\"roots\":{\"empRegistryRoot\":\"sha256:f4b1ea4b72339a494578ce773d8654307762dbc7b13be2c99dd9baaf1dc0d7b5\",\"ontologyHash\":\"sha256:26652c05912564d0f680e7a987f24fb3744155dd8396c7dbe6d3990c216c7d02\"},\"schemas\":[{\"adapterId\":\"generic-signed-outcome\",\"adapterVersion\":\"1.0.0\",\"allowedDirections\":[\"negative\",\"positive\"],\"allowedDomains\":[\"coding\"],\"allowedProofClasses\":[\"P1\",\"P2\"],\"category\":\"operational\",\"correctionPolicy\":\"append-only-reference\",\"empId\":\"emp_operational\",\"empVersion\":\"1.0.0\",\"eventType\":\"task-outcome\",\"evidenceFamily\":\"operational\",\"finalityPolicy\":\"final-or-pending\",\"materialityMapping\":[{\"materiality\":\"meaningful\",\"nativeValue\":\"high\"},{\"materiality\":\"standard\",\"nativeValue\":\"low\"}],\"privacyClass\":\"public-or-committed\",\"schemaFamilyId\":\"schema-family_task\",\"schemaId\":\"schema_task_outcome\",\"schemaVersion\":\"1.0.0\",\"subjectCoordinateNamespaces\":[\"erc8004\",\"evm\"]}],\"subjects\":[{\"coordinates\":[{\"namespace\":\"erc8004\",\"network\":\"eip155:8453\",\"value\":\"18531\"},{\"namespace\":\"evm\",\"network\":\"eip155:8453\",\"value\":\"0x1111111111111111111111111111111111111111\"}],\"currentActorEpochId\":\"epoch_2\",\"state\":\"active\",\"subjectId\":\"subject_alpha\"}],\"versions\":{\"empRegistry\":\"emps-2026-10-11.1\",\"identityGraph\":\"identity-2026-10-11.1\",\"ontology\":\"cred-ontology-1.0.0\",\"providerRegistry\":\"providers-2026-10-11.1\",\"schemaRegistry\":\"schemas-2026-10-11.1\"}}",
+  "registryHash": "sha256:838f310ed0e6fb3153484a7bb796adb54a641e61a57ce22a5cd1555a5e9578fd"
+}
