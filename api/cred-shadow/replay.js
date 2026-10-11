@@ -58,7 +58,10 @@ function descriptor(id, dimension, target, direction, overrides) {
   return Object.freeze({ ...value, parameterSetHash: parameterHash(value) });
 }
 
+let sensitivityVariants;
+
 function enumerateSensitivityVariants() {
+  if (sensitivityVariants) return sensitivityVariants;
   const variants = [descriptor('baseline', 'baseline', 'all', 'baseline', {})];
   const pair = (dimension, target, low, high) => {
     variants.push(descriptor(dimension + (target ? ':' + target : '') + ':low', dimension, target || 'all', 'low', low));
@@ -90,7 +93,17 @@ function enumerateSensitivityVariants() {
   pair('category-mass', '', { categoryMassMicroEu: '1000000' }, { categoryMassMicroEu: '4000000' });
   pair('confidence-gate', '', { confidenceGate: 30 }, { confidenceGate: 50 });
   pair('coverage-gate', '', { coverageGate: 40 }, { coverageGate: 60 });
-  return Object.freeze(variants);
+  sensitivityVariants = Object.freeze(variants);
+  return sensitivityVariants;
+}
+
+function validateSensitivityVariant(variant) {
+  if (!variant || typeof variant !== 'object') throw new TypeError('replay sensitivity variant is invalid');
+  const expected = enumerateSensitivityVariants().find((item) => item.id === variant.id);
+  if (!expected || canonicalStringify(expected) !== canonicalStringify(variant)) {
+    throw new TypeError('replay sensitivity variant is not a canonical OAT descriptor');
+  }
+  return expected;
 }
 
 function validateParameterSet(parameters) {
@@ -108,6 +121,7 @@ function validateParameterSet(parameters) {
 }
 
 function applyVariant(snapshot, variant) {
+  variant = validateSensitivityVariant(variant);
   const parameters = structuredClone(CANDIDATE_PARAMETERS);
   const replaySnapshot = structuredClone(snapshot);
   const override = variant.overrides;
@@ -125,11 +139,11 @@ function applyVariant(snapshot, variant) {
   if (override.coverageGate !== undefined) parameters.ratingGates.minimumCoverage = BigInt(override.coverageGate);
   if (override.halfLife) {
     const field = override.halfLife.direction === 'positive' ? 'positiveHalfLifeDays' : 'negativeHalfLifeDays';
-    const microField = override.halfLife.direction === 'positive' ? 'positiveHalfLifeMicroDays' : 'negativeHalfLifeMicroDays';
     for (const policy of replaySnapshot.empPolicies) {
       if (policy.evidenceFamily !== override.halfLife.family) continue;
       if (policy[field] === null) throw new Error('null half-life cannot be overridden');
-      policy[microField] = ratio(policy[field], override.halfLife.multiplierMicro, 1).toString();
+      policy[field] = Number(ratio(policy[field], override.halfLife.multiplierMicro, SCALE));
+      if (!Number.isSafeInteger(policy[field]) || policy[field] <= 0) throw new Error('replay half-life must round to positive whole days');
     }
   }
   if (override.cap) {
@@ -154,10 +168,13 @@ function sumMass(items, field) {
   return items.reduce((total, item) => total + BigInt(item[field] || '0'), 0n);
 }
 
-function uncappedEventMass(record, allocation) {
+function nominalEventMass(record) {
   let mass = mulDivRound(EU, CANDIDATE_PARAMETERS.proofFactors[record.proofClass], SCALE);
-  mass = mulDivRound(mass, CANDIDATE_PARAMETERS.materialityFactors[record.materiality], SCALE);
-  return mulDivRound(mass, BigInt(allocation.independenceFactorMicro), SCALE);
+  return mulDivRound(mass, CANDIDATE_PARAMETERS.materialityFactors[record.materiality], SCALE);
+}
+
+function uncappedEventMass(record, allocation) {
+  return mulDivRound(nominalEventMass(record), BigInt(allocation.independenceFactorMicro), SCALE);
 }
 
 function evidenceSummary(prepared, score) {
@@ -168,6 +185,9 @@ function evidenceSummary(prepared, score) {
   const decayed = events.filter((event) => BigInt(event.decayFactorMicro) < SCALE);
   const quarantined = prepared.excluded.filter((item) => records.get(item.evidenceId)?.status === 'QUARANTINED');
   const includedMass = sumMass(prepared.included, 'allocatedMassMicroEu');
+  const excludedMass = prepared.excluded.reduce((total, item) => total + nominalEventMass(records.get(item.evidenceId)), 0n);
+  const quarantinedMass = quarantined.reduce((total, item) => total + nominalEventMass(records.get(item.evidenceId)), 0n);
+  const deduplicatedMass = prepared.deduplicated.reduce((total, item) => total + nominalEventMass(records.get(item.evidenceId)), 0n);
   const cappedMass = capped.reduce((total, item) => {
     const raw = uncappedEventMass(records.get(item.evidenceId), item);
     return total + raw - BigInt(item.allocatedMassMicroEu);
@@ -176,9 +196,9 @@ function evidenceSummary(prepared, score) {
   const metric = (count, mass) => Object.freeze({ count, massMicroEu: mass.toString() });
   return Object.freeze({
     included: metric(prepared.included.length, includedMass),
-    excluded: metric(prepared.excluded.length, 0n),
-    quarantined: metric(quarantined.length, 0n),
-    deduplicated: metric(prepared.deduplicated.length, 0n),
+    excluded: metric(prepared.excluded.length, excludedMass),
+    quarantined: metric(quarantined.length, quarantinedMass),
+    deduplicated: metric(prepared.deduplicated.length, deduplicatedMass),
     capped: metric(capped.length, cappedMass),
     decayed: metric(decayed.length, decayedMass),
     eventMasses: Object.freeze(prepared.included.map((item) => {
@@ -412,6 +432,7 @@ module.exports = Object.freeze({
   MAX_ROWS,
   MAX_ROW_BYTES,
   enumerateSensitivityVariants,
+  applySensitivityVariant: applyVariant,
   replaySnapshots,
   parseReplayInput,
 });

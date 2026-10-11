@@ -9,10 +9,12 @@ const { spawnSync, spawn } = require('node:child_process');
 const { createHash } = require('node:crypto');
 const { CANDIDATE_PARAMETERS } = require('../../cred-shadow/parameters');
 const { canonicalStringify } = require('../../cred-shadow/artifact');
+const { normalizeEvidenceSnapshot } = require('../../cred-shadow/evidence');
 const pins = require('./fixtures/replay-pins.json');
 const {
   replaySnapshots,
   enumerateSensitivityVariants,
+  applySensitivityVariant,
   parseReplayInput,
 } = require('../../cred-shadow/replay');
 
@@ -43,7 +45,10 @@ test('replay publishes complete sorted snapshots and migration aggregates', () =
   ]);
   for (const row of report.snapshots) assertCompleteSnapshot(row);
   assert.equal(report.snapshots[0].evidence.quarantined.count, 1);
+  assert.ok(BigInt(report.snapshots[0].evidence.excluded.massMicroEu) > 0n);
+  assert.ok(BigInt(report.snapshots[0].evidence.quarantined.massMicroEu) > 0n);
   assert.equal(report.snapshots[0].evidence.deduplicated.count, 1);
+  assert.ok(BigInt(report.snapshots[0].evidence.deduplicated.massMicroEu) > 0n);
   assert.equal(report.snapshots[0].evidence.capped.count, 1);
   assert.ok(report.snapshots[0].evidence.decayed.count >= 1);
   assert.deepEqual(report.aggregate.scoreDeltaSeries, [...report.aggregate.scoreDeltaSeries].sort((a,b) => a.subjectId.localeCompare(b.subjectId)||a.actorEpochId.localeCompare(b.actorEpochId)||a.computedAt.localeCompare(b.computedAt)));
@@ -95,6 +100,21 @@ test('sensitivity is baseline plus exact ordered OAT variants with immutable pro
     for (const key of ['minimum','maximum','meanMicroPoints','absoluteMeanMicroPoints']) assert.ok(Object.hasOwn(sweep.aggregateDelta,key));
   }
   assert.equal(JSON.stringify(CANDIDATE_PARAMETERS, (_, value) => typeof value === 'bigint' ? value.toString() : value), before);
+});
+
+test('sensitivity half-lives round half away from zero to whole days', () => {
+  const snapshot = structuredClone(normalizeEvidenceSnapshot(fixtures[0]));
+  snapshot.empPolicies[0].evidenceFamily = 'financial';
+  snapshot.empPolicies[0].positiveHalfLifeDays = 365;
+  snapshot.empPolicies[0].negativeHalfLifeDays = 730;
+  const variants = enumerateSensitivityVariants();
+  const positiveLow = applySensitivityVariant(snapshot, variants.find((item) => item.id === 'positive-half-life:financial:low'));
+  const negativeHigh = applySensitivityVariant(snapshot, variants.find((item) => item.id === 'negative-half-life:financial:high'));
+  assert.equal(positiveLow.snapshot.empPolicies[0].positiveHalfLifeDays, 274);
+  assert.equal(negativeHigh.snapshot.empPolicies[0].negativeHalfLifeDays, 913);
+  const forged = structuredClone(variants[0]);
+  forged.overrides.priorMassMicroEu = '1';
+  assert.throws(() => applySensitivityVariant(snapshot, forged), /canonical OAT descriptor/);
 });
 
 test('fractional-day decay uses fixed-point half-away-from-zero', () => {
