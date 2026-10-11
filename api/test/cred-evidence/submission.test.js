@@ -89,6 +89,8 @@ test('rejects invalid timestamp order, future receipt, and replay delay', () => 
   assert.throws(() => verifySubmission(registry(), future), /after registry generation/);
   const stale = submission('submission_active'); stale.receivedAt = '2026-07-09T00:00:11.000Z';
   assert.throws(() => verifySubmission(registry(), stale), /replay receipt window/);
+  const fractional = submission('submission_active'); fractional.observedAt = '2026-07-01T00:00:10.001Z';
+  assert.throws(() => verifySubmission(registry(), fractional), /whole seconds/);
 });
 
 test('rejects provider states, key epochs, and schema authorizations invalid at observation time', () => {

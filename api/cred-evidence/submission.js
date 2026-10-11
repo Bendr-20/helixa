@@ -106,6 +106,7 @@ function normalizeSubmission(input, options = {}) {
   const observed = timestamp(input.observedAt, 'observedAt');
   const received = timestamp(input.receivedAt, 'receivedAt');
   if (occurred > observed || observed > received) throw new RangeError('submission timestamps are out of order');
+  if (observed % 1000 !== 0) throw new RangeError('observedAt must be aligned to whole seconds for deterministic scoring');
   if (received - observed > MAX_RECEIPT_DELAY_MS) throw new RangeError('submission exceeds replay receipt window');
   if (lane === 'approved') {
     identifier(input.providerId, 'providerId');
