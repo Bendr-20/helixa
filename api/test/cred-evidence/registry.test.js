@@ -124,6 +124,14 @@ test('validates provider state, key epochs, and schema authorization references'
   throwsWith(value => { value.providers[0].schemaAuthorizations[0].validFrom = '2025-01-01T00:00:00.000Z'; }, /provider lifecycle/);
   throwsWith(value => { value.providers[0].schemaAuthorizations[0].validUntil = '2026-02-01T00:00:00.000Z'; }, /current schema authorization/);
   throwsWith(value => { value.providers[0].domains = ['payments']; }, /authorized domain/);
+  const historical = clone();
+  historical.providers[0].schemaAuthorizations[0].validUntil = '2026-06-01T00:00:00.000Z';
+  historical.providers[0].schemaAuthorizations.push({ schemaId: 'schema_task_outcome', schemaVersion: '1.0.0', validFrom: '2026-06-01T00:00:00.000Z', validUntil: null });
+  assert.equal(normalizeRegistry(historical).providers[0].schemaAuthorizations.length, 2);
+  throwsWith(value => {
+    value.providers[0].schemaAuthorizations[0].validUntil = '2026-07-01T00:00:00.000Z';
+    value.providers[0].schemaAuthorizations.push({ schemaId: 'schema_task_outcome', schemaVersion: '1.0.0', validFrom: '2026-06-01T00:00:00.000Z', validUntil: null });
+  }, /authorization epochs overlap/);
 });
 
 test('validates identity issuer authority, subject coordinates, and relationship validity', () => {
@@ -146,6 +154,8 @@ test('requires complete non-overlapping actor epochs and current epoch reference
   throwsWith(value => { value.actorEpochs[1].endsAt = '2026-10-01T00:00:00.000Z'; }, /current actor epoch/);
   throwsWith(value => { value.subjects[0].currentActorEpochId = 'epoch_1'; }, /current actor epoch/);
   throwsWith(value => { value.actorEpochs[1].controllerCoordinates = []; }, /controller coordinate/);
+  throwsWith(value => { value.actorEpochs[1].assumptionOf = 'missing_epoch'; }, /assumptionOf/);
+  throwsWith(value => { value.actorEpochs[1].assumptionOf = 'epoch_2'; }, /cannot assume itself/);
 });
 
 test('pins schema EMP references and exact EMP and ontology commitments', () => {

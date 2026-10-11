@@ -226,6 +226,10 @@ test('evidence compiler graph is offline, secret-free, and restricted to evidenc
   for (const file of graph) {
     assert.equal(file === fs.realpathSync(EVIDENCE_CLI) || isInside(file, EVIDENCE_ROOT) || isInside(file, SHADOW_ROOT), true, file + ' is outside the offline compiler graph');
     assertNoForbiddenShadowCapability(file);
+    if (file !== fs.realpathSync(EVIDENCE_CLI)) {
+      const { specifiers } = moduleSpecifiers(file);
+      assert.equal(specifiers.some((specifier) => specifier === 'fs' || specifier === 'node:fs' || specifier === 'fs/promises' || specifier === 'node:fs/promises'), false, file + ' must not access the filesystem outside the CLI');
+    }
   }
 });
 

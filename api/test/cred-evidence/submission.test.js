@@ -132,6 +132,13 @@ test('batches are input-order invariant and reject replayed IDs or provider even
   assert.throws(() => verifySubmissionBatch(registry(), [active, structuredClone(active)]), /duplicate submissionId/);
   const eventReplay = structuredClone(active); eventReplay.submissionId = 'submission_other'; resign(eventReplay);
   assert.throws(() => verifySubmissionBatch(registry(), [active, eventReplay]), /duplicate provider event/);
+  const quotaEvent = structuredClone(eventReplay); quotaEvent.providerEventId = 'event_other'; resign(quotaEvent);
+  const limited = registry();
+  limited.providers[0].ratePolicy.maxEvents = '1';
+  assert.throws(() => verifySubmissionBatch(limited, [active, quotaEvent]), /ratePolicy quota exceeded/);
+  const volumeLimited = registry();
+  volumeLimited.providers[0].volumePolicy.maxEvents = '1';
+  assert.throws(() => verifySubmissionBatch(volumeLimited, [active, quotaEvent]), /volumePolicy quota exceeded/);
 });
 
 test('unresolved identities quarantine permissionless claims and reject approved false epochs', () => {

@@ -239,9 +239,25 @@ function verifySubmission(registryInput, input) {
   });
 }
 
+function enforceProviderWindow(results, policy, label) {
+  const limit = BigInt(policy.maxEvents);
+  const windowMilliseconds = Number(BigInt(policy.windowSeconds) * 1000n);
+  if (!Number.isSafeInteger(windowMilliseconds)) throw new RangeError(label + ' window is too large');
+  const queue = [];
+  let head = 0;
+  for (const result of [...results].sort((left, right) => timestamp(left.submission.receivedAt, 'receivedAt') - timestamp(right.submission.receivedAt, 'receivedAt') || compareUtf8(left.submission.submissionId, right.submission.submissionId))) {
+    const now = timestamp(result.submission.receivedAt, 'receivedAt');
+    while (head < queue.length && queue[head] <= now - windowMilliseconds) head += 1;
+    if (BigInt(queue.length - head) >= limit) throw new Error(label + ' quota exceeded');
+    queue.push(now);
+  }
+}
+
 function verifySubmissionBatch(registryInput, inputs) {
   if (!Array.isArray(inputs) || inputs.length === 0) throw new TypeError('submission batch must be a nonempty array');
-  const results = inputs.map((input) => verifySubmission(registryInput, input));
+  const bundle = buildRegistryBundle(registryInput && registryInput.registry ? registryInput.registry : registryInput);
+  if (registryInput && registryInput.registryHash !== undefined && registryInput.registryHash !== bundle.registryHash) throw new Error('supplied registry hash does not match canonical registry');
+  const results = inputs.map((input) => verifySubmission(bundle, input));
   results.sort((left, right) => compareUtf8(left.submission.submissionId, right.submission.submissionId));
   const submissionIds = new Set();
   const providerEvents = new Set();
@@ -252,6 +268,11 @@ function verifySubmissionBatch(registryInput, inputs) {
     const event = (result.submission.providerId || result.submission.submitterId) + '\0' + result.submission.providerEventId;
     if (providerEvents.has(event)) throw new Error('duplicate provider event ' + result.submission.providerEventId);
     providerEvents.add(event);
+  }
+  for (const provider of bundle.registry.providers) {
+    const providerResults = results.filter((result) => result.submission.providerId === provider.providerId);
+    enforceProviderWindow(providerResults, provider.ratePolicy, provider.providerId + ' ratePolicy');
+    enforceProviderWindow(providerResults, provider.volumePolicy, provider.providerId + ' volumePolicy');
   }
   return deepFreeze(results);
 }

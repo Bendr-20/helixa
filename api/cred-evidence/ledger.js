@@ -59,6 +59,8 @@ function buildEvidenceLedger(registryBundle,normalizedResults){
       submissionHash:result.verified.submissionHash,
       registryHash:result.verified.registryHash,
       receivedAt:submission.receivedAt,
+      payloadVisibility:submission.payloadVisibility,
+      nativePayloadHash:submission.nativePayloadHash,
       operation:op.operation,
       targetSubmissionId:op.targetSubmissionId,
       targetEvidenceId:target?.evidenceId||null,
@@ -90,7 +92,7 @@ function verifyEvidenceLedger(ledger){
 }
 function materializeLedger(ledger){
   verifyEvidenceLedger(ledger);
-  const states=new Map(),submissionToEvidence=new Map(),openDisputes=new Set();
+  const states=new Map(),submissionToEvidence=new Map(),openDisputes=new Set(),remediatedEvidenceIds=new Set();
   function target(entry){const state=states.get(entry.targetEvidenceId);if(!state)throw new Error('lifecycle transition targets unknown evidence');return state;}
   for(const entry of ledger.entries){
     if(entry.operation==='INGEST'){
@@ -106,7 +108,7 @@ function materializeLedger(ledger){
     }else if(entry.operation==='REVOCATION'){
       if(new Set(['CORRECTED','REVOKED','REMEDIATED']).has(prior.status))throw new Error('invalid revocation transition from '+prior.status);prior.status='REVOKED';prior.scoreEligible=false;
     }else if(entry.operation==='REMEDIATION'){
-      if(prior.record.direction!=='negative')throw new Error('only negative evidence can be remediated');if(new Set(['CORRECTED','REVOKED']).has(prior.status))throw new Error('invalid remediation transition from '+prior.status);prior.status='REMEDIATED';prior.scoreEligible=false;
+      if(prior.record.direction!=='negative')throw new Error('only negative evidence can be remediated');if(new Set(['CORRECTED','REVOKED']).has(prior.status))throw new Error('invalid remediation transition from '+prior.status);remediatedEvidenceIds.add(entry.targetEvidenceId);
     }else if(entry.operation==='DISPUTE_OPEN'){
       if(openDisputes.has(entry.targetEvidenceId))throw new Error('evidence already has an open dispute');if(new Set(['CORRECTED','REVOKED','REMEDIATED']).has(prior.status))throw new Error('terminal evidence cannot be disputed');openDisputes.add(entry.targetEvidenceId);
     }else if(entry.operation==='DISPUTE_RESOLVE'){
@@ -114,6 +116,6 @@ function materializeLedger(ledger){
     }else throw new Error('unknown ledger operation');
   }
   const records=[...states.values()].map(state=>deepFreeze({...state.record,status:state.status,scoreEligible:state.scoreEligible})).sort((a,b)=>compareUtf8(a.evidenceId,b.evidenceId));
-  return deepFreeze({records,openDisputes:[...openDisputes].sort(compareUtf8)});
+  return deepFreeze({records,openDisputes:[...openDisputes].sort(compareUtf8),remediatedEvidenceIds:[...remediatedEvidenceIds].sort(compareUtf8)});
 }
 module.exports=Object.freeze({LEDGER_TYPE,LEDGER_VERSION,ENTRY_HASH_DOMAIN,LEDGER_HASH_DOMAIN,buildEvidenceLedger,verifyEvidenceLedger,materializeLedger});

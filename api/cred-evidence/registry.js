@@ -261,7 +261,15 @@ function validateProvider(input, label, generatedAt) {
     const revoked = item.revokedAt === null ? null : timestamp(item.revokedAt, 'key revokedAt');
     return from <= generatedAt && (until === null || generatedAt < until) && (revoked === null || generatedAt < revoked);
   })) throw new Error(label + ' has no current provider key epoch');
-  const schemaAuthorizations = sortedUnique(input.schemaAuthorizations, label + '.schemaAuthorizations', validateAuthorization, item => item.schemaId + '\0' + item.schemaVersion);
+  const schemaAuthorizations = sortedUnique(input.schemaAuthorizations, label + '.schemaAuthorizations', validateAuthorization, item => item.schemaId + '\0' + item.schemaVersion + '\0' + item.validFrom);
+  const authorizationEnds = new Map();
+  for (const authorization of schemaAuthorizations) {
+    const key = authorization.schemaId + '\0' + authorization.schemaVersion;
+    const previousEnd = authorizationEnds.get(key);
+    const start = timestamp(authorization.validFrom, 'authorization validFrom');
+    if (previousEnd !== undefined && (previousEnd === null || start < previousEnd)) throw new Error(label + ' schema authorization epochs overlap');
+    authorizationEnds.set(key, authorization.validUntil === null ? null : timestamp(authorization.validUntil, 'authorization validUntil'));
+  }
   if ((state === 'active' || state === 'observation') && schemaAuthorizations.length === 0) throw new TypeError(label + ' must authorize a schema');
   for (const authorization of schemaAuthorizations) {
     if (timestamp(authorization.validFrom, 'authorization validFrom') < providerStart) throw new RangeError(label + ' schema authorization predates provider lifecycle');
@@ -516,6 +524,7 @@ function assertReferences(registry, generatedAt) {
   for (const epoch of registry.actorEpochs) {
     if (!subjects.has(epoch.subjectId)) throw new Error('actor epoch references unknown subject');
     if (epoch.assumptionOf !== null && !epochs.has(epoch.assumptionOf)) throw new Error('actor epoch assumptionOf references unknown epoch');
+    if (epoch.assumptionOf === epoch.actorEpochId) throw new Error('actor epoch cannot assume itself');
     const list = epochsBySubject.get(epoch.subjectId) || [];
     list.push(epoch);
     epochsBySubject.set(epoch.subjectId, list);

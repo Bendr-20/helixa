@@ -23,7 +23,7 @@ Permissionless submissions remain quarantined until separately verified and prom
 
 - Corrections append a replacement and make the referenced record ineligible; they never overwrite it.
 - Revocations are terminal for the referenced record.
-- Remediation can close negative evidence but cannot erase history.
+- Remediation can clear a proven policy ceiling but cannot erase the historical negative score mass or ledger history.
 - Opening a dispute is an audit signal and does not directly alter score mass. An explicit signed resolution either dismisses it or upholds it and revokes the record.
 - Private committed payloads are not emitted to scorer snapshots. Only public, allowlisted adapter inputs can become normalized records.
 
