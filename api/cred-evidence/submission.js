@@ -13,7 +13,7 @@ const MAX_RECEIPT_DELAY_MS = 7 * 24 * 60 * 60 * 1000;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const IDENTIFIER_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._:-]{0,127}$/u;
-const FIELDS = Object.freeze(['submissionType','registryVersion','submissionId','lane','providerId','submitterId','providerEventId','schemaId','schemaVersion','occurredAt','observedAt','receivedAt','subjectCoordinates','claimedActorEpochId','payloadVisibility','nativePayload','nativePayloadHash','proofRefs','signatureSuite','keyId','signature','correctionOf','revocationOf','disputeOf']);
+const FIELDS = Object.freeze(['submissionType','registryVersion','submissionId','lane','providerId','submitterId','providerEventId','schemaId','schemaVersion','occurredAt','observedAt','receivedAt','subjectCoordinates','claimedActorEpochId','payloadVisibility','nativePayload','nativePayloadHash','proofRefs','signatureSuite','keyId','signature','correctionOf','revocationOf','remediationOf','disputeOf']);
 
 function deepFreeze(value) {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -142,6 +142,7 @@ function normalizeSubmission(input, options = {}) {
     signature: lane === 'approved' ? input.signature : null,
     correctionOf: optionalIdentifier(input.correctionOf, 'correctionOf'),
     revocationOf: optionalIdentifier(input.revocationOf, 'revocationOf'),
+    remediationOf: optionalIdentifier(input.remediationOf, 'remediationOf'),
     disputeOf: optionalIdentifier(input.disputeOf, 'disputeOf'),
   });
 }

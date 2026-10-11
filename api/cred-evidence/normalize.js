@@ -85,7 +85,7 @@ function normalizeVerified(registry, verified) {
     scoreEligible: eligible,
     finality: transformed.finality,
     correctionOf: submission.correctionOf,
-    remediationOf: null,
+    remediationOf: submission.remediationOf,
     disputeId: submission.disputeOf,
     nativePayloadHash: submission.nativePayloadHash,
     proofRefs: submission.proofRefs,

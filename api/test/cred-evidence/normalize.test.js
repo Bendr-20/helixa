@@ -25,18 +25,18 @@ function resign(value) {
 test('normalizes active signed evidence to the exact scorer record', () => {
   const result = normalizeEvidenceSubmission(registry(), submission('submission_active'));
   assert.equal(result.adapterManifestHash, GENERIC_MANIFEST_HASH);
-  assert.equal(result.transformationHash, 'sha256:fd0029331270e3c9e8ea864bb26168a23c2f3fd7888b176658f79009881707e6');
+  assert.equal(result.transformationHash, 'sha256:089e96ad699fba2c28671066614e666abc98abaccce4d2c550ab6fffbea2194e');
   assert.equal(result.lifecycleState, 'ACTIVE');
   assert.equal(result.scoreEligible, true);
   assert.deepEqual(result.reasonCodes, []);
   assert.deepEqual(result.record, {
-    evidenceId: 'ev_49073049190f88d0b986e296db0f3234', subjectId: 'subject_alpha', actorEpochId: 'epoch_2',
+    evidenceId: 'ev_86c27062985ad1215f3130009fefd3cd', subjectId: 'subject_alpha', actorEpochId: 'epoch_2',
     schemaId: 'schema_task_outcome', schemaVersion: '1.0.0', schemaFamilyId: 'schema-family_task', empId: 'emp_operational', empVersion: '1.0.0', empWindowSeconds: 7776000,
     providerId: 'provider_alpha', providerControlGroup: 'group_alpha', category: 'operational', direction: 'positive', proofClass: 'P1', materiality: 'meaningful', severity: null,
     evidenceFamily: 'operational', observedAt: '2026-07-01T00:00:10.000Z', incidentKey: 'incident_event_001', correlationKey: 'cluster_event_001', domainTags: ['coding'],
     status: 'ACTIVE', scoreEligible: true, finality: 'final', correctionOf: null, remediationOf: null, disputeId: null,
     nativePayloadHash: 'sha256:6d15e9ac6fdad6c3c8e21cdce78e0d576ecf5ab388eb6f55b767d8880f563926', proofRefs: ['https://proof.example/event_001'],
-    transformationHash: 'sha256:fd0029331270e3c9e8ea864bb26168a23c2f3fd7888b176658f79009881707e6',
+    transformationHash: 'sha256:089e96ad699fba2c28671066614e666abc98abaccce4d2c550ab6fffbea2194e',
   });
   assert.ok(Object.isFrozen(result));
   assert.ok(Object.isFrozen(result.record));
