@@ -29,8 +29,8 @@ function resign(value) {
 test('verifies the pinned active-provider Ed25519 submission', () => {
   const value = submission('submission_active');
   const result = verifySubmission(registry(), value);
-  assert.equal(value.signature, 'uzaRAzQHyR1GPHO6_J0Q6IJ065Cx1ki9xNIpCVhhJWODqY3sTSxIWQIp-MdtDtNS23dgHVfAFLajVulCefybCQ');
-  assert.equal(result.submissionHash, 'sha256:de4fafe94ddc7be387c72728b1bb7685c47cd116f645e158ac3c58a2eb3a426d');
+  assert.equal(value.signature, '3_bPgwS-No_ymkXj6AXvJZpqn4ih4sbdNov0mdPw7z17I1AQBY3_nkiOTBbh7ecBFWyktazIYAnnkhc8wimpDw');
+  assert.equal(result.submissionHash, 'sha256:49073049190f88d0b986e296db0f323434b4a9b98afec4bd634c8bbda128ce77');
   assert.equal(result.authorization, 'authorized');
   assert.equal(result.lifecycleState, 'VERIFIED');
   assert.equal(result.eligibilityClass, 'eligible-after-verification');
