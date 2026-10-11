@@ -14,6 +14,7 @@ const REPOSITORY_ROOT = path.dirname(API_ROOT);
 const SHADOW_ROOT = path.join(API_ROOT, 'cred-shadow');
 const EVIDENCE_ROOT = path.join(API_ROOT, 'cred-evidence');
 const SHADOW_CLI = path.join(API_ROOT, 'scripts', 'run-cred-shadow-replay.js');
+const EVIDENCE_CLI = path.join(API_ROOT, 'scripts', 'compile-cred-evidence.js');
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -57,7 +58,7 @@ function listJavaScript(directory) {
       if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (absolute !== SHADOW_CLI) found.push(absolute);
+      if (absolute !== SHADOW_CLI && absolute !== EVIDENCE_CLI) found.push(absolute);
     }
   }
   return found.sort();
@@ -148,9 +149,12 @@ function buildGraph(roots, options = {}) {
         if (mode === 'shadow' && target !== SHADOW_CLI && !isInside(target, shadowRoot)) {
           throw new Error('shadow CLI graph reaches non-shadow local module: ' + target);
         }
+        if (mode === 'evidence' && target !== EVIDENCE_CLI && !isInside(target, evidenceRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('evidence CLI graph reaches unauthorized local module: ' + target);
+        }
         queue.push(target);
-      } else if (mode === 'shadow' && !BUILTINS.has(specifier)) {
-        throw new Error('shadow CLI imports non-builtin package: ' + specifier);
+      } else if ((mode === 'shadow' || mode === 'evidence') && !BUILTINS.has(specifier)) {
+        throw new Error('offline CLI imports non-builtin package: ' + specifier);
       }
     }
   }
@@ -214,6 +218,15 @@ test('shadow replay graph is offline, secret-free, and restricted to built-ins p
   const graph = buildGraph([SHADOW_CLI], { mode: 'shadow' });
   assert.equal(graph.has(fs.realpathSync(SHADOW_CLI)), true);
   for (const file of graph) assertNoForbiddenShadowCapability(file);
+});
+
+test('evidence compiler graph is offline, secret-free, and restricted to evidence plus shadow modules', () => {
+  const graph = buildGraph([EVIDENCE_CLI], { mode: 'evidence' });
+  assert.equal(graph.has(fs.realpathSync(EVIDENCE_CLI)), true);
+  for (const file of graph) {
+    assert.equal(file === fs.realpathSync(EVIDENCE_CLI) || isInside(file, EVIDENCE_ROOT) || isInside(file, SHADOW_ROOT), true, file + ' is outside the offline compiler graph');
+    assertNoForbiddenShadowCapability(file);
+  }
 });
 
 test('indirect production imports into a shadow directory are rejected', (t) => {
