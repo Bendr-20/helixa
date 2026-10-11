@@ -127,10 +127,14 @@ test('validates identity issuer authority, subject coordinates, and relationship
   throwsWith(value => { value.subjects[0].coordinates = []; }, /coordinate/);
   throwsWith(value => { value.identityEdges[0].issuerId = 'missing'; }, /issuer/);
   throwsWith(value => { value.identityEdges[0].relationshipType = 'operated-by'; }, /not authorized/);
-  throwsWith(value => { value.identityEdges[0].coordinate.namespace = 'solana'; }, /not authorized/);
+  throwsWith(value => {
+    const coordinate = { namespace: 'solana', network: 'solana:mainnet-beta', value: '11111111111111111111111111111111' };
+    value.identityEdges[0].coordinate = coordinate;
+    value.subjects[0].coordinates.push(structuredClone(coordinate));
+  }, /not authorized/);
   throwsWith(value => { value.identityEdges[0].validUntil = '2026-07-01T00:00:00.000Z'; value.identityEdges[0].revokedAt = '2026-08-01T00:00:00.000Z'; }, /revokedAt/);
   throwsWith(value => { value.identityEdges[0].verifiedAt = '2026-05-01T00:00:00.000Z'; }, /outside validity/);
-  throwsWith(value => { value.identityEdges[0].coordinate.value = 'other'; }, /subject coordinate/);
+  throwsWith(value => { value.identityEdges[0].coordinate.value = '0x9999999999999999999999999999999999999999'; }, /subject coordinate/);
 });
 
 test('requires complete non-overlapping actor epochs and current epoch references', () => {

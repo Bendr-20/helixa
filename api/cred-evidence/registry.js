@@ -37,6 +37,7 @@ const DIRECTIONS = new Set(['positive','negative']);
 const PROOF_CLASSES = new Set(['P1','P2','P3','P4']);
 const MATERIALITIES = new Set(['micro','standard','meaningful','substantial','major']);
 const ENCUMBRANCES = new Set(['clear','encumbered','transfer-pending','conflict']);
+const COORDINATE_NAMESPACES = new Set(['erc8004','looper','evm','solana','did','ubid','platform','endpoint']);
 const MAX_HALF_LIVES = Object.freeze({
   operational: { positive: 90, negative: 180 },
   financial: { positive: 365, negative: 730 },
@@ -169,14 +170,31 @@ function decodeCanonicalBase64url(value, label, byteLength) {
   return value;
 }
 
-function validateCoordinate(input, label) {
+function validateCoordinate(input, label = 'coordinate') {
   exact(input, COORDINATE_FIELDS, label);
-  return {
-    namespace: identifier(input.namespace, label + '.namespace'),
-    network: string(input.network, label + '.network', 128),
-    value: string(input.value, label + '.value', 512),
-  };
+  const namespace = choice(input.namespace, COORDINATE_NAMESPACES, label + '.namespace');
+  const network = string(input.network, label + '.network', 128);
+  const value = string(input.value, label + '.value', 512);
+  if (namespace === 'evm') {
+    if (!/^eip155:(0|[1-9]\d*)$/u.test(network) || !/^0x[0-9a-f]{40}$/u.test(value)) throw new TypeError(label + ' EVM coordinate is not canonical');
+  } else if (namespace === 'erc8004') {
+    if (!/^eip155:(0|[1-9]\d*)$/u.test(network) || !/^(0|[1-9]\d*)$/u.test(value)) throw new TypeError(label + ' ERC-8004 coordinate is not canonical');
+  } else if (namespace === 'looper') {
+    if (!/^eip155:(0|[1-9]\d*)$/u.test(network) || !/^0x[0-9a-f]{40}\/(0|[1-9]\d*)$/u.test(value)) throw new TypeError(label + ' Looper coordinate is not canonical');
+  } else if (namespace === 'solana') {
+    if (!/^solana:[a-z0-9-]{1,32}$/u.test(network) || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/u.test(value)) throw new TypeError(label + ' Solana coordinate is not canonical');
+  } else if (namespace === 'did') {
+    if (network !== 'global' || !/^did:[a-z0-9]+:[A-Za-z0-9._:%-]+$/u.test(value)) throw new TypeError(label + ' DID coordinate is not canonical');
+  } else if (namespace === 'endpoint') {
+    let parsed;
+    try { parsed = new URL(value); } catch { throw new TypeError(label + ' endpoint coordinate is not canonical'); }
+    if (network !== 'https' || parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.hash || parsed.toString() !== value) throw new TypeError(label + ' endpoint coordinate is not canonical');
+  } else if (!/^[a-z0-9][a-z0-9._:-]{0,127}$/u.test(network) || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/u.test(value)) {
+    throw new TypeError(label + ' coordinate is not canonical');
+  }
+  return { namespace, network, value };
 }
+
 
 function coordinateKey(coordinate) {
   return coordinate.namespace + '\0' + coordinate.network + '\0' + coordinate.value;
@@ -285,10 +303,13 @@ function validateIssuer(input, label, generatedAt) {
   exact(input, ISSUER_FIELDS, label);
   const interval = validateInterval(input.validFrom, input.validUntil, label + ' issuer');
   if (interval.start > generatedAt) throw new RangeError(label + ' issuer authority is not yet valid');
+  const state = choice(input.state, ISSUER_STATES, label + '.state');
+  if (state === 'active' && interval.end !== null && interval.end <= generatedAt) throw new Error(label + ' active issuer authority has expired');
+  if (state !== 'active' && (interval.end === null || interval.end > generatedAt)) throw new Error(label + ' inactive issuer authority requires a closed validity interval');
   const namespaces = sortedStrings(input.authorizedCoordinateNamespaces, label + '.authorizedCoordinateNamespaces', value => identifier(value, label + ' namespace'));
   const relationships = sortedStrings(input.authorizedRelationshipTypes, label + '.authorizedRelationshipTypes', value => identifier(value, label + ' relationship'));
   if (namespaces.length === 0 || relationships.length === 0) throw new TypeError(label + ' issuer authority must be nonempty');
-  return { issuerId: identifier(input.issuerId, label + '.issuerId'), state: choice(input.state, ISSUER_STATES, label + '.state'), validFrom: input.validFrom, validUntil: input.validUntil, authorizedCoordinateNamespaces: namespaces, authorizedRelationshipTypes: relationships };
+  return { issuerId: identifier(input.issuerId, label + '.issuerId'), state, validFrom: input.validFrom, validUntil: input.validUntil, authorizedCoordinateNamespaces: namespaces, authorizedRelationshipTypes: relationships };
 }
 
 function validateSubject(input, label) {
@@ -467,7 +488,6 @@ function assertReferences(registry, generatedAt) {
     const subject = subjects.get(edge.subjectId);
     if (!issuer) throw new Error('identity edge references unknown issuer');
     if (!subject) throw new Error('identity edge references unknown subject');
-    if (issuer.state !== 'active') throw new Error('identity edge issuer authority is not active');
     if (!issuer.authorizedCoordinateNamespaces.includes(edge.coordinate.namespace)) throw new Error('identity edge coordinate namespace is not authorized');
     if (!issuer.authorizedRelationshipTypes.includes(edge.relationshipType)) throw new Error('identity edge relationship is not authorized');
     if (!subject.coordinates.some(item => coordinateKey(item) === coordinateKey(edge.coordinate))) throw new Error('identity edge does not reference a subject coordinate');
@@ -557,4 +577,6 @@ module.exports = Object.freeze({
   buildRegistryBundle,
   computeEmpPolicyHash,
   computeOntologyHash,
+  normalizeCoordinate: validateCoordinate,
+  coordinateKey,
 });
