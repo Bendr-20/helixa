@@ -40,5 +40,9 @@
   },
   "bin": {
     "cred-shadow-replay": "scripts/run-cred-shadow-replay.js"
+  },
+  "devDependencies": {
+    "acorn": "^8.15.0",
+    "acorn-walk": "^8.3.4"
   }
 }
