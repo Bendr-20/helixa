@@ -16,7 +16,8 @@ const INTEGER_STRING_PATTERN = /^(0|[1-9]\d*)$/u;
 const IDENTIFIER_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._:-]{0,127}$/u;
 
 const REGISTRY_FIELDS = Object.freeze(['registryType','canonicalSerializationVersion','registryVersion','generatedAt','previousRegistryHash','versions','roots','providers','schemas','identityIssuers','subjects','identityEdges','actorEpochs','empPolicies','ontology']);
-const PROVIDER_FIELDS = Object.freeze(['providerId','controlGroupId','state','stateEffectiveAt','keyEpochs','schemaAuthorizations','evidenceFamilies','categories','domains','ratePolicy','volumePolicy','observationOnly','influencePolicyRef']);
+const PROVIDER_FIELDS = Object.freeze(['providerId','controlGroupId','state','stateEpochs','keyEpochs','schemaAuthorizations','evidenceFamilies','categories','domains','ratePolicy','volumePolicy','influencePolicyRef']);
+const STATE_EPOCH_FIELDS = Object.freeze(['state','validFrom','validUntil']);
 const KEY_EPOCH_FIELDS = Object.freeze(['keyId','suite','publicKey','validFrom','validUntil','revokedAt']);
 const AUTHORIZATION_FIELDS = Object.freeze(['schemaId','schemaVersion','validFrom','validUntil']);
 const SCHEMA_FIELDS = Object.freeze(['schemaId','schemaVersion','schemaFamilyId','adapterId','adapterVersion','eventType','evidenceFamily','category','allowedDirections','allowedProofClasses','materialityMapping','privacyClass','correctionPolicy','finalityPolicy','empId','empVersion','subjectCoordinateNamespaces','allowedDomains']);
@@ -229,15 +230,29 @@ function validateAuthorization(input, label) {
   };
 }
 
+function validateProviderStateEpoch(input, label) {
+  exact(input, STATE_EPOCH_FIELDS, label);
+  validateInterval(input.validFrom, input.validUntil, label);
+  return { state: choice(input.state, PROVIDER_STATES, label + '.state'), validFrom: input.validFrom, validUntil: input.validUntil };
+}
+
 function validateProvider(input, label, generatedAt) {
   exact(input, PROVIDER_FIELDS, label);
   const state = choice(input.state, PROVIDER_STATES, label + '.state');
-  const stateEffective = timestamp(input.stateEffectiveAt, label + '.stateEffectiveAt');
-  if (stateEffective > generatedAt) throw new RangeError(label + ' provider state is not yet effective');
-  const observationOnly = boolean(input.observationOnly, label + '.observationOnly');
-  if ((state === 'observation') !== observationOnly && (state === 'active' || state === 'observation')) {
-    throw new TypeError(label + '.observationOnly does not match provider state');
+  if (!Array.isArray(input.stateEpochs)) throw new TypeError(label + '.stateEpochs must be an array');
+  const stateEpochs = input.stateEpochs.map((item, index) => validateProviderStateEpoch(item, label + '.stateEpochs[' + index + ']'))
+    .sort((left, right) => compareUtf8(left.validFrom, right.validFrom));
+  if (stateEpochs.length === 0) throw new TypeError(label + ' must contain a provider state epoch');
+  for (let index = 0; index < stateEpochs.length; index += 1) {
+    const epoch = stateEpochs[index];
+    if (index > 0 && stateEpochs[index - 1].validUntil !== epoch.validFrom) throw new Error(label + ' provider state epochs must be contiguous and non-overlapping');
+    if (index < stateEpochs.length - 1 && epoch.validUntil === null) throw new Error(label + ' only the current provider state epoch may be open');
   }
+  const currentStateEpoch = stateEpochs.at(-1);
+  if (currentStateEpoch.validUntil !== null || currentStateEpoch.state !== state || timestamp(currentStateEpoch.validFrom, label + ' current state validFrom') > generatedAt) {
+    throw new Error(label + ' current provider state does not match state epochs');
+  }
+  const providerStart = timestamp(stateEpochs[0].validFrom, label + ' first state validFrom');
   const keyEpochs = sortedUnique(input.keyEpochs, label + '.keyEpochs', validateKeyEpoch, item => item.keyId);
   if (keyEpochs.length === 0) throw new TypeError(label + ' must contain a key epoch');
   if ((state === 'active' || state === 'observation') && !keyEpochs.some(item => {
@@ -249,7 +264,7 @@ function validateProvider(input, label, generatedAt) {
   const schemaAuthorizations = sortedUnique(input.schemaAuthorizations, label + '.schemaAuthorizations', validateAuthorization, item => item.schemaId + '\0' + item.schemaVersion);
   if ((state === 'active' || state === 'observation') && schemaAuthorizations.length === 0) throw new TypeError(label + ' must authorize a schema');
   for (const authorization of schemaAuthorizations) {
-    if (timestamp(authorization.validFrom, 'authorization validFrom') < stateEffective) throw new RangeError(label + ' schema authorization predates provider state');
+    if (timestamp(authorization.validFrom, 'authorization validFrom') < providerStart) throw new RangeError(label + ' schema authorization predates provider lifecycle');
   }
   if ((state === 'active' || state === 'observation') && !schemaAuthorizations.some(item => {
     const from = timestamp(item.validFrom, 'authorization validFrom');
@@ -260,7 +275,7 @@ function validateProvider(input, label, generatedAt) {
     providerId: identifier(input.providerId, label + '.providerId'),
     controlGroupId: identifier(input.controlGroupId, label + '.controlGroupId'),
     state,
-    stateEffectiveAt: input.stateEffectiveAt,
+    stateEpochs,
     keyEpochs,
     schemaAuthorizations,
     evidenceFamilies: sortedStrings(input.evidenceFamilies, label + '.evidenceFamilies', value => choice(value, EVIDENCE_FAMILIES, label + '.evidenceFamilies item')),
@@ -268,7 +283,6 @@ function validateProvider(input, label, generatedAt) {
     domains: sortedStrings(input.domains, label + '.domains', value => identifier(value, label + '.domains item')),
     ratePolicy: validateWindow(input.ratePolicy, label + '.ratePolicy'),
     volumePolicy: validateWindow(input.volumePolicy, label + '.volumePolicy'),
-    observationOnly,
     influencePolicyRef: identifier(input.influencePolicyRef, label + '.influencePolicyRef'),
   };
 }

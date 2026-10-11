@@ -40,6 +40,7 @@ test('accepts only the exact closed registry shape at every level', () => {
   for (const mutate of [
     value => { value.extra = true; },
     value => { value.providers[0].extra = true; },
+    value => { value.providers[0].stateEpochs[0].extra = true; },
     value => { value.providers[0].keyEpochs[0].extra = true; },
     value => { value.schemas[0].extra = true; },
     value => { value.subjects[0].coordinates[0].extra = true; },
@@ -113,12 +114,14 @@ test('rejects noncanonical timestamps, hashes, and integer encodings without coe
 
 test('validates provider state, key epochs, and schema authorization references', () => {
   throwsWith(value => { value.providers[0].state = 'approved'; }, /state/);
-  throwsWith(value => { value.providers[0].observationOnly = true; }, /observationOnly/);
+  throwsWith(value => { value.providers[0].state = 'observation'; }, /state epochs/);
+  throwsWith(value => { value.providers[0].stateEpochs[0].validUntil = '2026-07-01T00:00:00.000Z'; }, /contiguous/);
+  throwsWith(value => { value.providers[0].stateEpochs[1].validFrom = '2026-05-01T00:00:00.000Z'; }, /contiguous/);
   throwsWith(value => { value.providers[0].keyEpochs[0].suite = 'ed25519'; }, /suite/);
   throwsWith(value => { value.providers[0].keyEpochs[0].publicKey += '='; }, /publicKey/);
   throwsWith(value => { value.providers[0].keyEpochs[0].validUntil = '2025-01-01T00:00:00.000Z'; }, /key epoch/);
   throwsWith(value => { value.providers[0].schemaAuthorizations[0].schemaId = 'missing'; }, /unknown schema/);
-  throwsWith(value => { value.providers[0].schemaAuthorizations[0].validFrom = '2025-01-01T00:00:00.000Z'; }, /provider state/);
+  throwsWith(value => { value.providers[0].schemaAuthorizations[0].validFrom = '2025-01-01T00:00:00.000Z'; }, /provider lifecycle/);
   throwsWith(value => { value.providers[0].schemaAuthorizations[0].validUntil = '2026-02-01T00:00:00.000Z'; }, /current schema authorization/);
   throwsWith(value => { value.providers[0].domains = ['payments']; }, /authorized domain/);
 });
