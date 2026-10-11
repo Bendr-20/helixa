@@ -39,13 +39,13 @@ function capTier(tier, ceiling) {
   return RANK_TIER[Math.min(TIER_RANK[tier], TIER_RANK[ceiling])];
 }
 
-function scoreCategories(prepared) {
+function scoreCategories(prepared, parameters = CANDIDATE_PARAMETERS, options = {}) {
   const categories = {};
-  for (const category of CATEGORIES) categories[category] = scorePreparedCategory(prepared, category);
+  for (const category of CATEGORIES) categories[category] = scorePreparedCategory(prepared, category, parameters, options);
   return Object.freeze(categories);
 }
 
-function evidenceStats(prepared, categoryResults) {
+function evidenceStats(prepared, categoryResults, parameters = CANDIDATE_PARAMETERS) {
   const recordById = new Map(prepared.snapshot.records.map((record) => [record.evidenceId, record]));
   const positiveMassIds = new Set();
   for (const category of CATEGORIES) {
@@ -74,7 +74,7 @@ function evidenceStats(prepared, categoryResults) {
     freshestAgeDays,
     categoryMass,
     totalMass,
-    qualifyingCategories: Object.values(categoryMass).filter((mass) => mass >= CANDIDATE_PARAMETERS.ratingGates.minimumCategoryMass).length,
+    qualifyingCategories: Object.values(categoryMass).filter((mass) => mass >= parameters.ratingGates.minimumCategoryMass).length,
   };
 }
 
@@ -128,62 +128,62 @@ function riskState(snapshot) {
   };
 }
 
-function gateReasons(prepared, confidence, coverage, stats) {
+function gateReasons(prepared, confidence, coverage, stats, parameters = CANDIDATE_PARAMETERS) {
   const reasons = new Set();
   const identity = prepared.snapshot.identity;
   if (identity.resolution === 'ambiguous') reasons.add('IDENTITY_AMBIGUOUS');
   if (identity.resolution === 'conflict') reasons.add('IDENTITY_CONFLICT');
   if (identity.resolution !== 'resolved') reasons.add('PROVISIONAL_IDENTITY_GATE');
-  if (stats.totalMass < CANDIDATE_PARAMETERS.ratingGates.minimumTotalMass) reasons.add('PROVISIONAL_VOLUME_GATE');
-  if (stats.qualifyingCategories < CANDIDATE_PARAMETERS.ratingGates.minimumQualifyingCategories) reasons.add('PROVISIONAL_CATEGORY_GATE');
-  if (confidence.nonP4IndependentControlGroups < CANDIDATE_PARAMETERS.ratingGates.minimumIndependentControlGroups) reasons.add('PROVISIONAL_DIVERSITY_GATE');
-  if (stats.observationSpanDays < Number(CANDIDATE_PARAMETERS.ratingGates.minimumObservationSpanDays)) reasons.add('PROVISIONAL_AGE_GATE');
-  if (stats.freshestAgeDays === null || stats.freshestAgeDays > Number(CANDIDATE_PARAMETERS.ratingGates.maximumQualifyingEventAgeDays)) reasons.add('PROVISIONAL_FRESHNESS_GATE');
-  if (coverage.overall < Number(CANDIDATE_PARAMETERS.ratingGates.minimumCoverage)) reasons.add('PROVISIONAL_COVERAGE_GATE');
-  if (confidence.value < Number(CANDIDATE_PARAMETERS.ratingGates.minimumConfidence)) reasons.add('PROVISIONAL_CONFIDENCE_GATE');
-  if (stats.totalMass < CANDIDATE_PARAMETERS.unratedGates.minimumEligibleIndependentMass) reasons.add('UNRATED_INSUFFICIENT_EVIDENCE');
+  if (stats.totalMass < parameters.ratingGates.minimumTotalMass) reasons.add('PROVISIONAL_VOLUME_GATE');
+  if (stats.qualifyingCategories < parameters.ratingGates.minimumQualifyingCategories) reasons.add('PROVISIONAL_CATEGORY_GATE');
+  if (confidence.nonP4IndependentControlGroups < parameters.ratingGates.minimumIndependentControlGroups) reasons.add('PROVISIONAL_DIVERSITY_GATE');
+  if (stats.observationSpanDays < Number(parameters.ratingGates.minimumObservationSpanDays)) reasons.add('PROVISIONAL_AGE_GATE');
+  if (stats.freshestAgeDays === null || stats.freshestAgeDays > Number(parameters.ratingGates.maximumQualifyingEventAgeDays)) reasons.add('PROVISIONAL_FRESHNESS_GATE');
+  if (coverage.overall < Number(parameters.ratingGates.minimumCoverage)) reasons.add('PROVISIONAL_COVERAGE_GATE');
+  if (confidence.value < Number(parameters.ratingGates.minimumConfidence)) reasons.add('PROVISIONAL_CONFIDENCE_GATE');
+  if (stats.totalMass < parameters.unratedGates.minimumEligibleIndependentMass) reasons.add('UNRATED_INSUFFICIENT_EVIDENCE');
   return reasons;
 }
 
-function ratingStatus(prepared, stats, reasons, risks) {
+function ratingStatus(prepared, stats, reasons, risks, parameters = CANDIDATE_PARAMETERS) {
   if (risks.identityCompromised) return 'SUSPENDED';
-  if (prepared.snapshot.identity.resolution !== 'resolved' || stats.totalMass < CANDIDATE_PARAMETERS.unratedGates.minimumEligibleIndependentMass) return 'UNRATED';
+  if (prepared.snapshot.identity.resolution !== 'resolved' || stats.totalMass < parameters.unratedGates.minimumEligibleIndependentMass) return 'UNRATED';
   return reasons.size === 0 ? 'RATED' : 'PROVISIONAL';
 }
 
-function advancedEligibility(scoreTier, confidence, coverage, stats, risks) {
+function advancedEligibility(scoreTier, confidence, coverage, stats, risks, parameters = CANDIDATE_PARAMETERS) {
   const activeLevels = risks.policyRiskLevels;
   const prime = TIER_RANK[scoreTier] >= TIER_RANK.Prime &&
-    confidence.value >= Number(CANDIDATE_PARAMETERS.advancedGates.Prime.minimumConfidence) &&
-    coverage.overall >= Number(CANDIDATE_PARAMETERS.advancedGates.Prime.minimumCoverage) &&
-    confidence.nonP4IndependentControlGroups >= CANDIDATE_PARAMETERS.advancedGates.Prime.minimumIndependentControlGroups &&
-    stats.observationSpanDays >= Number(CANDIDATE_PARAMETERS.advancedGates.Prime.minimumObservationSpanDays) &&
-    ![...activeLevels].some((level) => CANDIDATE_PARAMETERS.advancedGates.Prime.disqualifyingActiveFlags.includes(level));
+    confidence.value >= Number(parameters.advancedGates.Prime.minimumConfidence) &&
+    coverage.overall >= Number(parameters.advancedGates.Prime.minimumCoverage) &&
+    confidence.nonP4IndependentControlGroups >= parameters.advancedGates.Prime.minimumIndependentControlGroups &&
+    stats.observationSpanDays >= Number(parameters.advancedGates.Prime.minimumObservationSpanDays) &&
+    ![...activeLevels].some((level) => parameters.advancedGates.Prime.disqualifyingActiveFlags.includes(level));
   const preferred = scoreTier === 'Preferred' &&
-    confidence.value >= Number(CANDIDATE_PARAMETERS.advancedGates.Preferred.minimumConfidence) &&
-    coverage.overall >= Number(CANDIDATE_PARAMETERS.advancedGates.Preferred.minimumCoverage) &&
-    stats.qualifyingCategories >= CANDIDATE_PARAMETERS.advancedGates.Preferred.minimumQualifyingCategories &&
-    confidence.nonP4IndependentControlGroups >= CANDIDATE_PARAMETERS.advancedGates.Preferred.minimumIndependentControlGroups &&
-    stats.observationSpanDays >= Number(CANDIDATE_PARAMETERS.advancedGates.Preferred.minimumObservationSpanDays) &&
-    ![...activeLevels].some((level) => CANDIDATE_PARAMETERS.advancedGates.Preferred.disqualifyingActiveFlags.includes(level));
+    confidence.value >= Number(parameters.advancedGates.Preferred.minimumConfidence) &&
+    coverage.overall >= Number(parameters.advancedGates.Preferred.minimumCoverage) &&
+    stats.qualifyingCategories >= parameters.advancedGates.Preferred.minimumQualifyingCategories &&
+    confidence.nonP4IndependentControlGroups >= parameters.advancedGates.Preferred.minimumIndependentControlGroups &&
+    stats.observationSpanDays >= Number(parameters.advancedGates.Preferred.minimumObservationSpanDays) &&
+    ![...activeLevels].some((level) => parameters.advancedGates.Preferred.disqualifyingActiveFlags.includes(level));
   return Object.freeze({ Prime: prime, Preferred: preferred });
 }
 
-function scorePreparedSnapshot(prepared) {
+function scorePreparedSnapshot(prepared, parameters = CANDIDATE_PARAMETERS, options = {}) {
   if (!prepared || !prepared.snapshot || !Array.isArray(prepared.included)) throw new TypeError('prepared evidence is invalid');
-  const categories = scoreCategories(prepared);
+  const categories = scoreCategories(prepared, parameters, options);
   const coverage = computeCoverage(categories);
   const confidence = computeConfidence(prepared, categories);
-  const stats = evidenceStats(prepared, categories);
+  const stats = evidenceStats(prepared, categories, parameters);
   const categoryScoresMicro = Object.fromEntries(CATEGORIES.map((category) => [category, BigInt(categories[category].scoreMicro)]));
   const internalScore = weightedOverallScore(categoryScoresMicro);
   const scoreTier = tierForScore(internalScore);
   const risks = riskState(prepared.snapshot);
-  const reasons = gateReasons(prepared, confidence, coverage, stats);
+  const reasons = gateReasons(prepared, confidence, coverage, stats, parameters);
   for (const reason of risks.reasons) reasons.add(reason);
   const statusGateReasons = new Set([...reasons].filter((code) => code.startsWith('PROVISIONAL_') || code === 'IDENTITY_AMBIGUOUS' || code === 'IDENTITY_CONFLICT'));
-  const status = ratingStatus(prepared, stats, statusGateReasons, risks);
-  const computedAdvanced = advancedEligibility(scoreTier, confidence, coverage, stats, risks);
+  const status = ratingStatus(prepared, stats, statusGateReasons, risks, parameters);
+  const computedAdvanced = advancedEligibility(scoreTier, confidence, coverage, stats, risks, parameters);
   const advanced = Object.freeze({
     Prime: status === 'RATED' && computedAdvanced.Prime,
     Preferred: status === 'RATED' && computedAdvanced.Preferred,
@@ -220,8 +220,8 @@ function scorePreparedSnapshot(prepared) {
   });
 }
 
-function scoreShadowSnapshot(snapshot) {
-  return scorePreparedSnapshot(prepareEvidence(snapshot));
+function scoreShadowSnapshot(snapshot, parameters = CANDIDATE_PARAMETERS, options = {}) {
+  return scorePreparedSnapshot(prepareEvidence(snapshot), parameters, options);
 }
 
 function scoreDomainProfile(prepared, domain) {

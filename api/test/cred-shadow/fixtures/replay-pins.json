@@ -1,0 +1,334 @@
+{
+  "parameterSets": [
+    {
+      "id": "baseline",
+      "dimension": "baseline",
+      "target": "all",
+      "direction": "baseline",
+      "parameterSetHash": "sha256:3a0fb1b70306080748a58631fce3aad7eee2ed237ad001eaeec9ce8fc0e17517"
+    },
+    {
+      "id": "prior-mass:low",
+      "dimension": "prior-mass",
+      "target": "all",
+      "direction": "low",
+      "parameterSetHash": "sha256:113f3ed9c9bad468c56ecfde9299d501f9ceebb715db7672de56e4a3cf2133b1"
+    },
+    {
+      "id": "prior-mass:high",
+      "dimension": "prior-mass",
+      "target": "all",
+      "direction": "high",
+      "parameterSetHash": "sha256:1a2cee7be5008815b0be7e081b88a96bdac81d93572012ed6fcc30d229e1e62e"
+    },
+    {
+      "id": "positive-half-life:operational:low",
+      "dimension": "positive-half-life",
+      "target": "operational",
+      "direction": "low",
+      "parameterSetHash": "sha256:112ec98b0240f7c05d962c700075127df5e06fda8404cae174164f574dc435a7"
+    },
+    {
+      "id": "positive-half-life:operational:high",
+      "dimension": "positive-half-life",
+      "target": "operational",
+      "direction": "high",
+      "parameterSetHash": "sha256:f34ec2d3d6da6f4b7949a7d69748ee229d4627e7a2e8bd551522e47e0820134a"
+    },
+    {
+      "id": "positive-half-life:financial:low",
+      "dimension": "positive-half-life",
+      "target": "financial",
+      "direction": "low",
+      "parameterSetHash": "sha256:375793b443897021b1106f558ed253e83bfbcb4f389734a4402f4471f8e79c31"
+    },
+    {
+      "id": "positive-half-life:financial:high",
+      "dimension": "positive-half-life",
+      "target": "financial",
+      "direction": "high",
+      "parameterSetHash": "sha256:ef8e3aa2aea0942214929eddd16cff481ce916b6eba0aabc47bf6d6e9711d276"
+    },
+    {
+      "id": "positive-half-life:onchain:low",
+      "dimension": "positive-half-life",
+      "target": "onchain",
+      "direction": "low",
+      "parameterSetHash": "sha256:73fd7ec26f7ebf0d70dfc445d01cc596d59e20de8608abddcf38d471e2e7f395"
+    },
+    {
+      "id": "positive-half-life:onchain:high",
+      "dimension": "positive-half-life",
+      "target": "onchain",
+      "direction": "high",
+      "parameterSetHash": "sha256:662c4d2b1e9413c8196f3b0c50d8437e451f028e0d7308c675eab0dc0f56c4b6"
+    },
+    {
+      "id": "positive-half-life:identity:low",
+      "dimension": "positive-half-life",
+      "target": "identity",
+      "direction": "low",
+      "parameterSetHash": "sha256:973afb0cdebf662bd7c6d4225bfc44c4d03b7aa8939b18ce97a4e76d4684045d"
+    },
+    {
+      "id": "positive-half-life:identity:high",
+      "dimension": "positive-half-life",
+      "target": "identity",
+      "direction": "high",
+      "parameterSetHash": "sha256:60ad29348122e63d3e493528f90ba802d5b6fe8b648036082e1b74a90458594f"
+    },
+    {
+      "id": "positive-half-life:comparative:low",
+      "dimension": "positive-half-life",
+      "target": "comparative",
+      "direction": "low",
+      "parameterSetHash": "sha256:7179aee6a27e0bf98e288b253e8c65fe8293d53d463fbabf3dd6b09b242f2c02"
+    },
+    {
+      "id": "positive-half-life:comparative:high",
+      "dimension": "positive-half-life",
+      "target": "comparative",
+      "direction": "high",
+      "parameterSetHash": "sha256:55de885734a7afa1ecee0f9eb08e108036700765aab1876dfc1f8d17823de5f6"
+    },
+    {
+      "id": "negative-half-life:operational:low",
+      "dimension": "negative-half-life",
+      "target": "operational",
+      "direction": "low",
+      "parameterSetHash": "sha256:1c9673e79ff169fc21c4cafce57fed79c425c4a1d951c111e532e87d104aa188"
+    },
+    {
+      "id": "negative-half-life:operational:high",
+      "dimension": "negative-half-life",
+      "target": "operational",
+      "direction": "high",
+      "parameterSetHash": "sha256:842ed84d9cbc090b07d12da2a445cd0d231567839d6b4cac7af1e1f29c380fea"
+    },
+    {
+      "id": "negative-half-life:financial:low",
+      "dimension": "negative-half-life",
+      "target": "financial",
+      "direction": "low",
+      "parameterSetHash": "sha256:2170ff4720db5a63eaa42f698b8c4da5007474e368ce79e9c52938992552345f"
+    },
+    {
+      "id": "negative-half-life:financial:high",
+      "dimension": "negative-half-life",
+      "target": "financial",
+      "direction": "high",
+      "parameterSetHash": "sha256:b9bd4a8b5f28830a4495db4495d8dc4cea42fe0196db8b2c20a149e9876e136c"
+    },
+    {
+      "id": "negative-half-life:onchain:low",
+      "dimension": "negative-half-life",
+      "target": "onchain",
+      "direction": "low",
+      "parameterSetHash": "sha256:9f127dcf2744c70136fa7519b96050440075c042ad2dc4a9ce0485aaf13900c8"
+    },
+    {
+      "id": "negative-half-life:onchain:high",
+      "dimension": "negative-half-life",
+      "target": "onchain",
+      "direction": "high",
+      "parameterSetHash": "sha256:e9f8e769000bbd04541e4eb6cae64a4b0874efdae0f9afabd465fa1a14dad1ac"
+    },
+    {
+      "id": "negative-half-life:identity:low",
+      "dimension": "negative-half-life",
+      "target": "identity",
+      "direction": "low",
+      "parameterSetHash": "sha256:014bfc91f7de4e860534904af34b91661a83d00e9664237606b2c31264df316e"
+    },
+    {
+      "id": "negative-half-life:identity:high",
+      "dimension": "negative-half-life",
+      "target": "identity",
+      "direction": "high",
+      "parameterSetHash": "sha256:75a63f49bfb864bbfba0bcc50f50d784720929cd8c89872bb5353aa298bb66a0"
+    },
+    {
+      "id": "negative-half-life:severe-critical:low",
+      "dimension": "negative-half-life",
+      "target": "severe-critical",
+      "direction": "low",
+      "parameterSetHash": "sha256:8e9b765b3a8485ea7df786f45d31bbd91cd594d8272b69dad5824b861d93b7a2"
+    },
+    {
+      "id": "negative-half-life:severe-critical:high",
+      "dimension": "negative-half-life",
+      "target": "severe-critical",
+      "direction": "high",
+      "parameterSetHash": "sha256:6f8a10e019597dadbf1f407fb45a7b38198925648629ac6b365c9397dc00fd68"
+    },
+    {
+      "id": "negative-half-life:comparative:low",
+      "dimension": "negative-half-life",
+      "target": "comparative",
+      "direction": "low",
+      "parameterSetHash": "sha256:063d641b1bbac61faf6c47702ea6bfad69edbb9d99b77f7c1b48d9c4fb313396"
+    },
+    {
+      "id": "negative-half-life:comparative:high",
+      "dimension": "negative-half-life",
+      "target": "comparative",
+      "direction": "high",
+      "parameterSetHash": "sha256:d535f5bf840f99aa89e71b770769b59afe0c32c6dd9e69e2d26556a547878907"
+    },
+    {
+      "id": "severity-factor:minor:low",
+      "dimension": "severity-factor",
+      "target": "minor",
+      "direction": "low",
+      "parameterSetHash": "sha256:c1f89d1438fff336b8f2993a2ef0b9c9eae570ca1f4da2a6af2fc05d7efb4673"
+    },
+    {
+      "id": "severity-factor:minor:high",
+      "dimension": "severity-factor",
+      "target": "minor",
+      "direction": "high",
+      "parameterSetHash": "sha256:6205a82b7b329c9f00fa4a650fab27ca6fd69a21799f1c32d4b670ef2e6965b1"
+    },
+    {
+      "id": "severity-factor:material:low",
+      "dimension": "severity-factor",
+      "target": "material",
+      "direction": "low",
+      "parameterSetHash": "sha256:1f809093989146c84b624a89d29d7920aa15c4f3c90f07968f8b6aaa9c5afcaf"
+    },
+    {
+      "id": "severity-factor:material:high",
+      "dimension": "severity-factor",
+      "target": "material",
+      "direction": "high",
+      "parameterSetHash": "sha256:1c2f78a7420b6df9279e832483ed34995aa5d8c3ec220b0642eeac170e239653"
+    },
+    {
+      "id": "severity-factor:severe:low",
+      "dimension": "severity-factor",
+      "target": "severe",
+      "direction": "low",
+      "parameterSetHash": "sha256:1b6a867c33833e3f1b09a5fd0d71d852f1fa0c693351eb693f8d0648d713715c"
+    },
+    {
+      "id": "severity-factor:severe:high",
+      "dimension": "severity-factor",
+      "target": "severe",
+      "direction": "high",
+      "parameterSetHash": "sha256:94ce6403b7efbee140861826362d6902016597bd6ac89a1a7fdaf640812a0d1a"
+    },
+    {
+      "id": "severity-factor:critical:low",
+      "dimension": "severity-factor",
+      "target": "critical",
+      "direction": "low",
+      "parameterSetHash": "sha256:0aeb51f50f831fea0b0a1d95ab76d315543f6b060217b23066fc6d4eef173853"
+    },
+    {
+      "id": "severity-factor:critical:high",
+      "dimension": "severity-factor",
+      "target": "critical",
+      "direction": "high",
+      "parameterSetHash": "sha256:705d2fc411123249e2dd7db6fa871a692f379059422b94dab6bd6ef28e59068a"
+    },
+    {
+      "id": "cap:provider:low",
+      "dimension": "cap",
+      "target": "provider",
+      "direction": "low",
+      "parameterSetHash": "sha256:bc510a9076c541a381f52836445631e2d666ba071047f5845dea810121a11493"
+    },
+    {
+      "id": "cap:provider:high",
+      "dimension": "cap",
+      "target": "provider",
+      "direction": "high",
+      "parameterSetHash": "sha256:fb0f3e5a490a2e3ece86f922de05a3fac48f58ea9d8fc529dff6f1b23e84f688"
+    },
+    {
+      "id": "cap:schema:low",
+      "dimension": "cap",
+      "target": "schema",
+      "direction": "low",
+      "parameterSetHash": "sha256:9445b6a49301c1e1dee11b0d000f244842ccb48f2c7c53b6f826fe2a0007c62b"
+    },
+    {
+      "id": "cap:schema:high",
+      "dimension": "cap",
+      "target": "schema",
+      "direction": "high",
+      "parameterSetHash": "sha256:42f0f643ec97dfc07963c3539c446fa2b6249732d6cd33307aa884cadad50073"
+    },
+    {
+      "id": "cap:P4:low",
+      "dimension": "cap",
+      "target": "P4",
+      "direction": "low",
+      "parameterSetHash": "sha256:ce40cc94c042e0b4281fdbadb8d2ff3adb602600d1007890d1dcff55b97a94c9"
+    },
+    {
+      "id": "cap:P4:high",
+      "dimension": "cap",
+      "target": "P4",
+      "direction": "high",
+      "parameterSetHash": "sha256:bbaf292e7e852360232289117f1bc5ac7ebcc95bbb323d03a83a51ee6524c468"
+    },
+    {
+      "id": "rated-mass:low",
+      "dimension": "rated-mass",
+      "target": "all",
+      "direction": "low",
+      "parameterSetHash": "sha256:a5cde73b97add7600339b5c2083bc1a5856cdcb3f20abd5f3835b6f5edc6787f"
+    },
+    {
+      "id": "rated-mass:high",
+      "dimension": "rated-mass",
+      "target": "all",
+      "direction": "high",
+      "parameterSetHash": "sha256:fca82a4649baf0b7c1f3a48c18809f99b3b0bfad7ecb9e4b59eccaa315aaba53"
+    },
+    {
+      "id": "category-mass:low",
+      "dimension": "category-mass",
+      "target": "all",
+      "direction": "low",
+      "parameterSetHash": "sha256:76687f4a725e8d902fc8cad02700fddbe0a54f47f2b4cbb36852db73a9a5203e"
+    },
+    {
+      "id": "category-mass:high",
+      "dimension": "category-mass",
+      "target": "all",
+      "direction": "high",
+      "parameterSetHash": "sha256:653872310137a81993a5b4db3f5dcc7107e6fb9ae4806914be4ec8b56bbdfd25"
+    },
+    {
+      "id": "confidence-gate:low",
+      "dimension": "confidence-gate",
+      "target": "all",
+      "direction": "low",
+      "parameterSetHash": "sha256:2d3fff15224dbf99d27e47d5cbc5abd3440629b8501b5dea91b24061aedf4ef7"
+    },
+    {
+      "id": "confidence-gate:high",
+      "dimension": "confidence-gate",
+      "target": "all",
+      "direction": "high",
+      "parameterSetHash": "sha256:031f869cf7bf2d81d185065c116d57cc93e9fa3f0222831644203d78a7f16dda"
+    },
+    {
+      "id": "coverage-gate:low",
+      "dimension": "coverage-gate",
+      "target": "all",
+      "direction": "low",
+      "parameterSetHash": "sha256:de3b0094f566a4c157b1ea1182095c2798fdea7963e31dccdd8f0b876ec041d2"
+    },
+    {
+      "id": "coverage-gate:high",
+      "dimension": "coverage-gate",
+      "target": "all",
+      "direction": "high",
+      "parameterSetHash": "sha256:c2e096a7cb9b7980d89f43e51540113c9751d3f22664e7d6567b4d6528705209"
+    }
+  ],
+  "reportSha256": "40e78b583edc17c3f7bf28df5afdb62e3c60b869275a0e13781a838a6876875b"
+}

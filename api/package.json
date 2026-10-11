@@ -8,7 +8,9 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "audit:internal-auth": "node scripts/audit-internal-auth.js",
-    "test:internal-auth": "node scripts/test-internal-auth.js"
+    "test:internal-auth": "node scripts/test-internal-auth.js",
+    "test:cred-shadow": "node --test test/cred-shadow/*.test.js",
+    "cred:shadow:replay": "node scripts/run-cred-shadow-replay.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -35,5 +37,8 @@
     "mppx": "^0.4.8",
     "ox": "^0.13.0",
     "tweetnacl": "^1.0.3"
+  },
+  "bin": {
+    "cred-shadow-replay": "scripts/run-cred-shadow-replay.js"
   }
 }

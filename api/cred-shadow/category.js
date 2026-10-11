@@ -28,11 +28,11 @@ function assertAggregateMass(value, label) {
   return value;
 }
 
-function categoryPosterior(positiveMass, negativeMass) {
+function categoryPosterior(positiveMass, negativeMass, parameters = CANDIDATE_PARAMETERS) {
   assertAggregateMass(positiveMass, 'positive mass');
   assertAggregateMass(negativeMass, 'negative mass');
-  const positivePosterior = CANDIDATE_PARAMETERS.priorMass.positive + positiveMass;
-  const negativePosterior = CANDIDATE_PARAMETERS.priorMass.negative + negativeMass;
+  const positivePosterior = parameters.priorMass.positive + positiveMass;
+  const negativePosterior = parameters.priorMass.negative + negativeMass;
   const denominator = positivePosterior + negativePosterior;
   if (denominator > INT64_MAX) throw new RangeError('posterior denominator is outside int64 range');
   const scoreMicro = mulDivRound(100n * SCALE, positivePosterior, denominator);
@@ -44,22 +44,26 @@ function categoryPosterior(positiveMass, negativeMass) {
   });
 }
 
-function effectiveEventMass({ allocatedMassMicroEu, direction, severity, ageDays, halfLifeDays }) {
+function effectiveEventMass({ allocatedMassMicroEu, direction, severity, ageDays, ageMicroDays, halfLifeDays, halfLifeMicroDays }, parameters = CANDIDATE_PARAMETERS) {
   if (typeof allocatedMassMicroEu !== 'string' || !/^(0|[1-9]\d*)$/u.test(allocatedMassMicroEu)) {
     throw new TypeError('allocated mass must be a canonical nonnegative integer string');
   }
   const allocated = assertRawEventMass(BigInt(allocatedMassMicroEu));
-  assertInt64(ageDays, 'ageDays');
-  assertInt64(halfLifeDays, 'halfLifeDays');
-  if (ageDays < 0n) throw new RangeError('ageDays must be nonnegative');
-  if (halfLifeDays <= 0n) throw new RangeError('halfLifeDays must be positive');
+  if (ageMicroDays === undefined) assertInt64(ageDays, 'ageDays');
+  else assertInt64(ageMicroDays, 'ageMicroDays');
+  if (halfLifeMicroDays === undefined) assertInt64(halfLifeDays, 'halfLifeDays');
+  else assertInt64(halfLifeMicroDays, 'halfLifeMicroDays');
+  if ((ageMicroDays === undefined ? ageDays : ageMicroDays) < 0n) throw new RangeError('ageDays must be nonnegative');
+  if ((halfLifeMicroDays === undefined ? halfLifeDays : halfLifeMicroDays) <= 0n) throw new RangeError('halfLifeDays must be positive');
   if (direction !== 'positive' && direction !== 'negative') throw new TypeError('direction is invalid');
   if (direction === 'positive' && severity !== null) throw new TypeError('positive evidence cannot have severity');
-  const decay = decayFactor(ageDays, halfLifeDays);
+  const decay = ageMicroDays === undefined
+    ? decayFactor(ageDays, halfLifeDays)
+    : decayFactor(ageMicroDays, halfLifeMicroDays === undefined ? halfLifeDays * SCALE : halfLifeMicroDays);
   const independent = mulDivRound(allocated, decay, SCALE);
   let scoreMass = allocated;
   if (direction === 'negative') {
-    const severityFactor = CANDIDATE_PARAMETERS.severityFactors[severity];
+    const severityFactor = parameters.severityFactors[severity];
     if (severityFactor === undefined) throw new TypeError('negative severity is invalid');
     scoreMass = mulDivRound(scoreMass, severityFactor, SCALE);
   }
@@ -71,7 +75,7 @@ function effectiveEventMass({ allocatedMassMicroEu, direction, severity, ageDays
   });
 }
 
-function scorePreparedCategory(prepared, category) {
+function scorePreparedCategory(prepared, category, parameters = CANDIDATE_PARAMETERS, options = {}) {
   if (!CATEGORY_SET.has(category)) throw new TypeError('category is invalid');
   if (!prepared || !prepared.snapshot || !Array.isArray(prepared.included)) {
     throw new TypeError('prepared evidence is invalid');
@@ -89,17 +93,23 @@ function scorePreparedCategory(prepared, category) {
     const policy = policies.get(record.empId + '\0' + record.empVersion);
     if (!policy) throw new Error('included evidence has no EMP policy');
     const halfLife = record.direction === 'positive' ? policy.positiveHalfLifeDays : policy.negativeHalfLifeDays;
+    const halfLifeMicroDays = record.direction === 'positive' ? policy.positiveHalfLifeMicroDays : policy.negativeHalfLifeMicroDays;
     if (halfLife === null) throw new Error('included evidence has no applicable half-life');
     const elapsed = prepared.snapshot.computedAtEpochSeconds - record.observedAtEpochSeconds;
-    if (!Number.isSafeInteger(elapsed) || elapsed < 0) throw new RangeError('event age is invalid');
+    if ((!options.fractionalDays && !Number.isSafeInteger(elapsed)) || !Number.isFinite(elapsed) || elapsed < 0) throw new RangeError('event age is invalid');
+    const ageMicroDays = options.fractionalDays
+      ? roundDiv(BigInt(Math.round(elapsed * 1_000)) * SCALE, BigInt(DAY_SECONDS) * 1_000n)
+      : undefined;
     const ageDays = BigInt(Math.floor(elapsed / DAY_SECONDS));
     const mass = effectiveEventMass({
       allocatedMassMicroEu: allocation.allocatedMassMicroEu,
       direction: record.direction,
       severity: record.severity,
       ageDays,
+      ageMicroDays,
       halfLifeDays: BigInt(halfLife),
-    });
+      ...(halfLifeMicroDays === undefined ? {} : { halfLifeMicroDays: BigInt(halfLifeMicroDays) }),
+    }, parameters);
     const scoreMass = BigInt(mass.effectiveScoreMassMicroEu);
     const independentMass = BigInt(mass.effectiveIndependentMassMicroEu);
     if (record.direction === 'positive') positive += scoreMass;
@@ -114,12 +124,14 @@ function scorePreparedCategory(prepared, category) {
       evidenceId: record.evidenceId,
       direction: record.direction,
       ageDays: ageDays.toString(),
+      ...(ageMicroDays === undefined ? {} : { ageMicroDays: ageMicroDays.toString() }),
       halfLifeDays: String(halfLife),
+      ...(halfLifeMicroDays === undefined ? {} : { halfLifeMicroDays: String(halfLifeMicroDays) }),
       allocatedMassMicroEu: allocation.allocatedMassMicroEu,
       ...mass,
     }));
   }
-  const posterior = categoryPosterior(positive, negative);
+  const posterior = categoryPosterior(positive, negative, parameters);
   return Object.freeze({
     category,
     effectivePositiveMassMicroEu: positive.toString(),
@@ -131,8 +143,8 @@ function scorePreparedCategory(prepared, category) {
   });
 }
 
-function scoreCategory(snapshot, category) {
-  return scorePreparedCategory(prepareEvidence(snapshot), category);
+function scoreCategory(snapshot, category, parameters = CANDIDATE_PARAMETERS, options = {}) {
+  return scorePreparedCategory(prepareEvidence(snapshot), category, parameters, options);
 }
 
 function weightedOverallScore(categoryScoresMicro) {
