@@ -6,6 +6,7 @@ const { buildRegistryBundle, normalizeCoordinate, coordinateKey } = require('./r
 
 const IDENTITY_GRAPH_HASH_DOMAIN = 'CRED-IDENTITY-GRAPH-v1\0';
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
+const IDENTITY_MATERIAL_CACHE = new WeakMap();
 
 function deepFreeze(value) {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -38,9 +39,13 @@ function buildIdentityGraphMaterial(registryInput) {
   const supplied = registryInput && registryInput.registry ? registryInput : null;
   const bundle = buildRegistryBundle(supplied ? supplied.registry : registryInput);
   if (supplied && supplied.registryHash !== undefined && supplied.registryHash !== bundle.registryHash) throw new Error('supplied registry hash does not match canonical registry');
+  const cached = IDENTITY_MATERIAL_CACHE.get(bundle.registry);
+  if (cached) return cached;
   const bytes = canonicalStringify(identityProjection(bundle.registry));
   const hash = 'sha256:' + createHash('sha256').update(IDENTITY_GRAPH_HASH_DOMAIN, 'utf8').update(bytes, 'utf8').digest('hex');
-  return deepFreeze({ registry: bundle.registry, registryHash: bundle.registryHash, bytes, hash });
+  const material = deepFreeze({ registry: bundle.registry, registryHash: bundle.registryHash, bytes, hash });
+  IDENTITY_MATERIAL_CACHE.set(bundle.registry, material);
+  return material;
 }
 
 function normalizeCoordinates(values) {

@@ -12,7 +12,10 @@
     "test:cred-shadow": "node --test test/cred-shadow/*.test.js",
     "test:cred-evidence": "node --test test/cred-evidence/*.test.js",
     "cred:shadow:replay": "node scripts/run-cred-shadow-replay.js",
-    "cred:evidence:compile": "node scripts/compile-cred-evidence.js"
+    "cred:evidence:compile": "node scripts/compile-cred-evidence.js",
+    "test:cred-looper": "node --test test/cred-looper/*.test.js",
+    "cred:looper:collect": "node scripts/collect-looper-base-proofs.js",
+    "cred:looper:build": "node scripts/build-looper-cred-corpus.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -42,7 +45,9 @@
   },
   "bin": {
     "cred-shadow-replay": "scripts/run-cred-shadow-replay.js",
-    "cred-evidence-compile": "scripts/compile-cred-evidence.js"
+    "cred-evidence-compile": "scripts/compile-cred-evidence.js",
+    "cred-looper-collect": "scripts/collect-looper-base-proofs.js",
+    "cred-looper-build": "scripts/build-looper-cred-corpus.js"
   },
   "devDependencies": {
     "acorn": "^8.15.0",

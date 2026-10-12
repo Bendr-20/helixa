@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+'use strict';
+const {buildLooperCorpus}=require('../cred-looper/builder');const {readJson,readPrivateKey,safeOutput,writeJsonExclusive}=require('../cred-looper/files');
+function usage(){return 'Usage: build-looper-cred-corpus.js --roster <roster.json> --snapshot <snapshot.json> --private-key <ed25519.pem> --output <corpus.json>';}
+function parseArgs(argv){const options={};for(let i=0;i<argv.length;i++){const arg=argv[i];if(!['--roster','--snapshot','--private-key','--output'].includes(arg))throw new TypeError('unknown flag '+arg);if(i+1>=argv.length||argv[i+1].startsWith('--'))throw new TypeError(arg+' requires a value');options[arg.slice(2).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=argv[++i];}for(const key of ['roster','snapshot','privateKey','output'])if(!options[key])throw new TypeError('--'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())+' is required');return options;}
+function main(argv){const options=parseArgs(argv),outputPath=safeOutput(options.output),roster=readJson(options.roster,'roster'),snapshot=readJson(options.snapshot,'snapshot'),key=readPrivateKey(options.privateKey),corpus=buildLooperCorpus(roster,snapshot,key);writeJsonExclusive(outputPath,corpus);return {outputPath,corpusHash:corpus.corpusHash,registryHash:corpus.registryBundle.registryHash,compilerHash:corpus.compiled.compilerHash,subjectCount:corpus.report.subjectCount,submissionCount:corpus.report.submissionCount,unratedSubjectCount:corpus.report.unratedSubjectCount};}
+if(require.main===module){try{process.stdout.write(JSON.stringify(main(process.argv.slice(2)))+'\n');}catch(error){process.stderr.write(error.message+'\n'+usage()+'\n');process.exitCode=1;}}
+module.exports=Object.freeze({parseArgs,main});
