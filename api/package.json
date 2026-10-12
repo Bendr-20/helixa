@@ -10,7 +10,9 @@
     "audit:internal-auth": "node scripts/audit-internal-auth.js",
     "test:internal-auth": "node scripts/test-internal-auth.js",
     "test:cred-shadow": "node --test test/cred-shadow/*.test.js",
-    "cred:shadow:replay": "node scripts/run-cred-shadow-replay.js"
+    "test:cred-evidence": "node --test test/cred-evidence/*.test.js",
+    "cred:shadow:replay": "node scripts/run-cred-shadow-replay.js",
+    "cred:evidence:compile": "node scripts/compile-cred-evidence.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -39,7 +41,8 @@
     "tweetnacl": "^1.0.3"
   },
   "bin": {
-    "cred-shadow-replay": "scripts/run-cred-shadow-replay.js"
+    "cred-shadow-replay": "scripts/run-cred-shadow-replay.js",
+    "cred-evidence-compile": "scripts/compile-cred-evidence.js"
   },
   "devDependencies": {
     "acorn": "^8.15.0",

@@ -12,7 +12,9 @@ const walk = require('acorn-walk');
 const API_ROOT = path.resolve(__dirname, '../..');
 const REPOSITORY_ROOT = path.dirname(API_ROOT);
 const SHADOW_ROOT = path.join(API_ROOT, 'cred-shadow');
+const EVIDENCE_ROOT = path.join(API_ROOT, 'cred-evidence');
 const SHADOW_CLI = path.join(API_ROOT, 'scripts', 'run-cred-shadow-replay.js');
+const EVIDENCE_CLI = path.join(API_ROOT, 'scripts', 'compile-cred-evidence.js');
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -53,10 +55,10 @@ function listJavaScript(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow') continue;
+      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (absolute !== SHADOW_CLI) found.push(absolute);
+      if (absolute !== SHADOW_CLI && absolute !== EVIDENCE_CLI) found.push(absolute);
     }
   }
   return found.sort();
@@ -127,6 +129,7 @@ function resolveLocal(fromFile, specifier) {
 function buildGraph(roots, options = {}) {
   const graphRoot = options.graphRoot || REPOSITORY_ROOT;
   const shadowRoot = options.shadowRoot || SHADOW_ROOT;
+  const evidenceRoot = options.evidenceRoot || EVIDENCE_ROOT;
   const mode = options.mode || 'production';
   const dynamicAllowlist = options.dynamicAllowlist || new Map();
   const queue = roots.map((file) => fs.realpathSync(file));
@@ -140,15 +143,18 @@ function buildGraph(roots, options = {}) {
       const target = resolveLocal(file, specifier);
       if (target) {
         if (!isInside(target, graphRoot)) throw new Error(file + ' escapes repository graph root through ' + specifier);
-        if (mode === 'production' && isInside(target, shadowRoot)) {
-          throw new Error('production graph reaches CRED shadow module: ' + file + ' -> ' + target);
+        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot))) {
+          throw new Error('production graph reaches offline CRED module: ' + file + ' -> ' + target);
         }
         if (mode === 'shadow' && target !== SHADOW_CLI && !isInside(target, shadowRoot)) {
           throw new Error('shadow CLI graph reaches non-shadow local module: ' + target);
         }
+        if (mode === 'evidence' && target !== EVIDENCE_CLI && !isInside(target, evidenceRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('evidence CLI graph reaches unauthorized local module: ' + target);
+        }
         queue.push(target);
-      } else if (mode === 'shadow' && !BUILTINS.has(specifier)) {
-        throw new Error('shadow CLI imports non-builtin package: ' + specifier);
+      } else if ((mode === 'shadow' || mode === 'evidence') && !BUILTINS.has(specifier)) {
+        throw new Error('offline CLI imports non-builtin package: ' + specifier);
       }
     }
   }
@@ -197,18 +203,34 @@ function assertNoForbiddenShadowCapability(file) {
   }
 }
 
-test('production runtime graph cannot reach CRED shadow scoring', () => {
+test('production runtime graph cannot reach offline CRED evidence or shadow scoring', () => {
   for (const root of REQUIRED_PRODUCTION_ROOTS) assert.equal(fs.existsSync(root), true, 'missing required production root ' + root);
   const roots = listJavaScript(API_ROOT);
   for (const root of REQUIRED_PRODUCTION_ROOTS) assert.equal(roots.includes(root), true, 'required root omitted ' + root);
   const graph = buildGraph(roots, { mode: 'production', dynamicAllowlist: DYNAMIC_LOADER_ALLOWLIST });
-  for (const file of graph) assert.equal(isInside(file, SHADOW_ROOT), false, file + ' must stay outside shadow modules');
+  for (const file of graph) {
+    assert.equal(isInside(file, SHADOW_ROOT), false, file + ' must stay outside shadow modules');
+    assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' must stay outside evidence compiler modules');
+  }
 });
 
 test('shadow replay graph is offline, secret-free, and restricted to built-ins plus cred-shadow', () => {
   const graph = buildGraph([SHADOW_CLI], { mode: 'shadow' });
   assert.equal(graph.has(fs.realpathSync(SHADOW_CLI)), true);
   for (const file of graph) assertNoForbiddenShadowCapability(file);
+});
+
+test('evidence compiler graph is offline, secret-free, and restricted to evidence plus shadow modules', () => {
+  const graph = buildGraph([EVIDENCE_CLI], { mode: 'evidence' });
+  assert.equal(graph.has(fs.realpathSync(EVIDENCE_CLI)), true);
+  for (const file of graph) {
+    assert.equal(file === fs.realpathSync(EVIDENCE_CLI) || isInside(file, EVIDENCE_ROOT) || isInside(file, SHADOW_ROOT), true, file + ' is outside the offline compiler graph');
+    assertNoForbiddenShadowCapability(file);
+    if (file !== fs.realpathSync(EVIDENCE_CLI)) {
+      const { specifiers } = moduleSpecifiers(file);
+      assert.equal(specifiers.some((specifier) => specifier === 'fs' || specifier === 'node:fs' || specifier === 'fs/promises' || specifier === 'node:fs/promises'), false, file + ' must not access the filesystem outside the CLI');
+    }
+  }
 });
 
 test('indirect production imports into a shadow directory are rejected', (t) => {
@@ -221,6 +243,6 @@ test('indirect production imports into a shadow directory are rejected', (t) => 
   fs.writeFileSync(path.join(shadow, 'score.js'), "module.exports = 1;\n");
   assert.throws(
     () => buildGraph([path.join(root, 'entry.js')], { graphRoot: root, shadowRoot: shadow, mode: 'production' }),
-    /production graph reaches CRED shadow module/,
+    /production graph reaches offline CRED module/,
   );
 });
