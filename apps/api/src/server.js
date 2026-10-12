@@ -18,6 +18,7 @@ import {
 import { createLooperCodexRuntime } from './looper-codex-runtime.js';
 import { createLooperMarketplaceListingsLoader } from './looper-marketplace.js';
 import { createLooperMarketplacePreviewLoader } from './looper-marketplace-preview.js';
+import { createLooperWalletValueRefresher, createLooperWalletValuesLoader } from './looper-wallet-values.js';
 import { createSqliteLooperNameStore } from './looper-name-store.js';
 import { readOpenSeaApiKey } from './loopers-sales/opensea.js';
 import { createSqliteSavedRecords } from './saved-records.js';
@@ -58,6 +59,7 @@ export function parseServerOptions(argv = [], env = process.env) {
     loopersAllowlistPath: env.MULTIPASS_LOOPERS_ALLOWLIST_PATH || null,
     loopersAllowlistSnapshotPath: env.MULTIPASS_LOOPERS_ALLOWLIST_SNAPSHOT_PATH || null,
     looperCodexArtifactPath: env.MULTIPASS_LOOPER_CODEX_ARTIFACT_PATH || null,
+    looperMarketplaceRosterPath: env.LOOPER_MARKETPLACE_ROSTER_PATH || null,
     loopersAllowlistRegistrationPaused: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_PAUSED, 'MULTIPASS_LOOPERS_ALLOWLIST_PAUSED') ?? false,
     loopersAllowlistRequireBrowserOrigin: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN, 'MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN') ?? false,
     loopersAllowlistBlockedSources: parseStringList(env.MULTIPASS_LOOPERS_ALLOWLIST_BLOCKED_SOURCES),
@@ -151,6 +153,7 @@ export async function startServer(options = {}) {
     loopersAllowlistPath: options.loopersAllowlistPath ?? null,
     loopersAllowlistSnapshotPath: options.loopersAllowlistSnapshotPath ?? null,
     looperCodexArtifactPath: options.looperCodexArtifactPath ?? null,
+    looperMarketplaceRosterPath: options.looperMarketplaceRosterPath ?? null,
     loopersAllowlistRegistrationPaused: Boolean(options.loopersAllowlistRegistrationPaused),
     loopersAllowlistRequireBrowserOrigin: Boolean(options.loopersAllowlistRequireBrowserOrigin),
     loopersAllowlistBlockedSources: options.loopersAllowlistBlockedSources ?? [],
@@ -220,6 +223,10 @@ export async function startServer(options = {}) {
   const openSeaApiKeyLoader = options.openSeaApiKeyLoader ?? readOpenSeaApiKey;
   const looperMarketplaceListingsLoaderFactory = options.looperMarketplaceListingsLoaderFactory
     ?? createLooperMarketplaceListingsLoader;
+  const looperWalletValueRefresherFactory = options.looperWalletValueRefresherFactory
+    ?? createLooperWalletValueRefresher;
+  const looperWalletValuesLoaderFactory = options.looperWalletValuesLoaderFactory
+    ?? createLooperWalletValuesLoader;
   const apiFactory = options.apiFactory ?? createMultipassApi;
   const restapPolicyLoader = options.restapPolicyLoader ?? loadRestap3802Policy;
   const restapPolicyAuthorizer = options.restapPolicyAuthorizer ?? authorizeRestap3802Policy;
@@ -240,6 +247,9 @@ export async function startServer(options = {}) {
     : null;
   let looperMarketplacePreviewLoader = typeof options.looperMarketplacePreviewLoader === 'function'
     ? options.looperMarketplacePreviewLoader
+    : null;
+  let looperMarketplaceWalletValuesLoader = typeof options.looperMarketplaceWalletValuesLoader === 'function'
+    ? options.looperMarketplaceWalletValuesLoader
     : null;
   let restapPublicSessions;
   let restapNewsStore;
@@ -294,6 +304,14 @@ export async function startServer(options = {}) {
       } catch {
         looperMarketplaceListingsLoader = null;
       }
+    }
+
+    if (!looperMarketplaceWalletValuesLoader && parsed.looperMarketplaceRosterPath) {
+      const refresh = looperWalletValueRefresherFactory({
+        rosterPath: parsed.looperMarketplaceRosterPath,
+        fetchImpl: parsed.fetchImpl ?? fetch,
+      });
+      looperMarketplaceWalletValuesLoader = looperWalletValuesLoaderFactory({ refresh });
     }
 
     const codexStartedAt = Date.now();
@@ -540,6 +558,7 @@ export async function startServer(options = {}) {
       loopersTurnstileSecretKey: parsed.loopersTurnstileSecretKey,
       looperMarketplaceListingsLoader,
       looperMarketplacePreviewLoader,
+      looperMarketplaceWalletValuesLoader,
       loopersCredApiBaseUrl: parsed.loopersCredApiBaseUrl,
       loopersCredTimeoutMs: parsed.loopersCredTimeoutMs,
       loopersCredConcurrency: parsed.loopersCredConcurrency,

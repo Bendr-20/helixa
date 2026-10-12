@@ -245,6 +245,7 @@ export function createMultipassApi({
   loopersTurnstileSecretKey,
   looperMarketplaceListingsLoader,
   looperMarketplacePreviewLoader,
+  looperMarketplaceWalletValuesLoader,
   loopersOwnedAgentLoader,
   loopersOwnedRpcUrl,
   loopersOwnedMetadataBaseUrl,
@@ -401,6 +402,9 @@ export function createMultipassApi({
       : null,
     looperMarketplacePreviewLoader: typeof looperMarketplacePreviewLoader === 'function'
       ? looperMarketplacePreviewLoader
+      : null,
+    looperMarketplaceWalletValuesLoader: typeof looperMarketplaceWalletValuesLoader === 'function'
+      ? looperMarketplaceWalletValuesLoader
       : null,
     loopersOwnedAgentLoader: ownedLoopersLoader,
     loopersAuthorizer: authorizeLooper,
@@ -1512,6 +1516,18 @@ async function handleLooperRead(request, url, parts, context) {
       return binaryResponse(jpeg, 'image/jpeg', { 'cache-control': 'public, max-age=300' });
     } catch {
       return errorResponse(503, 'preview_unavailable', 'Looper marketplace preview is temporarily unavailable.', undefined, { 'cache-control': 'no-store' });
+    }
+  }
+
+  if (url.pathname === '/api/loopers/marketplace/wallet-values') {
+    if (!context.looperMarketplaceWalletValuesLoader) return walletValuesUnavailableResponse();
+    try {
+      const result = await context.looperMarketplaceWalletValuesLoader();
+      if (!result || ![200, 503].includes(result.status) || !(result.bodyBytes instanceof Uint8Array)
+        || !result.headers || typeof result.headers !== 'object') return walletValuesUnavailableResponse();
+      return new Response(result.bodyBytes, { status: result.status, headers: result.headers });
+    } catch {
+      return walletValuesUnavailableResponse();
     }
   }
 
@@ -3326,6 +3342,13 @@ function jsonResponse(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...JSON_HEADERS, ...extraHeaders },
+  });
+}
+
+function walletValuesUnavailableResponse() {
+  return new Response(JSON.stringify({ error: { code: 'wallet_values_unavailable', message: 'Looper wallet values are temporarily unavailable.' } }), {
+    status: 503,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
 }
 

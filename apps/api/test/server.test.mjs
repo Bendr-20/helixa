@@ -39,6 +39,7 @@ test('parseServerOptions returns safe defaults', () => {
     loopersAllowlistPath: null,
     loopersAllowlistSnapshotPath: null,
     looperCodexArtifactPath: null,
+    looperMarketplaceRosterPath: null,
     loopersAllowlistRegistrationPaused: false,
     loopersAllowlistRequireBrowserOrigin: false,
     loopersAllowlistBlockedSources: [],
@@ -104,6 +105,7 @@ test('CLI flags override environment values', () => {
       loopersAllowlistPath: null,
       loopersAllowlistSnapshotPath: null,
       looperCodexArtifactPath: null,
+      looperMarketplaceRosterPath: null,
       loopersAllowlistRegistrationPaused: false,
       loopersAllowlistRequireBrowserOrigin: false,
       loopersAllowlistBlockedSources: [],
@@ -169,6 +171,7 @@ test('parseServerOptions accepts claim management security env', () => {
     loopersAllowlistPath: null,
     loopersAllowlistSnapshotPath: null,
     looperCodexArtifactPath: null,
+    looperMarketplaceRosterPath: null,
     loopersAllowlistRegistrationPaused: false,
     loopersAllowlistRequireBrowserOrigin: false,
     loopersAllowlistBlockedSources: [],
@@ -1549,4 +1552,60 @@ test('RESTAP network signer path is reference-only and required startup fails cl
     assert.equal(injected, undefined);
     assert.equal(JSON.stringify(server).includes('sign'), false);
   } finally { await server.close(); }
+});
+
+test('parseServerOptions reads the wallet-value roster path explicitly', () => {
+  assert.equal(parseServerOptions([], {}).looperMarketplaceRosterPath, null);
+  assert.equal(parseServerOptions([], { LOOPER_MARKETPLACE_ROSTER_PATH: '/var/www/roster.json' }).looperMarketplaceRosterPath, '/var/www/roster.json');
+});
+
+test('startServer serves exact wallet-value bytes and preserves cache headers', async () => {
+  const bytes = new TextEncoder().encode(JSON.stringify({ schema_version: '1.0.0', rows: [] }));
+  let calls = 0;
+  const server = await startServer({
+    fixture: 'generic', host: '127.0.0.1', port: 0,
+    looperMarketplaceWalletValuesLoader: async () => {
+      calls += 1;
+      return { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=30', etag: '"abc"' }, bodyBytes: bytes };
+    },
+    logger: { info() {}, warn() {}, error() {} },
+  });
+  try {
+    const response = await fetch(server.url + '/api/loopers/marketplace/wallet-values');
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'public, max-age=30');
+    assert.equal(response.headers.get('etag'), '"abc"');
+    assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
+    assert.equal(calls, 1);
+    assert.equal((await fetch(server.url + '/api/loopers/marketplace/wallet-values', { method: 'HEAD' })).status, 405);
+  } finally { await server.close(); }
+});
+
+test('wallet-value route returns the exact schema-locked 503 without schema_version', async () => {
+  const server = await startServer({ fixture: 'generic', host: '127.0.0.1', port: 0, logger: { info() {}, warn() {}, error() {} } });
+  try {
+    const response = await fetch(server.url + '/api/loopers/marketplace/wallet-values');
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), { error: { code: 'wallet_values_unavailable', message: 'Looper wallet values are temporarily unavailable.' } });
+  } finally { await server.close(); }
+});
+
+test('startServer composes one wallet-value loader from the configured roster path', async () => {
+  const refresh = async () => ({});
+  const loader = async () => ({ status: 503, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }, bodyBytes: new TextEncoder().encode('{}') });
+  let injected;
+  const server = await startServer({
+    fixture: 'generic', host: '127.0.0.1', port: 0,
+    looperMarketplaceRosterPath: '/var/www/helixa.xyz/multipass/data/looper-activated-roster.json',
+    looperWalletValueRefresherFactory: (input) => {
+      assert.equal(input.rosterPath, '/var/www/helixa.xyz/multipass/data/looper-activated-roster.json');
+      assert.equal(typeof input.fetchImpl, 'function');
+      return refresh;
+    },
+    looperWalletValuesLoaderFactory: (input) => { assert.equal(input.refresh, refresh); return loader; },
+    apiFactory: (options) => { injected = options.looperMarketplaceWalletValuesLoader; return { async handleRequest() { return new Response('{}'); } }; },
+    logger: { info() {}, warn() {}, error() {} },
+  });
+  try { assert.equal(injected, loader); } finally { await server.close(); }
 });
