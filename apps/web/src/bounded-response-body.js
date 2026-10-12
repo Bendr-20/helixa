@@ -1,6 +1,10 @@
 const CANONICAL_CONTENT_LENGTH = /^(?:0|[1-9][0-9]*)$/u;
 
-export async function readBoundedResponseBody(response, { maxBytes, signal } = {}) {
+export async function readBoundedResponseBody(response, options = {}) {
+  return new TextDecoder().decode(await readBoundedResponseBytes(response, options));
+}
+
+export async function readBoundedResponseBytes(response, { maxBytes, signal } = {}) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) throw new Error('Invalid response byte limit.');
 
   const contentLength = response?.headers?.get?.('content-length') ?? null;
@@ -65,5 +69,5 @@ export async function readBoundedResponseBody(response, { maxBytes, signal } = {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return new TextDecoder().decode(bytes);
+  return bytes;
 }

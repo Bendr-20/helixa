@@ -1,4 +1,4 @@
-import { readBoundedResponseBody } from './bounded-response-body.js';
+import { readBoundedResponseBytes } from './bounded-response-body.js';
 
 // Frozen from commit 500654a recipient reconciliation. Do not edit by hand.
 export const ACTIVATED_LOOPER_ROSTER_SOURCE = Object.freeze({
@@ -49,12 +49,14 @@ export async function loadDailyActivatedLooperTokenIds({ fetchImpl = globalThis.
       method: 'GET', credentials: 'omit', cache: 'no-store', headers: { accept: 'application/json' }, signal,
     });
     if (!response?.ok) return unavailable();
-    const text = await readBoundedResponseBody(response, { maxBytes: DAILY_ROSTER_MAX_BYTES, signal });
-    const value = JSON.parse(text);
+    const bytes = await readBoundedResponseBytes(response, { maxBytes: DAILY_ROSTER_MAX_BYTES, signal });
+    const rawSha256 = await sha256Hex(bytes);
+    const value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     if (!isExactDailyRoster(value)) return unavailable();
     return {
       status: 'available',
       source: 'daily-onchain-snapshot',
+      rawSha256,
       observedBlock: value.observed_block,
       observedAt: value.observed_at,
       tokenIds: new Set(value.token_ids),
@@ -67,6 +69,12 @@ export async function loadDailyActivatedLooperTokenIds({ fetchImpl = globalThis.
 export async function loadVerifiedActivatedLooperFallback(options = {}) {
   const daily = await loadDailyActivatedLooperTokenIds(options);
   return daily.status === 'available' ? daily : loadPinnedActivatedLooperTokenIds();
+}
+
+async function sha256Hex(bytes) {
+  if (!(bytes instanceof Uint8Array) || !globalThis.crypto?.subtle) throw new Error('Roster hashing unavailable.');
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map((value) => value.toString(16).padStart(2, '0')).join('');
 }
 
 function isExactDailyRoster(value) {
