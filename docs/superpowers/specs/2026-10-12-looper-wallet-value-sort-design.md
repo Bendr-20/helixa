@@ -1,7 +1,7 @@
 # Looper Marketplace Wallet-Value Sorting Design
 
 **Date:** 2026-10-12  
-**Status:** Approved product design; specification revision 2
+**Status:** Ready for user review; specification revision 3
 
 ## Goal and scope boundary
 
@@ -65,7 +65,7 @@ The roster job remains the sole update owner and must continue temp-file-plus-re
 - `count` equals `token_ids.length`;
 - `token_ids` contains 1–1,000 unique canonical decimal uint256 strings in ascending numeric order.
 
-The response includes `roster_sha256`. The browser always fetches the static roster in addition to the existing live Blockscout discovery, even though the current marketplace otherwise uses the static file only as fallback. It hashes the exact roster bytes with Web Crypto and requires the response hash to match. It also requires the live Blockscout token-ID set and static roster token-ID set to be exactly equal before attaching wallet rows. If Blockscout is unavailable, the existing static-roster marketplace fallback remains usable, but wallet sorting is disabled because current set equality cannot be proven. On any hash or set mismatch, all wallet values are unavailable, wallet sorting is disabled with a short refresh message, and the existing roster/listings UI remains intact. Newly activated Loopers are never silently omitted.
+The response includes `roster.sha256`. The browser always fetches the static roster in addition to the existing live Blockscout discovery, even though the current marketplace otherwise uses the static file only as fallback. It hashes the exact roster bytes with Web Crypto and requires the response hash to match. It also requires the live Blockscout token-ID set and static roster token-ID set to be exactly equal before attaching wallet rows. If Blockscout is unavailable, the existing static-roster marketplace fallback remains usable, but wallet sorting is disabled because current set equality cannot be proven. On any hash or set mismatch, all wallet values are unavailable, wallet sorting is disabled with a short refresh message, and the existing roster/listings UI remains intact. Newly activated Loopers are never silently omitted.
 
 ### USD quote adapters
 
