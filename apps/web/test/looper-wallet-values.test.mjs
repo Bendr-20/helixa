@@ -53,14 +53,14 @@ test('normalizer rejects incomplete duplicate extra and noncanonical rows', () =
   assert.throws(() => normalizeLooperWalletValues({ ...snapshot(), rows: [{ ...snapshot().rows[0], total_usd_e8: '04' }] }), /wallet/i);
 });
 
-test('verified join requires exact wallet hash and live/static token-set equality', () => {
+test('verified join accepts exact hashed static provenance when live discovery is unavailable and rejects live mismatch', () => {
   const walletValues = normalizeLooperWalletValues(snapshot());
   const live = { status: 'available', tokenIds: new Set(['1']) };
   const daily = { status: 'available', rawSha256: SHA, tokenIds: new Set(['1']) };
   const joined = joinVerifiedLooperWalletValues({ walletValues, liveActivation: live, staticActivation: daily });
   assert.equal(joined.status, 'available');
   assert.equal(joined.rowsByToken.get('1').stakedCredBaseUnits, '3');
-  assert.equal(joinVerifiedLooperWalletValues({ walletValues, liveActivation: { status: 'unavailable', tokenIds: new Set() }, staticActivation: daily }).status, 'unavailable');
+  assert.equal(joinVerifiedLooperWalletValues({ walletValues, liveActivation: { status: 'unavailable', tokenIds: new Set() }, staticActivation: daily }).status, 'available');
   assert.equal(joinVerifiedLooperWalletValues({ walletValues, liveActivation: live, staticActivation: { ...daily, rawSha256: 'c'.repeat(64) } }).status, 'unavailable');
   assert.equal(joinVerifiedLooperWalletValues({ walletValues, liveActivation: { status: 'available', tokenIds: new Set(['1', '2']) }, staticActivation: daily }).status, 'unavailable');
 });

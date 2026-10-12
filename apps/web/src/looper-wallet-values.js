@@ -59,9 +59,9 @@ export function normalizeLooperWalletValues(value) {
 }
 
 export function joinVerifiedLooperWalletValues({ walletValues, liveActivation, staticActivation } = {}) {
-  if (walletValues?.status !== 'available' || liveActivation?.status !== 'available' || staticActivation?.status !== 'available'
+  if (walletValues?.status !== 'available' || !['available', 'unavailable'].includes(liveActivation?.status) || staticActivation?.status !== 'available'
     || typeof staticActivation.rawSha256 !== 'string' || walletValues.roster.sha256 !== staticActivation.rawSha256
-    || !sameTokenSet(liveActivation.tokenIds, staticActivation.tokenIds)
+    || (liveActivation.status === 'available' && !sameTokenSet(liveActivation.tokenIds, staticActivation.tokenIds))
     || !sameTokenSet(new Set(walletValues.rows.map((row) => row.tokenId)), staticActivation.tokenIds)) return unavailable();
   return Object.freeze({
     status: 'available',
