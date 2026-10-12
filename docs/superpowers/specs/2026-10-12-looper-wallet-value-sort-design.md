@@ -47,7 +47,9 @@ Use only the two existing fixed providers:
 
 Both providers must succeed. Read each latest head, choose the lower block number, then fetch that exact block from both. The number and hash must match. Execute every balance and stake call with that block tag. Re-fetch the block from both providers after all batches and require the hash to remain unchanged.
 
-A provider timeout, one-provider-only success, block disagreement/reorg, malformed call result, cross-provider row disagreement, or provider-level batch failure rejects the whole refresh. A single well-formed call that fails identically at both providers makes only that Looper row unavailable. Empty deployed code agreed by both providers also makes that row unavailable. Tuple length/type disagreement is a malformed batch and rejects the whole refresh.
+A provider timeout, one-provider-only success, block disagreement/reorg, malformed call result, cross-provider row disagreement, or provider-level batch failure rejects the whole refresh. A single well-formed call that fails identically at both providers makes only that Looper row unavailable. Tuple length/type disagreement is a malformed batch and rejects the whole refresh.
+
+The published roster itself is the deployment proof: its existing dual-provider generator calls `owner()` successfully on every released account before inclusion. The wallet-value refresh therefore does not repeat `eth_getCode` or issue JSON-RPC request batches. Every RPC POST carries exactly one JSON-RPC request; batching occurs only inside Multicall3 `aggregate3` calldata. This avoids provider-specific JSON-RPC batch limits, including dRPC's limit of three requests.
 
 ### Activated roster
 
@@ -63,7 +65,7 @@ The roster job remains the sole update owner and must continue temp-file-plus-re
 - `count` equals `token_ids.length`;
 - `token_ids` contains 1–1,000 unique canonical decimal uint256 strings in ascending numeric order.
 
-The response includes `roster_sha256`. The browser hashes the exact independently fetched roster bytes with Web Crypto and requires equality before attaching rows. On mismatch, all wallet values are unavailable, wallet sorting is disabled with a short refresh message, and the existing roster/listings UI remains intact. Newly activated Loopers are never silently omitted.
+The response includes `roster_sha256`. The browser always fetches the static roster in addition to the existing live Blockscout discovery, even though the current marketplace otherwise uses the static file only as fallback. It hashes the exact roster bytes with Web Crypto and requires the response hash to match. It also requires the live Blockscout token-ID set and static roster token-ID set to be exactly equal before attaching wallet rows. If Blockscout is unavailable, the existing static-roster marketplace fallback remains usable, but wallet sorting is disabled because current set equality cannot be proven. On any hash or set mismatch, all wallet values are unavailable, wallet sorting is disabled with a short refresh message, and the existing roster/listings UI remains intact. Newly activated Loopers are never silently omitted.
 
 ### USD quote adapters
 
@@ -92,15 +94,15 @@ For each Looper, derive the released ERC-6551 account and read:
 2. CRED `balanceOf(account)`;
 3. Pantheon `stakes(account, CRED)`.
 
-Before including a row, require deployed account code at the pinned block using bounded JSON-RPC `eth_getCode` batches under the same 192-request and concurrency limits. Use at most 192 inner calls per Multicall3 batch, two concurrent batches per provider, an eight-second request timeout, and a thirty-second whole-refresh deadline. The roster limit is 1,000 rows; decoded in-memory data is capped at 4 MiB; serialized response is capped at 1 MiB.
+The roster's verified `owner()` calls establish that each account is deployed. Use at most 192 inner calls per Multicall3 `aggregate3` call, which is exactly 64 Looper rows, and at most two concurrent single-request RPC POSTs per provider. Each request has an eight-second timeout and the whole refresh has a thirty-second deadline. At the 1,000-row roster maximum this produces exactly 16 Multicall3 RPC calls per provider. Decoded in-memory data is capped at 4 MiB; serialized response is capped at 1 MiB.
 
-A capacity test must exercise at least 700 rows against deterministic dual-provider fixtures and prove the batch count, concurrency ceiling, thirty-second deadline behavior, and response-size limit.
+A capacity test must exercise the full 1,000-row accepted maximum against deterministic dual-provider fixtures and prove 16 Multicall3 requests per provider, the two-request concurrency ceiling, thirty-second deadline behavior, and response-size limit.
 
 ## Exact response contract
 
 Route: `GET /api/loopers/marketplace/wallet-values`. Production web access is same-origin through `/multipass-api/api/loopers/marketplace/wallet-values`. The wallet-value loader never honors the marketplace `?api=` override. Development injection occurs only through constructor/test dependencies, not a user-controlled URL.
 
-Top-level and nested objects reject unknown keys. The JSON shape is:
+Top-level and nested objects reject unknown keys. `rows.length` must equal `roster.count`; rows must contain exactly one entry for every roster token ID in identical ascending order, with no extras or duplicates. The JSON shape is:
 
 ```json
 {
@@ -170,11 +172,13 @@ The cache is process-local and single-flight:
 
 `generated_at` is successful onchain completion time, `fresh_until = generated_at + 5 minutes`, and `stale_until = generated_at + 15 minutes`. A stale request starts one refresh and serves the stale snapshot. A failed refresh sets a sixty-second retry cooldown; requests during cooldown do not start more work.
 
+On cold start, or when cache age is at least fifteen minutes, the first request starts and awaits the single-flight refresh for at most the thirty-second whole-refresh deadline. Concurrent requests await that same promise. Refresh success returns 200. Refresh failure returns 503 and starts the cooldown; while no usable snapshot exists during cooldown, requests return 503 immediately. An expired snapshot may remain in memory for diagnostics but is never served. After cooldown, the next request may start and await one new refresh.
+
 A successful quote failure with successful onchain reads creates a fresh `valuation_status: unavailable` balance snapshot. A failed onchain refresh may serve the prior snapshot only inside the total fifteen-minute window.
 
 - Fresh 200: `Cache-Control: public, max-age=30` plus a strong ETag.
 - Stale 200: `Cache-Control: no-cache` and `status: stale`.
-- No usable snapshot: 503 with schema-locked `wallet_values_unavailable` error and `Cache-Control: no-store`.
+- No usable snapshot: 503 with `Cache-Control: no-store` and exactly `{ "error": { "code": "wallet_values_unavailable", "message": "Looper wallet values are temporarily unavailable." } }`. Unknown keys are forbidden.
 
 ## Client behavior
 
@@ -195,12 +199,13 @@ Tests must cover:
 
 - exact contract identities, ABI output shape, and inclusion of Pantheon `amount` exactly once;
 - two-provider shared block/hash, post-read revalidation, reorg, timeout, disagreement, and one-provider-only failure;
-- malformed batch tuple lengths, per-row call failure, whole-batch failure, and account-code absence;
-- roster exact keys, atomic-read fixture, provenance mismatch, duplicate/order/count/size failures;
+- malformed batch tuple lengths, matching per-row call failure, cross-provider row disagreement, and whole-batch failure;
+- roster exact keys, atomic-read fixture, provenance mismatch, live/static token-set mismatch, duplicate/order/count/size failures;
+- response rows equal roster count and contain each roster token exactly once, in identical order, with no extras;
 - quote host/path and asset identity, redirects, size/time bounds, age/skew, pinned pair uniqueness, liquidity floor, and malformed prices;
 - exact e8 truncation/formula, uint boundaries, very large values, response unknown keys, and response-size bounds;
-- single-flight refresh, sixty-second failed-refresh cooldown, and exact 5/15-minute inclusive boundaries;
-- 700-row capacity, batch count/concurrency, deadline, memory, and payload bounds;
+- single-flight refresh, cold start and expired-cache await behavior, refresh success/failure, sixty-second failed-refresh cooldown, exact 503 body, and exact 5/15-minute inclusive boundaries;
+- full 1,000-row capacity, 16 Multicall3 requests per provider, no JSON-RPC batching, concurrency, deadline, memory, and payload bounds;
 - available values, balances-only state, and unavailable values; null/unavailable always last;
 - deterministic ascending token-ID ties in both wallet directions;
 - default price ascending, disabled wallet sorts during valuation failure, and listings surviving wallet failure;
