@@ -11904,3 +11904,19 @@ h1 {
   .looper-multipass-facts > div { grid-template-columns: 1fr; gap: 5px; }
   .looper-multipass-profile-card { border-radius: 0; }
 }
+
+.looper-marketplace-wallet-value {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  border: 1px solid rgba(7,26,63,.13);
+  border-radius: 12px;
+  background: rgba(34,217,230,.08);
+  padding: 10px 12px;
+  color: var(--loop-navy);
+}
+.looper-marketplace-wallet-value strong { font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; }
+.looper-marketplace-wallet-value span { font-weight: 950; }
+.looper-marketplace-wallet-value small { grid-column: 1 / -1; color: var(--loop-muted); line-height: 1.35; }
+.looper-marketplace-wallet-value.is-unavailable { background: rgba(7,26,63,.04); color: var(--loop-muted); }
+.looper-marketplace-disclosure { margin: -4px 0 0; color: var(--loop-muted); font-size: .72rem; line-height: 1.5; }

@@ -38,25 +38,28 @@ test('exact Looper marketplace routes bypass AgentDNA/demo loading and preserve 
   assert.match(root.textContent, /Public agents|Agent gallery/i);
 });
 
-test('Looper detail loads public holdings and uses the main Multipass profile header', async () => {
+test('Looper detail uses the shared verified wallet snapshot and main Multipass profile header', async () => {
   const root = setupDom('https://helixa.xyz/multipass/the-loop/617');
-  let holdingsCalls = 0;
+  let walletCalls = 0;
+  const sha256 = 'd'.repeat(64);
   const app = createApp({
     root,
     releasedLooperLoader: async () => ({ status: 'available', tokenIds: new Set(['617']) }),
     marketplaceListingsLoader: async () => ({ schema_version: '1.0.0', collection: 'loopers-639312714', contract: '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a', status: 'fresh', observed_at: '2026-10-08T14:00:00.000Z', listings: [] }),
-    marketplaceHoldingsLoader: async ({ tokenId }) => {
-      holdingsCalls += 1;
-      assert.equal(tokenId, '617');
-      return { status: 'available', account: '0x2222222222222222222222222222222222222222', holder: '0x1111111111111111111111111111111111111111', native: { symbol: 'ETH', decimals: 18, balanceBaseUnits: '1000000000000000000' }, tokens: [{ symbol: 'CRED', decimals: 18, balanceBaseUnits: '2' }], observedBlock: 52_357_612 };
+    marketplaceActivationRosterLoader: async () => ({ status: 'available', source: 'daily-onchain-snapshot', rawSha256: sha256, tokenIds: new Set(['617']) }),
+    marketplaceWalletValuesLoader: async () => {
+      walletCalls += 1;
+      return { status: 'available', valuationStatus: 'available', snapshotStatus: 'fresh', roster: { sha256 }, block: { number: 52_500_100, hash: '0x' + 'a'.repeat(64), observedAt: '2026-10-12T01:00:00.000Z' }, generatedAt: '2026-10-12T01:00:01.000Z', rows: [{ status: 'available', tokenId: '617', account: '0x36f35F7E0Ff5b7b4a30138Fd59F5741743389DF2', ethWei: '1000000000000000000', liquidCredBaseUnits: '2000000000000000000', stakedCredBaseUnits: '3000000000000000000', totalUsdE8: '1234500000' }] };
     },
   });
   await app.start();
-  assert.equal(holdingsCalls, 1);
+  assert.equal(walletCalls, 1);
   assert.match(root.querySelector('.header-meta')?.textContent ?? '', /Activated Multipass · 8453:617/u);
   const holdingsText = root.querySelector('[data-looper-profile-drawer="wallet-holdings"]')?.textContent ?? '';
   assert.match(holdingsText, /1 ETH/u);
-  assert.match(holdingsText, /<0.000001 CRED/u);
+  assert.match(holdingsText, /2 CRED/u);
+  assert.match(holdingsText, /3 CRED/u);
+  assert.match(holdingsText, /\$12.34/u);
   assert.match(root.textContent, /Wallet verified/u);
 });
 

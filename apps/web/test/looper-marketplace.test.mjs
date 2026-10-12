@@ -11,6 +11,8 @@ const OPENSEA_ROOT = 'https://opensea.io/assets/base/' + CONTRACT.toLowerCase();
 const listing = (tokenId, baseUnits, amount = baseUnits, currency = 'ETH') => ({ token_id: String(tokenId), price: { currency, amount: String(amount), base_units: String(baseUnits), decimals: 18 }, item_url: OPENSEA_ROOT + '/' + tokenId });
 const feed = (listings = [], overrides = {}) => ({ schema_version: '1.0.0', collection: 'loopers-639312714', contract: CONTRACT, status: 'fresh', observed_at: '2026-10-08T14:00:00.000Z', listings, ...overrides });
 const activation = (...ids) => ({ status: 'available', tokenIds: new Set(ids.map(String)) });
+const walletSnapshot = (rows, valuationStatus = 'available') => ({ status: 'available', valuationStatus, snapshotStatus: 'fresh', block: { number: 52_500_100, hash: '0x' + 'a'.repeat(64), observedAt: '2026-10-12T01:00:00.000Z' }, rowsByToken: new Map(rows.map((row) => [row.tokenId, row])) });
+const walletRow = (tokenId, totalUsdE8 = '100000000') => ({ status: 'available', tokenId: String(tokenId), account: '0x36f35F7E0Ff5b7b4a30138Fd59F5741743389DF2', ethWei: '1000000000000000000', liquidCredBaseUnits: '2000000000000000000', stakedCredBaseUnits: '3000000000000000000', totalUsdE8 });
 function domRoot() { return new JSDOM('<!doctype html><main id="app"></main>').window.document.querySelector('#app'); }
 
 function streamedJsonResponse(value, { headers = {} } = {}) {
@@ -319,20 +321,21 @@ test('renderer covers loading stale unavailable empty cards and safe links witho
   const empty = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'list', tokenId: null }), status: 'ready', snapshot: joinLooperMarketplaceSnapshot({ activation: activation('617'), listings: feed([]) }) }); assert.match(empty, /No listed activated Loopers/);
 });
 
-test('detail matches the main Multipass profile structure and shows public wallet holdings', () => {
-  const snapshot = joinLooperMarketplaceSnapshot({ activation: activation('617'), listings: feed([listing('617', '1')]) });
-  const holdings = { status: 'available', account: '0x2222222222222222222222222222222222222222', holder: '0x1111111111111111111111111111111111111111', native: { symbol: 'ETH', decimals: 18, balanceBaseUnits: '1250000000000000000' }, tokens: [{ symbol: 'CRED', decimals: 18, balanceBaseUnits: '4000000000000000000000000' }], observedBlock: 52_357_612, accountExplorerUrl: 'https://basescan.org/address/0x2222222222222222222222222222222222222222', holderExplorerUrl: 'https://basescan.org/address/0x1111111111111111111111111111111111111111' };
-  const root = domRoot(); root.innerHTML = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'detail', tokenId: '617' }), status: 'ready', snapshot, holdings });
+test('detail matches the main Multipass profile structure and shows verified snapshot wallet values', () => {
+  const snapshot = joinLooperMarketplaceSnapshot({ activation: activation('617'), listings: feed([listing('617', '1')]), wallet: walletSnapshot([walletRow('617', '1234500000')]) });
+  const root = domRoot(); root.innerHTML = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'detail', tokenId: '617' }), status: 'ready', snapshot });
   assert.ok(root.querySelector('.looper-multipass-profile-card'));
   assert.equal(root.querySelector('.looper-multipass-identity h1')?.textContent, 'Looper #617');
   assert.deepEqual([...root.querySelectorAll('.looper-multipass-pill')].map((node) => node.textContent), ['8453:617', 'Activated', 'Wallet verified']);
   const holdingsDrawer = root.querySelector('[data-looper-profile-drawer="wallet-holdings"]');
   assert.ok(holdingsDrawer?.open);
   assert.match(holdingsDrawer.textContent, /Wallet holdings/);
-  assert.match(holdingsDrawer.textContent, /1.25 ETH/);
-  assert.match(holdingsDrawer.textContent, /4,000,000 CRED/);
-  assert.match(holdingsDrawer.textContent, /Current NFT holder/);
-  assert.ok(holdingsDrawer.querySelector('a[href="https://basescan.org/address/0x2222222222222222222222222222222222222222"]'));
+  assert.match(holdingsDrawer.textContent, /1 ETH/);
+  assert.match(holdingsDrawer.textContent, /2 CRED/);
+  assert.match(holdingsDrawer.textContent, /3 CRED/);
+  assert.match(holdingsDrawer.textContent, /\$12.34/);
+  assert.match(holdingsDrawer.textContent, /Base block 52,500,100/);
+  assert.ok(holdingsDrawer.querySelector('a[href="https://basescan.org/address/0x36f35F7E0Ff5b7b4a30138Fd59F5741743389DF2"]'));
   assert.ok(root.querySelector('a[href="/multipass/the-loop"]'));
   assert.ok(root.querySelector('img[src="https://helixa.xyz/loopers/images/617.png"]'));
   assert.match(renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'detail', tokenId: '618' }), status: 'ready', snapshot }), /Looper unavailable/);
@@ -372,4 +375,66 @@ test('marketplace styles provide responsive grid, touch targets, and overflow co
 test('Retry binding calls injected handler without network', () => {
   const root = domRoot(); root.innerHTML = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'list', tokenId: null }), status: 'ready', snapshot: { activationStatus: 'unavailable', listingsStatus: 'unavailable', items: [] } });
   let retries = 0; bindLooperMarketplace(root, { retry: () => { retries += 1; } }); root.querySelector('[data-action="retry-looper-marketplace"]').click(); assert.equal(retries, 1);
+});
+
+test('wallet-value sorts use exact BigInt values with unavailable rows last', () => {
+  const unavailableRow = { status: 'unavailable', tokenId: '10', reason: 'account_unavailable' };
+  const snapshot = joinLooperMarketplaceSnapshot({
+    activation: activation('2', '10', '617'), listings: feed([]),
+    wallet: walletSnapshot([walletRow('2', '9007199254740993123456789'), unavailableRow, walletRow('617', '9')]),
+  });
+  assert.deepEqual(selectLooperMarketplaceItems(snapshot, { view: 'all', sort: 'wallet-value-asc' }).map((item) => item.tokenId), ['617', '2', '10']);
+  assert.deepEqual(selectLooperMarketplaceItems(snapshot, { view: 'all', sort: 'wallet-value-desc' }).map((item) => item.tokenId), ['2', '617', '10']);
+});
+
+test('wallet-value unavailable disables sorts without inventing zero values', () => {
+  const snapshot = joinLooperMarketplaceSnapshot({ activation: activation('2', '10'), listings: feed([listing('10', '1'), listing('2', '2')]) });
+  assert.deepEqual(selectLooperMarketplaceItems(snapshot, { view: 'all', sort: 'wallet-value-desc' }).map((item) => item.tokenId), ['10', '2']);
+  const root = domRoot();
+  root.innerHTML = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'list', tokenId: null }), status: 'ready', snapshot, view: 'all', sort: 'wallet-value-desc' });
+  assert.match(root.textContent, /Wallet values unavailable/u);
+  assert.equal(root.querySelector('option[value="wallet-value-asc"]')?.disabled, true);
+  assert.equal(root.querySelector('option[value="wallet-value-desc"]')?.disabled, true);
+  assert.doesNotMatch(root.textContent, /Wallet value\s*\$0(?:\.00)?/u);
+});
+
+test('balance-only wallet rows keep raw ETH liquid CRED and staked CRED visible', () => {
+  const row = { ...walletRow('617'), totalUsdE8: null };
+  const snapshot = joinLooperMarketplaceSnapshot({ activation: activation('617'), listings: feed([]), wallet: walletSnapshot([row], 'unavailable') });
+  const root = domRoot();
+  root.innerHTML = renderLooperMarketplace({ ...createInitialLooperMarketplaceState({ kind: 'list', tokenId: null }), status: 'ready', snapshot, view: 'all' });
+  assert.match(root.textContent, /Wallet valuation unavailable/u);
+  assert.match(root.textContent, /1 ETH/u);
+  assert.match(root.textContent, /2 liquid CRED/u);
+  assert.match(root.textContent, /3 staked CRED/u);
+  assert.match(root.textContent, /Valuation unavailable/u);
+});
+
+test('snapshot loader runs live activation static roster listings and wallet values under one signal', async () => {
+  const signals = [];
+  const sha256 = 'd'.repeat(64);
+  const live = { status: 'available', source: 'live-chain', tokenIds: new Set(['617']) };
+  const daily = { status: 'available', source: 'daily-onchain-snapshot', rawSha256: sha256, tokenIds: new Set(['617']), observedBlock: 52_500_000, observedAt: '2026-10-12T00:00:00.000Z' };
+  const walletValues = {
+    status: 'available', valuationStatus: 'available', snapshotStatus: 'fresh', roster: { sha256 },
+    block: { number: 52_500_100, hash: '0x' + 'a'.repeat(64), observedAt: '2026-10-12T00:01:00.000Z' },
+    generatedAt: '2026-10-12T00:01:01.000Z', rows: [walletRow('617', '500000000')],
+  };
+  const snapshot = await loadLooperMarketplaceSnapshot({
+    locationUrl: new URL('https://helixa.xyz/multipass/the-loop'),
+    activationLoader: async ({ signal }) => { signals.push(signal); return live; },
+    activationFallbackLoader: async ({ signal }) => { signals.push(signal); return daily; },
+    listingsLoader: async ({ signal }) => { signals.push(signal); return feed([listing('617', '1')]); },
+    walletValuesLoader: async ({ signal }) => { signals.push(signal); return walletValues; },
+  });
+  assert.equal(signals.length, 4);
+  assert.equal(new Set(signals).size, 1);
+  assert.equal(snapshot.walletStatus, 'available');
+  assert.equal(snapshot.items[0].wallet.totalUsdE8, '500000000');
+});
+
+test('marketplace app no longer performs per-detail public-holdings RPC reads', () => {
+  const source = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /loadLooperPublicHoldings|marketplaceHoldingsLoader/u);
+  assert.match(source, /marketplaceWalletValuesLoader/u);
 });

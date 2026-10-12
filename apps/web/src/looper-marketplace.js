@@ -1,6 +1,7 @@
 import { getApiBaseFromLocation } from './api.js';
 import { readBoundedResponseBody } from './bounded-response-body.js';
-import { loadVerifiedActivatedLooperFallback } from './looper-activated-roster.js';
+import { loadDailyActivatedLooperTokenIds, loadPinnedActivatedLooperTokenIds } from './looper-activated-roster.js';
+import { joinVerifiedLooperWalletValues, loadLooperWalletValues } from './looper-wallet-values.js';
 import { compareLooperTokenIds, loadReleasedLooperTokenIds, normalizeLooperTokenId } from './console-looper-selection.js';
 
 export const LOOPERS_MARKETPLACE_PATH = '/multipass/the-loop';
@@ -56,8 +57,9 @@ export async function loadLooperMarketplaceSnapshot({
   locationUrl,
   fetchImpl = globalThis.fetch,
   activationLoader = loadReleasedLooperTokenIds,
-  activationFallbackLoader = loadVerifiedActivatedLooperFallback,
+  activationFallbackLoader = loadDailyActivatedLooperTokenIds,
   listingsLoader = loadLooperMarketplaceListings,
+  walletValuesLoader = loadLooperWalletValues,
   signal,
   timeoutMs = MARKETPLACE_REQUEST_TIMEOUT_MS,
 } = {}) {
@@ -67,33 +69,33 @@ export async function loadLooperMarketplaceSnapshot({
   else signal?.addEventListener?.('abort', abort, { once: true });
   const boundedTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : MARKETPLACE_REQUEST_TIMEOUT_MS;
   const timeout = globalThis.setTimeout(() => controller.abort(new Error('Marketplace request timed out.')), boundedTimeoutMs);
-  let activationResult;
-  let listingsResult;
+  let results;
   try {
-    [activationResult, listingsResult] = await Promise.all([
+    results = await Promise.all([
       settleWithAbort(() => activationLoader({ fetchImpl, signal: controller.signal }), controller.signal),
+      settleWithAbort(() => typeof activationFallbackLoader === 'function' ? activationFallbackLoader({ locationUrl, fetchImpl, signal: controller.signal }) : { status: 'unavailable', tokenIds: new Set() }, controller.signal),
       settleWithAbort(() => listingsLoader({ locationUrl, fetchImpl, signal: controller.signal }), controller.signal),
+      settleWithAbort(() => walletValuesLoader({ fetchImpl, signal: controller.signal }), controller.signal),
     ]);
   } finally {
     globalThis.clearTimeout(timeout);
     signal?.removeEventListener?.('abort', abort);
   }
-  let activation = activationResult.status === 'fulfilled'
-    ? activationResult.value
-    : { status: 'unavailable', tokenIds: new Set() };
-  if (activation?.status !== 'available' && typeof activationFallbackLoader === 'function') {
-    try {
-      const fallback = await activationFallbackLoader({ locationUrl, fetchImpl, signal: controller.signal });
-      if (fallback?.status === 'available' && fallback.tokenIds instanceof Set) activation = fallback;
-    } catch {
-      // The marketplace remains fail-closed when both live and pinned activation sources fail.
-    }
-  }
+  const [liveResult, staticResult, listingsResult, walletResult] = results;
+  const liveActivation = liveResult.status === 'fulfilled' ? liveResult.value : { status: 'unavailable', tokenIds: new Set() };
+  const staticActivation = staticResult.status === 'fulfilled' ? staticResult.value : { status: 'unavailable', tokenIds: new Set() };
+  const activation = liveActivation?.status === 'available'
+    ? liveActivation
+    : (staticActivation?.status === 'available'
+      ? staticActivation
+      : (activationFallbackLoader === null ? { status: 'unavailable', tokenIds: new Set() } : loadPinnedActivatedLooperTokenIds()));
   const listings = listingsResult.status === 'fulfilled' ? listingsResult.value : null;
-  return joinLooperMarketplaceSnapshot({ activation, listings });
+  const walletValues = walletResult.status === 'fulfilled' ? walletResult.value : { status: 'unavailable' };
+  const wallet = joinVerifiedLooperWalletValues({ walletValues, liveActivation, staticActivation });
+  return joinLooperMarketplaceSnapshot({ activation, listings, wallet });
 }
 
-export function joinLooperMarketplaceSnapshot({ activation, listings } = {}) {
+export function joinLooperMarketplaceSnapshot({ activation, listings, wallet } = {}) {
   const activationAvailable = activation?.status === 'available' && activation.tokenIds instanceof Set;
   const normalizedFeed = normalizeFeed(listings);
   if (!activationAvailable) {
@@ -105,6 +107,9 @@ export function joinLooperMarketplaceSnapshot({ activation, listings } = {}) {
       listingsStatus: normalizedFeed ? 'available' : 'unavailable',
       feedStatus: normalizedFeed?.status ?? 'unavailable',
       observedAt: normalizedFeed?.observedAt ?? null,
+      walletStatus: 'unavailable',
+      walletValuationStatus: 'unavailable',
+      walletBlock: null,
       items: [],
     };
   }
@@ -114,6 +119,7 @@ export function joinLooperMarketplaceSnapshot({ activation, listings } = {}) {
     .filter((value, index, values) => values.indexOf(value) === index)
     .sort(compareLooperTokenIds);
   const byToken = new Map((normalizedFeed?.listings ?? []).map((entry) => [entry.tokenId, entry]));
+  const walletAvailable = wallet?.status === 'available' && wallet.rowsByToken instanceof Map;
   return {
     activationStatus: 'available',
     activationSource: activation.source ?? 'live-chain',
@@ -122,11 +128,16 @@ export function joinLooperMarketplaceSnapshot({ activation, listings } = {}) {
     listingsStatus: normalizedFeed ? 'available' : 'unavailable',
     feedStatus: normalizedFeed?.status ?? 'unavailable',
     observedAt: normalizedFeed?.observedAt ?? null,
+    walletStatus: walletAvailable ? 'available' : 'unavailable',
+    walletValuationStatus: walletAvailable ? wallet.valuationStatus : 'unavailable',
+    walletBlock: walletAvailable ? wallet.block : null,
+    walletSnapshotStatus: walletAvailable ? wallet.snapshotStatus : 'unavailable',
     items: tokenIds.map((tokenId) => ({
       tokenId,
       imageUrl: 'https://helixa.xyz/loopers/images/' + tokenId + '.png',
       detailHref: LOOPERS_MARKETPLACE_PATH + '/' + tokenId,
       listing: byToken.get(tokenId) ?? null,
+      wallet: walletAvailable ? (wallet.rowsByToken.get(tokenId) ?? null) : null,
     })),
   };
 }
@@ -138,8 +149,16 @@ export function selectLooperMarketplaceItems(snapshot, controls = {}) {
   const canonicalSearch = search === '' ? null : normalizeLooperTokenId(search);
   if (search && canonicalSearch !== search) return [];
   const values = snapshot.items.filter((item) => (view === 'all' || item.listing) && (!canonicalSearch || item.tokenId === canonicalSearch));
-  const sort = ['token-asc', 'token-desc', 'price-asc', 'price-desc'].includes(controls.sort) ? controls.sort : 'price-asc';
+  const sort = normalizeLooperMarketplaceSort(snapshot, controls.sort);
   return [...values].sort((left, right) => compareItems(left, right, sort));
+}
+
+export function normalizeLooperMarketplaceSort(snapshot, sort) {
+  const requested = String(sort ?? 'price-asc');
+  if (['wallet-value-asc', 'wallet-value-desc'].includes(requested)) {
+    return snapshot?.walletValuationStatus === 'available' ? requested : 'price-asc';
+  }
+  return ['token-asc', 'token-desc', 'price-asc', 'price-desc'].includes(requested) ? requested : 'price-asc';
 }
 
 export function getLooperMarketplaceMetrics(snapshot) {
@@ -161,7 +180,7 @@ export function renderLooperMarketplace(state = {}) {
   if (state.status === 'loading') return renderStatus('Loading activated Loopers…', 'Verifying released accounts and current marketplace listings.', false, 'polite');
   const snapshot = state.snapshot;
   if (!snapshot || snapshot.activationStatus !== 'available') return renderStatus('Activated roster unavailable', 'The verified activation source could not be loaded. No partial roster is shown.', true);
-  if (state.route?.kind === 'detail') return renderDetail(snapshot, state.route.tokenId, state.holdings);
+  if (state.route?.kind === 'detail') return renderDetail(snapshot, state.route.tokenId);
   return renderList(snapshot, state);
 }
 
@@ -230,7 +249,26 @@ function compareItems(left, right, sort) {
   if (sort === 'token-desc') return -compareLooperTokenIds(left.tokenId, right.tokenId);
   if (sort === 'price-asc') return comparePrices(left, right, 1);
   if (sort === 'price-desc') return comparePrices(left, right, -1);
+  if (sort === 'wallet-value-asc') return compareWalletValues(left, right, 1);
+  if (sort === 'wallet-value-desc') return compareWalletValues(left, right, -1);
   return compareLooperTokenIds(left.tokenId, right.tokenId);
+}
+
+function compareWalletValues(left, right, direction) {
+  const leftValue = availableWalletValue(left);
+  const rightValue = availableWalletValue(right);
+  if (leftValue === null && rightValue === null) return compareLooperTokenIds(left.tokenId, right.tokenId);
+  if (leftValue === null) return 1;
+  if (rightValue === null) return -1;
+  if (leftValue < rightValue) return -direction;
+  if (leftValue > rightValue) return direction;
+  return compareLooperTokenIds(left.tokenId, right.tokenId);
+}
+
+function availableWalletValue(item) {
+  return item?.wallet?.status === 'available' && CANONICAL_UINT.test(String(item.wallet.totalUsdE8 ?? ''))
+    ? BigInt(item.wallet.totalUsdE8)
+    : null;
 }
 
 function comparePrices(left, right, direction) {
@@ -260,6 +298,9 @@ function renderList(snapshot, state) {
       renderActivationFreshness(snapshot) +
       (snapshot.feedStatus === 'stale' ? '<p class="looper-marketplace-warning" role="status">Marketplace data is stale. Confirm the listing on OpenSea before acting.</p>' : '') +
       (listingsUnavailable ? '<div class="looper-marketplace-warning" role="status"><strong>Marketplace listings unavailable.</strong> Listing status is not inferred. <button type="button" data-action="retry-looper-marketplace">Retry</button></div>' : '') +
+      (snapshot.walletStatus !== 'available' ? '<div class="looper-marketplace-warning" role="status"><strong>Wallet values unavailable.</strong> Balance and wallet-value fields are not inferred.</div>' : '') +
+      (snapshot.walletStatus === 'available' && snapshot.walletValuationStatus !== 'available' ? '<div class="looper-marketplace-warning" role="status"><strong>Wallet valuation unavailable.</strong> Verified raw balances remain visible.</div>' : '') +
+      renderWalletDisclosure(snapshot) +
       renderControls(state, snapshot) +
       (items.length ? '<div class="looper-marketplace-grid">' + items.map((item) => renderCard(item, listingsUnavailable)).join('') + '</div>' : renderEmpty(state, listingsUnavailable)) +
     '</section>';
@@ -292,12 +333,21 @@ function renderActivationFreshness(snapshot) {
 
 function metric(label, value, html = false) { return '<div><dt>' + escapeHtml(label) + '</dt><dd>' + (html ? value : escapeHtml(value)) + '</dd></div>'; }
 
+function renderWalletDisclosure(snapshot) {
+  if (snapshot?.walletStatus !== 'available') return '';
+  const block = Number.isSafeInteger(snapshot.walletBlock?.number) ? snapshot.walletBlock.number.toLocaleString('en-US') : 'unknown';
+  return '<p class="looper-marketplace-disclosure">Wallet balances are dual-provider Base snapshots at block ' + escapeHtml(block) + '. USD estimates use Coinbase ETH/USD and the fixed Base Uniswap CRED/WETH pool.</p>';
+}
+
 function renderControls(state, snapshot) {
   const pinnedRoster = snapshot?.activationSource === 'pinned-verified-snapshot';
+  const walletSortEnabled = snapshot?.walletValuationStatus === 'available';
+  const selectedSort = normalizeLooperMarketplaceSort(snapshot, state.sort);
+  const sortOptions = [['token-asc','Token ID: low to high'],['token-desc','Token ID: high to low'],['price-asc','Price: low to high'],['price-desc','Price: high to low'],['wallet-value-asc','Wallet value: low to high'],['wallet-value-desc','Wallet value: high to low']];
   return '<div class="looper-marketplace-controls" aria-label="Marketplace controls">' +
     '<div class="looper-marketplace-toggle"><button type="button" data-marketplace-view="listed" aria-pressed="' + String(state.view !== 'all') + '">' + (pinnedRoster ? 'Listed snapshot' : 'Listed activated') + '</button><button type="button" data-marketplace-view="all" aria-pressed="' + String(state.view === 'all') + '">' + (pinnedRoster ? 'All snapshot' : 'All activated') + '</button></div>' +
     '<label>Token ID<input data-marketplace-search inputmode="numeric" pattern="[1-9][0-9]*" value="' + escapeAttribute(state.search ?? '') + '" placeholder="e.g. 617"></label>' +
-    '<label>Sort<select data-marketplace-sort>' + [['token-asc','Token ID: low to high'],['token-desc','Token ID: high to low'],['price-asc','Price: low to high'],['price-desc','Price: high to low']].map(([value,label]) => '<option value="' + value + '"' + (state.sort === value ? ' selected' : '') + '>' + label + '</option>').join('') + '</select></label>' +
+    '<label>Sort<select data-marketplace-sort>' + sortOptions.map(([value,label]) => '<option value="' + value + '"' + (selectedSort === value ? ' selected' : '') + (value.startsWith('wallet-value-') && !walletSortEnabled ? ' disabled' : '') + '>' + label + '</option>').join('') + '</select></label>' +
   '</div>';
 }
 
@@ -312,21 +362,22 @@ function renderCard(item, listingsUnavailable) {
   const listing = item.listing;
   const listingText = listing ? escapeHtml(listing.amount + ' ' + listing.currency) : (listingsUnavailable ? 'Listing unavailable' : 'Not listed');
   const openSea = listing ? '<a class="looper-marketplace-external" href="' + escapeAttribute(listing.itemUrl) + '" target="_blank" rel="noopener noreferrer">View on OpenSea</a>' : '';
-  return '<article class="looper-marketplace-card"><a class="looper-marketplace-image" href="' + escapeAttribute(item.detailHref) + '"><img src="' + escapeAttribute(item.imageUrl) + '" alt="Looper #' + escapeAttribute(item.tokenId) + '" loading="lazy" decoding="async"></a><div class="looper-marketplace-card-body"><div class="looper-marketplace-card-title"><h2>Looper #' + escapeHtml(item.tokenId) + '</h2><span>Agent collectible</span></div><p class="looper-marketplace-price">' + listingText + '</p><div class="looper-marketplace-actions"><a href="' + escapeAttribute(item.detailHref) + '">View Multipass</a>' + openSea + '</div></div></article>';
+  return '<article class="looper-marketplace-card"><a class="looper-marketplace-image" href="' + escapeAttribute(item.detailHref) + '"><img src="' + escapeAttribute(item.imageUrl) + '" alt="Looper #' + escapeAttribute(item.tokenId) + '" loading="lazy" decoding="async"></a><div class="looper-marketplace-card-body"><div class="looper-marketplace-card-title"><h2>Looper #' + escapeHtml(item.tokenId) + '</h2><span>Agent collectible</span></div><p class="looper-marketplace-price">' + listingText + '</p>' + renderWalletValueSummary(item.wallet) + '<div class="looper-marketplace-actions"><a href="' + escapeAttribute(item.detailHref) + '">View Multipass</a>' + openSea + '</div></div></article>';
 }
 
-function renderDetail(snapshot, tokenId, holdings) {
+function renderDetail(snapshot, tokenId) {
   const item = snapshot.items.find((entry) => entry.tokenId === tokenId);
   if (!item) return renderStatus('Looper unavailable', 'This canonical token ID is not in the verified activated roster.', false, null, true);
   const listingUnavailable = snapshot.listingsStatus !== 'available';
   const listingText = item.listing ? escapeHtml(item.listing.amount + ' ' + item.listing.currency) : (listingUnavailable ? 'Listing unavailable' : 'Not listed');
   const external = item.listing ? '<a href="' + escapeAttribute(item.listing.itemUrl) + '" target="_blank" rel="noopener noreferrer">View on OpenSea</a>' : '';
   const freshness = snapshot.observedAt ? escapeHtml(snapshot.feedStatus + ' · ' + snapshot.observedAt) : 'Unavailable';
-  const walletAvailable = isAvailableHoldings(holdings);
+  const walletAvailable = item.wallet?.status === 'available';
   const walletPill = walletAvailable ? 'Wallet verified' : 'Wallet unavailable';
   return '<article class="looper-marketplace-detail looper-multipass-profile">' +
     '<a class="looper-marketplace-back" href="' + LOOPERS_MARKETPLACE_PATH + '">Back to marketplace</a>' +
     (snapshot.feedStatus === 'stale' ? '<p class="looper-marketplace-warning">Marketplace data is stale. Confirm on OpenSea.</p>' : '') +
+    renderWalletDisclosure(snapshot) +
     '<section class="looper-multipass-profile-card" aria-labelledby="looper-multipass-title">' +
       '<div class="looper-multipass-visual"><img src="' + escapeAttribute(item.imageUrl) + '" alt="Looper #' + escapeAttribute(tokenId) + '" loading="eager" decoding="async"></div>' +
       '<div class="looper-multipass-identity"><p class="eyebrow">VISUAL</p><h1 id="looper-multipass-title">Looper #' + escapeHtml(tokenId) + '</h1>' +
@@ -334,60 +385,46 @@ function renderDetail(snapshot, tokenId, holdings) {
       '</div>' +
     '</section>' +
     '<section class="looper-multipass-drawers" aria-label="Looper Multipass details">' +
-      renderWalletHoldingsDrawer(holdings) +
+      renderWalletSnapshotDrawer(item.wallet, snapshot) +
       renderLooperProfileDrawer('marketplace', 'Marketplace status', 'LIVE LISTING CONTEXT', listingText, '<dl class="looper-multipass-facts"><div><dt>Listing</dt><dd>' + listingText + '</dd></div><div><dt>Freshness</dt><dd>' + freshness + '</dd></div></dl><div class="looper-marketplace-actions">' + external + '</div>') +
-      renderLooperProfileDrawer('ownership', 'Ownership and management', 'PUBLIC ONCHAIN AUTHORITY', walletAvailable ? 'PUBLIC' : 'UNAVAILABLE', renderOwnershipFacts(holdings, tokenId)) +
       renderLooperProfileDrawer('proof', 'Public proof', 'ACTIVATION AND CHAIN EVIDENCE', 'BASE', '<dl class="looper-multipass-facts"><div><dt>Network</dt><dd>Base · chain 8453</dd></div><div><dt>Token</dt><dd>Looper #' + escapeHtml(tokenId) + '</dd></div><div><dt>Activation</dt><dd>Verified activated account</dd></div><div><dt>Roster source</dt><dd>' + escapeHtml(snapshot.activationSource ?? 'verified source') + '</dd></div></dl>') +
     '</section>' +
     '<p class="looper-multipass-safety">Public onchain profile. Viewing cannot move assets, approve transactions, or change wallet authority.</p>' +
   '</article>';
 }
 
-function renderWalletHoldingsDrawer(holdings) {
-  if (!isAvailableHoldings(holdings)) {
-    return renderLooperProfileDrawer('wallet-holdings', 'Wallet holdings', 'PUBLIC ERC-6551 ASSETS', 'UNAVAILABLE', '<p class="looper-multipass-empty">Public wallet holdings could not be verified across both Base RPC providers.</p>', true);
-  }
-  const native = formatPublicBalance(holdings.native.balanceBaseUnits, holdings.native.decimals, holdings.native.symbol);
-  const tokens = holdings.tokens.map((token) => formatPublicBalance(token.balanceBaseUnits, token.decimals, token.symbol));
-  const stat = [native, ...tokens].join(' · ');
-  const balances = [holdings.native, ...holdings.tokens].map((asset) => '<div><dt>' + escapeHtml(asset.symbol) + '</dt><dd>' + escapeHtml(formatPublicBalance(asset.balanceBaseUnits, asset.decimals, asset.symbol)) + '</dd></div>').join('');
-  return renderLooperProfileDrawer('wallet-holdings', 'Wallet holdings', 'PUBLIC ERC-6551 ASSETS', stat,
-    '<dl class="looper-multipass-facts looper-multipass-balances">' + balances + '</dl>' +
-    '<dl class="looper-multipass-facts looper-multipass-addresses"><div><dt>Activated wallet</dt><dd><a href="https://basescan.org/address/' + escapeAttribute(holdings.account) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(holdings.account) + '</a></dd></div><div><dt>Current NFT holder</dt><dd><a href="https://basescan.org/address/' + escapeAttribute(holdings.holder) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(holdings.holder) + '</a></dd></div><div><dt>Verified at</dt><dd>Base block ' + escapeHtml(Number(holdings.observedBlock).toLocaleString('en-US')) + '</dd></div></dl>', true);
+function renderWalletValueSummary(wallet) {
+  if (wallet?.status !== 'available') return '<div class="looper-marketplace-wallet-value is-unavailable"><strong>Wallet value</strong><span>Unavailable</span></div>';
+  const total = wallet.totalUsdE8 === null ? 'Valuation unavailable' : formatUsdE8(wallet.totalUsdE8);
+  return '<div class="looper-marketplace-wallet-value"><strong>Wallet value</strong><span>' + escapeHtml(total) + '</span><small>' + escapeHtml(formatToken18(wallet.ethWei, 'ETH')) + ' · ' + escapeHtml(formatToken18(wallet.liquidCredBaseUnits, 'liquid CRED')) + ' · ' + escapeHtml(formatToken18(wallet.stakedCredBaseUnits, 'staked CRED')) + '</small></div>';
 }
 
-function renderOwnershipFacts(holdings, tokenId) {
-  if (!isAvailableHoldings(holdings)) return '<p class="looper-multipass-empty">Onchain owner and activated wallet context unavailable.</p>';
-  return '<dl class="looper-multipass-facts"><div><dt>Multipass ID</dt><dd>8453:' + escapeHtml(tokenId) + '</dd></div><div><dt>NFT holder</dt><dd>' + escapeHtml(holdings.holder) + '</dd></div><div><dt>Agent wallet</dt><dd>' + escapeHtml(holdings.account) + '</dd></div><div><dt>Access</dt><dd>Public read only</dd></div></dl>';
+function renderWalletSnapshotDrawer(wallet, snapshot) {
+  if (wallet?.status !== 'available') {
+    return renderLooperProfileDrawer('wallet-holdings', 'Wallet holdings', 'DUAL-PROVIDER BASE SNAPSHOT', 'UNAVAILABLE', '<p class="looper-multipass-empty">Wallet data unavailable. No balance or valuation is inferred.</p>', true);
+  }
+  const valuation = wallet.totalUsdE8 === null ? 'Valuation unavailable' : formatUsdE8(wallet.totalUsdE8);
+  const block = snapshot.walletBlock?.number;
+  return renderLooperProfileDrawer('wallet-holdings', 'Wallet holdings', 'DUAL-PROVIDER BASE SNAPSHOT', valuation,
+    '<dl class="looper-multipass-facts looper-multipass-balances"><div><dt>ETH</dt><dd>' + escapeHtml(formatToken18(wallet.ethWei, 'ETH')) + '</dd></div><div><dt>Liquid CRED</dt><dd>' + escapeHtml(formatToken18(wallet.liquidCredBaseUnits, 'CRED')) + '</dd></div><div><dt>Staked CRED</dt><dd>' + escapeHtml(formatToken18(wallet.stakedCredBaseUnits, 'CRED')) + '</dd></div><div><dt>Total wallet value</dt><dd>' + escapeHtml(valuation) + '</dd></div></dl>' +
+    '<dl class="looper-multipass-facts looper-multipass-addresses"><div><dt>Activated wallet</dt><dd><a href="https://basescan.org/address/' + escapeAttribute(wallet.account) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(wallet.account) + '</a></dd></div><div><dt>Verified at</dt><dd>' + (Number.isSafeInteger(block) ? 'Base block ' + escapeHtml(block.toLocaleString('en-US')) : 'Unavailable') + '</dd></div></dl>', true);
 }
 
 function renderLooperProfileDrawer(key, title, subtitle, stat, body, open = false) {
   return '<details class="looper-multipass-drawer" data-looper-profile-drawer="' + escapeAttribute(key) + '"' + (open ? ' open' : '') + '><summary><span><strong>' + escapeHtml(title) + '</strong><small>' + escapeHtml(subtitle) + '</small></span><span class="looper-multipass-drawer-stat">' + escapeHtml(stat) + '</span><i aria-hidden="true">›</i></summary><div class="looper-multipass-drawer-body">' + body + '</div></details>';
 }
 
-function isAvailableHoldings(value) {
-  return value?.status === 'available'
-    && /^0x[0-9a-fA-F]{40}$/u.test(String(value.account ?? ''))
-    && /^0x[0-9a-fA-F]{40}$/u.test(String(value.holder ?? ''))
-    && value.native?.symbol === 'ETH'
-    && value.native?.decimals === 18
-    && CANONICAL_UINT.test(String(value.native?.balanceBaseUnits ?? ''))
-    && Array.isArray(value.tokens)
-    && value.tokens.length <= 8
-    && value.tokens.every((token) => /^[A-Z0-9]{1,10}$/u.test(String(token?.symbol ?? '')) && Number.isInteger(token.decimals) && token.decimals >= 0 && token.decimals <= 36 && CANONICAL_UINT.test(String(token.balanceBaseUnits ?? '')))
-    && Number.isSafeInteger(value.observedBlock)
-    && value.observedBlock > 0;
-}
-
-function formatPublicBalance(baseUnits, decimals, symbol) {
-  const raw = BigInt(baseUnits).toString().padStart(decimals + 1, '0');
+function formatUsdE8(value) { return '$' + formatScaledInteger(value, 8, 2); }
+function formatToken18(value, symbol) { return formatScaledInteger(value, 18, 6) + ' ' + symbol; }
+function formatScaledInteger(value, decimals, visibleDecimals) {
+  const raw = BigInt(value).toString().padStart(decimals + 1, '0');
   const integer = decimals ? (raw.slice(0, -decimals) || '0') : raw;
   const exactFraction = decimals ? raw.slice(-decimals).replace(/0+$/u, '') : '';
   const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/gu, ',');
-  if (!exactFraction) return grouped + ' ' + symbol;
-  const visibleFraction = exactFraction.slice(0, 6);
-  if (integer === '0' && Number(visibleFraction) === 0) return '<0.' + '0'.repeat(Math.min(5, Math.max(decimals - 1, 0))) + '1 ' + symbol;
-  return grouped + '.' + visibleFraction + (exactFraction.length > visibleFraction.length ? '…' : '') + ' ' + symbol;
+  if (!exactFraction) return grouped;
+  const visible = exactFraction.slice(0, visibleDecimals).replace(/0+$/u, '');
+  if (visible) return grouped + '.' + visible + (exactFraction.length > visibleDecimals ? '…' : '');
+  return integer === '0' ? '<0.' + '0'.repeat(Math.max(visibleDecimals - 1, 0)) + '1' : grouped;
 }
 
 function renderStatus(title, body, retry, live = null, back = false) {
