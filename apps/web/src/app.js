@@ -2949,7 +2949,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   }
 
   function setLooperMarketplaceSort(sort) {
-    state = { ...state, looperMarketplace: { ...state.looperMarketplace, sort: String(sort ?? 'token-asc') } };
+    state = { ...state, looperMarketplace: { ...state.looperMarketplace, sort: String(sort ?? 'price-asc') } };
     render(root, state, handlers);
   }
 

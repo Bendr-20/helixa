@@ -44,6 +44,17 @@ test('recognizes exact list and canonical detail routes including a non-3802 tok
   assert.equal(getLooperMarketplaceRoute(new URL('https://helixa.xyz/multipass/agents')), null);
 });
 
+test('defaults the listed marketplace to lowest price first', () => {
+  const state = createInitialLooperMarketplaceState({ kind: 'list', tokenId: null });
+  assert.equal(state.sort, 'price-asc');
+  const snapshot = joinLooperMarketplaceSnapshot({
+    activation: activation('2', '10', '617'),
+    listings: feed([listing('2', '20'), listing('10', '9'), listing('617', '15')]),
+  });
+  assert.deepEqual(selectLooperMarketplaceItems(snapshot, { view: 'listed', search: '' }).map((item) => item.tokenId), ['10', '617', '2']);
+  assert.deepEqual(selectLooperMarketplaceItems(snapshot, { view: 'listed', search: '', sort: 'invalid' }).map((item) => item.tokenId), ['10', '617', '2']);
+});
+
 test('loader uses exact default API boundary and injected fetch', async () => {
   assert.equal(getApiBaseFromLocation(new URL('https://helixa.xyz/multipass/the-loop')), '/multipass-api');
   const calls = [];

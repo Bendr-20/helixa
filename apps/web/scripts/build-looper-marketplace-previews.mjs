@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -68,7 +68,13 @@ export async function buildLooperMarketplacePreviewRoutes({ sourcePath = join(di
   return { count: tokenIds.length, outputRoot: resolve(outputRoot) };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+export function isLooperMarketplacePreviewBuilderMain({ argvPath = process.argv[1], moduleUrl = import.meta.url } = {}) {
+  return Boolean(argvPath)
+    && basename(argvPath) === 'build-looper-marketplace-previews.mjs'
+    && resolve(argvPath) === fileURLToPath(moduleUrl);
+}
+
+if (isLooperMarketplacePreviewBuilderMain()) {
   buildLooperMarketplacePreviewRoutes().then((result) => {
     process.stdout.write(JSON.stringify(result) + '\n');
   }).catch((error) => {

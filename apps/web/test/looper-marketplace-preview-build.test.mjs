@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { buildLooperMarketplacePreviewRoutes, renderLooperMarketplaceDetailHtml } from '../scripts/build-looper-marketplace-previews.mjs';
+import * as previewBuilder from '../scripts/build-looper-marketplace-previews.mjs';
+
+const { buildLooperMarketplacePreviewRoutes, renderLooperMarketplaceDetailHtml } = previewBuilder;
+const isLooperMarketplacePreviewBuilderMain = previewBuilder.isLooperMarketplacePreviewBuilderMain;
 
 const shell = `<!doctype html><html><head>
 <title>Multipass</title>
@@ -20,6 +23,12 @@ const shell = `<!doctype html><html><head>
 <meta name="twitter:description" content="default" />
 <meta name="twitter:image" content="https://helixa.xyz/multipass/default.png" />
 </head><body><main id="app"></main></body></html>`;
+
+test('preview builder CLI does not auto-run when bundled into the roster refresher', () => {
+  assert.equal(typeof isLooperMarketplacePreviewBuilderMain, 'function');
+  assert.equal(isLooperMarketplacePreviewBuilderMain({ argvPath: '/tmp/build-looper-marketplace-previews.mjs', moduleUrl: 'file:///tmp/build-looper-marketplace-previews.mjs' }), true);
+  assert.equal(isLooperMarketplacePreviewBuilderMain({ argvPath: '/tmp/refresh-the-loop-roster.mjs', moduleUrl: 'file:///tmp/refresh-the-loop-roster.mjs' }), false);
+});
 
 test('individual Looper route emits crawler-visible token metadata and dynamic JPEG preview', () => {
   const html = renderLooperMarketplaceDetailHtml(shell, '210');

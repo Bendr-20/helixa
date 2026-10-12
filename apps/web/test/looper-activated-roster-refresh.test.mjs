@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import { assertMonotonicPublication, reconcileProviderScans } from '../scripts/refresh-looper-activated-roster.mjs';
+import * as rosterRefresh from '../scripts/refresh-looper-activated-roster.mjs';
+
+const { assertMonotonicPublication, reconcileProviderScans } = rosterRefresh;
+const publishVerifiedDailyRoster = rosterRefresh.publishVerifiedDailyRoster;
 
 const HASH_A = '0x' + '11'.repeat(32);
 const HASH_B = '0x' + '22'.repeat(32);
@@ -49,4 +55,41 @@ test('publication rejects malformed baselines, block or count regressions, and l
   assert.throws(() => assertMonotonicPublication({ ...previous, token_ids: ['1', '1'] }, document({ observedBlock: 101 })), /malformed/u);
   assert.throws(() => assertMonotonicPublication({ ...previous, token_ids: ['143', '1'] }, document({ observedBlock: 101 })), /malformed/u);
   assert.throws(() => assertMonotonicPublication({ ...previous, schema_version: '2.0.0' }, document({ observedBlock: 101 })), /malformed/u);
+});
+
+test('publication creates every Multipass detail route before exposing the new roster', async () => {
+  assert.equal(typeof publishVerifiedDailyRoster, 'function');
+  const root = await mkdtemp(join(tmpdir(), 'looper-roster-publish-'));
+  try {
+    const output = join(root, 'data', 'looper-activated-roster.json');
+    const sourcePath = join(root, 'index.html');
+    const routeOutputRoot = join(root, 'the-loop');
+    await writeFile(sourcePath, '<!doctype html><html><head><title>Multipass</title></head><body><main id="app"></main></body></html>');
+
+    const result = await publishVerifiedDailyRoster({
+      output,
+      document: document({ tokenIds: ['1', '2245'] }),
+      routeSourcePath: sourcePath,
+      routeOutputRoot,
+    });
+
+    assert.equal(result.routeCount, 2);
+    assert.equal(JSON.parse(await readFile(output, 'utf8')).count, 2);
+    assert.match(await readFile(join(routeOutputRoot, '2245'), 'utf8'), /Looper #2245 \| The Loop/u);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('publication requires route source and output to be configured together', async () => {
+  assert.equal(typeof publishVerifiedDailyRoster, 'function');
+  const root = await mkdtemp(join(tmpdir(), 'looper-roster-config-'));
+  try {
+    await assert.rejects(
+      publishVerifiedDailyRoster({ output: join(root, 'roster.json'), document: document(), routeSourcePath: join(root, 'index.html') }),
+      /configured together/u,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

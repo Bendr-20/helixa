@@ -28,7 +28,7 @@ export function createInitialLooperMarketplaceState(route) {
     snapshot: null,
     view: 'listed',
     search: '',
-    sort: 'token-asc',
+    sort: 'price-asc',
   };
 }
 
@@ -138,7 +138,7 @@ export function selectLooperMarketplaceItems(snapshot, controls = {}) {
   const canonicalSearch = search === '' ? null : normalizeLooperTokenId(search);
   if (search && canonicalSearch !== search) return [];
   const values = snapshot.items.filter((item) => (view === 'all' || item.listing) && (!canonicalSearch || item.tokenId === canonicalSearch));
-  const sort = ['token-asc', 'token-desc', 'price-asc', 'price-desc'].includes(controls.sort) ? controls.sort : 'token-asc';
+  const sort = ['token-asc', 'token-desc', 'price-asc', 'price-desc'].includes(controls.sort) ? controls.sort : 'price-asc';
   return [...values].sort((left, right) => compareItems(left, right, sort));
 }
 

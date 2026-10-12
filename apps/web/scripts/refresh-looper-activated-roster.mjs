@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { decodeFunctionResult, encodeFunctionData } from 'viem';
 
 import { deriveLooperAccount, RELEASED_ACCOUNT_IMPLEMENTATION } from '../src/looper-agent-wallet.js';
+import { buildLooperMarketplacePreviewRoutes } from './build-looper-marketplace-previews.mjs';
 
 const CHAIN_ID = 8453;
 const LOOPERS_CONTRACT = '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a';
@@ -25,22 +26,31 @@ export async function buildVerifiedDailyRoster({ fetchImpl = globalThis.fetch, p
   return reconcileProviderScans(scans, { minimumCount });
 }
 
-export async function writeVerifiedDailyRoster({ output, ...options } = {}) {
-  if (!output) throw new Error('Output path is required.');
-  const target = resolve(output);
+export async function writeVerifiedDailyRoster({ output, routeSourcePath = null, routeOutputRoot = null, ...options } = {}) {
   const document = await buildVerifiedDailyRoster(options);
+  return publishVerifiedDailyRoster({ output, document, routeSourcePath, routeOutputRoot });
+}
+
+export async function publishVerifiedDailyRoster({ output, document, routeSourcePath = null, routeOutputRoot = null } = {}) {
+  if (!output) throw new Error('Output path is required.');
+  if (Boolean(routeSourcePath) !== Boolean(routeOutputRoot)) throw new Error('Route source and output must be configured together.');
+  assertPublishedRoster(document, 'Generated roster');
+  const target = resolve(output);
   const previous = await readPrevious(target);
   if (previous) assertMonotonicPublication(previous, document);
   await mkdir(dirname(target), { recursive: true });
   const temporary = target + '.tmp.' + process.pid;
   try {
     await writeFile(temporary, JSON.stringify(document, null, 2) + '\n', { mode: 0o644 });
+    const routes = routeSourcePath
+      ? await buildLooperMarketplacePreviewRoutes({ sourcePath: routeSourcePath, rosterFile: temporary, outputRoot: routeOutputRoot })
+      : null;
     await rename(temporary, target);
+    return { ...document, routeCount: routes?.count ?? null };
   } catch (error) {
     await unlink(temporary).catch(() => {});
     throw error;
   }
-  return document;
 }
 
 export function reconcileProviderScans(scans, { minimumCount = DEFAULT_MINIMUM_COUNT } = {}) {
@@ -158,17 +168,21 @@ function parseCli(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === '--output') options.output = argv[++index];
     else if (argv[index] === '--minimum-count') options.minimumCount = Number(argv[++index]);
+    else if (argv[index] === '--route-source') options.routeSourcePath = argv[++index];
+    else if (argv[index] === '--route-output') options.routeOutputRoot = argv[++index];
     else throw new Error('Unknown argument: ' + argv[index]);
   }
   if (!options.output) throw new Error('--output is required.');
   if (options.minimumCount !== undefined && (!Number.isSafeInteger(options.minimumCount) || options.minimumCount < DEFAULT_MINIMUM_COUNT)) throw new Error('--minimum-count must be an integer of at least 328.');
+  if (Boolean(options.routeSourcePath) !== Boolean(options.routeOutputRoot)) throw new Error('--route-source and --route-output must be configured together.');
   return options;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    const document = await writeVerifiedDailyRoster(parseCli(process.argv.slice(2)));
-    process.stdout.write(JSON.stringify({ status: 'updated', output: resolve(parseCli(process.argv.slice(2)).output), count: document.count, observedBlock: document.observed_block, observedAt: document.observed_at }) + '\n');
+    const options = parseCli(process.argv.slice(2));
+    const document = await writeVerifiedDailyRoster(options);
+    process.stdout.write(JSON.stringify({ status: 'updated', output: resolve(options.output), count: document.count, routeCount: document.routeCount, observedBlock: document.observed_block, observedAt: document.observed_at }) + '\n');
   } catch (error) {
     process.stderr.write('Daily Looper roster refresh failed: ' + String(error?.message ?? error) + '\n');
     process.exitCode = 1;
