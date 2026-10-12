@@ -12,6 +12,7 @@ import {
 import {
   ERC20_BALANCE_ABI,
   MULTICALL3_ABI,
+  PINNED_BASE_RPC_ORIGINS,
   MULTICALL_GET_ETH_BALANCE_ABI,
   createLooperWalletValueRefresher,
   createLooperWalletValuesLoader,
@@ -76,6 +77,10 @@ function createRpcFixture({ disagree = false, reorg = false, failProvider = null
   };
   return { rpcImpl, calls };
 }
+
+test('pins canonical root URLs for both production Base RPC providers', () => {
+  assert.deepEqual(PINNED_BASE_RPC_ORIGINS, ['https://base-rpc.publicnode.com/', 'https://base.drpc.org/']);
+});
 
 test('refreshes 1,000 rows in sixteen single Multicall requests per provider', async () => {
   const path = await rosterFile(1_000);

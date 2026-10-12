@@ -20,7 +20,7 @@ import {
   validateWalletValueSnapshot,
 } from './looper-wallet-value-contract.js';
 
-export const PINNED_BASE_RPC_ORIGINS = Object.freeze(['https://base-rpc.publicnode.com', 'https://base.drpc.org']);
+export const PINNED_BASE_RPC_ORIGINS = Object.freeze(['https://base-rpc.publicnode.com/', 'https://base.drpc.org/']);
 export const MULTICALL_GET_ETH_BALANCE_ABI = Object.freeze([{ type: 'function', name: 'getEthBalance', stateMutability: 'view', inputs: [{ name: 'addr', type: 'address' }], outputs: [{ name: 'balance', type: 'uint256' }] }]);
 export const ERC20_BALANCE_ABI = Object.freeze([{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: 'balance', type: 'uint256' }] }]);
 export const MULTICALL3_ABI = Object.freeze([{ type: 'function', name: 'aggregate3', stateMutability: 'payable', inputs: [{ name: 'calls', type: 'tuple[]', components: [{ name: 'target', type: 'address' }, { name: 'allowFailure', type: 'bool' }, { name: 'callData', type: 'bytes' }] }], outputs: [{ name: 'returnData', type: 'tuple[]', components: [{ name: 'success', type: 'bool' }, { name: 'returnData', type: 'bytes' }] }] }]);
