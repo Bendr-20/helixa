@@ -180,6 +180,15 @@ test('enforces decoded response and whole-refresh bounds', async () => {
   await assert.rejects(never(), /timeout|abort/i);
 });
 
+test('enforces the per-provider request timeout independently', async () => {
+  const path = await rosterFile(1);
+  const refresh = createLooperWalletValueRefresher({
+    rosterPath: path, providers: ['https://rpc.one', 'https://rpc.two'], quoteLoader, now: () => NOW,
+    requestTimeoutMs: 5, refreshTimeoutMs: 100, fetchImpl: async () => new Promise(() => {}),
+  });
+  await assert.rejects(refresh(), /provider request failed/i);
+});
+
 test('enforces the serialized one MiB response limit', async () => {
   const load = createLooperWalletValuesLoader({
     now: () => NOW,

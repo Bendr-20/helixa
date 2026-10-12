@@ -149,7 +149,7 @@ async function fetchQuote({ fetchImpl, url, maxBytes, signal, timeoutMs, parse, 
   const requestSignal = signal && typeof AbortSignal.any === 'function' ? AbortSignal.any([signal, timeout]) : (signal ?? timeout);
   let response;
   try {
-    response = await fetchImpl(url, { method: 'GET', redirect: 'error', credentials: 'omit', headers: { accept: 'application/json' }, signal: requestSignal });
+    response = await raceAbort(fetchImpl(url, { method: 'GET', redirect: 'error', credentials: 'omit', headers: { accept: 'application/json' }, signal: requestSignal }), requestSignal);
   } catch { throw quoteError(); }
   if (!response?.ok || response.redirected === true || String(response.url || url) !== url) throw quoteError();
   let bytes;
@@ -226,3 +226,11 @@ function plainObject(value) { return Boolean(value) && typeof value === 'object'
 function sameAddress(left, right) { try { return getAddress(left) === getAddress(right); } catch { return false; } }
 function rosterError() { return new Error('Activated Looper roster is malformed.'); }
 function quoteError() { return new Error('Wallet value quote is unavailable.'); }
+function raceAbort(promise, signal) {
+  if (signal?.aborted) return Promise.reject(signal.reason ?? quoteError());
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? quoteError());
+    signal?.addEventListener?.('abort', onAbort, { once: true });
+    Promise.resolve(promise).then(resolve, reject).finally(() => signal?.removeEventListener?.('abort', onAbort));
+  });
+}

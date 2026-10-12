@@ -80,7 +80,10 @@ test('loads only the pinned ETH and Base CRED/WETH quote identities', async () =
   assert.equal(quotes.cred.priceUsdE8, '110');
   assert.equal(requests.length, 2);
   assert.ok(requests.every(([, init]) => init.redirect === 'error' && init.credentials === 'omit'));
-  assert.deepEqual(requests.map(([url]) => new URL(url).host).sort(), ['api.coinbase.com', 'api.dexscreener.com']);
+  assert.deepEqual(requests.map(([url]) => url).sort(), [
+    'https://api.coinbase.com/v2/prices/ETH-USD/spot',
+    'https://api.dexscreener.com/latest/dex/tokens/' + CRED_ADDRESS,
+  ].sort());
 });
 
 test('rejects duplicate, wrong-identity and low-liquidity CRED pairs', async () => {
@@ -95,6 +98,10 @@ test('rejects duplicate, wrong-identity and low-liquidity CRED pairs', async () 
       : Response.json({ pairs });
     await assert.rejects(loadWalletValueQuotes({ fetchImpl, now: () => 1_000 }), /quote/i);
   }
+});
+
+test('times out quote transports that ignore AbortSignal', async () => {
+  await assert.rejects(loadWalletValueQuotes({ fetchImpl: async () => new Promise(() => {}), timeoutMs: 5 }), /quote/i);
 });
 
 test('enforces quote age and cross-source skew', () => {
