@@ -13,6 +13,7 @@ const EMP_NODE_DOMAIN = 'CRED-EMP-NODE-v1\0';
 const HASH_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const ISO_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 const INTEGER_STRING_PATTERN = /^(0|[1-9]\d*)$/u;
+const REGISTRY_BUNDLE_CACHE = new WeakMap();
 const IDENTIFIER_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}._:-]{0,127}$/u;
 
 const REGISTRY_FIELDS = Object.freeze(['registryType','canonicalSerializationVersion','registryVersion','generatedAt','previousRegistryHash','versions','roots','providers','schemas','identityIssuers','subjects','identityEdges','actorEpochs','empPolicies','ontology']);
@@ -587,9 +588,15 @@ function normalizeRegistry(input) {
 }
 
 function buildRegistryBundle(input) {
+  if (input && typeof input === 'object' && Object.isFrozen(input)) {
+    const cached = REGISTRY_BUNDLE_CACHE.get(input);
+    if (cached) return cached;
+  }
   const registry = normalizeRegistry(input);
   const canonicalBytes = canonicalStringify(registry);
-  return deepFreeze({ registry, canonicalBytes, registryHash: hashBytes(REGISTRY_HASH_DOMAIN, canonicalBytes) });
+  const bundle = deepFreeze({ registry, canonicalBytes, registryHash: hashBytes(REGISTRY_HASH_DOMAIN, canonicalBytes) });
+  REGISTRY_BUNDLE_CACHE.set(registry, bundle);
+  return bundle;
 }
 
 module.exports = Object.freeze({

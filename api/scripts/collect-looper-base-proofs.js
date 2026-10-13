@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+'use strict';
+const {collectBaseProofSnapshot,defaultRpc}=require('../cred-looper/collector');const {readJson,safeOutput,writeJsonExclusive}=require('../cred-looper/files');
+function usage(){return 'Usage: collect-looper-base-proofs.js --roster <roster.json> --providers <providers.json> --assets <assets.json> --output <snapshot.json>';}
+function parseArgs(argv){const options={};for(let i=0;i<argv.length;i++){const arg=argv[i];if(!['--roster','--providers','--assets','--output'].includes(arg))throw new TypeError('unknown flag '+arg);if(i+1>=argv.length||argv[i+1].startsWith('--'))throw new TypeError(arg+' requires a value');options[arg.slice(2)]=argv[++i];}for(const key of ['roster','providers','assets','output'])if(!options[key])throw new TypeError('--'+key+' is required');return options;}
+async function main(argv,{rpc=defaultRpc}={}){const options=parseArgs(argv),outputPath=safeOutput(options.output),roster=readJson(options.roster,'roster'),providers=readJson(options.providers,'providers'),assets=readJson(options.assets,'assets'),snapshot=await collectBaseProofSnapshot(roster,providers,assets,rpc);writeJsonExclusive(outputPath,snapshot);return {outputPath,blockNumber:snapshot.blockNumber,blockHash:snapshot.blockHash,subjectCount:snapshot.accountProofs.length,providerIds:snapshot.providers.map(value=>value.providerId)};}
+if(require.main===module)main(process.argv.slice(2)).then(result=>process.stdout.write(JSON.stringify(result)+'\n')).catch(error=>{process.stderr.write(error.message+'\n'+usage()+'\n');process.exitCode=1;});
+module.exports=Object.freeze({parseArgs,main});

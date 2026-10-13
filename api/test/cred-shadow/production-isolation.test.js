@@ -13,8 +13,11 @@ const API_ROOT = path.resolve(__dirname, '../..');
 const REPOSITORY_ROOT = path.dirname(API_ROOT);
 const SHADOW_ROOT = path.join(API_ROOT, 'cred-shadow');
 const EVIDENCE_ROOT = path.join(API_ROOT, 'cred-evidence');
+const LOOPER_ROOT = path.join(API_ROOT, 'cred-looper');
 const SHADOW_CLI = path.join(API_ROOT, 'scripts', 'run-cred-shadow-replay.js');
 const EVIDENCE_CLI = path.join(API_ROOT, 'scripts', 'compile-cred-evidence.js');
+const LOOPER_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-cred-corpus.js');
+const LOOPER_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-base-proofs.js');
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -55,10 +58,10 @@ function listJavaScript(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence') continue;
+      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (absolute !== SHADOW_CLI && absolute !== EVIDENCE_CLI) found.push(absolute);
+      if (absolute !== SHADOW_CLI && absolute !== EVIDENCE_CLI && absolute !== LOOPER_BUILD_CLI && absolute !== LOOPER_COLLECT_CLI) found.push(absolute);
     }
   }
   return found.sort();
@@ -130,6 +133,7 @@ function buildGraph(roots, options = {}) {
   const graphRoot = options.graphRoot || REPOSITORY_ROOT;
   const shadowRoot = options.shadowRoot || SHADOW_ROOT;
   const evidenceRoot = options.evidenceRoot || EVIDENCE_ROOT;
+  const looperRoot = options.looperRoot || LOOPER_ROOT;
   const mode = options.mode || 'production';
   const dynamicAllowlist = options.dynamicAllowlist || new Map();
   const queue = roots.map((file) => fs.realpathSync(file));
@@ -143,7 +147,7 @@ function buildGraph(roots, options = {}) {
       const target = resolveLocal(file, specifier);
       if (target) {
         if (!isInside(target, graphRoot)) throw new Error(file + ' escapes repository graph root through ' + specifier);
-        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot))) {
+        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot) || isInside(target, looperRoot))) {
           throw new Error('production graph reaches offline CRED module: ' + file + ' -> ' + target);
         }
         if (mode === 'shadow' && target !== SHADOW_CLI && !isInside(target, shadowRoot)) {
@@ -152,8 +156,14 @@ function buildGraph(roots, options = {}) {
         if (mode === 'evidence' && target !== EVIDENCE_CLI && !isInside(target, evidenceRoot) && !isInside(target, shadowRoot)) {
           throw new Error('evidence CLI graph reaches unauthorized local module: ' + target);
         }
+        if (mode === 'looper-build' && target !== LOOPER_BUILD_CLI && !isInside(target, looperRoot) && !isInside(target, evidenceRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('Looper build graph reaches unauthorized local module: ' + target);
+        }
+        if (mode === 'looper-collect' && target !== LOOPER_COLLECT_CLI && !isInside(target, looperRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('Looper collector graph reaches unauthorized local module: ' + target);
+        }
         queue.push(target);
-      } else if ((mode === 'shadow' || mode === 'evidence') && !BUILTINS.has(specifier)) {
+      } else if ((mode === 'shadow' || mode === 'evidence' || mode === 'looper-build' || mode === 'looper-collect') && !BUILTINS.has(specifier)) {
         throw new Error('offline CLI imports non-builtin package: ' + specifier);
       }
     }
@@ -211,6 +221,7 @@ test('production runtime graph cannot reach offline CRED evidence or shadow scor
   for (const file of graph) {
     assert.equal(isInside(file, SHADOW_ROOT), false, file + ' must stay outside shadow modules');
     assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' must stay outside evidence compiler modules');
+    assert.equal(isInside(file, LOOPER_ROOT), false, file + ' must stay outside Looper corpus modules');
   }
 });
 
@@ -231,6 +242,16 @@ test('evidence compiler graph is offline, secret-free, and restricted to evidenc
       assert.equal(specifiers.some((specifier) => specifier === 'fs' || specifier === 'node:fs' || specifier === 'fs/promises' || specifier === 'node:fs/promises'), false, file + ' must not access the filesystem outside the CLI');
     }
   }
+});
+
+test('Looper corpus builder graph is offline and restricted to Looper, evidence, and shadow modules', () => {
+  const graph = buildGraph([LOOPER_BUILD_CLI], { mode: 'looper-build' });
+  for (const file of graph) assertNoForbiddenShadowCapability(file);
+});
+
+test('Looper network collector stays isolated from the evidence compiler', () => {
+  const graph = buildGraph([LOOPER_COLLECT_CLI], { mode: 'looper-collect' });
+  for (const file of graph) assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' collector must not reach the evidence compiler');
 });
 
 test('indirect production imports into a shadow directory are rejected', (t) => {
