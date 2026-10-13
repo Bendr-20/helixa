@@ -15,7 +15,11 @@
     "cred:evidence:compile": "node scripts/compile-cred-evidence.js",
     "test:cred-looper": "node --test test/cred-looper/*.test.js",
     "cred:looper:collect": "node scripts/collect-looper-base-proofs.js",
-    "cred:looper:build": "node scripts/build-looper-cred-corpus.js"
+    "cred:looper:build": "node scripts/build-looper-cred-corpus.js",
+    "test:cred-afg": "node --test test/cred-afg/*.test.js",
+    "cred:afg:collect": "node scripts/collect-looper-afg.js",
+    "cred:afg:verify": "node scripts/verify-afg-statement.js",
+    "cred:afg:build": "node scripts/build-looper-afg-shadow.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -47,7 +51,10 @@
     "cred-shadow-replay": "scripts/run-cred-shadow-replay.js",
     "cred-evidence-compile": "scripts/compile-cred-evidence.js",
     "cred-looper-collect": "scripts/collect-looper-base-proofs.js",
-    "cred-looper-build": "scripts/build-looper-cred-corpus.js"
+    "cred-looper-build": "scripts/build-looper-cred-corpus.js",
+    "cred-afg-collect": "scripts/collect-looper-afg.js",
+    "cred-afg-verify": "scripts/verify-afg-statement.js",
+    "cred-afg-build": "scripts/build-looper-afg-shadow.js"
   },
   "devDependencies": {
     "acorn": "^8.15.0",

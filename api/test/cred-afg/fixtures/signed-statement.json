@@ -1,0 +1,86 @@
+{
+  "roots": {
+    "as_of": "2026-10-13T00:07:28.964Z",
+    "key": {
+      "alg": "Ed25519",
+      "key_id": "afg-stmt-ed25519-8cda0c3066b3a73c",
+      "public_key_hex": "c715aa7433d2197091cae36fa2fe12d796de8f5029204f7ac4906363262efc49",
+      "signs": "afg-statement-root:v1:<windowStart>:<windowEnd>:<root>:<prevRoot>:<leaves>"
+    },
+    "windows": [
+      {
+        "window_start": "2026-10-12T18:00:00.000Z",
+        "window_end": "2026-10-12T21:00:00.000Z",
+        "root": "0xd1a77db56770781de1f3866c4965fcdc808e6298e8799291277e378f9122ba6d",
+        "prev_root": "0x42e4c250b4cefaa79f571ded4a2f41b3b9f46de5dd12b0c7f9d48e3b49fb852a",
+        "leaves": 7633,
+        "active": 24,
+        "signature": "fSLB0BjwbcFx32nZbuCy6b9LHkkfnNtHUsb6WJ7mtmI5rvsZoTy7afNoXvY4YH30gyxcBOV35FBumV1ZAHaoCA==",
+        "key_id": "afg-stmt-ed25519-8cda0c3066b3a73c",
+        "published_at": "2026-10-13T00:07:26.550Z",
+        "chain_tx": null
+      }
+    ]
+  },
+  "record": {
+    "id": "act_8453_53008",
+    "token_id": "53008",
+    "agent_id": "53008",
+    "latest": {
+      "window_start": "2026-10-12T18:00:00.000Z",
+      "window_end": "2026-10-12T21:00:00.000Z",
+      "statement": {
+        "agentId": "53008",
+        "chainId": "8453",
+        "definitionId": "agent.statement.v1",
+        "flags": [],
+        "inCount": "0",
+        "inSum": "0",
+        "leftControl": "0",
+        "outCount": "0",
+        "outSum": "0",
+        "prevHash": "0xf5acd2fcf8c293aea041d3d58d83a07d1a6ea994f06726722e97061ae6d2e92a",
+        "publisher": "agenticfinancegraph.com",
+        "routeSum": "0",
+        "ruleId": "afg.pay.partition.v1",
+        "scrapeTime": "1791850021",
+        "spendSum": "0",
+        "uncheckedSum": "0",
+        "wallet": "0x0329c5d3920e301740f78d6e17b8d1a11cca9b2c",
+        "windowEnd": "1791838800",
+        "windowStart": "1791828000"
+      },
+      "canonical": "{\"agentId\":\"53008\",\"chainId\":\"8453\",\"definitionId\":\"agent.statement.v1\",\"flags\":[],\"inCount\":\"0\",\"inSum\":\"0\",\"leftControl\":\"0\",\"outCount\":\"0\",\"outSum\":\"0\",\"prevHash\":\"0xf5acd2fcf8c293aea041d3d58d83a07d1a6ea994f06726722e97061ae6d2e92a\",\"publisher\":\"agenticfinancegraph.com\",\"routeSum\":\"0\",\"ruleId\":\"afg.pay.partition.v1\",\"scrapeTime\":\"1791850021\",\"spendSum\":\"0\",\"uncheckedSum\":\"0\",\"wallet\":\"0x0329c5d3920e301740f78d6e17b8d1a11cca9b2c\",\"windowEnd\":\"1791838800\",\"windowStart\":\"1791828000\"}",
+      "hash": "0x49714f70500ce6edf086a3a854d3c93b8174c5952239133b89d7e19454d2d767",
+      "prev_hash": "0xf5acd2fcf8c293aea041d3d58d83a07d1a6ea994f06726722e97061ae6d2e92a",
+      "active": false,
+      "leaf": "0x34ee5e5e6217e5f3f082bdb9dc006e3c135cd4fe5b995e09fe738cd24c2a137b",
+      "leaf_index": 2294,
+      "proof": [
+        "0xf63b121768fa0c851b0862805301acbe85e0be1a9e0aa45bedb89704af068f56",
+        "0x786742df2f264a104de088cdcf46ef887332e35480cf7b73b63736575199ce78",
+        "0x87d0d97c3b00ade871e476bb46af5d379eb076b2fc3340ad8b1c7ae3a93b33f4",
+        "0xd845619548f9123b596c89976aea907bc3c487c5d43a52e3f2d1ab55c3331c00",
+        "0x4f570c1bf4c5663e30373ec1a4ff0529540573b9dd156098fea66a7a477c1787",
+        "0xc1937aa9c61e8fa3d9115375cb22e15b38420f25c2e85f574f75f3dee2bedae0",
+        "0xd842d43e37837932a580ce1200a7e3b476002279e58b5e0c588489e134df1e06",
+        "0x7b8e80679b4da21da65f13010c06131ba8f75caf033e55fd6edad4b8d499868f",
+        "0x4b301fcb292643e366a22cc52976084889ac8f7c9def2fba741799f3885e3635",
+        "0x8d24439f89df469f1caf59169a85d32b9573921caf49a43211711bbdbd240017",
+        "0x547aec47d924555ab38943bd1d96563d38ad3e54b4749ff369f50e882ee71d6e",
+        "0xcf59d546c87492849be3025def690bbac659738274db791289b4092eed443d1c",
+        "0x8cf47abf06b45b3ca2ea25bb3dcf09f38cc341712f161307a5aaab5a6deaa9a0"
+      ],
+      "root": "0xd1a77db56770781de1f3866c4965fcdc808e6298e8799291277e378f9122ba6d",
+      "prev_root": "0x42e4c250b4cefaa79f571ded4a2f41b3b9f46de5dd12b0c7f9d48e3b49fb852a",
+      "leaves": 7633,
+      "root_signature": "fSLB0BjwbcFx32nZbuCy6b9LHkkfnNtHUsb6WJ7mtmI5rvsZoTy7afNoXvY4YH30gyxcBOV35FBumV1ZAHaoCA==",
+      "key_id": "afg-stmt-ed25519-8cda0c3066b3a73c",
+      "published_at": "2026-10-13T00:07:26.550Z",
+      "chain_tx": null
+    },
+    "chain_ok": true,
+    "stale": false,
+    "age_hours": 4.75
+  }
+}

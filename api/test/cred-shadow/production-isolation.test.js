@@ -14,10 +14,14 @@ const REPOSITORY_ROOT = path.dirname(API_ROOT);
 const SHADOW_ROOT = path.join(API_ROOT, 'cred-shadow');
 const EVIDENCE_ROOT = path.join(API_ROOT, 'cred-evidence');
 const LOOPER_ROOT = path.join(API_ROOT, 'cred-looper');
+const AFG_ROOT = path.join(API_ROOT, 'cred-afg');
 const SHADOW_CLI = path.join(API_ROOT, 'scripts', 'run-cred-shadow-replay.js');
 const EVIDENCE_CLI = path.join(API_ROOT, 'scripts', 'compile-cred-evidence.js');
 const LOOPER_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-cred-corpus.js');
 const LOOPER_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-base-proofs.js');
+const AFG_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-afg-shadow.js');
+const AFG_VERIFY_CLI = path.join(API_ROOT, 'scripts', 'verify-afg-statement.js');
+const AFG_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-afg.js');
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -58,10 +62,10 @@ function listJavaScript(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper') continue;
+      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper' || entry.name === 'cred-afg') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (absolute !== SHADOW_CLI && absolute !== EVIDENCE_CLI && absolute !== LOOPER_BUILD_CLI && absolute !== LOOPER_COLLECT_CLI) found.push(absolute);
+      if (![SHADOW_CLI, EVIDENCE_CLI, LOOPER_BUILD_CLI, LOOPER_COLLECT_CLI, AFG_BUILD_CLI, AFG_VERIFY_CLI, AFG_COLLECT_CLI].includes(absolute)) found.push(absolute);
     }
   }
   return found.sort();
@@ -134,6 +138,7 @@ function buildGraph(roots, options = {}) {
   const shadowRoot = options.shadowRoot || SHADOW_ROOT;
   const evidenceRoot = options.evidenceRoot || EVIDENCE_ROOT;
   const looperRoot = options.looperRoot || LOOPER_ROOT;
+  const afgRoot = options.afgRoot || AFG_ROOT;
   const mode = options.mode || 'production';
   const dynamicAllowlist = options.dynamicAllowlist || new Map();
   const queue = roots.map((file) => fs.realpathSync(file));
@@ -147,7 +152,7 @@ function buildGraph(roots, options = {}) {
       const target = resolveLocal(file, specifier);
       if (target) {
         if (!isInside(target, graphRoot)) throw new Error(file + ' escapes repository graph root through ' + specifier);
-        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot) || isInside(target, looperRoot))) {
+        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot) || isInside(target, looperRoot) || isInside(target, afgRoot))) {
           throw new Error('production graph reaches offline CRED module: ' + file + ' -> ' + target);
         }
         if (mode === 'shadow' && target !== SHADOW_CLI && !isInside(target, shadowRoot)) {
@@ -162,9 +167,15 @@ function buildGraph(roots, options = {}) {
         if (mode === 'looper-collect' && target !== LOOPER_COLLECT_CLI && !isInside(target, looperRoot) && !isInside(target, shadowRoot)) {
           throw new Error('Looper collector graph reaches unauthorized local module: ' + target);
         }
+        if (mode === 'afg-offline' && ![AFG_BUILD_CLI, AFG_VERIFY_CLI].includes(target) && !isInside(target, afgRoot) && !isInside(target, looperRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('AFG offline graph reaches unauthorized local module: ' + target);
+        }
+        if (mode === 'afg-collect' && target !== AFG_COLLECT_CLI && !isInside(target, afgRoot) && !isInside(target, looperRoot) && !isInside(target, shadowRoot)) {
+          throw new Error('AFG collector graph reaches unauthorized local module: ' + target);
+        }
         queue.push(target);
-      } else if ((mode === 'shadow' || mode === 'evidence' || mode === 'looper-build' || mode === 'looper-collect') && !BUILTINS.has(specifier)) {
-        throw new Error('offline CLI imports non-builtin package: ' + specifier);
+      } else if ((mode === 'shadow' || mode === 'evidence' || mode === 'looper-build' || mode === 'looper-collect' || mode === 'afg-offline' || mode === 'afg-collect') && !BUILTINS.has(specifier) && !(mode === 'afg-offline' && specifier === 'ethers')) {
+        throw new Error('restricted CLI imports unauthorized package: ' + specifier);
       }
     }
   }
@@ -222,6 +233,7 @@ test('production runtime graph cannot reach offline CRED evidence or shadow scor
     assert.equal(isInside(file, SHADOW_ROOT), false, file + ' must stay outside shadow modules');
     assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' must stay outside evidence compiler modules');
     assert.equal(isInside(file, LOOPER_ROOT), false, file + ' must stay outside Looper corpus modules');
+    assert.equal(isInside(file, AFG_ROOT), false, file + ' must stay outside AFG observation modules');
   }
 });
 
@@ -252,6 +264,31 @@ test('Looper corpus builder graph is offline and restricted to Looper, evidence,
 test('Looper network collector stays isolated from the evidence compiler', () => {
   const graph = buildGraph([LOOPER_COLLECT_CLI], { mode: 'looper-collect' });
   for (const file of graph) assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' collector must not reach the evidence compiler');
+});
+
+test('AFG reporter and verifier CLIs are offline and cannot reach the network collector', () => {
+  const graph = buildGraph([AFG_BUILD_CLI, AFG_VERIFY_CLI], { mode: 'afg-offline' });
+  for (const file of graph) {
+    assert.equal(file === fs.realpathSync(path.join(AFG_ROOT, 'collector.js')), false, 'offline AFG graph must not reach collector');
+    if (file !== fs.realpathSync(path.join(AFG_ROOT, 'verifier.js'))) assertNoForbiddenShadowCapability(file);
+    else {
+      const { source, specifiers } = moduleSpecifiers(file);
+      assert.equal(specifiers.includes('ethers'), true);
+      assert.equal(source.includes('fetch('), false);
+      assert.equal(source.includes('process.env'), false);
+    }
+  }
+});
+
+test('AFG collector is isolated from the CRED compiler and pinned to the free AFG host', () => {
+  const graph = buildGraph([AFG_COLLECT_CLI], { mode: 'afg-collect' });
+  for (const file of graph) {
+    assert.equal(isInside(file, EVIDENCE_ROOT), false);
+    assert.equal(file === fs.realpathSync(path.join(AFG_ROOT, 'verifier.js')), false);
+  }
+  const source = fs.readFileSync(path.join(AFG_ROOT, 'collector.js'), 'utf8');
+  assert.match(source, /https:\/\/agenticfinancegraph\.com/);
+  assert.equal(source.includes('/check/'), false);
 });
 
 test('indirect production imports into a shadow directory are rejected', (t) => {
