@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+'use strict';
+const {runShadow}=require('../cred-payments/operations-runner');const {consumeLauncherCapability,importContentionSpool,processContentionAlerts}=require('../cred-payments/operations-lock');
+function main(){const a=process.argv.slice(2);if(a[0]!=='shadow'||a[1]!=='--state-dir'||a.length!==3)throw new Error('usage: shadow --state-dir <absolute>');const state=a[2];const token=consumeLauncherCapability(state,'shadow');importContentionSpool(token,state);return runShadow(token,{stateDir:state}).then(r=>{processContentionAlerts(token,state);process.stdout.write(JSON.stringify({ok:true,runs:r.length})+'\n');});}Promise.resolve().then(main).catch(e=>{if(e.code==='CONTENTION_SPOOL_CORRUPT')process.stderr.write('{"code":"CONTENTION_SPOOL_CORRUPT","severity":"critical"}\n');else process.stderr.write(JSON.stringify({code:e.code||'SHADOW_FAILED',message:e.message})+'\n');process.exit(1);});

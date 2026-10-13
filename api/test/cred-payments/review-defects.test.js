@@ -1,0 +1,10 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');const cp=require('node:child_process');const path=require('node:path');
+const F=require('../../cred-payments/operations-files');
+const cron=require('../../scripts/manage-looper-payment-cron');
+const api=require('../../cred-payments');
+test('global byte admission includes actual baseline bytes',()=>{const usage={baseline:{files:3,bytes:86973087700},ledger:{files:0,bytes:0},runs:{files:0,bytes:0},alerts:{files:0,bytes:0},contention:{files:0,bytes:0},scheduler:{files:0,bytes:0},review:{files:0,bytes:0},retention:{files:0,bytes:0},quarantine:{files:0,bytes:0}};assert.throws(()=>F.checkAdmission('runs',100,usage),/STORAGE_LIMIT/);});
+test('cron list exit one is empty only for recognized no-crontab diagnostic',()=>{assert.deepEqual(cron.interpretCrontabList({status:1,stdout:Buffer.alloc(0),stderr:Buffer.from('no crontab for ubuntu\n')}),Buffer.alloc(0));assert.throws(()=>cron.interpretCrontabList({status:1,stdout:Buffer.alloc(0),stderr:Buffer.from('permission denied\n')}),/failed/);});
+test('public package does not export bare payment mutators',()=>{for(const name of ['publishImmutable','publishImmutableBytes','atomicReplaceStatus','appendLedgerEntry','bootstrap','followUp','recover','archiveState','reviewDecision'])assert.equal(Object.hasOwn(api,name),false,name);});
+
+test('cron install, removal, and review reject every non-production state directory before authorization',()=>{for(const mode of ['install','remove']){const out=cp.spawnSync(process.execPath,[path.join(__dirname,'../../scripts/manage-looper-payment-cron.js'),mode,'--state-dir','/tmp/not-production'],{encoding:'utf8'});assert.notEqual(out.status,0);assert.match(out.stderr,/state directory mismatch/);}const review=cp.spawnSync(process.execPath,[path.join(__dirname,'../../scripts/manage-looper-payment-retention.js'),'review','--state-dir','/tmp/not-production','--decision-file','/tmp/no','--review-public-key','ed25519:'+'00'.repeat(32)],{encoding:'utf8'});assert.notEqual(review.status,0);assert.match(review.stderr,/production state directory/);});

@@ -20,6 +20,20 @@ function normalizeBlock(value,expected,now){if(value===null||typeof value!=='obj
 function chunkRanges(from,to){const chunks=[];for(let start=from;start<=to;start+=BigInt(MAX_BLOCKS_PER_CHUNK)){const end=start+BigInt(MAX_BLOCKS_PER_CHUNK-1)>to?to:start+BigInt(MAX_BLOCKS_PER_CHUNK-1);chunks.push({from:start,to:end});}return chunks;}
 function mergeDirectional(outgoing,incoming){const byKey=new Map();for(const log of [...outgoing,...incoming]){const key=logKey(log),prior=byKey.get(key);if(prior&&canonicalStringify(prior)!==canonicalStringify(log))throw new Error('conflicting duplicate directional log '+key);if(!prior)byKey.set(key,log);}return [...byKey.values()];}
 function sameBlock(left,right){return canonicalStringify(left)===canonicalStringify(right);}
+async function establishCommonFinality({rpc=defaultRpc,now=Date.now()}={}){
+  if(typeof rpc!=='function')throw new TypeError('rpc must be a function');
+  const call=(provider,method,params)=>rpc(provider,method,params);
+  const chainIds=await Promise.all(RPC_PROVIDERS.map(p=>call(p,'eth_chainId',[])));if(chainIds.some(x=>x!=='0x2105'))throw new Error('both providers must report exact Base eth_chainId 0x2105');
+  const headValues=await Promise.all(RPC_PROVIDERS.map(p=>call(p,'eth_blockNumber',[]))),heads=headValues.map((x,i)=>quantity(x,'provider '+i+' head'));
+  const headBlocks=await Promise.all(RPC_PROVIDERS.map((p,i)=>call(p,'eth_getBlockByNumber',[blockTag(heads[i]),false]))),normalizedHeads=headBlocks.map((x,i)=>normalizeBlock(x,heads[i],now));
+  const finalizedValues=await Promise.all(RPC_PROVIDERS.map(p=>call(p,'eth_getBlockByNumber',['finalized',false]))),finalized=finalizedValues.map(x=>normalizeBlock(x,null,now));
+  const anchorNumber=finalized.reduce((n,x)=>BigInt(x.number)<n?BigInt(x.number):n,BigInt(finalized[0].number));
+  const rereadValues=await Promise.all(RPC_PROVIDERS.map(p=>call(p,'eth_getBlockByNumber',[blockTag(anchorNumber),false]))),anchors=rereadValues.map(x=>normalizeBlock(x,anchorNumber,now));
+  if(!sameBlock(anchors[0],anchors[1]))throw new Error('provider common finality anchor disagreement');
+  for(const tip of finalized)if(tip.number===anchors[0].number&&!sameBlock(tip,anchors[0]))throw new Error('provider finality moved while establishing common anchor');
+  const confirmations=heads.map(h=>h-anchorNumber+1n);if(confirmations.some(x=>x<20n))throw new RangeError('common finalized anchor lacks 20 confirmations');
+  return deepFreeze({agreement:true,agreedAnchorBlock:anchorNumber.toString(),agreedAnchorHash:anchors[0].hash,providers:RPC_PROVIDERS.map((url,i)=>({url,chainId:BASE_CHAIN_ID,headBlock:heads[i].toString(),headHash:normalizedHeads[i].hash,finalizedBlock:finalized[i].number,finalizedHash:finalized[i].hash,anchorBlock:anchorNumber.toString(),anchorHash:anchors[0].hash,confirmations:confirmations[i].toString()}))});
+}
 async function collectPaymentObservation({rosterProof:proofInput,checkpoint:checkpointInput,fromBlock,toBlock,rpc=defaultRpc,now=Date.now()}={}){
   if(typeof rpc!=='function')throw new TypeError('rpc must be a function');
   if(typeof fromBlock!=='string'||!/^(0|[1-9]\d*)$/u.test(fromBlock)||typeof toBlock!=='string'||!/^(0|[1-9]\d*)$/u.test(toBlock))throw new TypeError('block range must use canonical decimal strings');
@@ -59,4 +73,4 @@ async function collectPaymentObservation({rosterProof:proofInput,checkpoint:chec
   const blockMetadata=[...metadata.values()].sort((a,b)=>BigInt(a.number)<BigInt(b.number)?-1:BigInt(a.number)>BigInt(b.number)?1:0),collectedAt=metadata.get(toBlock).time;
   return deepFreeze({collectionType:'looper-payment-collection-v2',chainId:BASE_CHAIN_ID,...SAFETY_FIELDS,usdcContract:BASE_USDC,transferTopic:TRANSFER_TOPIC,rosterHash:proof.rosterHash,rosterProofCommitment:proof.rosterProofCommitment,checkpointHash:buildCheckpointHash(checkpoint),providerUrls:[...RPC_PROVIDERS],finalityPolicy:checkpoint.finalityPolicy,anchorBlock:anchor,collectedAt,intervals,blockMetadata,logs,receipts});
 }
-module.exports=Object.freeze({BASE_USDC,TRANSFER_TOPIC,RPC_PROVIDERS,ALLOWED_METHODS,MAX_CONCURRENCY,MAX_RETRIES,REQUEST_TIMEOUT_MS,MAX_RESPONSE_BYTES,MAX_BLOCKS_PER_CHUNK,MAX_TOTAL_BLOCKS,defaultRpc,collectPaymentObservation});
+module.exports=Object.freeze({BASE_USDC,TRANSFER_TOPIC,RPC_PROVIDERS,ALLOWED_METHODS,MAX_CONCURRENCY,MAX_RETRIES,REQUEST_TIMEOUT_MS,MAX_RESPONSE_BYTES,MAX_BLOCKS_PER_CHUNK,MAX_TOTAL_BLOCKS,defaultRpc,establishCommonFinality,collectPaymentObservation});

@@ -22,7 +22,17 @@
     "cred:afg:build": "node scripts/build-looper-afg-shadow.js",
     "test:cred-payments": "node --test test/cred-payments/*.test.js",
     "cred:payments:collect": "node scripts/collect-looper-payments.js",
-    "cred:payments:build": "node scripts/build-looper-payment-observer.js"
+    "cred:payments:build": "node scripts/build-looper-payment-observer.js",
+    "cred:payments:bootstrap": "node scripts/launch-looper-payment-operation.js bootstrap",
+    "cred:payments:validate": "node scripts/launch-looper-payment-operation.js validate",
+    "cred:payments:follow-up": "node scripts/launch-looper-payment-operation.js follow-up",
+    "cred:payments:recover": "node scripts/launch-looper-payment-operation.js recover",
+    "cred:payments:shadow": "node scripts/launch-looper-payment-operation.js shadow",
+    "cred:payments:cron:install": "node scripts/launch-looper-payment-operation.js cron-install",
+    "cred:payments:cron:remove": "node scripts/launch-looper-payment-operation.js cron-remove",
+    "cred:payments:cron:preview": "node scripts/manage-looper-payment-cron.js preview",
+    "cred:payments:review": "node scripts/launch-looper-payment-operation.js review",
+    "cred:payments:archive": "node scripts/launch-looper-payment-operation.js archive"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",

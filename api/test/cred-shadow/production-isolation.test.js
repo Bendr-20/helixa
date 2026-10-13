@@ -25,6 +25,13 @@ const AFG_VERIFY_CLI = path.join(API_ROOT, 'scripts', 'verify-afg-statement.js')
 const AFG_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-afg.js');
 const PAYMENTS_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-payment-observer.js');
 const PAYMENTS_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-payments.js');
+const PAYMENT_OPERATION_CLIS = [
+  'launch-looper-payment-operation.js',
+  'operate-looper-payments.js',
+  'run-looper-payment-shadow.js',
+  'manage-looper-payment-cron.js',
+  'manage-looper-payment-retention.js',
+].map((file) => path.join(API_ROOT, 'scripts', file));
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -68,7 +75,7 @@ function listJavaScript(directory) {
       if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper' || entry.name === 'cred-afg' || entry.name === 'cred-payments') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (![SHADOW_CLI, EVIDENCE_CLI, LOOPER_BUILD_CLI, LOOPER_COLLECT_CLI, AFG_BUILD_CLI, AFG_VERIFY_CLI, AFG_COLLECT_CLI, PAYMENTS_BUILD_CLI, PAYMENTS_COLLECT_CLI].includes(absolute)) found.push(absolute);
+      if (![SHADOW_CLI, EVIDENCE_CLI, LOOPER_BUILD_CLI, LOOPER_COLLECT_CLI, AFG_BUILD_CLI, AFG_VERIFY_CLI, AFG_COLLECT_CLI, PAYMENTS_BUILD_CLI, PAYMENTS_COLLECT_CLI, ...PAYMENT_OPERATION_CLIS].includes(absolute)) found.push(absolute);
     }
   }
   return found.sort();

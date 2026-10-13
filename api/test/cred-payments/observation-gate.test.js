@@ -1,0 +1,7 @@
+'use strict';
+const test=require('node:test');const assert=require('node:assert/strict');
+const {evaluateObservationHistory}=require('../../cred-payments/operations-runner');
+const base=Date.parse('2026-10-01T00:00:00.000Z'),t=n=>new Date(base+n).toISOString();
+function hourly(hours){return Array.from({length:hours+1},(_,i)=>({recordedAt:t(i*3600000),valid:true}));}
+test('167h59m59s blocks and complete 168h history is eligible',()=>{assert.equal(evaluateObservationHistory([{recordedAt:t(0),valid:true},{recordedAt:t(167*3600000+3599000),valid:true}],base+168*3600000).reviewEligible,false);const ok=evaluateObservationHistory(hourly(168),base+168*3600000+1);assert.equal(ok.reviewEligible,true);assert.equal(ok.gateSatisfied,false);assert.equal(ok.scheduledSuccessCount,169);});
+test('gap, unresolved failure, invalid evidence, stale and clock regression block',()=>{const events=hourly(168);assert.equal(evaluateObservationHistory(events.filter((_,i)=>i!==20&&i!==21),base+168*3600000+1).reviewEligible,false);assert.equal(evaluateObservationHistory(events,base+168*3600000+7200001).reviewEligible,false);assert.equal(evaluateObservationHistory(events.map((x,i)=>i===4?{...x,valid:false}:x),base+168*3600000+1).reviewEligible,false);assert.equal(evaluateObservationHistory(events,base+168*3600000,{unresolved:true}).reviewEligible,false);const back=evaluateObservationHistory(events,base+168*3600000);assert.equal(back.reviewEligible,false);assert.equal(back.errorCode,'CLOCK_REGRESSION');});

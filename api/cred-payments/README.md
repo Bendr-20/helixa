@@ -43,3 +43,24 @@ The first range starts exactly at the immutable inception block and does not acc
 Anchor schema (all fields required; unknown fields rejected): `continuityAnchorType`, `chainId`, `collection`, `canonicalRosterHash`, `rosterProofCommitment`, `rosterProofProvenance`, `inceptionCheckpoint`, `predecessorArtifactHash`, `predecessorCheckpointHash`, `predecessorToBlock`, `nextExpectedStartBlock`, and `continuityAnchorHash`. The nested inception checkpoint includes checkpoint type, chain, roster commitments, inception number/hash/timestamp, exact provider URLs, and finality policy.
 
 Artifacts make only prospective closed-interval coverage claims. A canonical USDC `Transfer` is labeled `verified-base-usdc-transfer`, never x402. All outputs preserve `x402Confirmed: false`, `scoreEligibleExternalCount: 0`, no owner attribution, no CRED-native signature, deterministic hashes, and production isolation.
+
+## Immutable payment operations
+
+The operations layer pins Base chain ID `8453`, Looper collection `0x1649cd37f4748807b4882fc48765ba0b2affa94a`, inception `52536829 / 0x35cf4014bbd3fd3aea9595f9a4b2b0d6f89f639b587d8fb7e694cd02511f91f7`, and baseline end `52536928 / 0x0bebf8b0164a6c29cd492ac6902375b3f9115b3f3589cf3cba57b99011cc4768`. The fixed roster, checkpoint, and artifact file/domain pins are enforced independently. Providers remain, in order, `https://base-rpc.publicnode.com` and `https://base.drpc.org`, with `finalized` finality and at least 20 confirmations.
+
+Canonical files are UTF-8 canonical JSON plus exactly one LF. Semantic commitments use canonical JSON without that LF. Durable state is rooted only at the absolute operator-selected `--state-dir`; ledger and baseline files are append-only/local trust roots. All public mutation commands enter one non-blocking `/usr/bin/flock` mutation lock through the safe launcher, and contention is recorded in the fixed 1,024-slot O_EXCL spool.
+
+Commands:
+
+- `npm run cred:payments:bootstrap -- --state-dir <absolute> --baseline-dir <absolute>`
+- `npm run cred:payments:validate -- --state-dir <absolute>`
+- `npm run cred:payments:follow-up -- --state-dir <absolute> --max-blocks <1..10000>`
+- `npm run cred:payments:recover -- --state-dir <absolute> --run-id <runId> --action <action> --reason <text>`
+- `npm run cred:payments:shadow -- --state-dir <absolute>`
+- `npm run cred:payments:cron:preview -- --state-dir <absolute>` (read-only)
+- `npm run cred:payments:cron:install -- --state-dir <absolute>`
+- `npm run cred:payments:cron:remove -- --state-dir <absolute>`
+- `npm run cred:payments:review -- --state-dir <absolute> --decision-file <absolute> --review-public-key ed25519:<hex>`
+- `npm run cred:payments:archive -- --state-dir <absolute> --decision-id sha256:<hex> --review-public-key ed25519:<hex> --archive-dir <absolute>`
+
+A scheduled shadow run is blocked until `verifyManualProof` finds a closed manual build with two-provider agreement, at least 20 confirmations, byte-identical independent builds, and the exact observation-only safety tuple. The seven-day review gate is derived only from validated scheduled ledger/report/artifact history and never from mutable status. `gateSatisfied` remains false until an independently signed Ed25519 review decision. Review removes only the managed cron span and restores its bound pre-install bytes exactly. Audit files remain local until the signed `retainUntil` (at least 90 exact days after trusted publication time); archive deletion requires a verified manifest, durable local receipt, and archive-aware byte/hash/domain resolution. Baseline, ledger, the controlling decision, and receipts are retained locally indefinitely. No operation imports CRED, mutates scores, or changes API/frontend behavior.
