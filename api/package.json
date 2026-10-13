@@ -19,7 +19,10 @@
     "test:cred-afg": "node --test test/cred-afg/*.test.js",
     "cred:afg:collect": "node scripts/collect-looper-afg.js",
     "cred:afg:verify": "node scripts/verify-afg-statement.js",
-    "cred:afg:build": "node scripts/build-looper-afg-shadow.js"
+    "cred:afg:build": "node scripts/build-looper-afg-shadow.js",
+    "test:cred-payments": "node --test test/cred-payments/*.test.js",
+    "cred:payments:collect": "node scripts/collect-looper-payments.js",
+    "cred:payments:build": "node scripts/build-looper-payment-observer.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
@@ -54,7 +57,9 @@
     "cred-looper-build": "scripts/build-looper-cred-corpus.js",
     "cred-afg-collect": "scripts/collect-looper-afg.js",
     "cred-afg-verify": "scripts/verify-afg-statement.js",
-    "cred-afg-build": "scripts/build-looper-afg-shadow.js"
+    "cred-afg-build": "scripts/build-looper-afg-shadow.js",
+    "cred-payments-collect": "scripts/collect-looper-payments.js",
+    "cred-payments-build": "scripts/build-looper-payment-observer.js"
   },
   "devDependencies": {
     "acorn": "^8.15.0",

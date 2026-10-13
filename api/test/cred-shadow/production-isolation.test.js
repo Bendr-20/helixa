@@ -15,6 +15,7 @@ const SHADOW_ROOT = path.join(API_ROOT, 'cred-shadow');
 const EVIDENCE_ROOT = path.join(API_ROOT, 'cred-evidence');
 const LOOPER_ROOT = path.join(API_ROOT, 'cred-looper');
 const AFG_ROOT = path.join(API_ROOT, 'cred-afg');
+const PAYMENTS_ROOT = path.join(API_ROOT, 'cred-payments');
 const SHADOW_CLI = path.join(API_ROOT, 'scripts', 'run-cred-shadow-replay.js');
 const EVIDENCE_CLI = path.join(API_ROOT, 'scripts', 'compile-cred-evidence.js');
 const LOOPER_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-cred-corpus.js');
@@ -22,6 +23,8 @@ const LOOPER_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-base-p
 const AFG_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-afg-shadow.js');
 const AFG_VERIFY_CLI = path.join(API_ROOT, 'scripts', 'verify-afg-statement.js');
 const AFG_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-afg.js');
+const PAYMENTS_BUILD_CLI = path.join(API_ROOT, 'scripts', 'build-looper-payment-observer.js');
+const PAYMENTS_COLLECT_CLI = path.join(API_ROOT, 'scripts', 'collect-looper-payments.js');
 const REQUIRED_PRODUCTION_ROOTS = [
   'v2-server.js',
   'indexer.js',
@@ -62,10 +65,10 @@ function listJavaScript(directory) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper' || entry.name === 'cred-afg') continue;
+      if (entry.name === 'node_modules' || entry.name === 'test' || entry.name === 'cred-shadow' || entry.name === 'cred-evidence' || entry.name === 'cred-looper' || entry.name === 'cred-afg' || entry.name === 'cred-payments') continue;
       found.push(...listJavaScript(absolute));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
-      if (![SHADOW_CLI, EVIDENCE_CLI, LOOPER_BUILD_CLI, LOOPER_COLLECT_CLI, AFG_BUILD_CLI, AFG_VERIFY_CLI, AFG_COLLECT_CLI].includes(absolute)) found.push(absolute);
+      if (![SHADOW_CLI, EVIDENCE_CLI, LOOPER_BUILD_CLI, LOOPER_COLLECT_CLI, AFG_BUILD_CLI, AFG_VERIFY_CLI, AFG_COLLECT_CLI, PAYMENTS_BUILD_CLI, PAYMENTS_COLLECT_CLI].includes(absolute)) found.push(absolute);
     }
   }
   return found.sort();
@@ -139,6 +142,7 @@ function buildGraph(roots, options = {}) {
   const evidenceRoot = options.evidenceRoot || EVIDENCE_ROOT;
   const looperRoot = options.looperRoot || LOOPER_ROOT;
   const afgRoot = options.afgRoot || AFG_ROOT;
+  const paymentsRoot = options.paymentsRoot || PAYMENTS_ROOT;
   const mode = options.mode || 'production';
   const dynamicAllowlist = options.dynamicAllowlist || new Map();
   const queue = roots.map((file) => fs.realpathSync(file));
@@ -152,7 +156,7 @@ function buildGraph(roots, options = {}) {
       const target = resolveLocal(file, specifier);
       if (target) {
         if (!isInside(target, graphRoot)) throw new Error(file + ' escapes repository graph root through ' + specifier);
-        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot) || isInside(target, looperRoot) || isInside(target, afgRoot))) {
+        if (mode === 'production' && (isInside(target, shadowRoot) || isInside(target, evidenceRoot) || isInside(target, looperRoot) || isInside(target, afgRoot) || isInside(target, paymentsRoot))) {
           throw new Error('production graph reaches offline CRED module: ' + file + ' -> ' + target);
         }
         if (mode === 'shadow' && target !== SHADOW_CLI && !isInside(target, shadowRoot)) {
@@ -224,7 +228,7 @@ function assertNoForbiddenShadowCapability(file) {
   }
 }
 
-test('production runtime graph cannot reach offline CRED evidence or shadow scoring', () => {
+test('production runtime graph cannot reach offline CRED evidence, observers, or shadow scoring', () => {
   for (const root of REQUIRED_PRODUCTION_ROOTS) assert.equal(fs.existsSync(root), true, 'missing required production root ' + root);
   const roots = listJavaScript(API_ROOT);
   for (const root of REQUIRED_PRODUCTION_ROOTS) assert.equal(roots.includes(root), true, 'required root omitted ' + root);
@@ -234,6 +238,7 @@ test('production runtime graph cannot reach offline CRED evidence or shadow scor
     assert.equal(isInside(file, EVIDENCE_ROOT), false, file + ' must stay outside evidence compiler modules');
     assert.equal(isInside(file, LOOPER_ROOT), false, file + ' must stay outside Looper corpus modules');
     assert.equal(isInside(file, AFG_ROOT), false, file + ' must stay outside AFG observation modules');
+    assert.equal(isInside(file, PAYMENTS_ROOT), false, file + ' must stay outside payment observer modules');
   }
 });
 

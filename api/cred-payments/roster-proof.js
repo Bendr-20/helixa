@@ -1,0 +1,27 @@
+'use strict';
+const {deepFreeze,domainHash,compareUtf8}=require('./canonical');
+const {BASE_CHAIN_ID,CANONICAL_LOOPER_COLLECTION,SHA256,exact,address,hash,decimal,canonicalTime,normalizeRoster,buildRosterHash}=require('./normalize');
+const PROVIDER_ID=/^[a-z0-9][a-z0-9_-]{0,63}$/u;
+const ALLOWED_PROOF_PROVIDER_HOSTS=new Set(['base-mainnet.public.blastapi.io','base-rpc.publicnode.com','base.drpc.org','mainnet.base.org']);
+const TRUSTED_LOOPER_ROSTER_PIN_V1=deepFreeze({pinType:'looper-payment-roster-pin-v1',chainId:BASE_CHAIN_ID,collection:CANONICAL_LOOPER_COLLECTION,entryCount:688,rosterHash:'sha256:e8ffe89d24958ac56f17855d23b2e60e8b5fbc3b267d53b675141c7d83f2de31'});
+function provider(value,index){exact(value,['providerId','url'],'roster proof providers['+index+']');if(typeof value.providerId!=='string'||!PROVIDER_ID.test(value.providerId))throw new TypeError('roster proof providerId is invalid');let parsed;try{parsed=new URL(value.url);}catch{throw new TypeError('roster proof provider URL is invalid');}if(parsed.protocol!=='https:'||parsed.username||parsed.password||parsed.search||parsed.hash||!ALLOWED_PROOF_PROVIDER_HOSTS.has(parsed.hostname))throw new TypeError('roster proof provider URL is not allowed');return {providerId:value.providerId,url:parsed.toString()};}
+function proofMaterial(input){
+  const fields=['rosterProofType','chainId','collection','rosterHash','blockProvenance','providers','entries'];
+  exact(input,Object.hasOwn(input,'rosterProofCommitment')?[...fields,'rosterProofCommitment']:fields,'roster proof');
+  if(input.rosterProofType!=='looper-payment-roster-proof-v1'||input.chainId!==BASE_CHAIN_ID)throw new TypeError('roster proof type or chainId is invalid');
+  const collection=address(input.collection,'roster proof collection');if(collection!==CANONICAL_LOOPER_COLLECTION)throw new Error('roster proof must use the canonical Looper collection');
+  exact(input.blockProvenance,['blockNumber','blockHash','blockTimestamp','finality'],'roster proof block provenance');
+  const blockProvenance={blockNumber:decimal(input.blockProvenance.blockNumber,'proof blockNumber'),blockHash:hash(input.blockProvenance.blockHash,'proof blockHash'),blockTimestamp:canonicalTime(input.blockProvenance.blockTimestamp,'proof blockTimestamp'),finality:input.blockProvenance.finality};
+  if(blockProvenance.finality!=='safe'&&blockProvenance.finality!=='finalized')throw new TypeError('roster proof finality must be safe or finalized');
+  if(!Array.isArray(input.providers)||input.providers.length<2)throw new TypeError('roster proof requires at least two providers');
+  const providers=input.providers.map(provider).sort((a,b)=>compareUtf8(a.providerId,b.providerId)),ids=new Set(),hosts=new Set();
+  for(const item of providers){const host=new URL(item.url).hostname;if(ids.has(item.providerId)||hosts.has(host))throw new Error('roster proof providers must be distinct');ids.add(item.providerId);hosts.add(host);}
+  if(!Array.isArray(input.entries)||input.entries.length!==688)throw new RangeError('roster proof must contain exactly 688 entries');
+  const entries=input.entries.map((item,index)=>{exact(item,['tokenId','account','owner','tokenBinding','codeHash'],'roster proof entries['+index+']');const tokenId=decimal(item.tokenId,'proof tokenId'),account=address(item.account,'proof account'),owner=address(item.owner,'proof owner');exact(item.tokenBinding,['chainId','collection','tokenId'],'roster proof token binding');if(item.tokenBinding.chainId!==BASE_CHAIN_ID||item.tokenBinding.collection!==CANONICAL_LOOPER_COLLECTION||item.tokenBinding.tokenId!==tokenId)throw new Error('roster proof token binding does not match row');if(typeof item.codeHash!=='string'||!SHA256.test(item.codeHash))throw new TypeError('roster proof codeHash is invalid');return {tokenId,account,owner,tokenBinding:{chainId:BASE_CHAIN_ID,collection:CANONICAL_LOOPER_COLLECTION,tokenId},codeHash:item.codeHash};}).sort((a,b)=>BigInt(a.tokenId)<BigInt(b.tokenId)?-1:BigInt(a.tokenId)>BigInt(b.tokenId)?1:compareUtf8(a.account,b.account));
+  const roster={rosterType:'looper-base-roster-v1',chainId:BASE_CHAIN_ID,collection:CANONICAL_LOOPER_COLLECTION,loopers:entries.map(({tokenId,account,owner})=>({tokenId,account,owner}))};normalizeRoster(roster);
+  const rosterHash=buildRosterHash(roster);if(input.rosterHash!==rosterHash)throw new Error('roster proof roster hash mismatch');if(rosterHash!==TRUSTED_LOOPER_ROSTER_PIN_V1.rosterHash)throw new Error('roster proof does not match the trusted canonical Looper roster pin v1');
+  return {rosterProofType:input.rosterProofType,chainId:BASE_CHAIN_ID,collection,rosterHash,blockProvenance,providers,entries};
+}
+function buildRosterProofCommitment(input){return domainHash('LOOPER-PAYMENT-ROSTER-PROOF-v1\0',proofMaterial(input));}
+function normalizeRosterProof(input){const material=proofMaterial(input);if(typeof input.rosterProofCommitment!=='string'||!SHA256.test(input.rosterProofCommitment)||input.rosterProofCommitment!==domainHash('LOOPER-PAYMENT-ROSTER-PROOF-v1\0',material))throw new Error('roster proof commitment mismatch');return deepFreeze({...material,rosterProofCommitment:input.rosterProofCommitment,roster:normalizeRoster({rosterType:'looper-base-roster-v1',chainId:BASE_CHAIN_ID,collection:CANONICAL_LOOPER_COLLECTION,loopers:material.entries.map(({tokenId,account,owner})=>({tokenId,account,owner}))})});}
+module.exports=Object.freeze({ALLOWED_PROOF_PROVIDER_HOSTS,TRUSTED_LOOPER_ROSTER_PIN_V1,buildRosterProofCommitment,normalizeRosterProof});
