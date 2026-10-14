@@ -1,0 +1,28 @@
+[Unit]
+Description=Helixa canonical CRED synchronization
+After=network-online.target helixa-api.service
+Wants=network-online.target
+Requires=helixa-api.service
+ConditionPathExists=/home/ubuntu/.openclaw/workspace/terminal/data/terminal.db
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/.local/libexec/helixa
+EnvironmentFile=-/home/ubuntu/.openclaw/workspace/agentdna/.env
+EnvironmentFile=-/home/ubuntu/.config/helixa/agentdna-api.env
+ExecStart=/usr/bin/flock -n /home/ubuntu/.local/state/helixa/cred-sync/run.lock /usr/bin/node /home/ubuntu/.local/libexec/helixa/run-helixa-cred-sync.js
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/.openclaw/workspace/terminal/data /home/ubuntu/.openclaw/workspace/artifacts/canonical-cred-sync /home/ubuntu/.local/state/helixa/cred-sync
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+TimeoutStartSec=45min
+StandardOutput=journal
+StandardError=journal

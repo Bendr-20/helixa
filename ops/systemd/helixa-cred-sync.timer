@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Helixa canonical CRED synchronization
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+RandomizedDelaySec=15m
+AccuracySec=1m
+Persistent=true
+Unit=helixa-cred-sync.service
+
+[Install]
+WantedBy=timers.target
