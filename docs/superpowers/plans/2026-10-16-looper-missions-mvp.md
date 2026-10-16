@@ -78,16 +78,16 @@
 - Modify: `packages/types/src/index.js`
 - Modify: `packages/types/src/index.d.ts`
 
-- [ ] **Step 1: Write the failing lifecycle test**
+- [x] **Step 1: Write the failing lifecycle test**
 
 Assert exact mission, launch, vault, milestone, task, and source enums; exact allowed transitions; terminal monotonicity; and immutable exported arrays. Include failures for `funded -> active`, `released -> disputed`, and unknown state names.
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run: `node --test packages/types/test/missions.test.mjs`  
 Expected: FAIL because the mission exports do not exist.
 
-- [ ] **Step 3: Implement the minimal closed contract**
+- [x] **Step 3: Implement the minimal closed contract**
 
 Export frozen values and fail-closed helpers:
 
@@ -95,12 +95,12 @@ Export frozen values and fail-closed helpers:
 
 The implementation must encode the specification exactly and must not conflate a milestone dispute with mission lifecycle.
 
-- [ ] **Step 4: Run focused and shared-type tests**
+- [x] **Step 4: Run focused and shared-type tests**
 
 Run: `node --test packages/types/test/missions.test.mjs packages/types/test/schema-contract.test.mjs`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 `git add packages/types && git commit -m "feat: define Looper mission lifecycle contract"`
 
@@ -110,24 +110,24 @@ Expected: PASS.
 - Create: `apps/api/src/missions/database.js`
 - Create: `apps/api/test/missions-database.test.mjs`
 
-- [ ] **Step 1: Write schema tests**
+- [x] **Step 1: Write schema tests**
 
 Require WAL, foreign keys, configurable busy timeout, `integrity_check=ok`, schema-version fail-closed behavior, mode 0600, and STRICT tables for missions, revisions, applications, members, milestones, allocations, vaults, operations, runtime bindings, tasks, artifacts, XMTP bindings/locks/outbox/dedup, disputes, chain events, outcome receipts, CRED publication, and append-only events.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test apps/api/test/missions-database.test.mjs`  
 Expected: FAIL because `createMissionDatabase` does not exist.
 
-- [ ] **Step 3: Implement schema and narrow transaction API**
+- [x] **Step 3: Implement schema and narrow transaction API**
 
 Follow `apps/api/src/restap-network/database.js`: one owner connection, prepared parameter binding, named transactions, rollback on throw, read-only inspection methods, no arbitrary mutation API, additive schema version 1, and canonical millisecond timestamps.
 
-- [ ] **Step 4: Prove rollback and restart**
+- [x] **Step 4: Prove rollback and restart**
 
 Add tests that crash between mission mutation and event append, reopen the file, and prove neither partial state nor duplicate operation survives.
 
-- [ ] **Step 5: Run focused test and commit**
+- [x] **Step 5: Run focused test and commit**
 
 Run: `node --test apps/api/test/missions-database.test.mjs`  
 Expected: PASS.  
@@ -141,19 +141,19 @@ Commit: `git add apps/api/src/missions/database.js apps/api/test/missions-databa
 - Create: `apps/api/test/missions-repository.test.mjs`
 - Create: `apps/api/test/missions-idempotency.test.mjs`
 
-- [ ] **Step 1: Test expected-revision writes and canonical retry behavior**
+- [x] **Step 1: Test expected-revision writes and canonical retry behavior**
 
 Cover same key/body returning the stored response; same key/different canonical body failing; stale revision failing; event ordering; immutable historical revisions; and no plaintext XMTP body, prompt, credential, signature, or artifact content fields.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `node --test apps/api/test/missions-repository.test.mjs apps/api/test/missions-idempotency.test.mjs`.
 
-- [ ] **Step 3: Implement canonical SHA-256 body digests and repository transactions**
+- [x] **Step 3: Implement canonical SHA-256 body digests and repository transactions**
 
 Canonicalization must reject unsupported JSON values, normalize object-key order, preserve array order, and hash raw integer token amounts as decimal strings rather than JavaScript numbers.
 
-- [ ] **Step 4: Run focused tests and commit**
+- [x] **Step 4: Run focused tests and commit**
 
 Expected: PASS.  
 Commit: `git add apps/api/src/missions apps/api/test/missions-repository.test.mjs apps/api/test/missions-idempotency.test.mjs && git commit -m "feat: add mission revisions and idempotent operations"`

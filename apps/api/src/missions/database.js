@@ -328,6 +328,31 @@ const SCHEMA = [
   ) STRICT`,
 ];
 
+const APPEND_ONLY_TRIGGERS = [
+  `CREATE TRIGGER IF NOT EXISTS mission_revisions_no_update
+    BEFORE UPDATE ON mission_revisions BEGIN
+      SELECT RAISE(ABORT, 'mission revisions are append-only');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS mission_revisions_no_delete
+    BEFORE DELETE ON mission_revisions BEGIN
+      SELECT RAISE(ABORT, 'mission revisions are append-only');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS mission_events_no_update
+    BEFORE UPDATE ON mission_events BEGIN
+      SELECT RAISE(ABORT, 'mission events are append-only');
+    END`,
+  `CREATE TRIGGER IF NOT EXISTS mission_events_no_delete
+    BEFORE DELETE ON mission_events BEGIN
+      SELECT RAISE(ABORT, 'mission events are append-only');
+    END`,
+];
+
+const EXPECTED_TRIGGERS = new Map(APPEND_ONLY_TRIGGERS.map((statement) => {
+  const name = statement.match(/^CREATE TRIGGER IF NOT EXISTS ([a-z0-9_]+)/iu)?.[1];
+  if (!name) throw new Error('Invalid mission trigger statement.');
+  return [name, normalizeSql(statement).replace('create trigger if not exists', 'create trigger')];
+}));
+
 const EXPECTED_SCHEMA = new Map(SCHEMA.map((statement) => {
   const table = statement.match(/^CREATE TABLE IF NOT EXISTS (mission[a-z0-9_]*)/iu)?.[1];
   if (!table) throw new Error('Invalid mission schema statement.');
@@ -356,7 +381,9 @@ export function createMissionDatabase({ filename, busyTimeoutMs = 2_000, faultIn
     db.exec('BEGIN IMMEDIATE');
     try {
       for (const statement of SCHEMA) db.exec(statement);
+      for (const statement of APPEND_ONLY_TRIGGERS) db.exec(statement);
       assertExactSchema(db);
+      assertExactTriggers(db);
       const meta = db.prepare('SELECT schema_version FROM mission_meta WHERE singleton = 1').get();
       if (!meta) db.prepare('INSERT INTO mission_meta (singleton, schema_version, created_at) VALUES (1, ?, ?)').run(SCHEMA_VERSION, Date.now());
       else if (Number(meta.schema_version) !== SCHEMA_VERSION) throw new Error('Mission schema version drift: expected ' + SCHEMA_VERSION + '.');
@@ -455,8 +482,12 @@ export function createMissionDatabase({ filename, busyTimeoutMs = 2_000, faultIn
   return Object.freeze(store);
 }
 
+function normalizeSql(sql) {
+  return sql.replace(/\s+/gu, ' ').trim().toLowerCase();
+}
+
 function normalizeSchemaSql(sql) {
-  return sql.replace(/^CREATE TABLE IF NOT EXISTS/iu, 'CREATE TABLE').replace(/\s+/gu, ' ').trim().toLowerCase();
+  return normalizeSql(sql).replace(/^create table if not exists/iu, 'create table');
 }
 
 function assertExactSchema(db) {
@@ -465,5 +496,14 @@ function assertExactSchema(db) {
   for (const row of rows) {
     const expected = EXPECTED_SCHEMA.get(row.name);
     if (!expected || normalizeSchemaSql(row.sql) !== expected) throw new Error('Mission schema drift: ' + row.name + '.');
+  }
+}
+
+function assertExactTriggers(db) {
+  const rows = db.prepare("SELECT name, sql FROM sqlite_master WHERE type='trigger' AND name LIKE 'mission_%' ORDER BY name").all();
+  if (rows.length !== EXPECTED_TRIGGERS.size) throw new Error('Mission trigger drift: unexpected trigger set.');
+  for (const row of rows) {
+    const expected = EXPECTED_TRIGGERS.get(row.name);
+    if (!expected || normalizeSql(row.sql) !== expected) throw new Error('Mission trigger drift: ' + row.name + '.');
   }
 }
