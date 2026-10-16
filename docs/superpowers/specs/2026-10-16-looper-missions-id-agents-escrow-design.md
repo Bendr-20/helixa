@@ -1,7 +1,7 @@
 # Looper Missions: ID Agents Swarms, XMTP Rooms, and Base Escrow Design
 
 **Date:** 2026-10-16  
-**Status:** Approved in chat; independent review iteration 1 fixes applied
+**Status:** Approved in chat; independent review iteration 2 fixes applied
 **Scope:** Marketplace missions, wallet-bound Looper teams, ID Agents execution, XMTP swarm rooms, immutable versioned escrow vaults, USDC/$CRED settlement, and CRED outcome evidence
 
 ## Goal
@@ -18,7 +18,7 @@ The product must not treat chat text, model claims, token amounts, or a task sta
 2. A mission may be funded in canonical Base USDC, canonical Base $CRED, or both.
 3. Funds are real and onchain from the first release. Simulated balances are not labeled funded.
 4. A mission launches only after the full declared bounty is confirmed in escrow and the selected team accepts its immutable launch terms.
-5. Normal milestone release requires both the mission owner and lead Looper controller.
+5. Normal milestone release requires both the mission owner and the manifest's transfer-stable lead approval address. The selected lead Looper's current owner/controller must sign the launch manifest that delegates this mission authority.
 6. Either party may dispute an unpaid milestone. A Helixa arbitration Safe may resolve only among predeclared recipients and the original refund address.
 7. Existing funded vaults are immutable. Evolution happens through versioned immutable vault templates behind an evolvable registry/factory surface.
 8. One funded mission maps to one isolated ID Agents manager/team/workspace for the hosted MVP.
@@ -134,7 +134,7 @@ The system uses separate, executable state machines rather than one overloaded s
 
 **Vault:** `awaiting_funding -> funded -> active -> settled`, with terminal `refunded`.
 
-**Milestone:** `pending -> submitted -> releasable -> released`; either approval may arrive first and is stored as a bit bound to the exact artifact/payout commitment. `pending` or `submitted` may enter `disputed`; dispute resolves to `released` or `refunded` under the exact resolution allocation. No terminal state moves backward.
+**Milestone:** `pending -> submitted -> releasable -> released`; either approval may arrive first and is stored as a bit bound to the exact artifact/payout commitment. `pending` may move directly to terminal `timeout_settled` after the delivery deadline and grace by executing the exact per-asset delivery-timeout allocation. `pending` or `submitted` may enter `disputed`; `disputed` moves to terminal `resolved` through owner+lead settlement or arbitrator resolution, or to terminal `timeout_settled` after the dispute deadline through the exact per-asset dispute-timeout allocation. `released`, `resolved`, `timeout_settled`, and `refunded` are terminal and record the exact per-asset amounts sent to each allowed destination. No terminal state moves backward.
 
 ### Draft
 
@@ -177,7 +177,9 @@ The owner selects:
 - milestone payout allocations per token;
 - mission terms hash.
 
-The owner and every selected participant sign the same canonical EIP-712 launch manifest. It binds chain ID, factory address, registry/version ID, immutable vault creation-code hash, predicted CREATE2 vault address, mission/terms hash, owner, refund address, transfer-stable lead approval address, every Looper identity and custody epoch, every transfer-stable settlement address, token addresses, raw integer amounts, all allocations, all deadlines and timeout allocations, participant nonces, expiry, ID Agents release pin, and XMTP room policy. The factory verifies every required EOA/ERC-1271 signer, exact domain, predicted address, expiry, and participant nonce, then atomically consumes the manifest hash and nonces before deployment. A hash cannot deploy twice or be replayed across chain, factory, version, vault, party, or terms.
+The canonical EIP-712 launch manifest binds chain ID, factory address, registry/version ID, immutable vault creation-code hash, predicted CREATE2 vault address, mission/terms hash, owner, refund address, transfer-stable lead approval address, every Looper identity and custody epoch, every transfer-stable settlement address, token addresses, raw integer amounts, all allocations, all deadlines and timeout allocations, participant nonces, expiry, ID Agents release pin, and XMTP room policy. Required signers are the mission owner, every selected Looper's current owner/controller at the bound custody epoch, the transfer-stable lead approval address, and every distinct transfer-stable settlement address. One address may satisfy several roles with one signature over the same manifest, but every distinct signer has its own factory nonce.
+
+Under the factory reentrancy guard, deployment validates fields, domain, predicted address, expiry, signer set, and nonce availability; marks the manifest hash and every distinct signer nonce consumed; verifies every EOA/ERC-1271 signature; deploys the vault; and verifies its code. Any failed signature, callback, or deployment reverts the whole transaction, including nonce consumption. A manifest cannot deploy twice or replay across chain, factory, version, vault, party, or terms.
 
 The owner and lead approval addresses must differ. Neither approval address may be an NFT-controlled ERC-6551 account whose authority follows collection ownership. The MVP does not permit post-funding allocation amendments. A desired change requires cancel/recreate before funding or a successor mission after consented refund. Later vault versions may add unanimous amendments under a separate review.
 
@@ -247,11 +249,11 @@ The resolution amounts must sum exactly to the disputed milestone balance and ca
 
 The arbitrator address is a Safe multisig. Arbitration operations are public onchain and require a reason/evidence hash. The Helixa ledger stores the human-readable decision separately with privacy filtering.
 
-Every milestone manifest also includes a fixed timeout allocation per asset among only its predeclared recipients and refund address. If no artifact is submitted by the delivery deadline plus grace, anyone may execute the declared refund allocation. If an artifact is submitted but required review/approval does not complete by the review deadline, anyone may move the milestone into dispute. Owner and lead may jointly settle a dispute using an allowed allocation. If the arbitrator does not resolve by the dispute deadline, anyone may execute the pre-signed timeout allocation. These calls are permissionless to execute but can never choose destinations or amounts.
+Every milestone manifest includes two fixed exact allocations per asset among only its predeclared recipients and refund address: a delivery-timeout allocation and a dispute-timeout allocation. Each allocation must sum to that milestone's full remaining amount for the asset. If no artifact is submitted by the delivery deadline plus grace, anyone may execute the delivery-timeout allocation and move the milestone to `timeout_settled`. If an artifact is submitted but required review/approval does not complete by the review deadline, anyone may move the milestone into `disputed`. Owner and the manifest lead address may jointly settle a dispute using an allowed exact allocation. The arbitrator may resolve it before the dispute deadline. If neither happens by that deadline, anyone may execute the dispute-timeout allocation and move it to `timeout_settled`. These calls are permissionless to execute but can never choose destinations or amounts.
 
 ### Completion
 
-A mission becomes `settled` only after every milestone is released, refunded, or resolved and the indexer observes finalized events. Remaining accidental unsupported-token transfers are not counted as mission funds and require a separately reviewed recovery posture; the v1 contract exposes no general admin sweep for supported mission assets.
+A mission becomes `settled` only after every milestone is `released`, `resolved`, `timeout_settled`, or `refunded` and the indexer observes finalized events. Remaining accidental unsupported-token transfers are not counted as mission funds and require a separately reviewed recovery posture; the v1 contract exposes no general admin sweep for supported mission assets.
 
 ## Escrow contract design
 
@@ -276,9 +278,9 @@ The registry may be UUPS-upgradeable only if storage-layout, initializer, author
 The factory:
 
 - checks the selected active version and exact immutable vault creation-code hash;
-- verifies the full canonical EIP-712 manifest, every required EOA/ERC-1271 signature, signer nonce, expiry, predicted CREATE2 address, fields, totals, and bounds;
+- under a factory reentrancy guard, validates the full canonical EIP-712 manifest, signer set, signer nonce availability, expiry, predicted CREATE2 address, fields, totals, and bounds;
 - derives deterministic salt from chain ID, owner, manifest nonce, and terms hash;
-- under a factory reentrancy guard, atomically marks the manifest hash and participant nonces consumed before external ERC-1271 callbacks or deployment; any later failure reverts the entire transaction;
+- atomically marks the manifest hash and every distinct signer nonce consumed, then verifies every required EOA/ERC-1271 signature before deployment; any later failure reverts the entire transaction;
 - deploys the full vault with constructor-bound terms and no proxy/clone/delegatecall;
 - verifies the deployed runtime code hash;
 - emits the complete vault/version/terms commitment;
@@ -584,7 +586,7 @@ To avoid circularity, CRED may help a mission owner select a team, but participa
 - **Provider auth/cost failure:** no unrestricted fallback credential or model; surface blocked runtime.
 - **Database failure:** no partial lifecycle transition or onchain-success concealment; reconciler resumes from durable operations.
 - **Chain reorg/provider disagreement:** fail closed until the indexed block is canonical and provider agreement returns.
-- **Arbitration unavailable:** funds remain frozen; no timeout path grants a third party broader withdrawal authority.
+- **Arbitration unavailable:** funds remain frozen only until the immutable dispute deadline. After it, anyone may execute the exact predeclared dispute-timeout allocation; no caller or third party chooses destinations or amounts.
 
 ## Security boundaries
 
@@ -691,7 +693,7 @@ Start with bounded mission/team/bounty caps even though the board is publicly vi
 - direct exact recipient payouts;
 - reentrancy resistance and state-before-transfer behavior;
 - dispute freezes release;
-- review deadlines, permissionless dispute entry, joint settlement, arbitration deadline, and permissionless predeclared timeout allocation;
+- delivery deadlines, direct delivery-timeout settlement, review deadlines, permissionless dispute entry, joint settlement, arbitration deadline, and permissionless per-asset delivery/dispute timeout allocations;
 - arbitration cannot add destination, exceed amount, change token, collect a fee, or touch another milestone;
 - partial-funding and unlaunched timeout refunds only under exact conditions;
 - released milestones final;
@@ -702,7 +704,7 @@ Start with bounded mission/team/bounty caps even though the board is publicly vi
 
 - total released + refunded + remaining equals total funded per asset;
 - no supported asset leaves except to predeclared recipients/refund address;
-- no milestone settles twice;
+- no milestone reaches `released`, `resolved`, `timeout_settled`, or `refunded` more than once;
 - no signature succeeds twice;
 - no party can bypass the required second approval;
 - arbitrator power remains destination- and amount-bounded;
