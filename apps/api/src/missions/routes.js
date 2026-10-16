@@ -53,6 +53,8 @@ export async function handleMissionRequest(request, { service, authenticate } = 
       ...(route.missionId ? { missionId: routeId(parts[3], 'missionId') } : {}),
       ...(route.applicationId ? { applicationId: routeId(parts[5], 'applicationId') } : {}),
       ...(route.milestoneId ? { milestoneId: routeId(parts[5], 'milestoneId') } : {}),
+      ...(route.taskId ? { taskId: routeId(parts[6], 'taskId') } : {}),
+      ...(route.disputeId ? { disputeId: routeId(parts[7], 'disputeId') } : {}),
       input,
     };
     const result = await service[route.method](command);
@@ -70,6 +72,9 @@ function matchWriteRoute(method, parts) {
   if (method === 'PATCH' && parts.length === 4) return route('updateMission', 200, true,
     ['commitment_hash', 'patch', 'private_document', 'public_document'],
     (body) => ({ patch: body.patch, publicDocument: body.public_document, privateDocument: body.private_document, commitmentHash: body.commitment_hash }));
+  if (method === 'PATCH' && parts.length === 7 && parts[4] === 'workspace' && parts[5] === 'tasks') {
+    return { ...route('updateTask', 200, true, ['patch'], (body) => body), taskId: true };
+  }
   if (method !== 'POST') return null;
   if (parts.length === 5 && parts[4] === 'publish') return route('publishMission', 200, true,
     ['application_closes_at', 'commitment_hash', 'private_document', 'public_document'],
@@ -81,13 +86,21 @@ function matchWriteRoute(method, parts) {
   if (parts.length === 7 && parts[4] === 'applications' && parts[6] === 'withdraw') return { ...route('withdrawApplication', 200, true, [], (body) => body), applicationId: true };
   if (parts.length === 5 && parts[4] === 'team') return route('selectTeam', 200, true, ['selection'], (body) => body);
   if (parts.length === 7 && parts[4] === 'launch' && parts[5] === 'terms' && parts[6] === 'sign') return route('signLaunchTerms', 200, true, ['signature'], (body) => body);
+  if (parts.length === 6 && parts[4] === 'launch' && parts[5] === 'manifest') return route('publishLaunchManifest', 202, true, ['manifest'], (body) => body);
+  if (parts.length === 6 && parts[4] === 'vault' && parts[5] === 'prepare') return route('prepareVault', 202, true, ['vault'], (body) => body);
+  if (parts.length === 6 && parts[4] === 'launch' && parts[5] === 'retry') return route('retryLaunch', 202, true, ['launch'], (body) => body);
+  if (parts.length === 6 && parts[4] === 'launch' && parts[5] === 'refund') return route('refundLaunch', 202, true, ['refund'], (body) => body);
   if (parts.length === 5 && parts[4] === 'fund') return route('fundMission', 202, true, ['funding'], (body) => body);
   if (parts.length === 5 && parts[4] === 'reconcile') return route('reconcileMission', 202, true, ['transaction'], (body) => body);
   if (parts.length === 6 && parts[4] === 'workspace' && parts[5] === 'tasks') return route('createTask', 201, true, ['task'], (body) => body);
+  if (parts.length === 8 && parts[4] === 'workspace' && parts[5] === 'tasks' && parts[7] === 'assign') return { ...route('assignTask', 200, true, ['assignment'], (body) => body), taskId: true };
   if (parts.length === 6 && parts[4] === 'workspace' && parts[5] === 'artifacts') return route('submitArtifact', 201, true, ['artifact'], (body) => body);
   if (parts.length === 7 && parts[4] === 'milestones' && parts[6] === 'approve') return { ...route('approveMilestone', 200, true, ['approval'], (body) => body), milestoneId: true };
   if (parts.length === 7 && parts[4] === 'milestones' && parts[6] === 'release') return { ...route('releaseMilestone', 202, true, ['release'], (body) => body), milestoneId: true };
   if (parts.length === 7 && parts[4] === 'milestones' && parts[6] === 'disputes') return { ...route('openDispute', 201, true, ['dispute'], (body) => body), milestoneId: true };
+  if (parts.length === 9 && parts[4] === 'milestones' && parts[6] === 'disputes' && parts[8] === 'arbitrate') {
+    return { ...route('prepareArbitration', 202, true, ['resolution'], (body) => body), milestoneId: true, disputeId: true };
+  }
   return null;
 }
 

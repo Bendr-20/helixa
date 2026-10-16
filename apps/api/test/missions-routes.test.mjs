@@ -13,9 +13,9 @@ function fixture() {
   const calls = [];
   const methods = [
     'listPublicMissions', 'getPublicMission', 'createMission', 'updateMission', 'publishMission', 'cancelMission',
-    'applyToMission', 'withdrawApplication', 'selectTeam', 'readLaunchTerms', 'signLaunchTerms', 'fundMission',
-    'reconcileMission', 'readWorkspace', 'createTask', 'submitArtifact', 'approveMilestone', 'releaseMilestone',
-    'openDispute', 'readDispute',
+    'applyToMission', 'withdrawApplication', 'selectTeam', 'readLaunchTerms', 'signLaunchTerms', 'publishLaunchManifest', 'prepareVault', 'retryLaunch',
+    'refundLaunch', 'fundMission', 'reconcileMission', 'readWorkspace', 'createTask', 'assignTask', 'updateTask',
+    'submitArtifact', 'approveMilestone', 'releaseMilestone', 'openDispute', 'prepareArbitration', 'readDispute',
   ];
   const missionService = Object.fromEntries(methods.map((name) => [name, async (input) => {
     calls.push([name, input]);
@@ -55,10 +55,13 @@ const bodies = {
   cancelMission: { public_document: {}, private_document: {}, commitment_hash: HASH },
   applyToMission: { application: { proposedRole: 'builder' } }, withdrawApplication: {},
   selectTeam: { selection: { members: [] } }, signLaunchTerms: { signature: '0xsigned' },
+  publishLaunchManifest: { manifest: { termsHash: HASH } }, prepareVault: { vault: { versionId: HASH } },
+  retryLaunch: { launch: { operationId: 'launch-1' } }, refundLaunch: { refund: {} },
   fundMission: { funding: { amountRaw: '1' } }, reconcileMission: { transaction: { hash: '0xabc' } },
-  createTask: { task: { title: 'Do it' } }, submitArtifact: { artifact: { contentHash: HASH } },
+  createTask: { task: { title: 'Do it' } }, assignTask: { assignment: { memberId: 'member-1' } },
+  updateTask: { patch: { status: 'doing' } }, submitArtifact: { artifact: { contentHash: HASH } },
   approveMilestone: { approval: { artifactHash: HASH } }, releaseMilestone: { release: {} },
-  openDispute: { dispute: { evidenceHash: HASH } },
+  openDispute: { dispute: { evidenceHash: HASH } }, prepareArbitration: { resolution: { evidenceHash: HASH } },
 };
 
 const writes = [
@@ -70,13 +73,20 @@ const writes = [
   ['POST', '/api/multipass/missions/mission-1/applications/app-1/withdraw', 'withdrawApplication'],
   ['POST', '/api/multipass/missions/mission-1/team', 'selectTeam'],
   ['POST', '/api/multipass/missions/mission-1/launch/terms/sign', 'signLaunchTerms'],
+  ['POST', '/api/multipass/missions/mission-1/launch/manifest', 'publishLaunchManifest'],
+  ['POST', '/api/multipass/missions/mission-1/vault/prepare', 'prepareVault'],
+  ['POST', '/api/multipass/missions/mission-1/launch/retry', 'retryLaunch'],
+  ['POST', '/api/multipass/missions/mission-1/launch/refund', 'refundLaunch'],
   ['POST', '/api/multipass/missions/mission-1/fund', 'fundMission'],
   ['POST', '/api/multipass/missions/mission-1/reconcile', 'reconcileMission'],
   ['POST', '/api/multipass/missions/mission-1/workspace/tasks', 'createTask'],
+  ['POST', '/api/multipass/missions/mission-1/workspace/tasks/task-1/assign', 'assignTask'],
+  ['PATCH', '/api/multipass/missions/mission-1/workspace/tasks/task-1', 'updateTask'],
   ['POST', '/api/multipass/missions/mission-1/workspace/artifacts', 'submitArtifact'],
   ['POST', '/api/multipass/missions/mission-1/milestones/mile-1/approve', 'approveMilestone'],
   ['POST', '/api/multipass/missions/mission-1/milestones/mile-1/release', 'releaseMilestone'],
   ['POST', '/api/multipass/missions/mission-1/milestones/mile-1/disputes', 'openDispute'],
+  ['POST', '/api/multipass/missions/mission-1/milestones/mile-1/disputes/disp-1/arbitrate', 'prepareArbitration'],
 ];
 
 test('public list/detail and authenticated reads route to the mission service', async () => {

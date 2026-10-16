@@ -7,12 +7,13 @@ const OWNER = '0x1111111111111111111111111111111111111111';
 const LEAD = '0x2222222222222222222222222222222222222222';
 const MEMBER = '0x3333333333333333333333333333333333333333';
 const OTHER = '0x4444444444444444444444444444444444444444';
+const ARBITRATOR = '0x5555555555555555555555555555555555555555';
 const HASH = 'a'.repeat(64);
 
 function mission(overrides = {}) {
   return {
     missionId: 'mission-1', ownerAddress: OWNER, leadApprovalAddress: LEAD,
-    participantAddresses: [LEAD, MEMBER], state: 'recruiting', revision: 2,
+    participantAddresses: [LEAD, MEMBER], arbitratorAddress: ARBITRATOR, state: 'recruiting', revision: 2,
     publicSummary: 'Build a useful thing.', applicationClosesAt: 10_000,
     launchDeadline: 20_000, createdAt: 1, updatedAt: 2,
     publicDocument: { title: 'Mission One', required_roles: ['builder'] },
@@ -84,18 +85,30 @@ test('command methods enforce current-wallet roles and call custody, chain, runt
     ['withdrawApplication', { ...meta, actorAddress: OTHER, missionId: 'mission-1', applicationId: 'app-1', input: {} }],
     ['selectTeam', { ...meta, missionId: 'mission-1', input: { selection: { leadApprovalAddress: LEAD, members: [] } } }],
     ['signLaunchTerms', { ...meta, actorAddress: LEAD, missionId: 'mission-1', input: { signature: '0xsigned' } }],
+    ['publishLaunchManifest', { ...meta, missionId: 'mission-1', input: { manifest: { termsHash: HASH } } }],
+    ['prepareVault', { ...meta, missionId: 'mission-1', input: { vault: { versionId: HASH } } }],
+    ['retryLaunch', { ...meta, missionId: 'mission-1', input: { launch: { operationId: 'launch-1' } } }],
+    ['refundLaunch', { ...meta, actorAddress: OTHER, missionId: 'mission-1', input: { refund: {} } }],
     ['fundMission', { ...meta, missionId: 'mission-1', input: { funding: { asset: OTHER, amountRaw: '1' } } }],
     ['reconcileMission', { ...meta, actorAddress: OTHER, missionId: 'mission-1', input: { transaction: { hash: '0xabc' } } }],
     ['createTask', { ...meta, actorAddress: LEAD, missionId: 'mission-1', input: { task: { title: 'Do it' } } }],
+    ['assignTask', { ...meta, actorAddress: LEAD, missionId: 'mission-1', taskId: 'task-1', input: { assignment: { memberId: 'member-1' } } }],
+    ['updateTask', { ...meta, actorAddress: MEMBER, missionId: 'mission-1', taskId: 'task-1', input: { patch: { status: 'doing' } } }],
     ['submitArtifact', { ...meta, actorAddress: MEMBER, missionId: 'mission-1', input: { artifact: { contentHash: HASH } } }],
     ['approveMilestone', { ...meta, missionId: 'mission-1', milestoneId: 'mile-1', input: { approval: { artifactHash: HASH } } }],
     ['releaseMilestone', { ...meta, actorAddress: OTHER, missionId: 'mission-1', milestoneId: 'mile-1', input: { release: {} } }],
     ['openDispute', { ...meta, actorAddress: LEAD, missionId: 'mission-1', milestoneId: 'mile-1', input: { dispute: { evidenceHash: HASH } } }],
+    ['prepareArbitration', { ...meta, actorAddress: ARBITRATOR, missionId: 'mission-1', milestoneId: 'mile-1', disputeId: 'disp-1', input: { resolution: { evidenceHash: HASH } } }],
   ];
   for (const [name, input] of commands) assert.equal((await f.service[name](input)).missionId, 'mission-1');
   assert.ok(f.calls.some(([name]) => name === 'custody.verifyCurrent'));
   assert.ok(f.calls.some(([name]) => name.startsWith('chain.')));
   assert.equal(f.calls.find(([name]) => name === 'chain.prepareLaunchSignature')[1].input.signature, '0xsigned');
+  assert.equal(f.calls.find(([name]) => name === 'runtime.assignTask')[1].taskId, 'task-1');
+  assert.equal(f.calls.find(([name]) => name === 'chain.prepareApproval')[1].milestoneId, 'mile-1');
+  const arbitration = f.calls.find(([name]) => name === 'chain.prepareArbitration')[1];
+  assert.equal(arbitration.milestoneId, 'mile-1');
+  assert.equal(arbitration.disputeId, 'disp-1');
   assert.ok(f.calls.some(([name]) => name.startsWith('runtime.')));
   assert.ok(f.calls.some(([name]) => name === 'xmtp.publishEvent'));
 
@@ -109,5 +122,6 @@ test('authenticated reads allow only current mission parties', async () => {
   assert.equal((await f.service.readLaunchTerms({ missionId: 'mission-1', actorAddress: LEAD })).termsHash, HASH);
   assert.equal((await f.service.readWorkspace({ missionId: 'mission-1', actorAddress: MEMBER })).missionId, 'mission-1');
   assert.equal((await f.service.readDispute({ missionId: 'mission-1', milestoneId: 'mile-1', disputeId: 'disp-1', actorAddress: OWNER })).disputeId, 'disp-1');
+  assert.equal((await f.service.readDispute({ missionId: 'mission-1', milestoneId: 'mile-1', disputeId: 'disp-1', actorAddress: ARBITRATOR })).disputeId, 'disp-1');
   await assert.rejects(() => f.service.readWorkspace({ missionId: 'mission-1', actorAddress: OTHER }), (error) => error.code === 'mission_forbidden');
 });

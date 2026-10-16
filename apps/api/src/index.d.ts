@@ -143,6 +143,8 @@ export interface MissionMutationCommand {
   missionId?: string;
   applicationId?: string;
   milestoneId?: string;
+  taskId?: string;
+  disputeId?: string;
   expectedRevision: number;
   idempotencyKey: string;
   input: Record<string, unknown>;
@@ -160,14 +162,21 @@ export interface MissionService {
   selectTeam(input: MissionMutationCommand): Promise<unknown> | unknown;
   readLaunchTerms(input: { missionId: string; actorAddress: string }): Promise<unknown> | unknown;
   signLaunchTerms(input: MissionMutationCommand): Promise<unknown> | unknown;
+  publishLaunchManifest(input: MissionMutationCommand): Promise<unknown> | unknown;
+  prepareVault(input: MissionMutationCommand): Promise<unknown> | unknown;
+  retryLaunch(input: MissionMutationCommand): Promise<unknown> | unknown;
+  refundLaunch(input: MissionMutationCommand): Promise<unknown> | unknown;
   fundMission(input: MissionMutationCommand): Promise<unknown> | unknown;
   reconcileMission(input: MissionMutationCommand): Promise<unknown> | unknown;
   readWorkspace(input: { missionId: string; actorAddress: string }): Promise<unknown> | unknown;
   createTask(input: MissionMutationCommand): Promise<unknown> | unknown;
+  assignTask(input: MissionMutationCommand): Promise<unknown> | unknown;
+  updateTask(input: MissionMutationCommand): Promise<unknown> | unknown;
   submitArtifact(input: MissionMutationCommand): Promise<unknown> | unknown;
   approveMilestone(input: MissionMutationCommand): Promise<unknown> | unknown;
   releaseMilestone(input: MissionMutationCommand): Promise<unknown> | unknown;
   openDispute(input: MissionMutationCommand): Promise<unknown> | unknown;
+  prepareArbitration(input: MissionMutationCommand): Promise<unknown> | unknown;
   readDispute(input: { missionId: string; milestoneId: string; disputeId: string; actorAddress: string }): Promise<unknown> | unknown;
 }
 

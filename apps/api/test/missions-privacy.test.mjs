@@ -10,7 +10,9 @@ const privateMission = {
   publicDocument: {
     title: 'Visible', requiredRoles: ['builder'], bounty: { asset: 'USDC', amountRaw: '1000' },
     nested: { conversationId: 'secret-conversation', managerUrl: 'http://127.0.0.1:9000', safe: 'visible' },
-    evidenceUnderReview: { uri: 'secret-evidence' }, applicationId: 'internal-app', taskId: 'internal-task', artifactId: 'internal-artifact',
+    evidenceUnderReview: { uri: 'secret-evidence' }, evidence: { underReview: true, body: 'nested-secret-evidence' },
+    internalIds: ['internal-many'], runtimeBindingIds: ['runtime-many'],
+    applicationId: 'internal-app', taskId: 'internal-task', artifactId: 'internal-artifact',
   },
   privateDocument: { scope: 'private acceptance', contact: 'private@example.test' },
   applications: [{ applicationId: 'app-1', contact: '@private' }],
@@ -23,7 +25,7 @@ test('public projection recursively omits applications, private scope, contacts,
   const serialized = JSON.stringify(projected);
   assert.equal(projected.missionId, 'mission-privacy');
   assert.equal(projected.publicDocument.nested.safe, 'visible');
-  assert.doesNotMatch(serialized, /private acceptance|private@example|@private|secret-conversation|127\.0\.0\.1|private\/workspace|internal-app|internal-task|internal-artifact|op-internal|secret-evidence|secret evidence/i);
+  assert.doesNotMatch(serialized, /private acceptance|private@example|@private|secret-conversation|127\.0\.0\.1|private\/workspace|internal-app|internal-task|internal-artifact|internal-many|runtime-many|op-internal|nested-secret-evidence|secret-evidence|secret evidence/i);
   assert.doesNotMatch(serialized, /applications|privateDocument|conversationId|managerLocation|operationId|evidenceUnderReview/i);
 });
 

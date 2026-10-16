@@ -9,7 +9,7 @@ const PUBLIC_TOP_LEVEL = Object.freeze([
   'createdAt', 'updatedAt', 'ownerIdentity', 'publicDocument', 'funding', 'lifecycle',
   'milestones', 'requiredRoles', 'bounty', 'trustContext',
 ]);
-const PUBLIC_PRIVATE_KEY = /(?:^|_)(?:applications?|private(?:scope|document|spec)?|contact(?:data|email|route)?|conversation(?:id)?|manager(?:location|url|host|port|token|instanceid)?|evidence(?:underreview)?|operationid|applicationid|memberid|receiptid|taskid|artifactid|disputeid|runtimebindingid|internalid|credential|secret|signature|api[_-]?key|private[_-]?key)(?:$|_)/iu;
+const PUBLIC_PRIVATE_KEY = /(?:^|_)(?:applications?|private(?:scope|document|spec)?|contact(?:data|email|route)?|conversation(?:id)?|manager(?:location|url|host|port|token|instanceid)?|evidence(?:underreview)?|operationid|applicationid|memberid|receiptid|taskid|artifactid|disputeid|runtimebindingids?|internalids?|credential|secret|signature|api[_-]?key|private[_-]?key)(?:$|_)/iu;
 const PRIVATE_SECRET_KEY = /(?:credential|secret|signature|api[_-]?key|private[_-]?key|walletprivatekey|managertoken|sessiontoken|authorization)/iu;
 const MAX_PROJECTION_NODES = 10_000;
 
@@ -115,6 +115,22 @@ export function createMissionService({ repository, custody, chain, runtime, xmtp
       return executeCommand(dependencies, command, { action: 'sign_launch_terms', roles: ['owner', 'lead', 'participant'], chainMethod: 'prepareLaunchSignature', eventType: 'launch_terms_signed' });
     },
 
+    async publishLaunchManifest(command) {
+      return executeCommand(dependencies, command, { action: 'publish_launch_manifest', roles: ['owner'], custodyBoundary: 'launch', chainMethod: 'prepareManifestPublication', eventType: 'launch_manifest_published' });
+    },
+
+    async prepareVault(command) {
+      return executeCommand(dependencies, command, { action: 'prepare_vault', roles: ['owner'], custodyBoundary: 'funding', chainMethod: 'prepareVaultCreation', eventType: 'vault_creation_prepared' });
+    },
+
+    async retryLaunch(command) {
+      return executeCommand(dependencies, command, { action: 'retry_launch', roles: ['owner'], custodyBoundary: 'launch', runtimeMethod: 'retryLaunch', eventType: 'launch_retry_requested' });
+    },
+
+    async refundLaunch(command) {
+      return executeCommand(dependencies, command, { action: 'refund_launch', roles: ['permissionless'], chainMethod: 'prepareUnlaunchedRefund', eventType: 'launch_refund_prepared' });
+    },
+
     async fundMission(command) {
       return executeCommand(dependencies, command, { action: 'fund_mission', roles: ['owner'], custodyBoundary: 'funding', chainMethod: 'prepareFunding', eventType: 'funding_prepared' });
     },
@@ -136,6 +152,16 @@ export function createMissionService({ repository, custody, chain, runtime, xmtp
       return executeCommand(dependencies, command, { action: 'create_task', roles: ['lead'], custodyBoundary: 'task_assignment', runtimeMethod: 'createTask', eventType: 'task_created' });
     },
 
+    async assignTask(command) {
+      identifier(command?.taskId, 'taskId');
+      return executeCommand(dependencies, command, { action: 'assign_task', roles: ['lead'], custodyBoundary: 'task_assignment', runtimeMethod: 'assignTask', eventType: 'task_assigned' });
+    },
+
+    async updateTask(command) {
+      identifier(command?.taskId, 'taskId');
+      return executeCommand(dependencies, command, { action: 'update_task', roles: ['lead', 'participant'], custodyBoundary: 'task_assignment', runtimeMethod: 'updateTask', eventType: 'task_updated' });
+    },
+
     async submitArtifact(command) {
       return executeCommand(dependencies, command, { action: 'submit_artifact', roles: ['lead', 'participant'], custodyBoundary: 'artifact_acceptance', runtimeMethod: 'submitArtifact', eventType: 'artifact_submitted' });
     },
@@ -155,8 +181,15 @@ export function createMissionService({ repository, custody, chain, runtime, xmtp
       return executeCommand(dependencies, command, { action: 'open_dispute', roles: ['owner', 'lead'], chainMethod: 'prepareDispute', eventType: 'dispute_opened' });
     },
 
+    async prepareArbitration(command) {
+      identifier(command?.milestoneId, 'milestoneId');
+      identifier(command?.disputeId, 'disputeId');
+      return executeCommand(dependencies, command, { action: 'prepare_arbitration', roles: ['arbitrator'], chainMethod: 'prepareArbitration', eventType: 'arbitration_prepared' });
+    },
+
     async readDispute(command = {}) {
-      const mission = await requireParty(repository, command);
+      const mission = await loadMission(repository, command.missionId);
+      requireRole(mission, normalizeActor(command.actorAddress), ['owner', 'lead', 'participant', 'arbitrator']);
       requireMethod(repository, 'readDispute', 'repository');
       return projectPrivateMission(await repository.readDispute({
         missionId: mission.missionId,
@@ -205,10 +238,17 @@ async function executeCommand(deps, command = {}, definition) {
   const mission = await loadMission(deps.repository, command.missionId);
   if (mission.revision !== metadata.expectedRevision) throw conflict('Mission revision conflict.');
   if (definition.roles) requireRole(mission, metadata.actorAddress, definition.roles);
+  const target = Object.freeze({
+    ...(command.applicationId ? { applicationId: identifier(command.applicationId, 'applicationId') } : {}),
+    ...(command.milestoneId ? { milestoneId: identifier(command.milestoneId, 'milestoneId') } : {}),
+    ...(command.taskId ? { taskId: identifier(command.taskId, 'taskId') } : {}),
+    ...(command.disputeId ? { disputeId: identifier(command.disputeId, 'disputeId') } : {}),
+  });
+  const input = cloneJson(command.input, { label: 'mission input' });
   if (definition.custodyBoundary || (definition.custodyBoundaryForNonOwner && metadata.actorAddress !== normalizeAddress(mission.ownerAddress))) {
     const boundary = definition.custodyBoundary ?? definition.custodyBoundaryForNonOwner;
     requireMethod(deps.custody, 'verifyCurrent', 'custody');
-    const evidence = await deps.custody.verifyCurrent({ boundary, mission, actorAddress: metadata.actorAddress, input: cloneJson(command.input, { label: 'mission input' }) });
+    const evidence = await deps.custody.verifyCurrent({ boundary, mission, actorAddress: metadata.actorAddress, ...target, input });
     if (normalizeAddress(evidence?.ownerAddress ?? metadata.actorAddress) !== metadata.actorAddress || evidence?.eligible === false) {
       throw forbidden('Current wallet does not control an eligible Looper identity.');
     }
@@ -216,11 +256,11 @@ async function executeCommand(deps, command = {}, definition) {
   let dependencyResult;
   if (definition.chainMethod) {
     requireMethod(deps.chain, definition.chainMethod, 'chain');
-    dependencyResult = await deps.chain[definition.chainMethod]({ mission, actorAddress: metadata.actorAddress, input: cloneJson(command.input, { label: 'mission input' }) });
+    dependencyResult = await deps.chain[definition.chainMethod]({ mission, actorAddress: metadata.actorAddress, ...target, input });
   }
   if (definition.runtimeMethod) {
     requireMethod(deps.runtime, definition.runtimeMethod, 'runtime');
-    dependencyResult = await deps.runtime[definition.runtimeMethod]({ mission, actorAddress: metadata.actorAddress, input: cloneJson(command.input, { label: 'mission input' }) });
+    dependencyResult = await deps.runtime[definition.runtimeMethod]({ mission, actorAddress: metadata.actorAddress, ...target, input });
   }
   requireMethod(deps.repository, 'executeCommand', 'repository');
   const result = await deps.repository.executeCommand({
@@ -229,9 +269,8 @@ async function executeCommand(deps, command = {}, definition) {
     expectedRevision: metadata.expectedRevision,
     idempotencyKey: metadata.idempotencyKey,
     actorAddress: metadata.actorAddress,
-    ...(command.applicationId ? { applicationId: identifier(command.applicationId, 'applicationId') } : {}),
-    ...(command.milestoneId ? { milestoneId: identifier(command.milestoneId, 'milestoneId') } : {}),
-    input: cloneJson(command.input, { label: 'mission input' }),
+    ...target,
+    input,
     dependencyResult: dependencyResult === undefined ? null : cloneJson(dependencyResult, { label: 'dependency result' }),
   });
   await notify(deps.xmtp, mission.missionId, definition.eventType, result);
@@ -267,6 +306,7 @@ function requireRole(mission, actorAddress, allowed) {
   const roles = [];
   if (normalizeAddress(mission.ownerAddress) === actor) roles.push('owner');
   if (normalizeAddress(mission.leadApprovalAddress) === actor) roles.push('lead');
+  if (normalizeAddress(mission.arbitratorAddress) === actor) roles.push('arbitrator');
   const participants = Array.isArray(mission.participantAddresses) ? mission.participantAddresses : [];
   if (participants.some((value) => normalizeAddress(value) === actor)) roles.push('participant');
   const role = allowed.find((candidate) => roles.includes(candidate));
@@ -329,13 +369,20 @@ function sanitizeProjection(value, context) {
     const output = {};
     for (const [key, entry] of Object.entries(value)) {
       const normalizedKey = key.replace(/[^a-z0-9_]/giu, '').toLowerCase();
-      if ((context.publicMode && PUBLIC_PRIVATE_KEY.test(normalizedKey)) || (context.redactSecrets && PRIVATE_SECRET_KEY.test(normalizedKey))) continue;
+      if ((context.publicMode && (PUBLIC_PRIVATE_KEY.test(normalizedKey) || isEvidenceUnderReview(normalizedKey, entry)))
+        || (context.redactSecrets && PRIVATE_SECRET_KEY.test(normalizedKey))) continue;
       output[key] = sanitizeProjection(entry, { ...context, path: context.path + '.' + key });
     }
     return output;
   } finally {
     context.seen.delete(value);
   }
+}
+
+function isEvidenceUnderReview(normalizedKey, value) {
+  if (normalizedKey !== 'evidence' || !value || typeof value !== 'object' || Array.isArray(value)) return false;
+  return value.underReview === true || value.under_review === true
+    || value.status === 'under_review' || value.state === 'under_review';
 }
 
 function cloneJson(value, { label }) {
