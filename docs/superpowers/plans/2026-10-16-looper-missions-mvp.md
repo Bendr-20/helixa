@@ -474,19 +474,19 @@ Commit: `git add apps/web && git commit -m "feat: add mission board and recruiti
 - Create: `apps/web/test/missions-browser.test.mjs`
 - Modify: `apps/web/src/styles.css`
 
-- [ ] **Step 1: Write RED source-of-truth and wallet-action tests**
+- [x] **Step 1: Write RED source-of-truth and wallet-action tests**
 
 Show chat, tasks, agents, artifacts, milestones, funding, blockers, approvals, disputes, and receipts with explicit source labels. Require transaction simulation and exact immutable recipient allocation before wallet prompts; never equate payment with CRED gain.
 
-- [ ] **Step 2: Implement components and browser fixtures**
+- [x] **Step 2: Implement components and browser fixtures**
 
 Include failure/retry, custody change, degraded source, launch timeout, dispute, timeout settlement, refund, and finalized success states.
 
-- [ ] **Step 3: Capture desktop/390/320 browser proof**
+- [x] **Step 3: Capture desktop/390/320 browser proof**
 
 Verify focus behavior, no horizontal overflow, and no secret/internal identifiers.
 
-- [ ] **Step 4: Run and commit**
+- [x] **Step 4: Run and commit**
 
 Run focused tests and production build; Expected: PASS.  
 Commit: `git add apps/web && git commit -m "feat: add mission workspace and settlement"`

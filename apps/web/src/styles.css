@@ -11600,4 +11600,20 @@ h1 {
 .mission-applicant.stale { border-color: #755b2b; } .mission-empty { padding: 24px; text-align: center; color: #90a8a4; }
 @media (max-width: 720px) { .mission-surface-header, .mission-board-toolbar { display: grid; } .mission-editor fieldset { grid-template-columns: minmax(0, 1fr); } .mission-card dl div { grid-template-columns: minmax(0, 1fr); } .mission-card dd { text-align: left; } }
 @media (max-width: 390px) { .mission-board, .mission-editor, .mission-recruiting, .mission-workspace, .mission-settlement { padding: 10px; } .mission-card-grid { grid-template-columns: minmax(0, 1fr); } }
+.mission-workspace-grid, .mission-settlement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.mission-panel header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mission-source { max-width: 100%; padding: 4px 7px; border-radius: 999px; color: #a9bfbc; background: #102321; font-size: 10px; overflow-wrap: anywhere; }
+.mission-source.stale, .mission-source.degraded { color: #ffd27a; background: #211a0b; }
+.mission-panel-items { display: grid; gap: 8px; }
+.mission-item { display: flex; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; text-align: left; }
+.mission-item strong, .mission-item small, .mission-panel code { overflow-wrap: anywhere; }
+.mission-alert { margin-bottom: 14px; padding: 12px; border: 1px solid #755b2b; border-radius: 8px; color: #ffe1a7; background: #211a0b; }
+.mission-alert.danger { border-color: #7d3940; color: #ffc5ca; background: #240e12; }
+.mission-allocation { display: grid; grid-template-columns: auto auto; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid #233d39; }
+.mission-allocation code { grid-column: 1 / -1; }
+.mission-terms-check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; color: #c9dbd8; }
+.mission-terms-check input { width: auto; }
+.mission-receipt { margin-top: 14px; }
+@media (max-width: 720px) { .mission-workspace-grid, .mission-settlement-grid { grid-template-columns: minmax(0, 1fr); } }
+
 

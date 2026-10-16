@@ -4,6 +4,8 @@ import { createConsoleAgentGalleryModel } from './console-agent-gallery.js';
 import { safeConsoleAvatarUrl } from './console-owner-profile.js';
 import { createInitialConsoleRestapNetworkState, getConsoleRestapNetworkStatus, renderConsoleRestapNetworkPanel } from './console-restap-network.js';
 import { renderMissionBoard } from './missions/mission-board.js';
+import { renderMissionWorkspace } from './missions/mission-workspace.js';
+import { renderMissionSettlement } from './missions/mission-settlement.js';
 
 const CONSOLE_SAFETY_NOTE = 'Review-only operator surface. Your agent can brief and propose, but every action still waits for you.';
 const DEFAULT_CONSOLE_MISSION = 'Watch this agent, keep memory in Sibyl, and brief me before any proposal or outside action.';
@@ -277,7 +279,11 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
     recall: snapshot.recall,
     contextItems: snapshot.threadContextItems,
   });
-  if (snapshot.workspaceView === 'missions') return renderMissionBoard(snapshot.missions);
+  if (snapshot.workspaceView === 'missions') {
+    if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);
+    if (snapshot.missions?.view === 'settlement') return renderMissionSettlement(snapshot.missions);
+    return renderMissionBoard(snapshot.missions);
+  }
   if (!session.activeAgentId) return thread;
   let workspace;
   if (snapshot.workspaceView === 'codex') {
