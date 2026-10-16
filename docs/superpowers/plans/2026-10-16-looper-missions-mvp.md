@@ -164,15 +164,15 @@ Commit: `git add apps/api/src/missions apps/api/test/missions-repository.test.mj
 - Create: `apps/api/src/missions/domain.js`
 - Create: `apps/api/test/missions-domain.test.mjs`
 
-- [ ] **Step 1: Write table-driven RED tests**
+- [x] **Step 1: Write table-driven RED tests**
 
 Cover draft/recruit/team/funding/launch/review/settled transitions, role matrix, owner/lead distinctness, transfer-stable payout and approval addresses, ERC-6551 exclusion, fresh custody checks at every named boundary, and transfer-induced work/review pause without authority transfer.
 
-- [ ] **Step 2: Implement pure fail-closed decisions**
+- [x] **Step 2: Implement pure fail-closed decisions**
 
 Return explicit decisions/errors; never consult chat, model output, mutable NFT ownership, or CRED amount as settlement authority.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 Run: `node --test apps/api/test/missions-domain.test.mjs`  
 Expected: PASS.  
