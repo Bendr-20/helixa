@@ -427,15 +427,15 @@ Commit: `git add apps/api/src/missions/launch-coordinator.js apps/api/test/missi
 - Create: `apps/web/test/missions-api.test.mjs`
 - Create: `apps/web/test/missions-domain.test.mjs`
 
-- [ ] **Step 1: Write RED tests for exact request/response handling**
+- [x] **Step 1: Write RED tests for exact request/response handling**
 
 Cover revision/idempotency headers, wallet/session credentials, raw integer amount strings, typed failure states, stale source labels, and zero internal identifier leakage.
 
-- [ ] **Step 2: Implement narrow API methods and view models**
+- [x] **Step 2: Implement narrow API methods and view models**
 
 No component constructs ad-hoc routes or decides authoritative chain/runtime state.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 Run focused tests; Expected: PASS.  
 Commit: `git add apps/web/src/missions apps/web/test/missions-*.test.mjs && git commit -m "feat: add mission Console client"`
