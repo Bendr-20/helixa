@@ -451,15 +451,15 @@ Commit: `git add apps/web/src/missions apps/web/test/missions-*.test.mjs && git 
 - Create: `apps/web/test/missions-recruiting.test.mjs`
 - Modify: `apps/web/src/multipass-console.js`, `apps/web/src/route-manager.js`, `apps/web/src/styles.css`
 
-- [ ] **Step 1: Write RED rendering/interaction tests**
+- [x] **Step 1: Write RED rendering/interaction tests**
 
 Require bounded cards, truthful funding labels, roles/deadlines, raw-address/token-decimal confirmation, milestone allocation validation, applicant evidence freshness, payout signature state, keyboard focus, and responsive no-overflow behavior.
 
-- [ ] **Step 2: Implement accessible focused modules**
+- [x] **Step 2: Implement accessible focused modules**
 
 Reuse current Console shell and wallet client; do not expose unrevealed Looper art or internal runtime topology.
 
-- [ ] **Step 3: Run web regression and commit**
+- [x] **Step 3: Run web regression and commit**
 
 Run focused tests plus `pnpm --filter @helixa/multipass-web build`; Expected: PASS.  
 Commit: `git add apps/web && git commit -m "feat: add mission board and recruiting"`
