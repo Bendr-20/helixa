@@ -74,17 +74,23 @@ contract MissionEscrowFactory {
         return keccak256(abi.encode(manifest.missionId, manifest.versionId, manifest.termsHash));
     }
 
-    function predictVault(MissionTypes.LaunchManifest calldata manifest, bytes calldata creationCode, bytes calldata constructorArgs)
+    function vaultConstructorArgs(MissionTypes.LaunchManifest calldata manifest) public pure returns (bytes memory) {
+        return abi.encode(manifest.missionId, manifest.versionId, manifest.owner, manifest.refundAddress,
+            manifest.leadApprovalAddress, manifest.arbitrator, manifest.fundingDeadline, manifest.launchDeadline,
+            manifest.members, manifest.milestones);
+    }
+
+    function predictVault(MissionTypes.LaunchManifest calldata manifest, bytes calldata creationCode)
         public view returns (address)
     {
-        bytes32 initHash = keccak256(abi.encodePacked(creationCode, constructorArgs));
+        bytes32 initHash = keccak256(abi.encodePacked(creationCode, vaultConstructorArgs(manifest)));
         return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), create2Salt(manifest), initHash)))));
     }
 
     function deployVault(MissionTypes.LaunchManifest calldata manifest, Approval[] calldata approvals,
-        bytes calldata creationCode, bytes calldata constructorArgs) external nonReentrant returns (address vault)
+        bytes calldata creationCode) external nonReentrant returns (address vault)
     {
-        _validateHeader(manifest, creationCode, constructorArgs);
+        _validateHeader(manifest, creationCode);
         (address[] memory required, address[] memory tokens) = _validateTerms(manifest);
         IVersionRegistry.ActiveVersion memory active = _validateVersion(manifest, tokens);
         bytes32 digest = hashLaunchManifest(manifest);
@@ -100,7 +106,7 @@ contract MissionEscrowFactory {
         for (uint256 i; i < approvals.length; ++i) {
             if (!_validSignature(approvals[i].signer, digest, approvals[i].signature)) revert InvalidSignature(approvals[i].signer);
         }
-        bytes memory initCode = bytes.concat(creationCode, constructorArgs);
+        bytes memory initCode = bytes.concat(creationCode, vaultConstructorArgs(manifest));
         bytes32 salt = create2Salt(manifest);
         assembly ("memory-safe") { vault := create2(0, add(initCode, 32), mload(initCode), salt) }
         if (vault == address(0)) revert VaultDeploymentFailed();
@@ -120,8 +126,7 @@ contract MissionEscrowFactory {
             manifest.launchDeadline, manifest.expiry);
     }
 
-    function _validateHeader(MissionTypes.LaunchManifest calldata manifest, bytes calldata creationCode,
-        bytes calldata constructorArgs) private view
+    function _validateHeader(MissionTypes.LaunchManifest calldata manifest, bytes calldata creationCode) private view
     {
         if (manifest.factory != address(this) || manifest.owner == address(0) || manifest.refundAddress == address(0)
             || manifest.leadApprovalAddress == address(0) || manifest.arbitrator == address(0)
@@ -131,8 +136,9 @@ contract MissionEscrowFactory {
         if (block.timestamp > manifest.expiry) revert ManifestExpired(manifest.expiry);
         if (manifest.expiry > manifest.fundingDeadline || manifest.fundingDeadline <= block.timestamp
             || manifest.fundingDeadline >= manifest.launchDeadline) revert InvalidManifest();
-        if (keccak256(creationCode) != manifest.vaultCreationCodeHash || keccak256(constructorArgs) != manifest.termsHash
-            || predictVault(manifest, creationCode, constructorArgs) != manifest.predictedVault) revert InvalidVaultCode();
+        if (keccak256(creationCode) != manifest.vaultCreationCodeHash
+            || keccak256(vaultConstructorArgs(manifest)) != manifest.termsHash
+            || predictVault(manifest, creationCode) != manifest.predictedVault) revert InvalidVaultCode();
     }
 
     function _validateVersion(MissionTypes.LaunchManifest calldata manifest, address[] memory tokens)
@@ -230,7 +236,7 @@ contract MissionEscrowFactory {
         uint8[2] memory perToken;
         for (uint256 i; i < allocations.length; ++i) {
             MissionTypes.Allocation calldata allocation = allocations[i];
-            if (allocation.token == address(0) || allocation.recipient == address(0) || allocation.amount == 0) revert InvalidAllocation();
+            if (allocation.recipient == address(0) || allocation.amount == 0) revert InvalidAllocation();
             uint256 tokenIndex = type(uint256).max;
             for (uint256 t; t < tokenCount; ++t) if (tokenBuffer[t] == allocation.token) tokenIndex = t;
             if (tokenIndex == type(uint256).max) {

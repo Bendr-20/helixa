@@ -241,15 +241,15 @@ Commit: `git add packages/contracts apps/api/src/missions/manifest.js apps/api/t
 - Create: `packages/contracts/test/mission-escrow-funding.test.mjs`
 - Create: `packages/contracts/test/fixtures/MissionEscrowTokens.sol`
 
-- [ ] **Step 1: Write RED funding tests**
+- [x] **Step 1: Write RED funding tests**
 
 Cover owner-only deposits, one/two assets, balance-delta equality, internal liabilities, under/overfunding, fee-on-transfer, malicious callback, unsolicited direct transfer, bounded excess recovery only to refund address, partial-funding deadline refund, dual launch approval, unlaunched timeout refund, and state-before-transfer reentrancy resistance.
 
-- [ ] **Step 2: Implement minimal funding/activation code**
+- [x] **Step 2: Implement minimal funding/activation code**
 
 No proxy, clone, delegatecall, arbitrary call, fallback execution, admin withdrawal, supported-asset sweep, or mutable recipients/allocations.
 
-- [ ] **Step 3: Run focused tests and commit**
+- [x] **Step 3: Run focused tests and commit**
 
 Run: `node --test packages/contracts/test/mission-escrow-funding.test.mjs`  
 Expected: PASS.  

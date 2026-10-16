@@ -41,7 +41,7 @@ contract Callback1271 {
   return fixtures;
 }
 
-async function setup(){
+async function setup(options={}){
   compiled??=await compileMissionContracts();
   const g=ganache.provider({chain:{chainId:8453,hardfork:'shanghai'},logging:{quiet:true},wallet:{totalAccounts:12,defaultBalance:1000}});
   const provider=new ethers.BrowserProvider(g);
@@ -51,12 +51,13 @@ async function setup(){
   const registry=await deploy(compiled.contracts.VersionRegistry,[wallets[0].address,wallets[1].address,DELAY]);
   const factory=await deploy(compiled.contracts.MissionEscrowFactory,[await registry.getAddress()]);
   const f=compileFixtures();
+  const vault=options.vault??f.vault;
   const token=wallets[10].address;
   const now=Number((await provider.getBlock('latest')).timestamp);
-  await (await registry.proposeVersion(VERSION,ethers.keccak256(f.vault.bytecode),ethers.keccak256(f.vault.deployedBytecode),[token,ethers.ZeroAddress],1,now+100,0,1,{gasLimit:1_000_000})).wait();
+  await (await registry.proposeVersion(VERSION,ethers.keccak256(vault.bytecode),ethers.keccak256(vault.deployedBytecode),[token,ethers.ZeroAddress],1,now+100,0,1,{gasLimit:1_000_000})).wait();
   await provider.send('evm_increaseTime',[101]); await provider.send('evm_mine',[]);
   await (await registry.activateVersion(VERSION,{gasLimit:1_000_000})).wait();
-  return {g,provider,wallets,deployer,registry,factory,token,...f};
+  return {g,provider,wallets,deployer,registry,factory,token,vault,callback:f.callback};
 }
 
 function manifestInput(ctx,{mission='mission-1',settlement=ctx.wallets[5].address,controller=ctx.wallets[4].address,nonce=0}={}){
@@ -77,7 +78,9 @@ function manifestInput(ctx,{mission='mission-1',settlement=ctx.wallets[5].addres
 async function finalizedManifest(ctx,options){
   const input=manifestInput(ctx,options);
   const provisional=canonicalizeLaunchManifest(input);
-  input.predictedVault=await ctx.factory.predictVault(provisional,ctx.vault.bytecode,'0x');
+  input.termsHash=ethers.keccak256(await ctx.factory.vaultConstructorArgs(provisional));
+  const termsBound=canonicalizeLaunchManifest(input);
+  input.predictedVault=await ctx.factory.predictVault(termsBound,ctx.vault.bytecode);
   return {input,manifest:canonicalizeLaunchManifest(input)};
 }
 
@@ -109,19 +112,33 @@ test('Node and Solidity produce the same nested EIP-712 digest and CREATE2 addre
   const ctx=await setup();
   const {input,manifest}=await finalizedManifest(ctx);
   assert.equal(await ctx.factory.hashLaunchManifest(manifest),hashLaunchManifest(input));
-  assert.equal(await ctx.factory.predictVault(manifest,ctx.vault.bytecode,'0x'),manifest.predictedVault);
+  assert.equal(await ctx.factory.predictVault(manifest,ctx.vault.bytecode),manifest.predictedVault);
 });
 
 test('deploys exact runtime with collapsed distinct approvals and rejects replay',async()=>{
   const ctx=await setup();
   const {manifest}=await finalizedManifest(ctx,{controller:ctx.wallets[4].address,settlement:ctx.wallets[4].address});
   const approvals=signApprovals(ctx,manifest);
-  const tx=await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000});
+  const tx=await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,{gasLimit:8_000_000});
   await tx.wait();
   assert.equal(await ctx.provider.getCode(manifest.predictedVault),ctx.vault.deployedBytecode);
   for(const {signer} of manifest.signerNonces) assert.equal(await ctx.factory.nonces(signer),1n);
   assert.equal(await ctx.factory.consumedManifests(await ctx.factory.hashLaunchManifest(manifest)),true);
-  await assert.rejects((await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
+});
+
+test('factory deploys V1 with exact signed terms and registry-stable runtime code',async()=>{
+  compiled??=await compileMissionContracts();
+  const ctx=await setup({vault:compiled.contracts.MissionEscrowV1});
+  const {manifest}=await finalizedManifest(ctx,{mission:'v1-integration'});
+  const approvals=signApprovals(ctx,manifest);
+  await (await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,{gasLimit:12_000_000})).wait();
+  const vault=new ethers.Contract(manifest.predictedVault,ctx.vault.abi,ctx.provider);
+  assert.equal(await vault.termsHash(),manifest.termsHash);
+  assert.equal(await vault.owner(),manifest.owner);
+  assert.equal(await vault.leadApprovalAddress(),manifest.leadApprovalAddress);
+  assert.equal(await vault.assetCount(),1n);
+  assert.equal(await ctx.provider.getCode(manifest.predictedVault),ctx.vault.deployedBytecode);
 });
 
 test('bad signature rolls back every nonce and manifest-consumption write',async()=>{
@@ -129,7 +146,7 @@ test('bad signature rolls back every nonce and manifest-consumption write',async
   const {manifest}=await finalizedManifest(ctx);
   const approvals=signApprovals(ctx,manifest);
   approvals[1]={...approvals[1],signature:ctx.wallets[11].signingKey.sign(hashLaunchManifest(toInput(manifest))).serialized};
-  await assert.rejects((await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
   for(const {signer} of manifest.signerNonces) assert.equal(await ctx.factory.nonces(signer),0n);
   assert.equal(await ctx.factory.consumedManifests(await ctx.factory.hashLaunchManifest(manifest)),false);
   assert.equal(await ctx.provider.getCode(manifest.predictedVault),'0x');
@@ -139,34 +156,34 @@ test('rejects stale nonces, expiry, incomplete signer sets, and manifest bounds 
   const ctx=await setup();
   const stale=await finalizedManifest(ctx,{mission:'stale-nonce',nonce:1});
   const staleApprovals=signApprovals(ctx,stale.manifest);
-  await assert.rejects((await ctx.factory.deployVault(stale.manifest,staleApprovals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(stale.manifest,staleApprovals,ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
   for(const {signer} of stale.manifest.signerNonces) assert.equal(await ctx.factory.nonces(signer),0n);
 
   const incomplete=await finalizedManifest(ctx,{mission:'incomplete'});
   const incompleteApprovals=signApprovals(ctx,incomplete.manifest).slice(1);
-  await assert.rejects((await ctx.factory.deployVault(incomplete.manifest,incompleteApprovals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(incomplete.manifest,incompleteApprovals,ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
 
   const expiredBase=await finalizedManifest(ctx,{mission:'expired'});
   const expiredInput={...expiredBase.input,expiry:'1'};
   const expired=canonicalizeLaunchManifest(expiredInput);
-  await assert.rejects((await ctx.factory.deployVault(expired,signApprovals(ctx,expired),ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(expired,signApprovals(ctx,expired),ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
 
   const bounded=await finalizedManifest(ctx,{mission:'bounded'});
   const members=Array.from({length:9},(_,index)=>({...bounded.input.members[0],tokenId:String(index+1),canonicalAccount:ethers.getAddress('0x'+(1000+index).toString(16).padStart(40,'0'))}));
   const oversized=canonicalizeLaunchManifest({...bounded.input,members});
-  await assert.rejects((await ctx.factory.deployVault(oversized,[],ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait());
+  await assert.rejects((await ctx.factory.deployVault(oversized,[],ctx.vault.bytecode,{gasLimit:8_000_000})).wait());
   assert.equal(await ctx.provider.getCode(bounded.manifest.predictedVault),'0x');
 });
 
 test('accepts ERC-1271 while a callback cannot reenter or consume state',async()=>{
   const ctx=await setup();
-  const callbackData=ctx.factory.interface.encodeFunctionData('deployVault',[await finalizedManifest(ctx,{mission:'dummy'}).then(x=>x.manifest),[],ctx.vault.bytecode,'0x']);
+  const callbackData=ctx.factory.interface.encodeFunctionData('deployVault',[await finalizedManifest(ctx,{mission:'dummy'}).then(x=>x.manifest),[],ctx.vault.bytecode]);
   const wallet1271=await new ethers.ContractFactory(ctx.callback.abi,ctx.callback.bytecode,ctx.deployer).deploy(ctx.wallets[6].address,ctx.factory.target,callbackData);
   await wallet1271.waitForDeployment();
   const {manifest}=await finalizedManifest(ctx,{mission:'erc1271',settlement:wallet1271.target});
   const owners=new Map([[wallet1271.target.toLowerCase(),ctx.wallets[6]]]);
   const approvals=signApprovals(ctx,manifest,owners);
-  await (await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,'0x',{gasLimit:8_000_000})).wait();
+  await (await ctx.factory.deployVault(manifest,approvals,ctx.vault.bytecode,{gasLimit:8_000_000})).wait();
   assert.equal(await ctx.factory.nonces(wallet1271.target),1n);
   assert.equal(await ctx.provider.getCode(manifest.predictedVault),ctx.vault.deployedBytecode);
 });
