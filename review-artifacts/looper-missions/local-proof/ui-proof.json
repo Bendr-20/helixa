@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-10-16T23:19:08.430Z",
+  "results": [
+    {
+      "width": 1200,
+      "file": "swarm-command-1200.png",
+      "documentOverflow": 0,
+      "bodyOverflow": 0,
+      "focusTag": "BUTTON",
+      "buttonCount": 11
+    },
+    {
+      "width": 390,
+      "file": "swarm-command-390.png",
+      "documentOverflow": 0,
+      "bodyOverflow": 0,
+      "focusTag": "BUTTON",
+      "buttonCount": 11
+    },
+    {
+      "width": 320,
+      "file": "swarm-command-320.png",
+      "documentOverflow": 0,
+      "bodyOverflow": 0,
+      "focusTag": "BUTTON",
+      "buttonCount": 11
+    }
+  ]
+}

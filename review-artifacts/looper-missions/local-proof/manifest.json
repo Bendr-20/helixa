@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "product": "Swarm Command",
+  "generatedAt": "2026-10-16T23:19:08.468Z",
+  "commit": "969956d2344268a1be986b5637635c374cc20d46",
+  "status": "local_gates_passed_external_actions_blocked",
+  "commands": [
+    {
+      "name": "mission-api",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "5586c1f5f6aa3e4fc94ccc6fbc8cadc3c0496c0ac8372723e50dc48ca8a5b539"
+    },
+    {
+      "name": "mission-web",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "e91e404176abdb575c1d65a240d9bd44a8c3a324298d84a3caf4d1836dc240c9"
+    },
+    {
+      "name": "mission-contracts",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "7868f7194e736f78bcf6e305f2563e67c91037c132249f323dceddd205953cf6"
+    },
+    {
+      "name": "mission-compile",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "8b06aa5f39e3f4cc3d95034fe7c56719259d3abcad6a27c6cbcb93a6f09a93e1"
+    },
+    {
+      "name": "forge-invariants",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "01af09ef5d72726f59c1ace9542e51e530ca9ff2d9dbcb530f9ed5aecb321310"
+    },
+    {
+      "name": "web-build",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "c875a3a11585c51e7fbd52ac423ac3b42ebb6580e562ce8c34145c4b3b3a35c3"
+    },
+    {
+      "name": "ui-proof",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "72f2a7923a1cc418896603240ddcd7b51237f9cbad7a9c60070a3aa093e6e639"
+    },
+    {
+      "name": "diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secret-scan",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "1329bed5a664bbf035723754d90023adf1034d44b942c070a37741a1b762d35c"
+    }
+  ],
+  "externalBoundaries": [
+    {
+      "name": "pinned-id-agents-source",
+      "status": "passed",
+      "commit": "766d8f566386a020f0b8b5489beb6a2c6132d5d7",
+      "packageHash": "4b68881374d8c17181e3c6a8706df670b7d26941bb8a8b1b695e601c7d2e9a02"
+    },
+    {
+      "name": "legacy-full-regression-fixture",
+      "status": "blocked",
+      "reason": "Full suite is otherwise green after web-gate repair; looper-agent-account-release.test.mjs requires missing external /tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json with pinned SHA-256."
+    },
+    {
+      "name": "real-xmtp-dev-group",
+      "status": "blocked",
+      "reason": "Requires explicit authorization to create an external XMTP group with a bridge identity."
+    },
+    {
+      "name": "base-testnet-deployment",
+      "status": "blocked",
+      "reason": "Separate review and explicit approval required before deployment or funding."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "review-artifacts/looper-missions/local-proof/implementation-review.md",
+      "bytes": 2665,
+      "sha256": "1f9699fc718dbbbf634a3b96454768f0042f54fa7c5ffc6e32e8f5aa827d5e55"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-1200.png",
+      "bytes": 198501,
+      "sha256": "c3c48210a1662f7a7bba9a8ac7a898fa9ee508832d0384f635c0054991689455"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-320.png",
+      "bytes": 177451,
+      "sha256": "2202dd5eaf10b45e21852fcd7c5fb028af713cdf3bb2b8f8e82b9c0d7836290d"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-390.png",
+      "bytes": 178010,
+      "sha256": "c9ea405f1393888ce6329301eb1425313390813658a4c44ea894d2eb6541cad8"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/ui-proof.json",
+      "bytes": 603,
+      "sha256": "7c4473f325689652264ec3fd8fdb5280bf32623253e8e377680aacff178577f9"
+    }
+  ],
+  "coverage": {
+    "lifecycle": [
+      "create",
+      "publish",
+      "select",
+      "fund",
+      "launch",
+      "tasks",
+      "artifacts",
+      "approve",
+      "release",
+      "dispute",
+      "refund"
+    ],
+    "failurePaths": [
+      "partial_funding",
+      "ambiguous_vault",
+      "runtime_timeout",
+      "room_ambiguity",
+      "custody_transfer",
+      "reorg",
+      "arbitrator_timeout",
+      "restart_recovery"
+    ]
+  }
+}

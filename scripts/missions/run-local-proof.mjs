@@ -21,9 +21,9 @@ const commands=[
  ['diff-check',['git','diff','--check']],
 ];
 const results=[];
-for(const [name,args] of commands){const [command,...rest]=args;const run=spawnSync(command,rest,{cwd:root,encoding:'utf8',env:{...process.env,CHROMIUM_PATH:process.env.CHROMIUM_PATH||'/snap/bin/chromium'},maxBuffer:16*1024*1024});const combined=(run.stdout||'')+(run.stderr||'');results.push({name,status:run.status===0?'passed':'failed',exitCode:run.status,outputSha256:sha256(combined),outputTail:combined.slice(-4000)});if(run.status!==0)break;}
+for(const [name,args] of commands){const [command,...rest]=args;const run=spawnSync(command,rest,{cwd:root,encoding:'utf8',env:{...process.env,CHROMIUM_PATH:process.env.CHROMIUM_PATH||'/snap/bin/chromium'},maxBuffer:16*1024*1024});const combined=(run.stdout||'')+(run.stderr||'');results.push({name,status:run.status===0?'passed':'failed',exitCode:run.status,outputSha256:sha256(combined)});if(run.status!==0)break;}
 const scan=await scanMissionSources();
-results.push({name:'secret-scan',status:scan.matches.length===0?'passed':'failed',exitCode:scan.matches.length===0?0:1,outputSha256:sha256(JSON.stringify(scan)),outputTail:JSON.stringify(scan)});
+results.push({name:'secret-scan',status:scan.matches.length===0?'passed':'failed',exitCode:scan.matches.length===0?0:1,outputSha256:sha256(JSON.stringify(scan))});
 const release=JSON.parse(await readFile(path.join(root,'apps/api/src/missions/id-agents-release.json'),'utf8'));
 const external=[];
 const idAgentsSource=process.env.ID_AGENTS_SOURCE||'/tmp/id-agents-pin';

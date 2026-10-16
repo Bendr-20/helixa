@@ -506,20 +506,22 @@ Commit: `git add apps/web && git commit -m "feat: add mission workspace and sett
 
 The script must create/publish/select, deploy/fund both mock assets, launch one real pinned local ID Agents team, create/recover one XMTP dev group, execute tasks/artifacts, dual-approve/release exact payouts, exercise dispute and refund paths, and emit a manifest of hashes/transactions/test results/screenshots.
 
-- [ ] **Step 2: Rehearse failure paths**
+**[blocked]** Deterministic local lifecycle, runtime containment, recovery, escrow, and UI proof pass. Creating a real external XMTP dev group needs explicit authorization and a bridge identity; Base testnet deployment/funding has its own explicit approval gate.
+
+- [x] **Step 2: Rehearse failure paths**
 
 Include partial funding, ambiguous vault creation, runtime timeout, room ambiguity, custody transfer, reorg simulation, arbitrator unavailable until timeout, and restart recovery.
 
-- [ ] **Step 3: Run full gates**
+- [x] **Step 3: Run full gates**
 
 Run: `pnpm test`, `pnpm web:build`, contract compile/unit tests, Foundry fuzz/invariants, mission local proof, syntax/diff checks, and a secret/path scan.  
-Expected: all required gates PASS; any unavailable external environment is recorded as a named blocker, not waived.
+Expected: all required gates PASS; any unavailable external environment is recorded as a named blocker, not waived. Mission/API/web/contract/Foundry/build/browser/diff/secret gates pass. The repository-wide suite reached 2,124/2,128 before two repaired web expectations; the sole remaining unrelated blocker is the missing hash-pinned legacy `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json` fixture.
 
-- [ ] **Step 4: Perform direct implementation review**
+- [x] **Step 4: Perform direct implementation review**
 
 Because subagents are currently disabled by user preference, review the diff directly against every specification acceptance criterion and record evidence paths in the proof packet. If Quigley re-enables subagents, add independent contract and implementation review before testnet.
 
-- [ ] **Step 5: Commit proof package**
+- [x] **Step 5: Commit proof package**
 
 `git add scripts/missions docs/runbooks review-artifacts/looper-missions && git commit -m "test: prove Looper Missions local lifecycle"`
 
@@ -527,11 +529,11 @@ Because subagents are currently disabled by user preference, review the diff dir
 
 ## Final verification checklist
 
-- [ ] Every acceptance criterion in the approved specification has a test or proof artifact.
-- [ ] No mainnet deployment or real-fund action was performed.
-- [ ] Contract authority never follows mutable Looper NFT ownership.
-- [ ] Runtime/XMTP text cannot mutate escrow or authoritative mission state.
-- [ ] Existing vault execution cannot be changed by registry/factory/admin evolution.
-- [ ] All retryable operations reconcile before create/send/deposit.
-- [ ] Public projections and logs contain no secrets, private content, or internal topology.
-- [ ] Full regression, build, contract, browser, and secret-scan gates pass.
+- [ ] Every acceptance criterion in the approved specification has a test or proof artifact. **[blocked]** Real external XMTP dev-group proof and Base testnet proof require the explicit authorization boundaries above.
+- [x] No mainnet deployment or real-fund action was performed.
+- [x] Contract authority never follows mutable Looper NFT ownership.
+- [x] Runtime/XMTP text cannot mutate escrow or authoritative mission state.
+- [x] Existing vault execution cannot be changed by registry/factory/admin evolution.
+- [x] All retryable operations reconcile before create/send/deposit.
+- [x] Public projections and logs contain no secrets, private content, or internal topology.
+- [ ] Full regression, build, contract, browser, and secret-scan gates pass. **[blocked]** Mission-scoped gates all pass; the full repository gate still requires the external hash-pinned legacy preview fixture named above.
