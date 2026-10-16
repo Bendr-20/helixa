@@ -50,6 +50,7 @@ logs/
 !apps/web/public/og-preview.png
 !apps/web/public/share/*.png
 !apps/web/public/share/*.jpg
+!review-artifacts/looper-missions/local-proof/*.png
 
 # local assistant/workspace files
 MEMORY.md
