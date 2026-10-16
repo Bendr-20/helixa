@@ -62,6 +62,7 @@ export interface MultipassApiOptions {
   store: MemoryStore;
   baseUrl?: string;
   savedRecords?: SavedRecordsStore;
+  missionService?: MissionService;
   activationService?: (agent: string) => Promise<unknown> | unknown;
   allowedOrigins?: string[];
   adminSecret?: string | null;
@@ -137,5 +138,55 @@ export interface ApiErrorBody {
   };
 }
 
+export interface MissionMutationCommand {
+  actorAddress: string;
+  missionId?: string;
+  applicationId?: string;
+  milestoneId?: string;
+  expectedRevision: number;
+  idempotencyKey: string;
+  input: Record<string, unknown>;
+}
+
+export interface MissionService {
+  listPublicMissions(query?: { state?: string | null; cursor?: string | null; limit?: number }): Promise<{ missions: readonly unknown[]; nextCursor: string | null }> | { missions: readonly unknown[]; nextCursor: string | null };
+  getPublicMission(input: { missionId: string }): Promise<unknown> | unknown;
+  createMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  updateMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  publishMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  cancelMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  applyToMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  withdrawApplication(input: MissionMutationCommand): Promise<unknown> | unknown;
+  selectTeam(input: MissionMutationCommand): Promise<unknown> | unknown;
+  readLaunchTerms(input: { missionId: string; actorAddress: string }): Promise<unknown> | unknown;
+  signLaunchTerms(input: MissionMutationCommand): Promise<unknown> | unknown;
+  fundMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  reconcileMission(input: MissionMutationCommand): Promise<unknown> | unknown;
+  readWorkspace(input: { missionId: string; actorAddress: string }): Promise<unknown> | unknown;
+  createTask(input: MissionMutationCommand): Promise<unknown> | unknown;
+  submitArtifact(input: MissionMutationCommand): Promise<unknown> | unknown;
+  approveMilestone(input: MissionMutationCommand): Promise<unknown> | unknown;
+  releaseMilestone(input: MissionMutationCommand): Promise<unknown> | unknown;
+  openDispute(input: MissionMutationCommand): Promise<unknown> | unknown;
+  readDispute(input: { missionId: string; milestoneId: string; disputeId: string; actorAddress: string }): Promise<unknown> | unknown;
+}
+
+export interface MissionServiceDependencies {
+  repository: Record<string, unknown>;
+  custody?: Record<string, unknown>;
+  chain?: Record<string, unknown>;
+  runtime?: Record<string, unknown>;
+  xmtp?: Record<string, unknown>;
+}
+
+export class MissionServiceError extends Error {
+  code: string;
+  status: number;
+}
+
+export const MISSION_REQUEST_MAX_BYTES: number;
+export function createMissionService(dependencies: MissionServiceDependencies): MissionService;
+export function projectPublicMission(value: Record<string, unknown>): Readonly<Record<string, unknown>>;
+export function projectPrivateMission(value: unknown): unknown;
 export function createMemoryStore(input?: MemoryStoreInput): MemoryStore;
 export function createMultipassApi(options: MultipassApiOptions): MultipassApi;

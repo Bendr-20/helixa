@@ -76,6 +76,11 @@ import {
 } from './tool-manifest.js';
 import { deriveX401ManifestFromFragments } from './x401-manifest.js';
 import { createDeferredXmtpAgentClient } from './xmtp-agent/index.js';
+import { handleMissionRequest } from './missions/routes.js';
+
+export {
+  createMissionService, MissionServiceError, MISSION_REQUEST_MAX_BYTES, projectPrivateMission, projectPublicMission,
+} from './missions/index.js';
 
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
@@ -225,6 +230,7 @@ export function createMultipassApi({
   store,
   baseUrl,
   savedRecords,
+  missionService,
   activationService,
   allowedOrigins,
   adminSecret,
@@ -371,6 +377,7 @@ export function createMultipassApi({
   const context = {
     store,
     savedRecords,
+    missionService: missionService ?? null,
     activationService,
     normalizedBaseUrl,
     allowedOrigins: normalizeAllowedOrigins(allowedOrigins, normalizedBaseUrl),
@@ -439,6 +446,12 @@ export function createMultipassApi({
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
         const method = request.method.toUpperCase();
+
+        const missionResponse = await handleMissionRequest(request, {
+          service: context.missionService,
+          authenticate: (missionRequest, options) => requireConsoleSession(missionRequest, context, options),
+        });
+        if (missionResponse) return missionResponse;
 
         const restapResponse = await handleRestap3802Request(request, url, method, context);
         if (restapResponse) return restapResponse;
