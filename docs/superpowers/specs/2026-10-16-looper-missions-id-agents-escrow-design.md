@@ -1,0 +1,810 @@
+# Looper Missions: ID Agents Swarms, XMTP Rooms, and Base Escrow Design
+
+**Date:** 2026-10-16  
+**Status:** Approved in chat; pending independent specification review  
+**Scope:** Marketplace missions, wallet-bound Looper teams, ID Agents execution, XMTP swarm rooms, immutable versioned escrow vaults, USDC/$CRED settlement, and CRED outcome evidence
+
+## Goal
+
+Ship a visible, useful Looper coordination marketplace inside Multipass Console. A wallet holder posts a funded mission, recruits wallet-bound Loopers, forms a team, launches an isolated ID Agents swarm and private XMTP room, reviews artifacts, and settles real Base USDC, $CRED, or both through bounded non-custodial escrow.
+
+The MVP must use Premm's open-source ID Agents core and its native RESTAP/task concepts wherever they fit. Multipass must not rebuild a second general swarm engine. Helixa adds the marketplace, identity binding, authenticated gateway, escrow lifecycle, evidence, and owner-facing Console surfaces that ID Agents does not provide.
+
+The product must not treat chat text, model claims, token amounts, or a task status alone as proof of completion. Funds move only under the escrow contract's explicit authorization rules. CRED receives verified outcome evidence after final settlement; paying or staking more does not buy reputation.
+
+## Product decisions
+
+1. The MVP is a public marketplace rather than an admin-only pilot.
+2. A mission may be funded in canonical Base USDC, canonical Base $CRED, or both.
+3. Funds are real and onchain from the first release. Simulated balances are not labeled funded.
+4. A mission launches only after the full declared bounty is confirmed in escrow and the selected team accepts its immutable launch terms.
+5. Normal milestone release requires both the mission owner and lead Looper controller.
+6. Either party may dispute an unpaid milestone. A Helixa arbitration Safe may resolve only among predeclared recipients and the original refund address.
+7. Existing funded vaults are immutable. Evolution happens through versioned immutable vault templates behind an evolvable registry/factory surface.
+8. One funded mission maps to one isolated ID Agents manager/team/workspace for the hosted MVP.
+9. Each launched mission receives one private XMTP swarm room using Multipass's existing production XMTP group transport.
+10. XMTP coordinates humans and agents; the Helixa mission ledger and escrow contract remain authoritative for tasks, approvals, and settlement.
+11. Initial participation is limited to verified wallet-bound Loopers. ID Agents public-agent support is a later extension.
+12. Mainnet deployment and production money movement remain separately gated by contract review, testnet rehearsal, and explicit release approval.
+
+## Approaches considered
+
+### ID Agents as the primary swarm runtime — selected
+
+Pin and run the MIT-licensed ID Agents core. Use its manager, teams, isolated workspaces, task API, RESTAP messaging, news, outputs, artifacts, schedules, and supported Codex/Claude/Cursor runtimes. Multipass reaches it only through a typed authenticated gateway.
+
+**Benefits:** aligns with the standards already used by Loopers; avoids rebuilding orchestration; preserves compatibility with RESTAP, OWS, skills, public agents, and Premm's evolving runtime; gives Console a proven manager-worker core.
+
+**Trade-off:** the public ID Agents manager API is intentionally local and unauthenticated. Hosted marketplace use therefore requires containment and a narrow gateway. Stable production embedding and XMTP group semantics should be reviewed with Premm, but neither blocks building the MVP integration against the open-source core.
+
+### Build a Helixa-native swarm engine
+
+**Rejected:** duplicates ID Agents, fragments the standards stack, delays visible product value, and recreates task/message/runtime problems already solved upstream.
+
+### Use ID Agents only as inspiration
+
+**Rejected:** produces another proprietary coordination path and fails the product direction to use Premm's stack whenever possible.
+
+## Terms and actors
+
+- **Mission owner:** wallet that creates and funds a mission. It is the immutable refund authority for that mission version.
+- **Looper:** canonical collection token plus its verified ERC-6551 account, current owner/controller evidence, custody epoch, Multipass identity, and runtime registration.
+- **Lead Looper:** selected team lead. The escrow records the exact lead approval address; it must differ from the mission owner.
+- **Contributor:** selected Looper with a predeclared payout address and mission role.
+- **Recipient:** contributor payout address recorded before funding. In the MVP it is normally the Looper's canonical ERC-6551 account.
+- **Arbitrator:** a Helixa-controlled Safe multisig address. It has only bounded dispute resolution authority.
+- **Mission gateway:** private authenticated service translating typed Multipass actions into bounded ID Agents manager calls.
+- **Swarm bridge:** service identity included in the XMTP room to post selected runtime events and ingest explicitly structured room commands.
+- **Mission ledger:** canonical offchain state, append-only event history, artifacts, applications, ID Agents bindings, XMTP binding, and onchain reconciliation state.
+- **Vault:** immutable per-mission escrow clone bound to one versioned immutable implementation.
+
+## High-level architecture
+
+### Multipass Console
+
+Provides:
+
+- public mission board;
+- mission creation and funding UX;
+- Looper applications and team selection;
+- payout and milestone review;
+- launch status;
+- mission workspace with tasks, agents, artifacts, blockers, approvals, XMTP room, and settlement state;
+- dispute and refund actions;
+- transaction and outcome receipts.
+
+The browser never calls ID Agents directly and never receives manager credentials, runtime credentials, bridge keys, escrow admin keys, or raw internal service paths.
+
+### Multipass API and mission ledger
+
+Provides:
+
+- authenticated mission commands;
+- exact state-machine transitions with optimistic version checks;
+- Looper identity and custody-epoch verification;
+- onchain escrow reconciliation;
+- typed mission-gateway requests;
+- XMTP room creation/recovery through the existing node SDK adapter;
+- artifact hashing and immutable receipt assembly;
+- bounded public projections and private current-party projections;
+- CRED evidence publication after final settlement.
+
+### ID Agents core
+
+The pinned upstream core provides:
+
+- one local manager daemon per hosted mission;
+- one named team and mission-scoped workspace;
+- agent deployment and lifecycle;
+- task creation, assignment, claiming, and completion;
+- RESTAP /talk, /news, /talk-to, and /news-to behavior;
+- agent output and artifact retrieval;
+- schedules and heartbeats when enabled;
+- compatible Codex, Claude Code, and Cursor runtimes.
+
+Multipass does not expose a generic pass-through to ID Agents /remote. Only reviewed typed gateway operations are available.
+
+### XMTP swarm room
+
+Multipass already supports production XMTP groups through the node SDK, including group creation by identifiers, canonical conversation binding, message identity, recovery, and browser wallet registration. The mission integration reuses that adapter rather than ID Agents' current direct-message XMTP skill.
+
+The room includes:
+
+- mission owner;
+- lead Looper address;
+- contributor Looper addresses;
+- the swarm bridge service identity;
+- optional predeclared reviewer identities.
+
+The first MVP creates the room only after funding and team acceptance. Membership is fixed for that mission version. A material team change requires cancellation before launch or a successor mission/room; the system does not silently mutate the funded participant set.
+
+### Base escrow
+
+A version registry approves immutable vault implementation versions for new missions. A factory deploys deterministic EIP-1167 clones or full immutable vault instances. Each vault is initialized exactly once and snapshots its implementation version, implementation code hash, terms hash, parties, tokens, milestones, recipients, and deadlines.
+
+The registry or factory may evolve for new missions. No registry, factory, proxy admin, pause key, or arbitrator can change executable behavior, recipients, or allocations in an already created vault.
+
+## Mission lifecycle
+
+Canonical states:
+
+`draft -> recruiting -> team_selected -> funding -> funded -> launching -> active -> review -> settled`
+
+Exceptional terminal or side states:
+
+- `cancelled`
+- `launch_failed`
+- `disputed`
+- `refunded`
+
+### Draft
+
+The creator defines:
+
+- title and bounded public summary;
+- full mission specification;
+- required capabilities and roles;
+- application close time;
+- target launch deadline;
+- milestone titles, acceptance criteria, review windows, and amounts;
+- Base USDC and/or $CRED bounty;
+- intended maximum team size;
+- refund address;
+- disclosure and content policy.
+
+Draft data is editable by the owner and has no funding authority.
+
+### Recruiting
+
+The owner publishes the mission. Verified wallet-bound Loopers may apply. Each application binds:
+
+- chain, collection, token ID, canonical account, current owner/controller, and custody epoch;
+- proposed role;
+- public capability claims backed by current Multipass/CRED evidence;
+- availability and runtime preference;
+- requested payout address, which must match the canonical Looper account in the MVP;
+- application signature and expiry.
+
+Applications are not credit decisions. CRED and evidence help selection but cannot guarantee performance.
+
+### Team selected
+
+The owner selects:
+
+- one lead Looper;
+- contributors;
+- exact recipient addresses;
+- role labels;
+- milestone payout allocations per token;
+- mission terms hash.
+
+The owner and every selected participant sign the same canonical launch manifest. The manifest includes all identities, custody epochs, payout addresses, token addresses, raw integer amounts, deadlines, milestone artifact rules, ID Agents release pin, and XMTP room policy.
+
+The owner and lead approval addresses must differ. The MVP does not permit post-funding allocation amendments. A desired change requires cancel/recreate before funding or a successor mission after consented refund. Later vault versions may add unanimous amendments under a separate review.
+
+### Funding
+
+The factory creates the vault from the signed manifest. The owner funds one or both approved tokens. Funding uses exact raw token units; UI decimal rendering is informational and derived only from the pinned token configuration.
+
+The vault is `funded` only when every declared token balance exactly equals its declared total. Underfunding remains pending. Overfunding is rejected. Fee-on-transfer, rebasing, callback-dependent, or balance-changing token behavior is rejected by exact before/after balance checks and the fixed token allowlist.
+
+### Launching
+
+After confirmed funding:
+
+1. Mission API reserves one idempotent launch operation.
+2. The gateway creates an isolated ID Agents manager/team/workspace from a deterministic mission config.
+3. It verifies manager health, exact pinned release, expected agent roster, task API, and workspace isolation.
+4. Multipass creates the private XMTP group with the exact manifest participants and bridge identity.
+5. It recovers the created conversation, verifies membership, and binds the conversation ID to the mission.
+6. Initial milestones/tasks are created in ID Agents with deterministic mission/task IDs.
+7. The API records runtime, room, and task commitments.
+8. Owner and lead approve the onchain launch commitment.
+9. Only after both launch approvals does the mission become `active` and agents receive executable work.
+
+If any step fails, the mission becomes `launch_failed`; no agent work starts. Retry uses the same launch idempotency key and reconciles existing manager/team, room, and task state before creating anything. After the launch deadline and grace period, the owner may call the vault's bounded unlaunched refund path if dual launch approval never completed.
+
+### Active execution
+
+The lead decomposes milestones into tasks. Tasks have:
+
+- deterministic mission-scoped ID;
+- title and bounded instructions;
+- assigned agent or unassigned state;
+- dependency IDs;
+- status `todo | doing | blocked | review | done | cancelled` in the Helixa ledger;
+- corresponding ID Agents task name and status where applicable;
+- artifact requirements;
+- revision and idempotency key.
+
+ID Agents remains the execution runtime. Helixa's richer task projection wraps, but does not falsify, the upstream `todo | doing | done` lifecycle. `blocked`, `review`, and `cancelled` are mission-ledger states with explicit mapping and must not be presented as native ID Agents states.
+
+Selected runtime updates are posted to XMTP as structured informational events. Messages contain mission ID, task ID where applicable, event type, actor, timestamp, and deduplication ID. They set `noAutoReply` or equivalent bridge behavior so system events cannot trigger reply loops.
+
+### Review and settlement
+
+For each milestone:
+
+1. The lead submits a final artifact commitment: content hash, artifact manifest hash, URI/reference, and task receipt set.
+2. The owner approves the exact artifact and immutable payout commitment.
+3. The lead approves the same artifact and payout commitment.
+4. Anyone may execute release after both approvals.
+5. The vault pays recipients directly according to the predeclared allocations.
+6. The indexer records transaction/log finality and emits a signed outcome receipt.
+7. CRED receives verified outcome evidence only after final settlement.
+
+A task marked done, an XMTP message saying done, or an artifact uploaded without dual approval cannot release funds.
+
+### Dispute
+
+Before release, the owner or lead may dispute a milestone. Dispute freezes only that unpaid milestone. Other independent milestones may proceed unless the manifest marks them dependent.
+
+The arbitrator may resolve each token amount only among:
+
+- the milestone's predeclared recipient addresses;
+- the mission's immutable refund address.
+
+The resolution amounts must sum exactly to the disputed milestone balance and cannot exceed escrowed funds. The arbitrator cannot add addresses, change tokens, charge a fee, seize unrelated balances, or modify released milestones.
+
+The arbitrator address is a Safe multisig. Arbitration operations are public onchain and require a reason/evidence hash. The Helixa ledger stores the human-readable decision separately with privacy filtering.
+
+### Completion
+
+A mission becomes `settled` only after every milestone is released, refunded, or resolved and the indexer observes finalized events. Remaining accidental unsupported-token transfers are not counted as mission funds and require a separately reviewed recovery posture; the v1 contract exposes no general admin sweep for supported mission assets.
+
+## Escrow contract design
+
+### VersionRegistry
+
+The registry is the evolvable control plane for new missions only. It stores:
+
+- version ID;
+- immutable implementation address;
+- implementation runtime code hash;
+- activation and retirement times;
+- status `pending | active | paused | retired`;
+- exact supported token addresses for that version;
+- factory compatibility version.
+
+Governance is a Safe multisig plus timelock for routine version activation and token-list changes. Emergency pause may stop new vault creation immediately. Governance cannot call or mutate existing vault payout state.
+
+The registry may be UUPS-upgradeable only if storage-layout, initializer, authorization, and upgrade-history tests pass. A replaceable immutable registry is also acceptable. In both cases, a vault snapshots its template address and code hash and never consults mutable registry values for release or refund behavior.
+
+### MissionEscrowFactory
+
+The factory:
+
+- checks the selected active version and exact implementation code hash;
+- verifies canonical manifest fields and bounds;
+- derives deterministic salt from chain ID, owner, user nonce, and terms hash;
+- deploys a vault;
+- initializes it once;
+- emits the complete vault/version/terms commitment;
+- prevents duplicate creation.
+
+The factory holds no mission funds and cannot execute a vault action. Replacing or upgrading it affects only future vault creation.
+
+### MissionEscrowV1
+
+The immutable implementation uses:
+
+- Solidity 0.8.24 or later reviewed compiler pin;
+- OpenZeppelin SafeERC20, SignatureChecker, ReentrancyGuard, and EIP-712 primitives where applicable;
+- one-time initializer guard for clones;
+- pull-free direct milestone distribution under reentrancy protection;
+- exact token balance accounting;
+- bounded arrays and explicit custom errors;
+- no delegatecall, arbitrary call, selfdestruct, fallback execution, admin withdrawal, or generic sweep.
+
+V1 bounds are constants reviewed before deployment:
+
+- at most 2 supported assets;
+- at most 8 recipients;
+- at most 12 milestones;
+- at most 8 payouts per asset per milestone;
+- nonzero amounts and addresses;
+- payout totals exactly matching declared milestone amounts;
+- total milestone amounts exactly matching declared funding totals;
+- bounded launch, review, and dispute deadlines.
+
+If product testing needs larger teams, a new reviewed vault version changes the bounds; an active V1 vault does not.
+
+### Signatures and smart wallets
+
+Owner and lead approvals may be direct transactions or EIP-712 authorizations. Relayed authorizations include chain ID, vault address, action, milestone ID, artifact hash, payout commitment, nonce, and deadline. Verification uses SignatureChecker so EOA ECDSA and ERC-1271 smart-wallet signatures are both supported.
+
+Nonces are per signer and action domain. Expired, replayed, cross-chain, cross-vault, wrong-milestone, wrong-artifact, or wrong-payout signatures fail closed. The escrow never accepts a claimed Looper token ID as authority; only the exact manifest approval addresses and valid signatures count.
+
+### Token rules
+
+The deployment configuration pins canonical Base USDC and $CRED addresses and expected code hashes from live verified sources. These values are not guessed or copied from UI metadata. Before mainnet release, two approved RPC providers and a block explorer must agree on address, code, symbol/decimals metadata, and current implementation where a token itself is proxied.
+
+Onchain accounting uses raw integer units only. It never assumes both assets use the same decimals. Token amount is score-neutral.
+
+### Required events
+
+At minimum:
+
+- `MissionVaultCreated`
+- `FundingReceived`
+- `MissionFullyFunded`
+- `LaunchApproved`
+- `MissionActivated`
+- `ArtifactCommitted`
+- `MilestoneApproved`
+- `MilestoneDisputed`
+- `MilestoneReleased`
+- `DisputeResolved`
+- `MissionRefunded`
+- `MissionSettled`
+
+Every event carries the vault/mission commitment and bounded indexed identifiers needed for deterministic reconciliation, without putting private mission content onchain.
+
+## Mission ledger
+
+Use a dedicated SQLite database or dedicated STRICT tables in the existing canonical API database, with WAL, foreign keys, busy timeout, integrity checks, bounded backups, and one transaction coordinator for each state transition.
+
+Core records:
+
+- missions and revisions;
+- public/private mission specifications and terms hashes;
+- applicants and signed applications;
+- selected members, roles, custody epochs, and payout addresses;
+- milestones, payout commitments, review windows, and dependencies;
+- vault versions, addresses, creation/funding/release transactions, block numbers, hashes, and confirmation state;
+- launch operations and idempotency records;
+- ID Agents release pin, manager instance, team, agents, tasks, health, and artifact bindings;
+- XMTP conversation binding, expected members, bridge identity, and deduplication state;
+- append-only mission events;
+- disputes, evidence hashes, decisions, and final receipts;
+- CRED evidence publication status.
+
+Private task instructions, XMTP bodies, model prompts, provider credentials, wallet keys, manager tokens, and bridge secrets do not enter the mission ledger. XMTP remains the encrypted message store. Artifact contents remain in the mission workspace or approved object storage; the ledger stores commitments and bounded metadata.
+
+All state-changing requests require an idempotency key and expected mission revision. The same key/body returns the original result. The same key with changed canonical body is rejected. No partial transaction may advance a mission without the corresponding durable operation record.
+
+## Identity and custody behavior
+
+At application, team selection, funding, launch, task assignment, artifact acceptance, and CRED publication, Multipass resolves fresh:
+
+- chain and collection;
+- token existence;
+- canonical ERC-6551 account and expected runtime code;
+- current owner/controller;
+- custody epoch;
+- current runtime activation status;
+- current eligibility/blocked state.
+
+Selected identity and payout terms snapshot the custody epoch. A later transfer or controller change:
+
+- prevents new task assignment and new agent work for that Looper;
+- posts a bounded participant-change alert;
+- pauses affected milestone review;
+- requires dispute/refund resolution under existing payout destinations;
+- never silently transfers contribution evidence to a new custody epoch.
+
+The contract cannot rewrite predeclared recipients after a transfer. If the payout address is the Looper account, control of that address may follow the NFT. Console must disclose this before funding. CRED evidence for completed pre-transfer work binds the contribution-time custody epoch and settlement event, not merely the current NFT owner.
+
+## ID Agents integration
+
+### Release pin
+
+The repository commit, package version, MIT license notice, configuration schema version, RESTAP version, and relevant source hashes are pinned in the mission-runtime release manifest. Runtime startup fails if the installed core differs.
+
+### Private deployment
+
+Each hosted mission runs in a rootless disposable container or equivalently isolated unit with:
+
+- manager and worker ports bound to loopback/private namespace only;
+- no public ingress;
+- dedicated non-root UID;
+- read-only root filesystem plus mission workspace/output mounts;
+- no host Docker socket, SSH agent, cloud metadata access, home directory, or unrelated repositories;
+- dropped Linux capabilities, no-new-privileges, seccomp/AppArmor policy where available;
+- CPU, memory, process, file, runtime, inference, and disk quotas;
+- explicit egress allowlist;
+- per-mission logs and kill switch;
+- no escrow, arbitrator, deployer, or general treasury signing key.
+
+ID Agents defaults that bypass interactive runtime permissions are acceptable only inside this bounded container and only for mission-scoped tools. A worker must not inherit unrestricted host access merely because its CLI runtime uses a force/bypass flag.
+
+Hosted model credentials must be dedicated, restricted, and revocable. Personal operator sessions are not copied into mission containers. Production launch is blocked until provider authentication and terms permit the intended hosted use and per-mission cost attribution.
+
+### Typed mission gateway
+
+The gateway authenticates Multipass with mutually authenticated local transport or a short-lived signed service grant. It exposes typed operations such as:
+
+- `provisionMissionTeam`
+- `readMissionHealth`
+- `createMissionTask`
+- `assignMissionTask`
+- `sendMissionInstruction`
+- `readMissionNews`
+- `listMissionOutputs`
+- `readMissionArtifact`
+- `pauseMission`
+- `terminateMission`
+
+Each operation binds mission ID, manager instance ID, expected release, exact team/agent/task names, canonical body hash, nonce, issue/expiry times, and idempotency key. The gateway maps these to the smallest supported ID Agents /remote, /tasks, /news, /output, or /artifact call.
+
+It rejects arbitrary commands, shell strings, traversal, unknown agents, cross-mission identifiers, unbounded artifacts, non-loopback manager URLs, and stale grants. Manager /remote remains unauthenticated only inside its isolated private namespace.
+
+### Polling and events
+
+The current upstream core exposes REST/task/news reads rather than a stable external event stream. The MVP uses bounded polling with cursors, ETags/hashes where available, jitter, backoff, and per-mission budgets. It emits normalized mission events only after validating the expected manager/team/task binding.
+
+If upstream adds a stable event stream, a later adapter may replace polling without changing the mission event contract.
+
+### Artifact boundary
+
+Agents write to the mission output directory. Gateway artifact reads:
+
+- resolve beneath the exact mission output root;
+- reject symlinks, devices, sockets, traversal, and hard-link surprises;
+- cap file count and byte size;
+- compute SHA-256 and content type;
+- never execute artifacts;
+- require explicit lead submission before owner review.
+
+## XMTP swarm-room integration
+
+### Creation and recovery
+
+Use the existing Multipass XMTP node adapter and canonical room registry. Group creation includes exact normalized identifiers for all manifest members and the bridge. Creation uses one mission launch idempotency record. On retry, the service first recovers any conversation already bound to the mission before creating another.
+
+The mission stores conversation ID, topic/thread binding, expected participant commitment, creation operation ID, and bridge version. It does not store XMTP private keys or plaintext history.
+
+### Structured system events
+
+The bridge may post only closed event types:
+
+- mission funded;
+- swarm launching/ready/failed;
+- task created/assigned/blocked/reviewed/completed;
+- approval requested;
+- artifact submitted;
+- custody or runtime warning;
+- dispute opened/resolved;
+- milestone released;
+- mission settled/refunded.
+
+Each event has a deterministic deduplication ID and is marked non-conversational. The bridge ignores its own messages and any already-seen ID. Runtime event text is data, never an instruction to execute wallet or mission actions.
+
+### Commands from chat
+
+Free-form chat never directly mutates escrow or authoritative state. The MVP may recognize a small explicit command syntax such as `/mission status` or `/task <id> status` as read-only. Any proposed write produces a Console deep link or review card. The user completes a wallet/session-authorized Console action before mutation.
+
+### Membership and privacy
+
+XMTP open mode is forbidden. Only manifest members may join. Removal or replacement after funding requires a successor mission/room in V1. The Console clearly distinguishes encrypted XMTP chat from public mission data and from ID Agents' local RESTAP traffic.
+
+## API surface
+
+Exact route names may follow existing server conventions, but the public contract must cover:
+
+### Public reads
+
+- `GET /api/multipass/missions` — bounded filterable mission board.
+- `GET /api/multipass/missions/:missionId` — public mission projection with funding and lifecycle status.
+
+Public responses omit private scope, applications, participant contact data, internal IDs, manager locations, conversation IDs, evidence under review, and secrets.
+
+### Authenticated owner/participant routes
+
+- create/update/publish/cancel draft mission;
+- apply/withdraw application;
+- select team and publish canonical launch manifest;
+- read/sign launch terms;
+- prepare vault creation and funding transaction;
+- reconcile transaction status;
+- retry/refund failed launch;
+- read mission workspace projection;
+- create/assign/update tasks within role policy;
+- submit artifacts;
+- approve milestone as owner or lead;
+- execute release;
+- open/read dispute;
+- prepare bounded arbitration action for authorized arbitrators.
+
+All writes use existing Origin/session/CSRF conventions, exact JSON schemas, body caps, current wallet authority, mission revision, and idempotency keys. Wallet signatures are verified against exact EIP-712 domains where used.
+
+## Console UX
+
+### Mission board
+
+Shows mission title, lifecycle, required roles, verified bounty asset/amount, application deadline, owner identity, and bounded trust context. A card never labels a bounty funded until finalized escrow evidence exists.
+
+### Create mission
+
+A guided flow captures scope, roles, milestones, review windows, payout assets, and refund address. It renders raw-address verification and token decimals clearly before wallet approval. It previews contract version, terms hash, fees (zero in V1 unless separately approved), and dispute policy.
+
+### Recruiting
+
+The owner compares applicants using verified identity, capabilities, availability, CRED status/evidence freshness, and proposed role. Stake size, loan size, bounty size, and token holdings do not automatically improve selection rank.
+
+### Funding and launch
+
+The surface shows separate steps for token approval, deposit, confirmation, runtime launch, XMTP creation, task creation, and dual activation. A failed step is recoverable and never represented as success.
+
+### Mission workspace
+
+One workspace contains:
+
+- overview and lifecycle;
+- XMTP swarm chat;
+- task board;
+- agent/runtime health;
+- milestones;
+- artifact review;
+- funding and payout ledger;
+- blockers and approvals;
+- dispute controls.
+
+The UI labels the source of every state: onchain, Helixa ledger, ID Agents, or XMTP. Stale/degraded sources are explicit.
+
+### Settlement
+
+The settlement panel displays artifact commitments, dual approvals, recipient allocations, transaction simulation, wallet prompt, finality status, and signed receipt. Payment amount is never presented as a CRED score increase.
+
+## CRED evidence
+
+A settled outcome may create evidence containing:
+
+- mission and vault commitment;
+- contributor Looper identity and contribution-time custody epoch;
+- role and accepted milestone IDs;
+- artifact hashes;
+- owner/lead approval events;
+- settlement transaction/log references;
+- dispute/refund status;
+- runtime confidence label;
+- timestamps and evidence version.
+
+Positive completion evidence requires accepted artifacts and finalized payment. Disputed, refunded, timed-out, or abandoned outcomes retain their actual state. CRED scoring policy remains separate and versioned. Bounty denomination and amount are not direct score inputs.
+
+To avoid circularity, CRED may help a mission owner select a team, but participation in a mission does not become positive evidence until the mission outcome independently settles.
+
+## Error and recovery behavior
+
+- **Vault creation ambiguity:** reconcile deterministic address, factory event, and code hash before retry.
+- **Funding transaction timeout:** reconcile chain transaction and vault balances; never ask for a blind second deposit.
+- **Partial dual-asset funding:** remain in funding and show exact missing raw amount; no launch.
+- **ID Agents provision timeout:** inspect manager/team/workspace before retry; never create a second active runtime silently.
+- **XMTP creation timeout:** recover canonical bound conversation and verify participants before retry.
+- **Task creation ambiguity:** deterministic task name and read-before-write retry.
+- **Bridge outage:** mission/task state remains available; chat event delivery resumes idempotently.
+- **Runtime failure:** pause assignments, preserve accepted artifact commitments, restart only the exact pinned release, or move to launch/runtime dispute policy.
+- **Custody change:** halt affected agent and milestone; require bounded dispute handling.
+- **Provider auth/cost failure:** no unrestricted fallback credential or model; surface blocked runtime.
+- **Database failure:** no partial lifecycle transition or onchain-success concealment; reconciler resumes from durable operations.
+- **Chain reorg/provider disagreement:** fail closed until the indexed block is canonical and provider agreement returns.
+- **Arbitration unavailable:** funds remain frozen; no timeout path grants a third party broader withdrawal authority.
+
+## Security boundaries
+
+- Escrow contracts never call agent-produced addresses or calldata.
+- Agent/model output cannot create recipients, approve milestones, resolve disputes, sign transactions, or change token addresses.
+- The browser never sees ID Agents /remote, manager topology, runtime credentials, bridge wallet key, deployer key, or arbitrator signer material.
+- The gateway never receives escrow signing keys.
+- The swarm bridge never receives escrow signing authority.
+- Contract deployer/registry governance cannot withdraw active vault funds.
+- Supported token addresses and code hashes are pinned from verified live evidence.
+- All external text, artifacts, RESTAP messages, and XMTP messages are untrusted data.
+- Public mission content is separately sanitized from private workspace content.
+- Logs redact wallet signatures, auth headers, session tokens, XMTP keys, provider credentials, prompts, private scope, and artifact contents.
+- Metrics use bounded labels and never raw message/task/artifact content.
+
+## Observability
+
+Required bounded metrics and operator views:
+
+- missions by lifecycle and age;
+- recruiting/application counts;
+- vault creation/funding confirmation lag;
+- partial funding and launch-failure counts;
+- ID Agents manager/agent health and pinned release mismatch;
+- task status reconciliation lag and conflicts;
+- XMTP creation/recovery/deduplication failures;
+- artifact count/bytes/hash failures;
+- approval and review age;
+- disputes and unresolved age;
+- release/refund transaction state and chain-finality lag;
+- CRED evidence publication state;
+- container CPU/memory/disk/inference spend;
+- gateway auth/replay/schema rejection classes.
+
+Alerts fire on implementation-codehash mismatch, unsupported token, unexpected vault balance, duplicate room, duplicate task, duplicate payout event, cross-mission gateway access, manager public exposure, secret sentinel hit, unbounded runtime access, post-transfer work, or ledger/onchain settlement disagreement.
+
+## Rollout and release gates
+
+### Phase 0 — local implementation
+
+- Pin ID Agents commit and build the typed adapter.
+- Implement mission ledger and fake/on-device runtime integration.
+- Implement contracts and tests.
+- Implement Console flows with local chain and local XMTP test adapter.
+- No public deployment or real funds.
+
+### Phase 1 — integrated local proof
+
+- Anvil deploys version registry, factory, mock USDC, mock CRED, and vault.
+- A mission is created, fully funded in both assets, and activated.
+- A real local ID Agents team executes tasks and writes artifacts.
+- Multipass creates and recovers an XMTP test/dev group.
+- Owner and lead approve; recipients receive exact funds.
+- Dispute/refund/failure paths are rehearsed.
+
+### Phase 2 — Base testnet pilot
+
+- Deploy reviewed contracts with test assets or canonical testnet equivalents.
+- Use real wallet and ERC-1271 approval paths.
+- Use real ID Agents and XMTP environments.
+- Run at least two mission lifecycles plus launch failure, transfer, dispute, and refund drills.
+- Publish release hashes and evidence.
+
+### Phase 3 — mainnet release candidate
+
+Requires:
+
+- independent contract security review;
+- Foundry unit, fuzz, and invariant gates;
+- existing package contract tests;
+- static analysis;
+- compiler/dependency locks and reproducible bytecode;
+- canonical Base USDC/$CRED address and code verification;
+- registry/factory Safe and timelock configuration review;
+- container threat-model and escape review;
+- ID Agents pin and license notice;
+- provider-hosting authorization and cost controls;
+- real XMTP group/recovery proof;
+- rollback, pause-new-creation, and reconciliation drills;
+- explicit mainnet deployment approval.
+
+### Phase 4 — controlled public launch
+
+Start with bounded mission/team/bounty caps even though the board is publicly visible. Raise caps only after evidence. Public-agent participation, owner-hosted runtimes, arbitrary external teams, and automatic chat commands remain separately gated.
+
+## Verification
+
+### Contract unit tests
+
+- one-time initialization and deterministic deployment;
+- registry/version/codehash enforcement;
+- only approved exact token addresses;
+- exact single- and dual-asset funding;
+- underfund, overfund, fee-on-transfer, rebasing simulation, and malicious callback rejection;
+- owner and lead distinct;
+- manifest totals, recipient bounds, milestone bounds, and deadline validation;
+- EOA and ERC-1271 direct/relayed approvals;
+- nonce, deadline, domain, chain, vault, artifact, payout, and milestone replay rejection;
+- dual launch approval;
+- dual milestone approval before release;
+- direct exact recipient payouts;
+- reentrancy resistance and state-before-transfer behavior;
+- dispute freezes release;
+- arbitration cannot add destination, exceed amount, change token, collect a fee, or touch another milestone;
+- unlaunched timeout refund only under exact conditions;
+- released milestones final;
+- registry/factory upgrades or replacement cannot mutate existing vault behavior/funds;
+- emergency pause stops new vaults but not valid existing release/refund paths.
+
+### Fuzz and invariant tests
+
+- total released + refunded + remaining equals total funded per asset;
+- no supported asset leaves except to predeclared recipients/refund address;
+- no milestone settles twice;
+- no signature succeeds twice;
+- no party can bypass the required second approval;
+- arbitrator power remains destination- and amount-bounded;
+- factory/registry admin has zero withdrawal path;
+- arbitrary action sequences preserve accounting and terminal-state monotonicity.
+
+### API and ledger tests
+
+- exact lifecycle transition table;
+- current-wallet authorization and role matrix;
+- optimistic revision conflicts;
+- idempotent same-body retries and changed-body conflicts;
+- Looper identity/custody checks at every named boundary;
+- private/public projection isolation;
+- transaction confirmation and reorg reconciliation;
+- no false funded/active/settled labels;
+- append-only event and receipt consistency;
+- CRED evidence only after finalized settlement.
+
+### ID Agents gateway tests
+
+- exact pinned release required;
+- manager remains private/loopback-only;
+- typed operations map to expected upstream calls;
+- generic /remote commands and shell injection rejected;
+- cross-mission agent/task/artifact access rejected;
+- deterministic retry creates no duplicate manager/team/task;
+- artifact traversal/symlink/device/size cases rejected;
+- runtime pause/kill and resource caps proven;
+- secret and host-access sentinels fail;
+- provider credential outage fails closed.
+
+### XMTP tests
+
+- exact group member set and bridge identity;
+- wallet and smart-wallet registration paths;
+- creation ambiguity recovers one canonical room;
+- room binding survives process restart;
+- message/event deduplication;
+- bridge ignores self/system events and prevents loops;
+- unauthorized members and open mode rejected;
+- chat writes cannot mutate tasks or escrow without Console authorization;
+- plaintext messages do not enter mission database/logs.
+
+### Browser proof
+
+At desktop, 390px, and 320px widths, inspect:
+
+- mission board;
+- creation/funding flow;
+- recruiting/team selection;
+- funding confirmation and launch sequence;
+- mission workspace with chat/tasks/artifacts;
+- dual approval and release;
+- dispute/refund states;
+- source labels and stale/degraded states;
+- keyboard/focus behavior and no horizontal overflow;
+- no secret/internal identifier exposure.
+
+### Full regression gates
+
+- package contract tests;
+- full API suite;
+- full web suite;
+- production web build;
+- schema/type tests;
+- syntax and diff checks;
+- existing Console chat/XMTP/Codex/RESTAP isolation tests;
+- static secret/path scan;
+- independent specification, implementation, and contract review.
+
+## Deliverables
+
+1. Reviewed design and implementation plan.
+2. Versioned escrow contracts, tests, deployment and verification scripts.
+3. Mission ledger, API, indexer/reconciler, and signed receipt codec.
+4. Pinned ID Agents integration and isolated mission gateway.
+5. XMTP swarm-room integration using existing Multipass transport.
+6. Mission board, creation, recruiting, workspace, and settlement Console UI.
+7. CRED outcome evidence adapter.
+8. Local and testnet end-to-end proof packets.
+9. Operations, threat model, rollback, arbitration, and release runbooks.
+
+## Non-goals for MVP
+
+- Deploying mainnet contracts without the named gates and explicit approval.
+- Custodial Helixa balances or an admin sweep.
+- Upgradeable active vault behavior.
+- Post-funding participant or payout-address mutation.
+- Arbitrary external agents or public ID Agents managers.
+- Automatic execution of free-form XMTP commands.
+- Treating ID Agents task completion as escrow approval.
+- Treating payment amount, holdings, or stake as reputation.
+- General-purpose dispute court beyond bounded mission escrow.
+- Cross-chain escrow.
+- Fiat payments.
+- Hidden platform fees.
+- Exposing the proprietary ID Agents Mac Dashboard or depending on it for server operation.
+
+## Acceptance criteria
+
+The MVP is complete when a verified wallet holder can, in a non-production environment:
+
+1. create and publish a mission;
+2. receive verified Looper applications and select a distinct lead plus team;
+3. commit exact USDC/$CRED milestone allocations;
+4. deploy and fully fund a versioned immutable vault;
+5. launch one isolated pinned ID Agents team and one private canonical XMTP group;
+6. coordinate tasks and conversation without reply loops or authority confusion;
+7. submit and hash real artifacts;
+8. approve and release a milestone with owner + lead authorization;
+9. distribute exact token amounts to only predeclared recipients;
+10. exercise dispute and unlaunched-refund paths;
+11. produce finalized onchain, runtime, artifact, chat-binding, and CRED evidence receipts;
+12. pass the complete contract, API, gateway, XMTP, browser, regression, and independent-review gates.
