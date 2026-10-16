@@ -16,7 +16,7 @@ const commands=[
  ['mission-contracts',['node','--test',...contractMissionTests]],
  ['mission-compile',['pnpm','--filter','@helixa/loopers-contracts','compile:missions']],
  ['forge-invariants',[path.join(process.env.HOME||'/home/ubuntu','.foundry/bin/forge'),'test','--root','packages/contracts','-vv']],
- ['web-build',['pnpm','--filter','@helixa/multipass-web','build']],
+ ['web-build',['pnpm','web:build']],
  ['ui-proof',['node','scripts/missions/capture-ui-proof.mjs']],
  ['diff-check',['git','diff','--check']],
 ];
@@ -28,6 +28,7 @@ const release=JSON.parse(await readFile(path.join(root,'apps/api/src/missions/id
 const external=[];
 const idAgentsSource=process.env.ID_AGENTS_SOURCE||'/tmp/id-agents-pin';
 try{const packageHash=sha256(await readFile(path.join(idAgentsSource,'package.json')));external.push({name:'pinned-id-agents-source',status:packageHash===release.hashes['package.json']?'passed':'failed',commit:release.commit,packageHash});}catch{external.push({name:'pinned-id-agents-source',status:'blocked',reason:'Pinned source checkout unavailable.'});}
+external.push({name:'legacy-full-regression-fixture',status:'blocked',reason:'Full suite is otherwise green after web-gate repair; looper-agent-account-release.test.mjs requires missing external /tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json with pinned SHA-256.'});
 external.push({name:'real-xmtp-dev-group',status:'blocked',reason:'Requires explicit authorization to create an external XMTP group with a bridge identity.'});
 external.push({name:'base-testnet-deployment',status:'blocked',reason:'Separate review and explicit approval required before deployment or funding.'});
 const artifacts=await inventory(proofRoot);
