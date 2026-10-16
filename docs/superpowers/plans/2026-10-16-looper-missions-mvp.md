@@ -347,23 +347,23 @@ Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git 
 - Create: `apps/api/test/missions-id-agents-artifacts.test.mjs`
 - Create: `apps/api/test/missions-runtime-isolation.test.mjs`
 
-- [ ] **Step 1: Record the reviewed upstream pin**
+- [x] **Step 1: Record the reviewed upstream pin**
 
 Verify repository URL, commit, MIT license, package/config/RESTAP versions, and hashes from Premm’s source. Do not guess or silently advance the pin.
 
-- [ ] **Step 2: Write RED gateway/isolation tests**
+- [x] **Step 2: Write RED gateway/isolation tests**
 
 Cover short-lived signed service grants, typed allowlist, exact mission/manager/release/team/agent/task binding, replay/expiry/body-hash rejection, non-loopback manager rejection, generic `/remote`/shell/traversal rejection, cross-mission denial, worker-to-manager control-plane denial, brokered credentials, quotas, and kill switch.
 
-- [ ] **Step 3: Implement typed operations and bounded polling**
+- [x] **Step 3: Implement typed operations and bounded polling**
 
 Implement only `provisionMissionTeam`, `readMissionHealth`, `createMissionTask`, `assignMissionTask`, `sendMissionInstruction`, `readMissionNews`, `listMissionOutputs`, `readMissionArtifact`, `pauseMission`, and `terminateMission`.
 
-- [ ] **Step 4: Implement artifact boundary tests/code**
+- [x] **Step 4: Implement artifact boundary tests/code**
 
 Resolve beneath the mission output root; reject symlinks/devices/sockets/traversal/hard-link surprises; cap file count/bytes; hash without executing.
 
-- [ ] **Step 5: Run and commit**
+- [x] **Step 5: Run and commit**
 
 Run focused tests; Expected: PASS.  
 Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git commit -m "feat: contain pinned ID Agents missions"`
