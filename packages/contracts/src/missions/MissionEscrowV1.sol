@@ -4,7 +4,24 @@ pragma solidity 0.8.24;
 import {MissionTypes} from "./MissionTypes.sol";
 
 contract MissionEscrowV1 {
-    enum VaultState { Funding, Active, Refunded }
+    enum VaultState { Funding, Active, Refunded, Settled }
+    enum MilestoneState { Pending, Submitted, Disputed, Released, Resolved, TimeoutSettled }
+
+    struct MilestoneRecord {
+        bytes32 milestoneId;
+        bytes32 acceptanceHash;
+        bytes32 payoutCommitment;
+        bytes32 artifactHash;
+        bytes32 resolutionHash;
+        uint64 deliveryDeadline;
+        uint64 reviewDeadline;
+        uint64 disputeDeadline;
+        MilestoneState status;
+        bool ownerApproved;
+        bool leadApproved;
+        bool ownerResolutionApproved;
+        bool leadResolutionApproved;
+    }
 
     bytes32 public missionId;
     bytes32 public versionId;
@@ -25,6 +42,12 @@ contract MissionEscrowV1 {
     mapping(address => uint256) public totalFunded;
     mapping(address => uint256) public remainingLiability;
     mapping(address => uint256) public totalRefunded;
+    mapping(address => uint256) public totalReleased;
+    MilestoneRecord[] private milestoneRecords;
+    mapping(bytes32 => uint256) private milestoneIndexPlusOne;
+    mapping(uint256 => MissionTypes.Allocation[]) private milestonePayouts;
+    mapping(uint256 => MissionTypes.Allocation[]) private deliveryTimeouts;
+    mapping(uint256 => MissionTypes.Allocation[]) private disputeTimeouts;
     uint256 private entered;
 
     error InvalidTerms();
@@ -40,12 +63,23 @@ contract MissionEscrowV1 {
     error TokenCallFailed();
     error BalanceDeltaMismatch();
     error NoExcess();
+    error InvalidMilestone();
+    error InvalidArtifact();
+    error InvalidResolution();
+    error DeadlineNotReached();
+    error DeadlinePassed();
 
     event Funded(address indexed token, uint256 amount, uint256 total, uint256 required);
     event LaunchApproved(address indexed approver);
     event Activated();
     event Refunded(address indexed token, address indexed recipient, uint256 amount);
     event ExcessRecovered(address indexed token, address indexed recipient, uint256 amount);
+    event ArtifactSubmitted(bytes32 indexed milestoneId, bytes32 indexed artifactHash);
+    event MilestoneApproved(bytes32 indexed milestoneId, address indexed approver, bytes32 artifactHash, bytes32 payoutCommitment);
+    event MilestoneDisputed(bytes32 indexed milestoneId, address indexed actor, bytes32 reasonHash);
+    event ResolutionApproved(bytes32 indexed milestoneId, address indexed approver, bytes32 resolutionHash);
+    event MilestoneSettled(bytes32 indexed milestoneId, MilestoneState status, bytes32 reasonHash);
+    event MissionSettled();
 
     constructor(
         bytes32 missionId_,
@@ -91,6 +125,10 @@ contract MissionEscrowV1 {
     }
 
     function assetCount() external view returns (uint256) { return assets.length; }
+    function milestoneCount() external view returns (uint256) { return milestoneRecords.length; }
+    function milestone(bytes32 milestoneId_) external view returns (MilestoneRecord memory) {
+        return milestoneRecords[_milestoneIndex(milestoneId_)];
+    }
 
     function fullyFunded() public view returns (bool) {
         for (uint256 i; i < assets.length; ++i) {
@@ -153,6 +191,140 @@ contract MissionEscrowV1 {
         _refundAll();
     }
 
+    function submitArtifact(bytes32 milestoneId_, bytes32 artifactHash) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        if (msg.sender != leadApprovalAddress) revert InvalidCaller();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Pending) revert InvalidMilestone();
+        if (block.timestamp >= record.deliveryDeadline) revert DeadlinePassed();
+        if (artifactHash == bytes32(0)) revert InvalidArtifact();
+        record.artifactHash = artifactHash;
+        record.status = MilestoneState.Submitted;
+        emit ArtifactSubmitted(milestoneId_, artifactHash);
+    }
+
+    function approveMilestone(bytes32 milestoneId_, bytes32 artifactHash, bytes32 payoutCommitment)
+        external nonReentrant
+    {
+        if (state != VaultState.Active) revert InvalidState();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Submitted) revert InvalidMilestone();
+        if (block.timestamp >= record.reviewDeadline) revert DeadlinePassed();
+        if (artifactHash != record.artifactHash || payoutCommitment != record.payoutCommitment) revert InvalidArtifact();
+        if (msg.sender == owner) {
+            if (record.ownerApproved) revert AlreadyApproved();
+            record.ownerApproved = true;
+        } else if (msg.sender == leadApprovalAddress) {
+            if (record.leadApproved) revert AlreadyApproved();
+            record.leadApproved = true;
+        } else revert InvalidCaller();
+        emit MilestoneApproved(milestoneId_, msg.sender, artifactHash, payoutCommitment);
+    }
+
+    function releaseMilestone(bytes32 milestoneId_) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Submitted || !record.ownerApproved || !record.leadApproved) revert InvalidMilestone();
+        record.status = MilestoneState.Released;
+        _settleStored(milestonePayouts[index]);
+        emit MilestoneSettled(milestoneId_, MilestoneState.Released, bytes32(0));
+        _completeIfAllTerminal();
+    }
+
+    function disputeMilestone(bytes32 milestoneId_, bytes32 reasonHash) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        if (msg.sender != owner && msg.sender != leadApprovalAddress) revert InvalidCaller();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if ((record.status != MilestoneState.Pending && record.status != MilestoneState.Submitted)
+            || block.timestamp >= record.disputeDeadline || reasonHash == bytes32(0)) revert InvalidMilestone();
+        record.status = MilestoneState.Disputed;
+        emit MilestoneDisputed(milestoneId_, msg.sender, reasonHash);
+    }
+
+    function enterDisputeAfterReview(bytes32 milestoneId_, bytes32 reasonHash) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Submitted || block.timestamp < record.reviewDeadline
+            || block.timestamp >= record.disputeDeadline || reasonHash == bytes32(0)) revert InvalidMilestone();
+        record.status = MilestoneState.Disputed;
+        emit MilestoneDisputed(milestoneId_, msg.sender, reasonHash);
+    }
+
+    function settleDeliveryTimeout(bytes32 milestoneId_) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Pending || block.timestamp < record.deliveryDeadline) revert DeadlineNotReached();
+        record.status = MilestoneState.TimeoutSettled;
+        _settleStored(deliveryTimeouts[index]);
+        emit MilestoneSettled(milestoneId_, MilestoneState.TimeoutSettled, bytes32(0));
+        _completeIfAllTerminal();
+    }
+
+    function approveDisputeResolution(bytes32 milestoneId_, MissionTypes.Allocation[] calldata resolution, bytes32 reasonHash)
+        external nonReentrant
+    {
+        if (state != VaultState.Active) revert InvalidState();
+        if (msg.sender != owner && msg.sender != leadApprovalAddress) revert InvalidCaller();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Disputed || block.timestamp >= record.disputeDeadline || reasonHash == bytes32(0)) {
+            revert InvalidMilestone();
+        }
+        _validateResolution(index, resolution);
+        bytes32 resolutionHash = keccak256(abi.encode(reasonHash, resolution));
+        if (record.resolutionHash == bytes32(0)) record.resolutionHash = resolutionHash;
+        else if (record.resolutionHash != resolutionHash) revert InvalidResolution();
+        if (msg.sender == owner) {
+            if (record.ownerResolutionApproved) revert AlreadyApproved();
+            record.ownerResolutionApproved = true;
+        } else {
+            if (record.leadResolutionApproved) revert AlreadyApproved();
+            record.leadResolutionApproved = true;
+        }
+        emit ResolutionApproved(milestoneId_, msg.sender, resolutionHash);
+        if (record.ownerResolutionApproved && record.leadResolutionApproved) {
+            record.status = MilestoneState.Resolved;
+            _settleCalldata(resolution);
+            emit MilestoneSettled(milestoneId_, MilestoneState.Resolved, reasonHash);
+            _completeIfAllTerminal();
+        }
+    }
+
+    function arbitrate(bytes32 milestoneId_, MissionTypes.Allocation[] calldata resolution, bytes32 reasonHash)
+        external nonReentrant
+    {
+        if (state != VaultState.Active) revert InvalidState();
+        if (msg.sender != arbitrator) revert InvalidCaller();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Disputed || block.timestamp >= record.disputeDeadline || reasonHash == bytes32(0)) {
+            revert InvalidMilestone();
+        }
+        _validateResolution(index, resolution);
+        record.resolutionHash = keccak256(abi.encode(reasonHash, resolution));
+        record.status = MilestoneState.Resolved;
+        _settleCalldata(resolution);
+        emit MilestoneSettled(milestoneId_, MilestoneState.Resolved, reasonHash);
+        _completeIfAllTerminal();
+    }
+
+    function settleDisputeTimeout(bytes32 milestoneId_) external nonReentrant {
+        if (state != VaultState.Active) revert InvalidState();
+        uint256 index = _milestoneIndex(milestoneId_);
+        MilestoneRecord storage record = milestoneRecords[index];
+        if (record.status != MilestoneState.Disputed || block.timestamp < record.disputeDeadline) revert DeadlineNotReached();
+        record.status = MilestoneState.TimeoutSettled;
+        _settleStored(disputeTimeouts[index]);
+        emit MilestoneSettled(milestoneId_, MilestoneState.TimeoutSettled, bytes32(0));
+        _completeIfAllTerminal();
+    }
+
     function recoverExcess(address token) external nonReentrant returns (uint256 amount) {
         uint256 balance = _assetBalance(token);
         uint256 liability = remainingLiability[token];
@@ -201,7 +373,8 @@ contract MissionEscrowV1 {
     }
 
     function _addMilestone(MissionTypes.MilestoneTerms memory milestone, MissionTypes.MemberTerms[] memory members) private {
-        if (milestone.milestoneId == bytes32(0) || milestone.acceptanceHash == bytes32(0)
+        if (milestoneIndexPlusOne[milestone.milestoneId] != 0
+            || milestone.milestoneId == bytes32(0) || milestone.acceptanceHash == bytes32(0)
             || milestone.payoutCommitment == bytes32(0) || milestone.deliveryDeadline <= launchDeadline
             || milestone.deliveryDeadline >= milestone.reviewDeadline || milestone.reviewDeadline >= milestone.disputeDeadline
             || milestone.payouts.length == 0 || milestone.payouts.length > 16
@@ -225,6 +398,18 @@ contract MissionEscrowV1 {
         }
         _validateTimeouts(milestone.deliveryTimeoutAllocations, milestone.payouts, milestoneTokens, tokenCount, members);
         _validateTimeouts(milestone.disputeTimeoutAllocations, milestone.payouts, milestoneTokens, tokenCount, members);
+        uint256 index = milestoneRecords.length;
+        milestoneIndexPlusOne[milestone.milestoneId] = index + 1;
+        milestoneRecords.push(MilestoneRecord({
+            milestoneId: milestone.milestoneId, acceptanceHash: milestone.acceptanceHash,
+            payoutCommitment: milestone.payoutCommitment, artifactHash: bytes32(0), resolutionHash: bytes32(0),
+            deliveryDeadline: milestone.deliveryDeadline, reviewDeadline: milestone.reviewDeadline,
+            disputeDeadline: milestone.disputeDeadline, status: MilestoneState.Pending, ownerApproved: false,
+            leadApproved: false, ownerResolutionApproved: false, leadResolutionApproved: false
+        }));
+        for (uint256 i; i < milestone.payouts.length; ++i) milestonePayouts[index].push(milestone.payouts[i]);
+        for (uint256 i; i < milestone.deliveryTimeoutAllocations.length; ++i) deliveryTimeouts[index].push(milestone.deliveryTimeoutAllocations[i]);
+        for (uint256 i; i < milestone.disputeTimeoutAllocations.length; ++i) disputeTimeouts[index].push(milestone.disputeTimeoutAllocations[i]);
     }
 
     function _validateTimeouts(MissionTypes.Allocation[] memory values, MissionTypes.Allocation[] memory payouts,
@@ -262,6 +447,75 @@ contract MissionEscrowV1 {
     }
 
     function _sum(MissionTypes.Allocation[] memory values, address token) private pure returns (uint256 total) {
+        for (uint256 i; i < values.length; ++i) if (values[i].token == token) total += values[i].amount;
+    }
+
+    function _completeIfAllTerminal() private {
+        for (uint256 i; i < milestoneRecords.length; ++i) {
+            MilestoneState status = milestoneRecords[i].status;
+            if (status != MilestoneState.Released && status != MilestoneState.Resolved
+                && status != MilestoneState.TimeoutSettled) return;
+        }
+        state = VaultState.Settled;
+        emit MissionSettled();
+    }
+
+    function _milestoneIndex(bytes32 milestoneId_) private view returns (uint256 index) {
+        uint256 plusOne = milestoneIndexPlusOne[milestoneId_];
+        if (plusOne == 0) revert InvalidMilestone();
+        index = plusOne - 1;
+    }
+
+    function _validateResolution(uint256 index, MissionTypes.Allocation[] calldata resolution) private view {
+        if (resolution.length == 0 || resolution.length > 16) revert InvalidResolution();
+        address[2] memory tokens;
+        uint256 tokenCount;
+        MissionTypes.Allocation[] storage payouts = milestonePayouts[index];
+        for (uint256 i; i < payouts.length; ++i) {
+            address token = payouts[i].token;
+            if (_tokenIndex(tokens, tokenCount, token) == type(uint256).max) tokens[tokenCount++] = token;
+        }
+        uint8[2] memory counts;
+        for (uint256 i; i < resolution.length; ++i) {
+            MissionTypes.Allocation calldata allocation = resolution[i];
+            uint256 tokenIndex = _tokenIndex(tokens, tokenCount, allocation.token);
+            if (allocation.amount == 0 || tokenIndex == type(uint256).max || !_allowedResolutionRecipient(index, allocation.recipient)
+                || ++counts[tokenIndex] > MissionTypes.MAX_PAYOUTS_PER_ASSET_PER_MILESTONE) revert InvalidResolution();
+        }
+        for (uint256 i; i < tokenCount; ++i) {
+            if (_sumStorage(payouts, tokens[i]) != _sumCalldata(resolution, tokens[i])) revert InvalidResolution();
+        }
+    }
+
+    function _allowedResolutionRecipient(uint256 index, address recipient) private view returns (bool) {
+        if (recipient == refundAddress) return true;
+        MissionTypes.Allocation[] storage payouts = milestonePayouts[index];
+        for (uint256 i; i < payouts.length; ++i) if (recipient == payouts[i].recipient) return true;
+        return false;
+    }
+
+    function _settleStored(MissionTypes.Allocation[] storage values) private {
+        for (uint256 i; i < values.length; ++i) _recordSettlement(values[i].token, values[i].recipient, values[i].amount);
+        for (uint256 i; i < values.length; ++i) _transferAsset(values[i].token, values[i].recipient, values[i].amount);
+    }
+
+    function _settleCalldata(MissionTypes.Allocation[] calldata values) private {
+        for (uint256 i; i < values.length; ++i) _recordSettlement(values[i].token, values[i].recipient, values[i].amount);
+        for (uint256 i; i < values.length; ++i) _transferAsset(values[i].token, values[i].recipient, values[i].amount);
+    }
+
+    function _recordSettlement(address token, address recipient, uint256 amount) private {
+        if (remainingLiability[token] < amount) revert InvalidResolution();
+        remainingLiability[token] -= amount;
+        if (recipient == refundAddress) totalRefunded[token] += amount;
+        else totalReleased[token] += amount;
+    }
+
+    function _sumStorage(MissionTypes.Allocation[] storage values, address token) private view returns (uint256 total) {
+        for (uint256 i; i < values.length; ++i) if (values[i].token == token) total += values[i].amount;
+    }
+
+    function _sumCalldata(MissionTypes.Allocation[] calldata values, address token) private pure returns (uint256 total) {
         for (uint256 i; i < values.length; ++i) if (values[i].token == token) total += values[i].amount;
     }
 

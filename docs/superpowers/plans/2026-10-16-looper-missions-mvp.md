@@ -264,11 +264,11 @@ Commit: `git add packages/contracts && git commit -m "feat: fund and activate im
 - Create: `packages/contracts/foundry-test/MissionEscrowInvariant.t.sol`
 - Modify: `packages/contracts/src/missions/MissionEscrowV1.sol`
 
-- [ ] **Step 1: Write RED settlement/security tests**
+- [x] **Step 1: Write RED settlement/security tests**
 
 Cover artifact+payout-bound dual approvals in either order, release, dispute freeze, owner+lead joint settlement, arbitrator destination/amount bounds, delivery timeout, review-to-dispute deadline, dispute timeout, terminal monotonicity, independent milestones, and exact direct payouts.
 
-- [ ] **Step 2: Implement the smallest state machine satisfying tests**
+- [x] **Step 2: Implement the smallest state machine satisfying tests**
 
 Every external transfer follows effects-before-interactions under non-reentrancy. Permissionless timeout callers choose neither recipients nor amounts.
 
@@ -281,6 +281,8 @@ Prove per asset: released + refunded + remaining = funded; every destination is 
 Run: `pnpm --filter @helixa/loopers-contracts test` and `forge test --root packages/contracts` when Forge is available.  
 Expected: PASS; if Forge is unavailable, record that toolchain blocker and do not claim the invariant gate passed.  
 Commit: `git add packages/contracts && git commit -m "feat: settle mission milestones with bounded disputes"`
+
+Verification blockers: Forge is unavailable on this host, so the invariant harness is compile-checked but not executed. The full legacy contract package is 105/106 because `looper-agent-account-release.test.mjs` requires a missing external `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json`; the complete mission-only gate passes.
 
 ---
 
