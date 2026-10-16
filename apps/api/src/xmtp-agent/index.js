@@ -590,3 +590,71 @@ function requireThreadId(value) {
   if (!threadId) throw new TypeError('XMTP thread id is required.');
   return threadId;
 }
+
+export function createXmtpGroupPrimitives({ client } = {}) {
+  if (!client?.conversations) throw new TypeError('XMTP client conversations API is required.');
+  const conversations = client.conversations;
+  for (const name of ['sync', 'listGroups', 'getConversationById', 'createGroupWithIdentifiers']) {
+    if (typeof conversations[name] !== 'function') throw new TypeError('XMTP conversations.' + name + ' is required.');
+  }
+
+  async function syncGroups() { await conversations.sync(); }
+  async function listGroups() { await conversations.sync(); return Object.freeze([...await conversations.listGroups()]); }
+  async function getGroup(conversationId) {
+    await conversations.sync();
+    const group = await conversations.getConversationById(requireConversationId(conversationId));
+    return group ?? null;
+  }
+  async function createGroup({ identifiers, metadata } = {}) {
+    if (!Array.isArray(identifiers) || identifiers.length === 0) throw new TypeError('XMTP group identifiers are required.');
+    return conversations.createGroupWithIdentifiers(identifiers, normalizeGroupMetadata(metadata));
+  }
+  async function describeGroup(conversationId) {
+    const group = await requireGroup(conversationId);
+    await group.sync?.();
+    const [metadata, members] = await Promise.all([group.metadata(), group.members()]);
+    return Object.freeze({
+      conversationId: String(group.id), name: String(group.name ?? ''), description: String(group.description ?? ''),
+      appData: String(group.appData ?? ''), metadata: Object.freeze({ ...metadata }),
+      members: Object.freeze([...members]), permissions: Object.freeze(group.permissions()),
+      admins: Object.freeze([...group.listAdmins()]), superAdmins: Object.freeze([...group.listSuperAdmins()]),
+    });
+  }
+  async function updatePermissions(conversationId, updates = []) {
+    if (!Array.isArray(updates) || updates.length === 0 || updates.length > 16) throw new TypeError('XMTP permission updates are invalid.');
+    const group = await requireGroup(conversationId);
+    for (const update of updates) {
+      if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('XMTP permission update is invalid.');
+      await group.updatePermission(update.permissionType, update.policy, update.metadataField);
+    }
+  }
+  async function addMembers(conversationId, identifiers) { const group = await requireGroup(conversationId); await group.addMembersByIdentifiers(identifiers); }
+  async function removeMembers(conversationId, identifiers) { const group = await requireGroup(conversationId); await group.removeMembersByIdentifiers(identifiers); }
+  async function addAdmin(conversationId, inboxId) { const group = await requireGroup(conversationId); await group.addAdmin(String(inboxId)); }
+  async function sendText(conversationId, text, options = undefined) { const group = await requireGroup(conversationId); return group.sendText(String(text), options); }
+  async function listMessages(conversationId, options = {}) { const group = await requireGroup(conversationId); return Object.freeze([...(await group.messages(options))]); }
+
+  async function requireGroup(conversationId) {
+    const group = await getGroup(conversationId);
+    if (!group || typeof group.members !== 'function' || typeof group.permissions !== 'function') throw new Error('XMTP group not found: ' + conversationId);
+    return group;
+  }
+
+  return Object.freeze({ addAdmin, addMembers, createGroup, describeGroup, getGroup, listGroups, listMessages, removeMembers, sendText, syncGroups, updatePermissions });
+}
+
+function requireConversationId(value) {
+  const conversationId = String(value ?? '').trim();
+  if (!conversationId || conversationId.length > 512) throw new TypeError('XMTP conversation id is invalid.');
+  return conversationId;
+}
+
+function normalizeGroupMetadata(value = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('XMTP group metadata is invalid.');
+  const metadata = {};
+  if (value.name !== undefined) metadata.name = String(value.name).slice(0, 100);
+  if (value.description !== undefined) metadata.description = String(value.description).slice(0, 500);
+  if (value.appData !== undefined) metadata.appData = String(value.appData).slice(0, 8192);
+  if (value.permissions !== undefined) metadata.permissions = value.permissions;
+  return Object.freeze(metadata);
+}

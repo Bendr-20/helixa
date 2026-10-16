@@ -377,19 +377,19 @@ Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git 
 - Create: `apps/api/test/missions-xmtp-outbox.test.mjs`
 - Modify: `apps/api/src/xmtp-agent/index.js`
 
-- [ ] **Step 1: Write RED creation/recovery tests**
+- [x] **Step 1: Write RED creation/recovery tests**
 
 Cover exact normalized identifier set + bridge, synchronized cryptographic membership, closed permissions, bridge admin, unique signed marker, durable exclusive lock, ambiguous-create recovery, unexpected candidate/member rejection, fixed membership, and no second room while ambiguity exists.
 
-- [ ] **Step 2: Write RED outbox/loop tests**
+- [x] **Step 2: Write RED outbox/loop tests**
 
 Cover closed event types, deterministic deduplication, crash after send/before commit, restart, cursor persistence, own-message ignore, non-conversational system markers, and zero plaintext message storage/logging.
 
-- [ ] **Step 3: Expose generic XMTP primitives and implement mission policy**
+- [x] **Step 3: Expose generic XMTP primitives and implement mission policy**
 
 Keep existing holder chat behavior unchanged. Free-form chat remains non-authoritative; only read-only explicit commands may return data.
 
-- [ ] **Step 4: Run existing plus mission XMTP suites and commit**
+- [x] **Step 4: Run existing plus mission XMTP suites and commit**
 
 Run: `node --test apps/api/test/xmtp-agent.test.mjs apps/api/test/xmtp-worker.test.mjs apps/api/test/missions-xmtp-*.test.mjs`  
 Expected: PASS.  

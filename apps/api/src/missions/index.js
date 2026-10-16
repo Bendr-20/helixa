@@ -6,3 +6,5 @@ export { createMissionCredEvidencePublisher, buildCredOutcomeEvidence } from './
 export { createIdAgentsGateway, ID_AGENTS_MISSION_OPERATIONS, IdAgentsGatewayError } from './id-agents-gateway.js';
 export { createMissionArtifactReader, MissionArtifactError } from './id-agents-artifacts.js';
 export { createMissionRuntimePolicy, verifyMissionRuntimeStartup } from './runtime-isolation.js';
+export { createMissionXmtpGroups, MissionXmtpError } from './xmtp-groups.js';
+export { createMissionXmtpOutbox, MISSION_XMTP_EVENT_TYPES } from './xmtp-outbox.js';
