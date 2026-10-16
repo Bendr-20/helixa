@@ -1,4 +1,4 @@
-# Looper Missions: ID Agents Swarms, XMTP Rooms, and Base Escrow Design
+# Swarm Command: ID Agents Swarms, XMTP Rooms, and Base Escrow Design
 
 **Date:** 2026-10-16  
 **Status:** Independent review blockers resolved; pending final user review
@@ -6,7 +6,7 @@
 
 ## Goal
 
-Ship a visible, useful Looper coordination marketplace inside Multipass Console. A wallet holder posts a funded mission, recruits wallet-bound Loopers, forms a team, launches an isolated ID Agents swarm and private XMTP room, reviews artifacts, and settles real Base USDC, $CRED, or both through bounded non-custodial escrow.
+Ship **Swarm Command** (working title), a visible, useful Looper coordination marketplace inside Multipass Console. A wallet holder posts a funded mission, recruits wallet-bound Loopers, forms a team, launches an isolated ID Agents swarm and private XMTP room, reviews artifacts, and settles real Base USDC, $CRED, or both through bounded non-custodial escrow.
 
 The MVP must use Premm's open-source ID Agents core and its native RESTAP/task concepts wherever they fit. Multipass must not rebuild a second general swarm engine. Helixa adds the marketplace, identity binding, authenticated gateway, escrow lifecycle, evidence, and owner-facing Console surfaces that ID Agents does not provide.
 

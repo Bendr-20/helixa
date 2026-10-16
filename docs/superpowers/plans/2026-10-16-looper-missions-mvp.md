@@ -1,8 +1,8 @@
-# Looper Missions MVP Implementation Plan
+# Swarm Command MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available and authorized) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking. For Quigley’s current authorization, execute directly in the main session; do not spawn subagents unless he explicitly re-enables them.
 
-**Goal:** Build a local-first Looper mission marketplace that binds verified Loopers to isolated ID Agents swarms and private XMTP rooms, then settles exact USDC/$CRED milestone allocations through immutable Base escrow.
+**Goal:** Build **Swarm Command** (working title), a local-first Looper mission marketplace that binds verified Loopers to isolated ID Agents swarms and private XMTP rooms, then settles exact USDC/$CRED milestone allocations through immutable Base escrow.
 
 **Architecture:** A dedicated STRICT SQLite mission ledger owns offchain lifecycle and idempotency; an authenticated typed gateway contains one pinned ID Agents runtime per mission; the existing XMTP node adapter gains crash-safe mission-group binding and an outbox. Immutable per-mission vaults own funds, while the API reconciles chain events and exposes public/private projections to focused Console modules.
 
@@ -272,17 +272,17 @@ Cover artifact+payout-bound dual approvals in either order, release, dispute fre
 
 Every external transfer follows effects-before-interactions under non-reentrancy. Permissionless timeout callers choose neither recipients nor amounts.
 
-- [ ] **Step 3: Add fuzz/invariants**
+- [x] **Step 3: Add fuzz/invariants**
 
 Prove per asset: released + refunded + remaining = funded; every destination is predeclared; no terminal milestone settles twice; no signature succeeds twice; admin has no withdrawal path.
 
-- [ ] **Step 4: Run all contract gates and commit**
+- [x] **Step 4: Run all contract gates and commit**
 
 Run: `pnpm --filter @helixa/loopers-contracts test` and `forge test --root packages/contracts` when Forge is available.  
 Expected: PASS; if Forge is unavailable, record that toolchain blocker and do not claim the invariant gate passed.  
 Commit: `git add packages/contracts && git commit -m "feat: settle mission milestones with bounded disputes"`
 
-Verification blockers: Forge is unavailable on this host, so the invariant harness is compile-checked but not executed. The full legacy contract package is 105/106 because `looper-agent-account-release.test.mjs` requires a missing external `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json`; the complete mission-only gate passes.
+Verification status: Foundry 1.5.1 is available at `~/.foundry/bin/forge`; the mission invariant gate passes 256 runs / 16,384 calls. The full legacy contract package remains 105/106 because `looper-agent-account-release.test.mjs` requires a missing external `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json`; the complete mission-only gate passes.
 
 ---
 
@@ -299,15 +299,15 @@ Verification blockers: Forge is unavailable on this host, so the invariant harne
 - Create: `apps/api/test/missions-privacy.test.mjs`
 - Modify: `apps/api/src/server.js`, `apps/api/src/index.js`, `apps/api/src/index.d.ts`
 
-- [ ] **Step 1: Write RED service/route tests**
+- [x] **Step 1: Write RED service/route tests**
 
 Cover public list/detail, authenticated create/update/publish/cancel/apply/withdraw/select/read-sign/fund/reconcile/workspace/task/artifact/approve/release/dispute routes, body caps, exact keys, session/Origin/CSRF conventions, revision/idempotency headers, and current-wallet role checks.
 
-- [ ] **Step 2: Implement service commands against repository/domain ports**
+- [x] **Step 2: Implement service commands against repository/domain ports**
 
 Inject custody, chain, runtime, and XMTP dependencies. Public projections must omit applications, private scope, contact data, conversation IDs, manager locations, internal IDs, and evidence under review.
 
-- [ ] **Step 3: Run API regression and commit**
+- [x] **Step 3: Run API regression and commit**
 
 Run: `node --test apps/api/test/missions-*.test.mjs apps/api/test/server.test.mjs`  
 Expected: PASS.  
@@ -323,15 +323,15 @@ Commit: `git add apps/api && git commit -m "feat: expose authenticated mission A
 - Create: `apps/api/test/missions-receipts.test.mjs`
 - Create: `apps/api/test/missions-cred-evidence.test.mjs`
 
-- [ ] **Step 1: Write RED confirmation/reorg/evidence tests**
+- [x] **Step 1: Write RED confirmation/reorg/evidence tests**
 
 Require two-provider canonical agreement, confirmation depth, codehash/token pin checks, idempotent log ingestion, duplicate/reordered logs, reorg rollback to last canonical projection, no false funded/active/settled state, and CRED evidence only after finalized settlement.
 
-- [ ] **Step 2: Implement cursor-based reconciliation and signed receipt codec**
+- [x] **Step 2: Implement cursor-based reconciliation and signed receipt codec**
 
 Persist transaction/log identity and canonical block hash. Bind contribution-time custody epoch and real outcome; exclude bounty amount as direct score input.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 Run focused tests; Expected: PASS.  
 Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git commit -m "feat: reconcile mission escrow outcomes"`

@@ -1,5 +1,5 @@
 [profile.default]
-src = "src"
+src = "src/missions"
 test = "foundry-test"
 solc_version = "0.8.24"
 evm_version = "paris"
