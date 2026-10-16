@@ -217,19 +217,19 @@ Commit: `git add packages/contracts && git commit -m "feat: add mission vault ve
 - Create: `apps/api/src/missions/manifest.js`
 - Create: `apps/api/test/missions-manifest.test.mjs`
 
-- [ ] **Step 1: Write RED tests for typed-data parity and replay isolation**
+- [x] **Step 1: Write RED tests for typed-data parity and replay isolation**
 
 Cover chain/factory/version/vault/terms binding, predicted address, owner + every selected controller + lead approval address + every distinct recipient signature, EOA/ERC-1271, per-signer nonce, expiry, duplicate signer collapse, wrong signer, reentrant 1271 callback, and full rollback of nonce/manifest consumption on any failure.
 
-- [ ] **Step 2: Implement the canonical manifest codec first**
+- [x] **Step 2: Implement the canonical manifest codec first**
 
 Use raw decimal strings offchain and uint256 onchain. The Node helper and Solidity type hash must produce identical digest fixtures.
 
-- [ ] **Step 3: Implement guarded factory validation and deployment**
+- [x] **Step 3: Implement guarded factory validation and deployment**
 
 Validate all bounds/totals/addresses before external signature callbacks; mark nonces consumed inside the reverting transaction; deploy full code with CREATE2; verify expected runtime code hash; emit complete public commitments.
 
-- [ ] **Step 4: Run and commit**
+- [x] **Step 4: Run and commit**
 
 Run both focused tests; Expected: PASS.  
 Commit: `git add packages/contracts apps/api/src/missions/manifest.js apps/api/test/missions-manifest.test.mjs && git commit -m "feat: deploy consented mission vaults deterministically"`

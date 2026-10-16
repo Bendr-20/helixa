@@ -44,6 +44,11 @@ library MissionTypes {
         bool isLead;
     }
 
+    struct SignerNonce {
+        address signer;
+        uint256 nonce;
+    }
+
     struct LaunchManifest {
         bytes32 missionId;
         bytes32 termsHash;
@@ -56,9 +61,12 @@ library MissionTypes {
         address owner;
         address refundAddress;
         address leadApprovalAddress;
-        uint256 ownerNonce;
+        address arbitrator;
+        uint64 fundingDeadline;
+        uint64 launchDeadline;
         uint64 expiry;
         MemberTerms[] members;
         MilestoneTerms[] milestones;
+        SignerNonce[] signerNonces;
     }
 }
