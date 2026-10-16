@@ -191,19 +191,19 @@ Commit: `git add apps/api/src/missions/domain.js apps/api/test/missions-domain.t
 - Create: `packages/contracts/scripts/compile-mission-escrow.js`
 - Modify: `packages/contracts/package.json`
 
-- [ ] **Step 1: Write compile/ABI/authorization tests**
+- [x] **Step 1: Write compile/ABI/authorization tests**
 
 Assert exact bounds (2 assets, 8 recipients, 12 milestones, 8 payouts per asset/milestone), version statuses, timelocked activation/retirement, emergency pause of new creation only, and zero registry fund-moving surface.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `pnpm --filter @helixa/loopers-contracts test -- mission-version-registry`.
 
-- [ ] **Step 3: Implement with constructor-bound Safe/timelock roles**
+- [x] **Step 3: Implement with constructor-bound Safe/timelock roles**
 
 Store creation-code hash, expected runtime-code hash, supported token addresses, activation/retirement times, and factory compatibility. Existing vaults never consult the registry for payout behavior.
 
-- [ ] **Step 4: Compile, test, and commit**
+- [x] **Step 4: Compile, test, and commit**
 
 Run: `pnpm --filter @helixa/loopers-contracts compile:missions && node --test packages/contracts/test/mission-version-registry.test.mjs`.  
 Expected: PASS.  
