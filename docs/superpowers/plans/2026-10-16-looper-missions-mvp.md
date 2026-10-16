@@ -401,15 +401,15 @@ Commit: `git add apps/api && git commit -m "feat: bind crash-safe XMTP mission r
 - Create: `apps/api/src/missions/launch-coordinator.js`
 - Create: `apps/api/test/missions-launch-coordinator.test.mjs`
 
-- [ ] **Step 1: Write RED phase-boundary crash tests**
+- [x] **Step 1: Write RED phase-boundary crash tests**
 
 For every boundary—reservation, runtime provisioning, runtime verification, room creation, membership verification, task creation, commitment, and dual activation—simulate process death and prove read-before-write retry produces one manager/team/workspace, one room, and one task set.
 
-- [ ] **Step 2: Implement exact launch operation states**
+- [x] **Step 2: Implement exact launch operation states**
 
 Use `not_started -> reserved -> provisioning -> runtime_ready -> room_ready -> tasks_ready -> committed`, plus `failed_retryable` and `expired_refundable`. Agents receive executable work only after onchain dual launch approval.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 Run: `node --test apps/api/test/missions-launch-coordinator.test.mjs`  
 Expected: PASS.  

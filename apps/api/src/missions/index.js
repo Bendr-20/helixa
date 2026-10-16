@@ -8,3 +8,4 @@ export { createMissionArtifactReader, MissionArtifactError } from './id-agents-a
 export { createMissionRuntimePolicy, verifyMissionRuntimeStartup } from './runtime-isolation.js';
 export { createMissionXmtpGroups, MissionXmtpError } from './xmtp-groups.js';
 export { createMissionXmtpOutbox, MISSION_XMTP_EVENT_TYPES } from './xmtp-outbox.js';
+export { createMissionLaunchCoordinator, MISSION_LAUNCH_OPERATION_STATES } from './launch-coordinator.js';
