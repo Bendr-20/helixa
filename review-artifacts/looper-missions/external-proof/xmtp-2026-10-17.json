@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "product": "Swarm Command",
+  "gate": "real-xmtp-dev-group",
+  "status": "passed",
+  "generatedAt": "2026-10-17T02:15:48Z",
+  "sourceCommit": "6a0e6a7b54e4ea0bb1584513923d152585d13136",
+  "network": "xmtp-production",
+  "room": {
+    "privateIdentifierSha256": "8cf399e3d353c4514a75081a6045f24303ac5d52da5798665f30b8046c8eb18c",
+    "memberCount": 2,
+    "memberCommitment": "a119d4b30f0224de84a98087c0f507c042c359f9de7457472bf9cff042d015da",
+    "policyCommitment": "eaade1fea483c1d1d0031918572845dcf2f3f2093543544be0a38a21a434d9ea",
+    "fixedMembershipVerified": true,
+    "adminOnlyPermissionsVerified": true,
+    "bridgeAdminVerified": true,
+    "signedMarkerVerified": true
+  },
+  "recovery": {
+    "sameConversationRecovered": true,
+    "secondRoomCreated": false
+  },
+  "outbox": {
+    "crashAfterSendExercised": true,
+    "retryReusedMessageId": true,
+    "inboundAcceptedOnce": true,
+    "duplicateAccepted": false,
+    "plaintextStored": false
+  },
+  "operations": {
+    "bridgeServiceRestored": true,
+    "deploymentPerformed": false,
+    "fundingPerformed": false
+  },
+  "privacy": {
+    "conversationIdIncluded": false,
+    "walletAddressesIncluded": false,
+    "inboxIdsIncluded": false,
+    "messageBodiesIncluded": false
+  }
+}
