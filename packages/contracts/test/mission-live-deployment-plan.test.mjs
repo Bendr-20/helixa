@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { prepareLiveDeploymentPlan, validateLiveDeploymentPlan } from '../scripts/prepare-mission-base-sepolia-plan.js';
+import { validateLiveDeploymentPlan } from '../scripts/prepare-mission-base-sepolia-plan.js';
 
 const ARTIFACT = new URL('../../../review-artifacts/looper-missions/external-proof/base-sepolia-live-plan.json', import.meta.url);
 
-test('live Base Sepolia plan is byte-committed, unsigned, dual-RPC pinned, and separately blocks broadcast', async () => {
-  const artifact = JSON.parse(await readFile(ARTIFACT, 'utf8'));
-  const regenerated = await prepareLiveDeploymentPlan({ anchorNumber: artifact.rpcConsensus.anchor.number });
-  assert.equal(JSON.stringify(regenerated), JSON.stringify(artifact));
+test('historical live Base Sepolia plan remains byte-committed, unsigned, and non-broadcasting after deployment', async () => {
+  const bytes = await readFile(ARTIFACT);
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), 'afeb2ff90b899b45aeba9bc94468e312b02ae09e1a498851d76348c1da823d18');
+  const artifact = JSON.parse(bytes.toString('utf8'));
   assert.doesNotThrow(() => validateLiveDeploymentPlan(artifact));
   assert.equal(artifact.status, 'live_no_broadcast_simulation_passed');
   assert.equal(artifact.externalBroadcast, false);

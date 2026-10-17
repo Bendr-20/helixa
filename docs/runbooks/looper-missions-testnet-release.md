@@ -34,3 +34,20 @@ The reviewed live plan uses a canonical Safe 1.4.1 proxy with threshold 2. Its o
     pnpm --filter @helixa/loopers-contracts simulate:missions:live -- --anchor <confirmed-block> --output review-artifacts/looper-missions/external-proof/base-sepolia-live-plan.json
 
 This command performs read-only dual-RPC verification and executes the exact deployment and Safe actions only inside a forked local EVM. It collects no authorization material and cannot broadcast. The resulting plan expires at its recorded `liveReadiness.validUntil` boundary and must be refreshed immediately before any separately approved broadcast.
+
+
+## Confirmed Base Sepolia deployment verification
+
+The deployment packet was broadcast only after separate approval and confirmed five infrastructure transactions in blocks 48,242,657–48,242,661. The canonical post-deployment manifest is `packages/contracts/deployments/swarm-command-base-sepolia.json`.
+
+The deployment alone does **not** enable mission creation. The Safe nonce must remain zero, both isolated test-token supplies must remain zero, and no registry version may be proposed or activated by this verification step.
+
+Run the read-only dual-RPC verifier from the repository root:
+
+```bash
+pnpm --filter @helixa/loopers-contracts verify:missions:live -- --output review-artifacts/looper-missions/external-proof/base-sepolia-deployment-status.json
+```
+
+The verifier is pinned to the official Base Sepolia RPC and PublicNode. It checks the canonical block anchor, all five runtime hashes, Safe singleton/version/owners/threshold/nonce, token metadata/issuer/zero supply, registry authority/delay, and factory registry/compatibility. It has no signing, broadcasting, minting, funding, version-governance, or mission-launch surface.
+
+Any Safe nonce change, token supply change, runtime/configuration drift, provider disagreement, or malformed response fails closed. Registry proposal/activation remains a separate reviewed 2-of-2 Safe action and is prohibited without explicit approval.
