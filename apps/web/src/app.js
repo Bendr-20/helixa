@@ -195,12 +195,13 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleSidebarRosterOpen: false,
     consoleSelectedAgentId: consoleMockState?.consoleSelectedAgentId ?? null,
     consoleWorkspaceView: consoleMockState
-      ? (['chat', 'wallet', 'multipass', 'codex', 'network'].includes(consoleMockState.consoleWorkspaceView) ? consoleMockState.consoleWorkspaceView : 'chat')
+      ? (['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(consoleMockState.consoleWorkspaceView) ? consoleMockState.consoleWorkspaceView : 'chat')
       : null,
     consoleParticipantAgentIds: consoleMockState?.consoleParticipantAgentIds ?? [],
     consoleAgentThread: consoleMockState?.consoleAgentThread ?? createInitialConsoleAgentThreadState(),
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
+    consoleMissions: consoleMockState?.consoleMissions ?? { status: 'idle', missions: [] },
     looperAgentWallet: consoleMockState?.looperAgentWallet ?? activeLooperWalletController.getSnapshot(),
     consoleMockMode: consoleMockState?.mode ?? null,
     walletSnapshot: consoleMockState?.walletSnapshot ?? activeWalletClient.getSnapshot(),
@@ -1677,8 +1678,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   function setConsoleWorkspaceView(event) {
     const view = String(event?.currentTarget?.dataset?.consoleView ?? '').trim();
-    if (!['chat', 'wallet', 'multipass', 'codex', 'network'].includes(view)) return;
-    if (!state.consoleSelectedAgentId) return;
+    if (!['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(view)) return;
+    if (view !== 'missions' && !state.consoleSelectedAgentId) return;
     state = { ...state, consoleWorkspaceView: view };
     render(root, state, handlers);
   }

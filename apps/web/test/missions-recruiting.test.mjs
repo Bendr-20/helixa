@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { renderMissionRecruiting } from '../src/missions/mission-recruiting.js';
+test('recruiting enables only fresh evidence with payout signature',()=>{ const html=renderMissionRecruiting({applicants:[{applicationId:'a1',displayName:'Fresh',role:'builder',custodyEpoch:'7',settlementAddress:'0x111',evidenceStatus:'current',payoutSigned:true},{applicationId:'a2',displayName:'Stale',role:'reviewer',custodyEpoch:'8',settlementAddress:'0x222',evidenceStatus:'stale',payoutSigned:true},{applicationId:'a3',displayName:'Unsigned',evidenceStatus:'current',payoutSigned:false}]}); assert.match(html,/data-select-applicant="a1" >/); assert.match(html,/data-select-applicant="a2" disabled/); assert.match(html,/Awaiting payout signature/); assert.match(html,/Payout authority stays on separately signed addresses/); });

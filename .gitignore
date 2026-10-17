@@ -1,5 +1,5 @@
 # dependencies
-node_modules/
+node_modules
 .pnpm-store/
 
 # env and secrets
@@ -20,6 +20,7 @@ build/
 .next/
 out/
 coverage/
+packages/contracts/cache/
 
 # data and logs
 *.db
@@ -49,6 +50,7 @@ logs/
 !apps/web/public/og-preview.png
 !apps/web/public/share/*.png
 !apps/web/public/share/*.jpg
+!review-artifacts/looper-missions/local-proof/*.png
 
 # local assistant/workspace files
 MEMORY.md

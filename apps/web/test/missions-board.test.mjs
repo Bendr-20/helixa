@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { renderMissionBoard } from '../src/missions/mission-board.js';
+const A=(v)=>'0x'+v.repeat(40).slice(0,40);
+test('board renders bounded truthful funding, roles, deadlines, source state, and escaped content',()=>{ const html=renderMissionBoard({missions:[{missionId:'mission-1',title:'<script>x</script>',publicSummary:'Build',state:'funding',roles:['builder'],applicationClosesAt:1000,launchDeadline:2000,funding:[{token:A('1'),symbol:'USDC',requiredRaw:'1000000',fundedRaw:'500000',finalized:false}],source:{label:'onchain',status:'current'}}]}); assert.match(html,/Swarm Command/); assert.ok(html.includes('500000 / 1000000 pending')); assert.match(html,/builder/); assert.match(html,/1970-01-01T00:00:01.000Z/); assert.doesNotMatch(html,/<script>/); assert.match(html,/data-mission-id="mission-1"/); });
+test('board caps rendered missions to one hundred',()=>{ const mission={missionId:'m',title:'T',publicSummary:'S',state:'draft',roles:[],applicationClosesAt:null,launchDeadline:null,funding:[],source:{label:'helixa_ledger',status:'current'}}; const html=renderMissionBoard({missions:new Array(120).fill(null).map((_,i)=>({...mission,missionId:'m-'+i}))}); assert.equal((html.match(/class="mission-card"/g)||[]).length,100); });

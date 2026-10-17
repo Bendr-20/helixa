@@ -3,6 +3,9 @@ import { normalizeConsoleCodexState, renderConsoleCodexWorkspace } from './conso
 import { createConsoleAgentGalleryModel } from './console-agent-gallery.js';
 import { safeConsoleAvatarUrl } from './console-owner-profile.js';
 import { createInitialConsoleRestapNetworkState, getConsoleRestapNetworkStatus, renderConsoleRestapNetworkPanel } from './console-restap-network.js';
+import { renderMissionBoard } from './missions/mission-board.js';
+import { renderMissionWorkspace } from './missions/mission-workspace.js';
+import { renderMissionSettlement } from './missions/mission-settlement.js';
 
 const CONSOLE_SAFETY_NOTE = 'Review-only operator surface. Your agent can brief and propose, but every action still waits for you.';
 const DEFAULT_CONSOLE_MISSION = 'Watch this agent, keep memory in Sibyl, and brief me before any proposal or outside action.';
@@ -72,12 +75,14 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
   const needsAgentSelection = walletAuthenticated && agentRoster.status === 'loaded' && activeAgentCount > 0 && !activeAgent?.tokenId;
   const showAgentGallery = walletAuthenticated && !activeAgent?.tokenId;
   const activeAgentWallet = activeAgent?.tokenId ? normalizeLooperAgentWallet(state.looperAgentWallet, activeAgent.tokenId) : null;
-  const requestedWorkspaceView = ['chat', 'wallet', 'multipass', 'codex', 'network'].includes(state.consoleWorkspaceView)
+  const requestedWorkspaceView = ['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(state.consoleWorkspaceView)
     ? state.consoleWorkspaceView
     : null;
-  const workspaceView = activeAgent?.tokenId
-    ? (requestedWorkspaceView ?? (activeAgentWallet ? (activeAgentWallet.mode === 'active' ? 'multipass' : 'wallet') : 'chat'))
-    : 'chat';
+  const workspaceView = requestedWorkspaceView === 'missions'
+    ? 'missions'
+    : activeAgent?.tokenId
+      ? (requestedWorkspaceView ?? (activeAgentWallet ? (activeAgentWallet.mode === 'active' ? 'multipass' : 'wallet') : 'chat'))
+      : 'chat';
   const galleryModel = createConsoleAgentGalleryModel({
     agents: activeAgents,
     query: state.consoleAgentGallery?.query,
@@ -142,6 +147,7 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
       selectedTokenId: activeAgent?.tokenId ?? null,
     }),
     restapNetwork: createConsoleRestapNetworkSnapshot(state.consoleRestapNetwork, activeAgent?.tokenId),
+    missions: state.consoleMissions ?? { status: 'idle', missions: [] },
     rosterDrawers: {
       mainOpen: Boolean(state.consoleMainRosterOpen),
       sidebarOpen: Boolean(state.consoleSidebarRosterOpen),
@@ -273,6 +279,11 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
     recall: snapshot.recall,
     contextItems: snapshot.threadContextItems,
   });
+  if (snapshot.workspaceView === 'missions') {
+    if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);
+    if (snapshot.missions?.view === 'settlement') return renderMissionSettlement(snapshot.missions);
+    return renderMissionBoard(snapshot.missions);
+  }
   if (!session.activeAgentId) return thread;
   let workspace;
   if (snapshot.workspaceView === 'codex') {
@@ -356,11 +367,14 @@ function renderConsoleMainRosterDrawer(snapshot = {}) {
 function renderConsoleWorkspaceNav(snapshot = {}, { mobile = false } = {}) {
   const agentAvailable = Boolean(snapshot.session?.activeAgentId);
   const walletAvailable = Boolean(agentAvailable && snapshot.identityCard?.agentWallet);
-  const view = ['wallet', 'multipass', 'codex', 'network'].includes(snapshot.workspaceView) ? snapshot.workspaceView : 'chat';
+  const view = ['wallet', 'multipass', 'codex', 'network', 'missions'].includes(snapshot.workspaceView) ? snapshot.workspaceView : 'chat';
   const networkStatus = getConsoleRestapNetworkStatus(snapshot.restapNetwork);
   const placementClass = mobile ? 'console-workspace-nav-mobile' : 'console-workspace-nav-sidebar';
   return `
     <nav class="console-workspace-nav ${placementClass}" aria-label="Console workspace${mobile ? ' mobile' : ''}">
+      <button type="button" data-action="set-console-workspace-view" data-console-view="missions" ${view === 'missions' ? 'aria-current="page"' : ''}>
+        <span>Swarm Command</span><small>Mission board</small>
+      </button>
       <button type="button" data-action="set-console-workspace-view" data-console-view="chat" ${view === 'chat' ? 'aria-current="page"' : ''} ${agentAvailable ? '' : 'disabled'}>
         <span>Chat</span><small>${agentAvailable ? 'Agent room' : 'Waiting'}</small>
       </button>

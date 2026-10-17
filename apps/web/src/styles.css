@@ -11573,3 +11573,45 @@ h1 {
   .console-restap-advanced > summary i,
   .console-restap-danger > summary i { transition: none; }
 }
+
+/* Swarm Command */
+.mission-board, .mission-editor, .mission-recruiting, .mission-workspace, .mission-settlement { min-width: 0; padding: clamp(14px, 2.5vw, 28px); color: #e9f7f5; background: radial-gradient(circle at top right, rgba(43, 214, 190, .12), transparent 34%), #071112; }
+.mission-surface-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; margin-bottom: 20px; }
+.mission-surface-header h2 { margin: 4px 0 8px; font-size: clamp(22px, 3vw, 36px); }
+.mission-surface-header p { max-width: 760px; margin: 0; color: #a9bfbc; }
+.mission-eyebrow { color: #5ee7d2; font: 700 11px/1.2 monospace; letter-spacing: .14em; text-transform: uppercase; }
+.mission-board-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px; border: 1px solid #24403d; background: #0b1919; }
+.mission-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; margin-top: 14px; }
+.mission-card, .mission-applicant, .mission-panel { min-width: 0; padding: 16px; border: 1px solid #294c47; border-radius: 12px; background: #0b1718; box-shadow: 0 12px 30px rgba(0,0,0,.16); }
+.mission-card-heading, .mission-applicant > div { display: flex; justify-content: space-between; gap: 10px; color: #74e6d5; text-transform: capitalize; }
+.mission-card p, .mission-applicant p { color: #b8cac7; overflow-wrap: anywhere; }
+.mission-card dl { display: grid; gap: 8px; }
+.mission-card dl div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.mission-card dt { color: #809b97; } .mission-card dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.mission-role-list, .mission-funding-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.mission-role-list span, .mission-funding-chip { max-width: 100%; padding: 4px 8px; border: 1px solid #315b55; border-radius: 999px; color: #c8e4df; font-size: 11px; overflow-wrap: anywhere; }
+.mission-funding-chip.pending { color: #ffd27a; border-color: #755b2b; } .mission-funding-chip.finalized { color: #75f0b5; }
+.mission-editor form { display: grid; gap: 14px; max-width: 900px; }
+.mission-editor label { display: grid; gap: 6px; color: #b8cac7; }
+.mission-editor input, .mission-editor textarea, .mission-editor select, .mission-board select { width: 100%; min-width: 0; padding: 11px; border: 1px solid #315b55; border-radius: 8px; color: #effffc; background: #071112; }
+.mission-editor fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; border: 1px solid #294c47; }
+.mission-confirmation { padding: 10px; border-left: 3px solid #ffd27a; color: #ffe1a7; background: #211a0b; }
+.mission-applicant-list { display: grid; gap: 10px; } .mission-applicant code { display: block; overflow-wrap: anywhere; color: #91aaa6; }
+.mission-applicant.stale { border-color: #755b2b; } .mission-empty { padding: 24px; text-align: center; color: #90a8a4; }
+@media (max-width: 720px) { .mission-surface-header, .mission-board-toolbar { display: grid; } .mission-editor fieldset { grid-template-columns: minmax(0, 1fr); } .mission-card dl div { grid-template-columns: minmax(0, 1fr); } .mission-card dd { text-align: left; } }
+@media (max-width: 390px) { .mission-board, .mission-editor, .mission-recruiting, .mission-workspace, .mission-settlement { padding: 10px; } .mission-card-grid { grid-template-columns: minmax(0, 1fr); } }
+.mission-workspace-grid, .mission-settlement-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.mission-panel header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.mission-source { max-width: 100%; padding: 4px 7px; border-radius: 999px; color: #a9bfbc; background: #102321; font-size: 10px; overflow-wrap: anywhere; }
+.mission-source.stale, .mission-source.degraded { color: #ffd27a; background: #211a0b; }
+.mission-panel-items { display: grid; gap: 8px; }
+.mission-item { display: flex; justify-content: space-between; gap: 8px; width: 100%; min-width: 0; text-align: left; }
+.mission-item strong, .mission-item small, .mission-panel code { overflow-wrap: anywhere; }
+.mission-alert { margin-bottom: 14px; padding: 12px; border: 1px solid #755b2b; border-radius: 8px; color: #ffe1a7; background: #211a0b; }
+.mission-alert.danger { border-color: #7d3940; color: #ffc5ca; background: #240e12; }
+.mission-allocation { display: grid; grid-template-columns: auto auto; gap: 6px 12px; padding: 9px 0; border-bottom: 1px solid #233d39; }
+.mission-allocation code { grid-column: 1 / -1; }
+.mission-terms-check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; color: #c9dbd8; }
+.mission-terms-check input { width: auto; }
+.mission-receipt { margin-top: 14px; }
+@media (max-width: 720px) { .mission-workspace-grid, .mission-settlement-grid { grid-template-columns: minmax(0, 1fr); } }

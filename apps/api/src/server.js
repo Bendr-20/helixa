@@ -412,6 +412,7 @@ export async function startServer(options = {}) {
       store,
       baseUrl: apiBaseUrl,
       savedRecords,
+      missionService: options.missionService,
       looperNameStore,
       activationService,
       allowedOrigins: parsed.allowedOrigins,

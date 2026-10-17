@@ -89,7 +89,7 @@ test('RESTAP Network workspace fits desktop, 390px and 320px deterministic state
     await page.locator('.console-restap-network-workspace').waitFor({ state: 'visible' });
     await assertNoOverflow(page);
     const visibleNav = page.locator('.console-workspace-nav:visible');
-    assert.equal(await visibleNav.locator('button').count(), 5);
+    assert.equal(await visibleNav.locator('button').count(), 6);
     assert.equal(await visibleNav.locator('[data-console-view="network"]').getAttribute('aria-current'), 'page');
     assert.match(await visibleNav.locator('[data-console-view="network"]').innerText(), /Network[\s\S]*RESTAP[\s\S]*Active/i);
     assert.match(await page.locator('.console-restap-heading h2').innerText(), /Looper #617 network/);
