@@ -1,4 +1,10 @@
-import { contentTypeAttachment } from '@xmtp/node-sdk';
+import {
+  contentTypeAttachment,
+  GroupPermissionsOptions,
+  MetadataField,
+  PermissionPolicy,
+  PermissionUpdateType,
+} from '@xmtp/node-sdk';
 import { hexToBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -616,7 +622,7 @@ export function createXmtpGroupPrimitives({ client } = {}) {
     return Object.freeze({
       conversationId: String(group.id), name: String(group.name ?? ''), description: String(group.description ?? ''),
       appData: String(group.appData ?? ''), metadata: Object.freeze({ ...metadata }),
-      members: Object.freeze([...members]), permissions: Object.freeze(group.permissions()),
+      members: Object.freeze([...members]), permissions: normalizeGroupPermissions(group.permissions()),
       admins: Object.freeze([...group.listAdmins()]), superAdmins: Object.freeze([...group.listSuperAdmins()]),
     });
   }
@@ -625,7 +631,15 @@ export function createXmtpGroupPrimitives({ client } = {}) {
     const group = await requireGroup(conversationId);
     for (const update of updates) {
       if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('XMTP permission update is invalid.');
-      await group.updatePermission(update.permissionType, update.policy, update.metadataField);
+      const permissionType = normalizePermissionUpdateType(update.permissionType);
+      const policy = normalizePermissionPolicy(update.policy);
+      if (permissionType === PermissionUpdateType.UpdateMetadata && update.metadataField === undefined) {
+        for (const metadataField of CLOSED_METADATA_FIELDS) {
+          await group.updatePermission(permissionType, policy, metadataField);
+        }
+      } else {
+        await group.updatePermission(permissionType, policy, normalizeMetadataField(update.metadataField));
+      }
     }
   }
   async function addMembers(conversationId, identifiers) { const group = await requireGroup(conversationId); await group.addMembersByIdentifiers(identifiers); }
@@ -652,9 +666,81 @@ function requireConversationId(value) {
 function normalizeGroupMetadata(value = {}) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('XMTP group metadata is invalid.');
   const metadata = {};
-  if (value.name !== undefined) metadata.name = String(value.name).slice(0, 100);
-  if (value.description !== undefined) metadata.description = String(value.description).slice(0, 500);
+  if (value.name !== undefined) metadata.groupName = String(value.name).slice(0, 100);
+  if (value.description !== undefined) metadata.groupDescription = String(value.description).slice(0, 500);
   if (value.appData !== undefined) metadata.appData = String(value.appData).slice(0, 8192);
-  if (value.permissions !== undefined) metadata.permissions = value.permissions;
+  if (value.permissions !== undefined) metadata.permissions = normalizeGroupPermissionOption(value.permissions);
   return Object.freeze(metadata);
+}
+
+const CLOSED_METADATA_FIELDS = Object.freeze([
+  MetadataField.AppData,
+  MetadataField.Description,
+  MetadataField.GroupName,
+  MetadataField.GroupImageUrlSquare,
+  MetadataField.MessageExpirationFromNs,
+]);
+
+const GROUP_PERMISSION_OPTIONS = Object.freeze({
+  default: GroupPermissionsOptions.Default,
+  admin_only: GroupPermissionsOptions.AdminOnly,
+  custom_policy: GroupPermissionsOptions.CustomPolicy,
+});
+
+const PERMISSION_UPDATE_TYPES = Object.freeze({
+  add_member: PermissionUpdateType.AddMember,
+  remove_member: PermissionUpdateType.RemoveMember,
+  add_admin: PermissionUpdateType.AddAdmin,
+  remove_admin: PermissionUpdateType.RemoveAdmin,
+  update_metadata: PermissionUpdateType.UpdateMetadata,
+});
+
+const PERMISSION_POLICIES = Object.freeze({
+  allow: PermissionPolicy.Allow,
+  deny: PermissionPolicy.Deny,
+  admin: PermissionPolicy.Admin,
+  super_admin: PermissionPolicy.SuperAdmin,
+  does_not_exist: PermissionPolicy.DoesNotExist,
+  other: PermissionPolicy.Other,
+});
+
+const METADATA_FIELDS = Object.freeze({
+  app_data: MetadataField.AppData,
+  description: MetadataField.Description,
+  group_name: MetadataField.GroupName,
+  group_image_url_square: MetadataField.GroupImageUrlSquare,
+  message_expiration_from_ns: MetadataField.MessageExpirationFromNs,
+  message_expiration_in_ns: MetadataField.MessageExpirationInNs,
+});
+
+function normalizeGroupPermissionOption(value) {
+  return normalizeEnum(value, GROUP_PERMISSION_OPTIONS, Object.values(GROUP_PERMISSION_OPTIONS), 'XMTP group permissions');
+}
+
+function normalizePermissionUpdateType(value) {
+  return normalizeEnum(value, PERMISSION_UPDATE_TYPES, Object.values(PERMISSION_UPDATE_TYPES), 'XMTP permission type');
+}
+
+function normalizePermissionPolicy(value) {
+  return normalizeEnum(value, PERMISSION_POLICIES, Object.values(PERMISSION_POLICIES), 'XMTP permission policy');
+}
+
+function normalizeMetadataField(value) {
+  if (value === undefined) return undefined;
+  return normalizeEnum(value, METADATA_FIELDS, Object.values(METADATA_FIELDS), 'XMTP metadata field');
+}
+
+function normalizeEnum(value, names, numbers, label) {
+  if (typeof value === 'string' && Object.hasOwn(names, value)) return names[value];
+  if (Number.isSafeInteger(value) && numbers.includes(value)) return value;
+  throw new TypeError(label + ' is invalid.');
+}
+
+function normalizeGroupPermissions(value = {}) {
+  const policyType = Object.entries(GROUP_PERMISSION_OPTIONS).find(([, numeric]) => numeric === value.policyType)?.[0] ?? 'unknown';
+  const policySet = {};
+  for (const [key, policy] of Object.entries(value.policySet ?? {})) {
+    policySet[key] = Object.entries(PERMISSION_POLICIES).find(([, numeric]) => numeric === policy)?.[0] ?? 'unknown';
+  }
+  return Object.freeze({ policyType, policySet: Object.freeze(policySet) });
 }
