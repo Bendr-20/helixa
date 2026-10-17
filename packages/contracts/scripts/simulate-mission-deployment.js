@@ -12,6 +12,7 @@ import { compileMissionContracts } from './compile-mission-escrow.js';
 const CHAIN_ID = 84_532;
 const MINIMUM_DELAY_SECONDS = 86_400;
 const FIXED_TIME = new Date('2026-10-17T00:00:00.000Z');
+const FIXED_TIMESTAMP = Math.floor(FIXED_TIME.getTime() / 1_000);
 const VERSION_ID = ethers.id('swarm-command-mission-escrow-v1');
 const EXTERNAL_REQUIREMENTS = Object.freeze([
   'approved Base Sepolia RPC endpoints',
@@ -121,8 +122,7 @@ export async function simulateMissionDeployment() {
     const registry = await deploy({ signer: deployer, artifact: mission.contracts.VersionRegistry, args: [authority.target, emergencyCouncil, MINIMUM_DELAY_SECONDS], operation: 'registry.deploy', gasLimit: 3_500_000n, transactions });
     const factory = await deploy({ signer: deployer, artifact: mission.contracts.MissionEscrowFactory, args: [registry.target], operation: 'factory.deploy', gasLimit: 5_000_000n, transactions });
 
-    const latest = await provider.getBlock('latest');
-    const activateAfter = Number(latest.timestamp) + MINIMUM_DELAY_SECONDS + 60;
+    const activateAfter = FIXED_TIMESTAMP + MINIMUM_DELAY_SECONDS + 60;
     const vaultCreationCodeHash = ethers.keccak256(mission.contracts.MissionEscrowV1.bytecode);
     const vaultRuntimeCodeHash = ethers.keccak256(mission.contracts.MissionEscrowV1.deployedBytecode);
     const proposalData = registry.interface.encodeFunctionData('proposeVersion', [VERSION_ID, vaultCreationCodeHash, vaultRuntimeCodeHash, [tokens[0].address, tokens[1].address], 2, activateAfter, 0, 1]);
@@ -132,11 +132,11 @@ export async function simulateMissionDeployment() {
     await approveTwoOfTwo({ authority, target: registry.target, data: activationData, operation: 'registry.activateVersion', owner0, owner1, transactions });
     await expectRejectedCall({ signer: owner0, to: authority.target, data: authority.interface.encodeFunctionData('execute', [registry.target, activationData]), operation: 'registry.activateVersion.early-rejected', gasLimit: 2_000_000n, transactions });
     assertEqual((await registry.getVersion(VERSION_ID)).status, 0n, 'pre-delay version status');
-    await provider.send('evm_increaseTime', [MINIMUM_DELAY_SECONDS + 120]);
+    await provider.send('evm_setTime', [(activateAfter + 60) * 1_000]);
     await provider.send('evm_mine', []);
     await executeAuthority({ authority, target: registry.target, data: activationData, operation: 'registry.activateVersion', signer: owner0, transactions });
 
-    const vaultTerms = simulationVaultTerms({ addresses, token: tokens[0].address, now: Number((await provider.getBlock('latest')).timestamp) });
+    const vaultTerms = simulationVaultTerms({ addresses, token: tokens[0].address, now: activateAfter + 60 });
     const vault = await deploy({ signer: deployer, artifact: mission.contracts.MissionEscrowV1, args: vaultTerms, operation: 'vault.deploy.runtime-verification', gasLimit: 8_000_000n, transactions });
     const deployedVaultRuntimeCodeHash = await codeHash(provider, vault.target);
     assertEqual(deployedVaultRuntimeCodeHash, vaultRuntimeCodeHash, 'deployed vault runtime hash');

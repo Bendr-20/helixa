@@ -11,8 +11,9 @@ test('chain-84532 local simulation is deterministic, artifact-locked, and does n
   const second = await simulateMissionDeployment();
   const committed = JSON.parse(await readFile(new URL('../../../review-artifacts/looper-missions/external-proof/base-sepolia-simulation.json', import.meta.url), 'utf8'));
 
-  assert.deepEqual(second, first);
-  assert.deepEqual(committed, first);
+  const serialized = JSON.stringify(first);
+  assert.equal(JSON.stringify(second), serialized);
+  assert.equal(JSON.stringify(committed), serialized);
   assert.equal(first.schemaVersion, 1);
   assert.equal(first.status, 'local_simulation_passed_live_inputs_blocked');
   assert.equal(first.executionEnvironment, 'in-memory-ganache');
