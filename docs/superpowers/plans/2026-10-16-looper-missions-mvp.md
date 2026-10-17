@@ -84,7 +84,7 @@ Assert exact mission, launch, vault, milestone, task, and source enums; exact al
 
 - [x] **Step 2: Run the focused test and verify RED**
 
-Run: `node --test packages/types/test/missions.test.mjs`  
+Run: `node --test packages/types/test/missions.test.mjs`
 Expected: FAIL because the mission exports do not exist.
 
 - [x] **Step 3: Implement the minimal closed contract**
@@ -97,7 +97,7 @@ The implementation must encode the specification exactly and must not conflate a
 
 - [x] **Step 4: Run focused and shared-type tests**
 
-Run: `node --test packages/types/test/missions.test.mjs packages/types/test/schema-contract.test.mjs`  
+Run: `node --test packages/types/test/missions.test.mjs packages/types/test/schema-contract.test.mjs`
 Expected: PASS.
 
 - [x] **Step 5: Commit**
@@ -116,7 +116,7 @@ Require WAL, foreign keys, configurable busy timeout, `integrity_check=ok`, sche
 
 - [x] **Step 2: Run RED**
 
-Run: `node --test apps/api/test/missions-database.test.mjs`  
+Run: `node --test apps/api/test/missions-database.test.mjs`
 Expected: FAIL because `createMissionDatabase` does not exist.
 
 - [x] **Step 3: Implement schema and narrow transaction API**
@@ -129,8 +129,8 @@ Add tests that crash between mission mutation and event append, reopen the file,
 
 - [x] **Step 5: Run focused test and commit**
 
-Run: `node --test apps/api/test/missions-database.test.mjs`  
-Expected: PASS.  
+Run: `node --test apps/api/test/missions-database.test.mjs`
+Expected: PASS.
 Commit: `git add apps/api/src/missions/database.js apps/api/test/missions-database.test.mjs && git commit -m "feat: add durable mission ledger schema"`
 
 ### Task 3: Add repository, revisions, idempotency, and append-only events
@@ -155,7 +155,7 @@ Canonicalization must reject unsupported JSON values, normalize object-key order
 
 - [x] **Step 4: Run focused tests and commit**
 
-Expected: PASS.  
+Expected: PASS.
 Commit: `git add apps/api/src/missions apps/api/test/missions-repository.test.mjs apps/api/test/missions-idempotency.test.mjs && git commit -m "feat: add mission revisions and idempotent operations"`
 
 ### Task 4: Implement lifecycle, role, and custody rules
@@ -174,8 +174,8 @@ Return explicit decisions/errors; never consult chat, model output, mutable NFT 
 
 - [x] **Step 3: Run and commit**
 
-Run: `node --test apps/api/test/missions-domain.test.mjs`  
-Expected: PASS.  
+Run: `node --test apps/api/test/missions-domain.test.mjs`
+Expected: PASS.
 Commit: `git add apps/api/src/missions/domain.js apps/api/test/missions-domain.test.mjs && git commit -m "feat: enforce mission authority and custody rules"`
 
 ---
@@ -205,8 +205,8 @@ Store creation-code hash, expected runtime-code hash, supported token addresses,
 
 - [x] **Step 4: Compile, test, and commit**
 
-Run: `pnpm --filter @helixa/loopers-contracts compile:missions && node --test packages/contracts/test/mission-version-registry.test.mjs`.  
-Expected: PASS.  
+Run: `pnpm --filter @helixa/loopers-contracts compile:missions && node --test packages/contracts/test/mission-version-registry.test.mjs`.
+Expected: PASS.
 Commit: `git add packages/contracts && git commit -m "feat: add mission vault version registry"`
 
 ### Task 6: Implement CREATE2 factory and atomic EIP-712 manifest consent
@@ -231,7 +231,7 @@ Validate all bounds/totals/addresses before external signature callbacks; mark n
 
 - [x] **Step 4: Run and commit**
 
-Run both focused tests; Expected: PASS.  
+Run both focused tests; Expected: PASS.
 Commit: `git add packages/contracts apps/api/src/missions/manifest.js apps/api/test/missions-manifest.test.mjs && git commit -m "feat: deploy consented mission vaults deterministically"`
 
 ### Task 7: Implement exact funding and launch activation
@@ -251,8 +251,8 @@ No proxy, clone, delegatecall, arbitrary call, fallback execution, admin withdra
 
 - [x] **Step 3: Run focused tests and commit**
 
-Run: `node --test packages/contracts/test/mission-escrow-funding.test.mjs`  
-Expected: PASS.  
+Run: `node --test packages/contracts/test/mission-escrow-funding.test.mjs`
+Expected: PASS.
 Commit: `git add packages/contracts && git commit -m "feat: fund and activate immutable mission vaults"`
 
 ### Task 8: Implement milestones, disputes, timeout allocations, and invariants
@@ -278,8 +278,8 @@ Prove per asset: released + refunded + remaining = funded; every destination is 
 
 - [x] **Step 4: Run all contract gates and commit**
 
-Run: `pnpm --filter @helixa/loopers-contracts test` and `forge test --root packages/contracts` when Forge is available.  
-Expected: PASS; if Forge is unavailable, record that toolchain blocker and do not claim the invariant gate passed.  
+Run: `pnpm --filter @helixa/loopers-contracts test` and `forge test --root packages/contracts` when Forge is available.
+Expected: PASS; if Forge is unavailable, record that toolchain blocker and do not claim the invariant gate passed.
 Commit: `git add packages/contracts && git commit -m "feat: settle mission milestones with bounded disputes"`
 
 Verification status: Foundry 1.5.1 is available at `~/.foundry/bin/forge`; the mission invariant gate passes 256 runs / 16,384 calls. The full legacy contract package remains 105/106 because `looper-agent-account-release.test.mjs` requires a missing external `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json`; the complete mission-only gate passes.
@@ -309,8 +309,8 @@ Inject custody, chain, runtime, and XMTP dependencies. Public projections must o
 
 - [x] **Step 3: Run API regression and commit**
 
-Run: `node --test apps/api/test/missions-*.test.mjs apps/api/test/server.test.mjs`  
-Expected: PASS.  
+Run: `node --test apps/api/test/missions-*.test.mjs apps/api/test/server.test.mjs`
+Expected: PASS.
 Commit: `git add apps/api && git commit -m "feat: expose authenticated mission API"`
 
 ### Task 10: Reconcile chain state and issue settlement receipts
@@ -333,7 +333,7 @@ Persist transaction/log identity and canonical block hash. Bind contribution-tim
 
 - [x] **Step 3: Run and commit**
 
-Run focused tests; Expected: PASS.  
+Run focused tests; Expected: PASS.
 Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git commit -m "feat: reconcile mission escrow outcomes"`
 
 ### Task 11: Pin and contain ID Agents behind a typed gateway
@@ -365,7 +365,7 @@ Resolve beneath the mission output root; reject symlinks/devices/sockets/travers
 
 - [x] **Step 5: Run and commit**
 
-Run focused tests; Expected: PASS.  
+Run focused tests; Expected: PASS.
 Commit: `git add apps/api/src/missions apps/api/test/missions-*.test.mjs && git commit -m "feat: contain pinned ID Agents missions"`
 
 ### Task 12: Add crash-safe private XMTP mission groups
@@ -391,8 +391,8 @@ Keep existing holder chat behavior unchanged. Free-form chat remains non-authori
 
 - [x] **Step 4: Run existing plus mission XMTP suites and commit**
 
-Run: `node --test apps/api/test/xmtp-agent.test.mjs apps/api/test/xmtp-worker.test.mjs apps/api/test/missions-xmtp-*.test.mjs`  
-Expected: PASS.  
+Run: `node --test apps/api/test/xmtp-agent.test.mjs apps/api/test/xmtp-worker.test.mjs apps/api/test/missions-xmtp-*.test.mjs`
+Expected: PASS.
 Commit: `git add apps/api && git commit -m "feat: bind crash-safe XMTP mission rooms"`
 
 ### Task 13: Orchestrate recoverable launch
@@ -411,8 +411,8 @@ Use `not_started -> reserved -> provisioning -> runtime_ready -> room_ready -> t
 
 - [x] **Step 3: Run and commit**
 
-Run: `node --test apps/api/test/missions-launch-coordinator.test.mjs`  
-Expected: PASS.  
+Run: `node --test apps/api/test/missions-launch-coordinator.test.mjs`
+Expected: PASS.
 Commit: `git add apps/api/src/missions/launch-coordinator.js apps/api/test/missions-launch-coordinator.test.mjs && git commit -m "feat: orchestrate recoverable mission launch"`
 
 ---
@@ -437,7 +437,7 @@ No component constructs ad-hoc routes or decides authoritative chain/runtime sta
 
 - [x] **Step 3: Run and commit**
 
-Run focused tests; Expected: PASS.  
+Run focused tests; Expected: PASS.
 Commit: `git add apps/web/src/missions apps/web/test/missions-*.test.mjs && git commit -m "feat: add mission Console client"`
 
 ### Task 15: Build board, creation, and recruiting flows
@@ -461,7 +461,7 @@ Reuse current Console shell and wallet client; do not expose unrevealed Looper a
 
 - [x] **Step 3: Run web regression and commit**
 
-Run focused tests plus `pnpm --filter @helixa/multipass-web build`; Expected: PASS.  
+Run focused tests plus `pnpm --filter @helixa/multipass-web build`; Expected: PASS.
 Commit: `git add apps/web && git commit -m "feat: add mission board and recruiting"`
 
 ### Task 16: Build workspace, settlement, dispute, and refund flows
@@ -488,7 +488,7 @@ Verify focus behavior, no horizontal overflow, and no secret/internal identifier
 
 - [x] **Step 4: Run and commit**
 
-Run focused tests and production build; Expected: PASS.  
+Run focused tests and production build; Expected: PASS.
 Commit: `git add apps/web && git commit -m "feat: add mission workspace and settlement"`
 
 ### Task 17: Produce the integrated local proof and operations package
@@ -514,7 +514,7 @@ Include partial funding, ambiguous vault creation, runtime timeout, room ambigui
 
 - [x] **Step 3: Run full gates**
 
-Run: `pnpm test`, `pnpm web:build`, contract compile/unit tests, Foundry fuzz/invariants, mission local proof, syntax/diff checks, and a secret/path scan.  
+Run: `pnpm test`, `pnpm web:build`, contract compile/unit tests, Foundry fuzz/invariants, mission local proof, syntax/diff checks, and a secret/path scan.
 Expected: all required gates PASS; any unavailable external environment is recorded as a named blocker, not waived. Mission/API/web/contract/Foundry/build/browser/diff/secret gates pass. The repository-wide suite reached 2,124/2,128 before two repaired web expectations; the sole remaining unrelated blocker is the missing hash-pinned legacy `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json` fixture.
 
 - [x] **Step 4: Perform direct implementation review**

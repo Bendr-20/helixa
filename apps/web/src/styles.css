@@ -11615,5 +11615,3 @@ h1 {
 .mission-terms-check input { width: auto; }
 .mission-receipt { margin-top: 14px; }
 @media (max-width: 720px) { .mission-workspace-grid, .mission-settlement-grid { grid-template-columns: minmax(0, 1fr); } }
-
-
