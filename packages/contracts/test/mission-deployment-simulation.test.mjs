@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { ethers } from 'ethers';
+import ganache from 'ganache';
 
 import { simulateMissionDeployment } from '../scripts/simulate-mission-deployment.js';
 
@@ -64,4 +65,36 @@ test('chain-84532 local simulation is deterministic, artifact-locked, and does n
     'approved Base Sepolia token addresses or mock-token deployment choice',
     'separate explicit broadcast approval',
   ]);
+});
+
+test('mission compiler includes the exact mintable testnet token used by the live plan', async () => {
+  const compiled = await import('../scripts/compile-mission-escrow.js').then(({ compileMissionContracts }) => compileMissionContracts());
+  const token = compiled.contracts.MissionTestToken;
+  assert.ok(token.bytecode.startsWith('0x60'));
+  assert.ok(token.deployedBytecode.length > 2);
+  assert.deepEqual(
+    token.abi.filter(({ type }) => type === 'function').map(({ name }) => name).sort(),
+    ['allowance', 'approve', 'balanceOf', 'decimals', 'issuer', 'mint', 'name', 'symbol', 'totalSupply', 'transfer', 'transferFrom'].sort(),
+  );
+});
+
+test('isolated testnet token mints only by issuer and supports exact escrow transferFrom behavior', async () => {
+  const compiled = await import('../scripts/compile-mission-escrow.js').then(({ compileMissionContracts }) => compileMissionContracts());
+  const node = ganache.provider({ logging: { quiet: true }, wallet: { deterministic: true, totalAccounts: 4 } });
+  const provider = new ethers.BrowserProvider(node);
+  try {
+    const [issuer, owner, spender, recipient] = await Promise.all([0, 1, 2, 3].map((index) => provider.getSigner(index)));
+    const token = await new ethers.ContractFactory(compiled.contracts.MissionTestToken.abi, compiled.contracts.MissionTestToken.bytecode, issuer)
+      .deploy('Swarm Test USDC', 'mUSDC', 6, issuer.address);
+    await token.waitForDeployment();
+    await assert.rejects(token.connect(owner).mint(owner.address, 100n));
+    await (await token.mint(owner.address, 100n)).wait();
+    await (await token.connect(owner).approve(spender.address, 40n)).wait();
+    await (await token.connect(spender).transferFrom(owner.address, recipient.address, 40n)).wait();
+    assert.equal(await token.balanceOf(owner.address), 60n);
+    assert.equal(await token.balanceOf(recipient.address), 40n);
+    assert.equal(await token.allowance(owner.address, spender.address), 0n);
+  } finally {
+    await node.disconnect();
+  }
 });

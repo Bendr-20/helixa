@@ -1,45 +1,45 @@
 {
   "schemaVersion": 1,
   "product": "Swarm Command",
-  "generatedAt": "2026-10-17T03:58:14.708Z",
-  "commit": "47433d20872d18842352362d3cf31438b80d4356",
+  "generatedAt": "2026-10-17T05:24:09.014Z",
+  "commit": "a9e69fa324ff9adc728dd025b59d99e8aa561a8f",
   "status": "local_gates_passed_external_actions_blocked",
   "commands": [
     {
       "name": "mission-api",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "5b2ab3a985a0252c759437f99975de727dffb876617c6b3cc08fc0192101ff4f"
+      "outputSha256": "52f58bed407c27d163d40cba447c5d9f0ab01a9661594ae60c2b48f61d58be57"
     },
     {
       "name": "mission-web",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "26fdcf3ff2cc31cfdb1ecf036885e927f6cb43b547ab66a203291133fc52c70c"
+      "outputSha256": "c6703ecd40e3842337753c8e1b4c1dfe662ce2906e7223ea8c8995e5a404ebf7"
     },
     {
       "name": "mission-contracts",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "b995d3f47b1b69ee58effdb132f511542bc597d4adb622fa9dfda201551def95"
+      "outputSha256": "9bb33051649ccf2407b79da4c3bf0391f886b919d4d9f1996c31e7764792e1d6"
     },
     {
       "name": "mission-compile",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "71ebc77e8e8e38d76a48e9e441dc3b9a8730b2a5ad2732fe4caabaa96477e870"
+      "outputSha256": "d6ee0a71c21e7a54553513795d5aab82cc91e684511a43b6d7b9b777946a18e9"
     },
     {
       "name": "forge-invariants",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "de9fe57b76964c8f8d1ead84b2512b5c5b8facb85cd3aabb76478a55824e75b5"
+      "outputSha256": "6e00521530be6717306eab6f93134597212b6fcf38e4c13a70c6db64f63fe8ce"
     },
     {
       "name": "web-build",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "8d269068a03ad1865fef0714667b8ce88f25fc933e9a7ca30c119ced1a9cf4f2"
+      "outputSha256": "df1e6fa6c8d9a377e7ed6cd959bf0e244603157126f0e19ea44b9155886bb291"
     },
     {
       "name": "ui-proof",
@@ -85,8 +85,9 @@
     },
     {
       "name": "base-testnet-deployment-simulation",
-      "status": "blocked",
-      "reason": "Requires verified live RPC consensus, production Safe owners/threshold/nonce, emergency council, deployer nonce/fees, and approved token addresses before a chain-bound unsigned plan can exist."
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/base-sepolia-live-plan.json",
+      "artifactLockedBy": "packages/contracts/test/mission-live-deployment-plan.test.mjs"
     },
     {
       "name": "base-testnet-deployment",
@@ -118,7 +119,7 @@
     {
       "path": "review-artifacts/looper-missions/local-proof/ui-proof.json",
       "bytes": 603,
-      "sha256": "c8fd770e391b5b628b5badb16405e06f819869600e77df777fd9e83ab2d58cb9"
+      "sha256": "c3f14b22c8026381911ea2719ada73055b3da65749f41a8aaca5279b1c69c3b4"
     }
   ],
   "coverage": {

@@ -28,3 +28,9 @@ The simulator uses a deterministic in-memory chain with chain ID `84532`. It dep
 These traces are not an unsigned deployment plan: their fee handling and execution occur only inside Ganache. The generated addresses are simulation-only, are not approved Base Sepolia destinations, and must never be broadcast. The committed artifact therefore records `liveTransactionPlan: null` and blocks live readiness.
 
 Before preparing the approval packet, independently verify two Base Sepolia RPC endpoints, the production Safe implementation/owners/threshold/nonce, emergency council, deployer and fresh nonce/fee fields, and the approved test-token bytecode. Only then generate and simulate the complete EIP-155 chain-bound unsigned transaction plan against live state. Broadcast still requires separate explicit approval.
+
+The reviewed live plan uses a canonical Safe 1.4.1 proxy with threshold 2. Its owners are the deployment wallet and Quigley admin wallet; the verified Looper-holder wallet is the separate emergency council. It deploys isolated `mUSDC` and `mCRED` test tokens, never canonical assets. Generate the live proof at an explicit confirmed block:
+
+    pnpm --filter @helixa/loopers-contracts simulate:missions:live -- --anchor <confirmed-block> --output review-artifacts/looper-missions/external-proof/base-sepolia-live-plan.json
+
+This command performs read-only dual-RPC verification and executes the exact deployment and Safe actions only inside a forked local EVM. It collects no authorization material and cannot broadcast. The resulting plan expires at its recorded `liveReadiness.validUntil` boundary and must be refreshed immediately before any separately approved broadcast.

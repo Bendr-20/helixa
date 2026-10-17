@@ -7,6 +7,7 @@
     "compile": "node scripts/compile-loopers.js",
     "compile:missions": "node scripts/compile-mission-escrow.js",
     "simulate:missions": "node scripts/simulate-mission-deployment.js",
+    "simulate:missions:live": "node scripts/prepare-mission-base-sepolia-plan.js",
     "compile:agent-account": "node scripts/deploy-looper-agent-account.js --artifact-only",
     "preview:agent-account": "node scripts/deploy-looper-agent-account.js --preview",
     "inspect:agent-account": "node scripts/deploy-looper-agent-account.js --inspect-release",
