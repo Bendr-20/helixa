@@ -1,27 +1,27 @@
 {
   "schemaVersion": 1,
   "product": "Swarm Command",
-  "generatedAt": "2026-10-16T23:19:08.468Z",
-  "commit": "969956d2344268a1be986b5637635c374cc20d46",
+  "generatedAt": "2026-10-17T01:53:50.701Z",
+  "commit": "2b95c1b0427b83f72769d33c53bbd21f01d4a611",
   "status": "local_gates_passed_external_actions_blocked",
   "commands": [
     {
       "name": "mission-api",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "5586c1f5f6aa3e4fc94ccc6fbc8cadc3c0496c0ac8372723e50dc48ca8a5b539"
+      "outputSha256": "6bc38b68be6a59891ef7a1bbe2517624f34fd322571c94e71a55bc15767393df"
     },
     {
       "name": "mission-web",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "e91e404176abdb575c1d65a240d9bd44a8c3a324298d84a3caf4d1836dc240c9"
+      "outputSha256": "5e11f28ccb4734cf2c6957913a67aa214405d5b8abe7ca8393c91d3496e2c748"
     },
     {
       "name": "mission-contracts",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "7868f7194e736f78bcf6e305f2563e67c91037c132249f323dceddd205953cf6"
+      "outputSha256": "7c498e097bca32b1312fdfeaad9f695994d176469e137e5af601b7cb2daaba26"
     },
     {
       "name": "mission-compile",
@@ -33,13 +33,13 @@
       "name": "forge-invariants",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "01af09ef5d72726f59c1ace9542e51e530ca9ff2d9dbcb530f9ed5aecb321310"
+      "outputSha256": "6d7e6e3fa33971a81816c71f4cbd92dcf45e8bdc7995ddb2d14e996f4b84c681"
     },
     {
       "name": "web-build",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "c875a3a11585c51e7fbd52ac423ac3b42ebb6580e562ce8c34145c4b3b3a35c3"
+      "outputSha256": "78e4c3d0e70602d3c5f0942b9631cafd4b122ed3973f8eee738d06524e536473"
     },
     {
       "name": "ui-proof",
@@ -107,7 +107,7 @@
     {
       "path": "review-artifacts/looper-missions/local-proof/ui-proof.json",
       "bytes": 603,
-      "sha256": "7c4473f325689652264ec3fd8fdb5280bf32623253e8e377680aacff178577f9"
+      "sha256": "27d302241c22cd7d07e052966d7b358ce36adc5adcf38993045c931145240b98"
     }
   ],
   "coverage": {
