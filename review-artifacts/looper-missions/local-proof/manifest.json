@@ -1,45 +1,45 @@
 {
   "schemaVersion": 1,
   "product": "Swarm Command",
-  "generatedAt": "2026-10-17T01:53:50.701Z",
-  "commit": "2b95c1b0427b83f72769d33c53bbd21f01d4a611",
+  "generatedAt": "2026-10-17T03:58:14.708Z",
+  "commit": "47433d20872d18842352362d3cf31438b80d4356",
   "status": "local_gates_passed_external_actions_blocked",
   "commands": [
     {
       "name": "mission-api",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "6bc38b68be6a59891ef7a1bbe2517624f34fd322571c94e71a55bc15767393df"
+      "outputSha256": "5b2ab3a985a0252c759437f99975de727dffb876617c6b3cc08fc0192101ff4f"
     },
     {
       "name": "mission-web",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "5e11f28ccb4734cf2c6957913a67aa214405d5b8abe7ca8393c91d3496e2c748"
+      "outputSha256": "26fdcf3ff2cc31cfdb1ecf036885e927f6cb43b547ab66a203291133fc52c70c"
     },
     {
       "name": "mission-contracts",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "7c498e097bca32b1312fdfeaad9f695994d176469e137e5af601b7cb2daaba26"
+      "outputSha256": "b995d3f47b1b69ee58effdb132f511542bc597d4adb622fa9dfda201551def95"
     },
     {
       "name": "mission-compile",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "8b06aa5f39e3f4cc3d95034fe7c56719259d3abcad6a27c6cbcb93a6f09a93e1"
+      "outputSha256": "71ebc77e8e8e38d76a48e9e441dc3b9a8730b2a5ad2732fe4caabaa96477e870"
     },
     {
       "name": "forge-invariants",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "6d7e6e3fa33971a81816c71f4cbd92dcf45e8bdc7995ddb2d14e996f4b84c681"
+      "outputSha256": "de9fe57b76964c8f8d1ead84b2512b5c5b8facb85cd3aabb76478a55824e75b5"
     },
     {
       "name": "web-build",
       "status": "passed",
       "exitCode": 0,
-      "outputSha256": "78e4c3d0e70602d3c5f0942b9631cafd4b122ed3973f8eee738d06524e536473"
+      "outputSha256": "8d269068a03ad1865fef0714667b8ce88f25fc933e9a7ca30c119ced1a9cf4f2"
     },
     {
       "name": "ui-proof",
@@ -74,8 +74,19 @@
     },
     {
       "name": "real-xmtp-dev-group",
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/xmtp-2026-10-17.json"
+    },
+    {
+      "name": "local-chain-84532-deployment-simulation",
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/base-sepolia-simulation.json",
+      "artifactLockedBy": "packages/contracts/test/mission-deployment-simulation.test.mjs"
+    },
+    {
+      "name": "base-testnet-deployment-simulation",
       "status": "blocked",
-      "reason": "Requires explicit authorization to create an external XMTP group with a bridge identity."
+      "reason": "Requires verified live RPC consensus, production Safe owners/threshold/nonce, emergency council, deployer nonce/fees, and approved token addresses before a chain-bound unsigned plan can exist."
     },
     {
       "name": "base-testnet-deployment",
@@ -107,7 +118,7 @@
     {
       "path": "review-artifacts/looper-missions/local-proof/ui-proof.json",
       "bytes": 603,
-      "sha256": "27d302241c22cd7d07e052966d7b358ce36adc5adcf38993045c931145240b98"
+      "sha256": "c8fd770e391b5b628b5badb16405e06f819869600e77df777fd9e83ab2d58cb9"
     }
   ],
   "coverage": {
