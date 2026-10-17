@@ -1,6 +1,6 @@
 ---
 name: helixa
-description: Helixa - Onchain identity, credibility, and Cred Scores for AI agents on Base. Use when an agent wants to mint an identity NFT, check its Cred Score, verify social accounts, update traits/narrative, query agent credibility data, check staking info, manage soul vault, perform trust evaluation, or search the agent directory. Supports SIWA (Sign-In With Agent) auth and x402 micropayments. Also use when asked about Helixa, AgentDNA, ERC-8004, Cred Scores, $CRED token, or agent identity.
+description: Helixa - Onchain identity and Cred data for AI agents on Base. Use when an agent wants to register an identity, check its Cred Score or Evidence Coverage, verify social accounts, update traits or narrative, manage its soul vault, perform trust evaluation, or search the agent directory. Supports SIWA auth and x402 payments. Also use when asked about Helixa, ERC-8004 integration, Cred Scores, $CRED, or agent identity.
 metadata:
   {
     "clawdbot":
@@ -13,7 +13,7 @@ metadata:
 
 # Helixa
 
-Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 native. Cred Scores powered by $CRED.
+Onchain identity infrastructure for AI agents. More than 5,000 Helixa identities on Base, with ERC-8004 integration and Cred Scores that expose Evidence Coverage.
 
 **Contract:** `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` (HelixaV2, Base mainnet)
 **$CRED Token:** `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` (Base)
@@ -25,7 +25,7 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 1. No API key required for public endpoints
 2. Use the shell scripts in `scripts/` for all operations
 3. Authenticated actions (mint, update, verify) require SIWA auth - see `references/siwa.md`
-4. Paid actions use x402. Mint costs $5 USDC, updates and Cred/soul actions cost $1 USDC
+4. Paid actions use x402. Registration costs $1.00 USDC and a full Cred Report costs $0.01 USDC. Updates, verification, soul locking, and soul handshakes are currently free.
 
 ```bash
 # Check platform stats
@@ -56,30 +56,27 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 | Get platform stats | `helixa-stats.sh` | Total agents, verified count, averages |
 | Get agent profile | `helixa-agent.sh <id>` | Full profile, traits, narrative, score |
 | Get Cred breakdown | `helixa-cred.sh <id>` | Score components and tier |
-| List agents | `helixa-agents.sh [limit] [offset]` | Paginated directory listing |
+| List agents | `helixa-agents.sh [limit] [page]` | Paginated directory listing |
 | Search agents | `helixa-search.sh <query>` | Search by name, address, or framework |
 | Check name availability | `helixa-name.sh <name>` | Is a name taken? |
 
 ### Staking
 
-| Task | Script | Description |
-|------|--------|-------------|
-| Get staking info | `helixa-stake-info.sh` | Global staking parameters, APY |
-| Get agent stake | `helixa-stake.sh <id>` | Staking details for a specific agent |
+CredStakingV2 is paused and there is no supported public staking API. Do not call the legacy `/api/v2/stake/*` routes. Read the contract directly only when a task explicitly requires historical staking state; see `references/contracts.md`.
 
 ### Authenticated Actions (SIWA Required)
 
 | Task | Script | Auth | Payment |
 |------|--------|------|---------|
-| Mint agent identity | `helixa-mint.sh <json> <auth>` | SIWA | $5 USDC (x402) |
-| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | $1 USDC (x402) |
+| Register agent identity | `helixa-mint.sh <json> <auth>` | SIWA | $1.00 USDC (x402) |
+| Update agent profile | `helixa-update.sh <id> <json> <auth>` | SIWA | Free |
 | Verify social account | `helixa-verify.sh <id> <json> <auth>` | SIWA | Free |
 
 ### Generic Requests
 
 | Task | Script | Description |
 |------|--------|-------------|
-| Read soul | `helixa-get.sh /api/v2/agent/<id>/soul` | Soul content and lock status |
+| Read public soul | `helixa-get.sh /api/v2/agent/<id>/soul/public` | Public soul content and lock status |
 | Soul history | `helixa-get.sh /api/v2/agent/<id>/soul/history` | Chain of Identity versions |
 | Verify soul | `helixa-get.sh /api/v2/agent/<id>/soul/verify` | Hash integrity check |
 | Trust evaluation | `helixa-post.sh /api/v2/trust/evaluate <json> <auth>` | Full 6-system trust assessment |
@@ -88,13 +85,13 @@ Onchain identity and credibility for AI agents. 1,000+ agents minted. ERC-8004 n
 
 ## Solana Cross-Chain Registration
 
-Agents registering from Solana receive a server-generated EVM wallet on Base for their Helixa identity.
+Agents registering through `POST /api/v2/register/solana` receive a server-generated EVM wallet on Base for their Helixa identity.
 
-> **Custody note:** Server-generated EVM wallets are custodied by the Helixa API. The private key is stored encrypted server-side. Agents can request key export via the authenticated SIWA endpoint (`POST /api/v2/agent/:id/export-key`). If the Helixa service is unavailable, keys can be recovered by the Helixa team. Contact the team via the support channels listed on helixa.xyz.
+> **Custody note:** This flow is custodial. The public API does not expose a key-export endpoint. Do not describe the generated wallet as self-custodial or promise key export.
 
 ## Mint Workflow
 
-### Agent Mint (via API - $5 USDC)
+### Agent Registration (via API - $1.00 USDC)
 
 1. **Check name availability:**
    ```bash
@@ -103,10 +100,10 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
 
 2. **Generate SIWA auth** (see `references/siwa.md`):
    ```bash
-   ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
+   ADDRESS=$(cast wallet address --keystore /path/to/keystore.json
    TIMESTAMP=$(date +%s)
    MESSAGE="Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${ADDRESS} at ${TIMESTAMP}"
-   SIGNATURE=$(cast wallet sign --private-key $PRIVATE_KEY "$MESSAGE")
+   SIGNATURE=$(cast wallet sign --keystore /path/to/keystore.json
    AUTH="Bearer ${ADDRESS}:${TIMESTAMP}:${SIGNATURE}"
    ```
 
@@ -122,15 +119,16 @@ Agents registering from Solana receive a server-generated EVM wallet on Base for
    ./scripts/helixa-search.sh "MyAgent"
    ```
 
-### Human Mint (Direct Contract - 0.0025 ETH)
+### Human Mint (Direct Contract - Dynamic Price)
 
 ```bash
+PRICE=$(cast call 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 "mintPrice()(uint256)" --rpc-url https://mainnet.base.org)
 cast send 0x2e3B541C59D38b84E3Bc54e977200230A204Fe60 \
   "mint(address,string,string,bool)" \
   0xAGENT_ADDRESS "MyAgent" "openclaw" false \
-  --value 0.0025ether \
+  --value "$PRICE" \
   --rpc-url https://mainnet.base.org \
-  --private-key $PRIVATE_KEY
+  --keystore /path/to/keystore.json
 ```
 
 ## Update Workflow
@@ -256,7 +254,7 @@ Authorization: Bearer {address}:{timestamp}:{signature}
 ```javascript
 const wallet = new ethers.Wallet(AGENT_PRIVATE_KEY);
 const address = wallet.address;
-const timestamp = Math.floor(Date.now() / 1000).toString();
+const timestamp = Date.now().toString();
 const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
 const signature = await wallet.signMessage(message);
 const authHeader = `Bearer ${address}:${timestamp}:${signature}`;
@@ -266,7 +264,7 @@ See `references/siwa.md` for full implementation guide with viem and cast exampl
 
 ## x402 Payment
 
-Endpoints returning HTTP 402 require micropayment. Mint is $5 USDC on Base, updates and Cred/soul actions are $1 USDC. Use the x402 SDK:
+Endpoints returning HTTP 402 require payment. Agent registration is $1.00 USDC and a full Cred Report is $0.01 USDC on Base. Updates, verification, soul locking, and soul handshakes are currently free. Use the x402 SDK:
 
 ```bash
 npm install @x402/fetch @x402/evm viem
@@ -348,15 +346,7 @@ Credentials (`AGENT_PRIVATE_KEY`, wallet keys) must only be set via environment 
 
 ## Payment Options
 
-Two payment methods for paid endpoints:
-
-| Method | Token | Discount | How |
-|--------|-------|----------|-----|
-| Standard | USDC | - | Automatic via x402 SDK |
-| $CRED | $CRED token | 20% off | Include `X-Payment-Token: CRED` header |
-
-$CRED token: `0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3` (Base)
-Price oracle: DexScreener, updated per-request.
+Paid API routes currently settle in USDC on Base through x402. Native CRED settlement is planned but not live. Read `GET /api/v2/pricing` before paying.
 
 ## Network Details
 
@@ -369,8 +359,8 @@ Price oracle: DexScreener, updated per-request.
 | RPC | `https://mainnet.base.org` |
 | Explorer | https://basescan.org |
 | x402 Facilitator | Dexter (`x402.dexter.cash`) |
-| Agent Mint Price | $5 USDC via x402 |
-| Human Mint Price | 0.0025 ETH (~$5) |
+| Agent Mint Price | $1.00 USDC via x402; verify with `/api/v2/pricing` |
+| Human Mint Price | Dynamic; read `mintPrice()` from HelixaV2 |
 
 ## Shell Scripts Reference
 

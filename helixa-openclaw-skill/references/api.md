@@ -2,7 +2,7 @@
 
 Base URL: `https://api.helixa.xyz`
 
-All responses are JSON. No API key required for public endpoints. Authenticated endpoints use SIWA (see `siwa.md`). Paid endpoints use x402 micropayments. Mint is $5 USDC, updates and Cred/soul actions are $1 USDC. During the header transition, the API accepts `Payment-Signature` plus legacy `Payment` and `X-Payment` request headers.
+All responses are JSON. No API key is required for public endpoints. Authenticated endpoints use SIWA (see `siwa.md`). Paid endpoints use x402. Agent registration is $1.00 USDC and a full Cred Report is $0.01 USDC. Updates, verification, soul locking, and soul handshakes are currently free. During the header transition, the API accepts `Payment-Signature` plus legacy `Payment` and `X-Payment` request headers.
 
 ---
 
@@ -15,10 +15,17 @@ Platform-wide statistics.
 **Response:**
 ```json
 {
-  "totalAgents": 1042,
-  "totalVerified": 312,
-  "totalStaked": 156,
-  "credAverage": 45.2
+  "totalAgents": 5291,
+  "totalCredScore": 193238,
+  "frameworks": 34,
+  "soulboundCount": 972,
+  "totalHumans": 56,
+  "totalOrganizations": 1,
+  "mintPrice": "0.000569858205032133",
+  "network": "Base",
+  "chainId": 8453,
+  "contract": "0x2e3B541C59D38b84E3Bc54e977200230A204Fe60",
+  "contractDeployed": true
 }
 ```
 
@@ -31,9 +38,13 @@ List agents in the directory.
 **Query Parameters:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `limit` | int | 20 | Max results (1-1000) |
-| `offset` | int | 0 | Pagination offset |
-| `search` | string | — | Search by name, address, or framework |
+| `page` | int | 1 | Page number |
+| `limit` | int | 100 | Max results (1-1000) |
+| `sort` | string | `tokenId` | `tokenId`, `credScore`, `points`, `name`, `mintedAt`, or `framework` |
+| `order` | string | `asc` | `asc` or `desc` |
+| `search` | string | - | Search by name, agent address, or owner address |
+| `framework` | string | - | Exact framework filter |
+| `verified` | boolean | - | Filter by verification state |
 
 **Response:**
 ```json
@@ -46,14 +57,14 @@ List agents in the directory.
       "owner": "0x...",
       "agentAddress": "0x...",
       "credScore": 78,
-      "tier": "PRIME",
       "soulbound": false,
       "mintedAt": "2025-01-15T..."
     }
   ],
-  "total": 1042,
-  "limit": 20,
-  "offset": 0
+  "total": 5291,
+  "page": 1,
+  "limit": 100,
+  "pages": 53
 }
 ```
 
@@ -74,16 +85,13 @@ Get a single agent's full profile.
   "owner": "0x...",
   "agentAddress": "0x...",
   "credScore": 78,
-  "tier": "PRIME",
   "soulbound": false,
   "operator": "0x...",
-  "ethosScore": 1295,
-  "talentScore": null,
-  "personality": { "tone": "analytical", "style": "formal" },
-  "narrative": { "origin": "...", "purpose": "..." },
+  "personality": { "communicationStyle": "direct", "riskTolerance": 7, "autonomyLevel": 8 },
+  "narrative": { "origin": "...", "mission": "..." },
   "traits": [{ "name": "fast-learner", "category": "skill" }],
-  "social": { "twitter": "handle", "website": "https://..." },
-  "verified": { "twitter": true },
+  "socials": { "x": "@handle", "website": "https://..." },
+  "verified": true,
   "mintedAt": "2025-01-15T...",
   "updatedAt": "2025-02-20T..."
 }
@@ -133,9 +141,9 @@ Check name availability for minting.
 
 ### GET /api/v2/agent/:id/cred-report
 
-**Paid: $5 USDC via x402**
+**Paid: $0.01 USDC via x402**
 
-Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and signed receipt.
+Full Cred Report with v4.3 scoring breakdown, Evidence Coverage, recommendations, ranking, and signed receipt.
 
 ---
 
@@ -143,7 +151,7 @@ Full Cred Report with 9-factor scoring breakdown, recommendations, ranking, and 
 
 ### POST /api/v2/mint
 
-Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($5 USDC).
+Register a new Helixa identity. Requires SIWA auth and a $1.00 USDC x402 payment.
 
 **Headers:**
 - `Authorization: Bearer {address}:{timestamp}:{signature}`
@@ -154,8 +162,8 @@ Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($5 USDC).
 {
   "name": "MyAgent",
   "framework": "openclaw",
-  "personality": { "tone": "analytical", "style": "formal" },
-  "narrative": { "origin": "Built to explore", "purpose": "Research assistant" }
+  "personality": { "communicationStyle": "analytical", "riskTolerance": 6, "autonomyLevel": 7 },
+  "narrative": { "origin": "Built to explore", "mission": "Research and verification" }
 }
 ```
 
@@ -163,7 +171,7 @@ Mint a new Helixa identity NFT. Requires SIWA auth + x402 payment ($5 USDC).
 |-------|----------|------|-------------|
 | `name` | Yes | string | Unique agent name |
 | `framework` | Yes | string | One of: `openclaw`, `eliza`, `langchain`, `crewai`, `autogpt`, `bankr`, `virtuals`, `based`, `agentkit`, `custom` |
-| `soulbound` | No | boolean | **Must be set at mint time — cannot be changed later.** If `true`, locks token to wallet permanently (non-transferable). Adds +5% to Cred Score. Default: `false` |
+| `soulbound` | No | boolean | **Must be set at mint time — cannot be changed later.** If `true`, locks token to wallet permanently (non-transferable) and contributes to the 3% Transfer Lock signal. Default: `false` |
 | `personality` | No | object | Tone, style, quirks |
 | `narrative` | No | object | Origin, purpose, lore |
 
@@ -179,7 +187,7 @@ Returns x402 payment instructions. Use the x402 SDK for automatic handling.
 
 ### POST /api/v2/agent/:id/update
 
-Update agent traits, personality, narrative, or social links. Requires SIWA auth + x402 ($1 USDC).
+Update agent traits, personality, narrative, or social links. Requires SIWA auth and is currently free.
 
 **Headers:** `Authorization: Bearer {siwa}`, `Content-Type: application/json`
 
@@ -187,7 +195,7 @@ Update agent traits, personality, narrative, or social links. Requires SIWA auth
 ```json
 {
   "traits": [{ "name": "fast-learner", "category": "skill" }],
-  "personality": { "tone": "playful", "quirks": "uses emojis" },
+  "personality": { "communicationStyle": "playful", "quirks": "prefers concise replies" },
   "narrative": { "origin": "Updated origin story" },
   "social": { "twitter": "myhandle", "website": "https://mysite.com" }
 }

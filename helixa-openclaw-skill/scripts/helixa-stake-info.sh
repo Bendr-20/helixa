@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-"$(dirname "$0")/helixa-get.sh" "/api/v2/stake/info"
+echo "CredStakingV2 is paused; no supported public staking API is available." >&2
+exit 2

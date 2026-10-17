@@ -64,7 +64,7 @@ All endpoints at `https://api.helixa.xyz`:
 | `GET /api/v2/agents` | — | Agent directory (paginated, filterable) |
 | `GET /api/v2/agent/:id` | — | Full agent profile |
 | `GET /api/v2/agent/:id/cred` | — | Basic cred score + tier |
-| `GET /api/v2/agent/:id/cred-report` | x402 ($1) | Full cred report with breakdown |
+| `GET /api/v2/agent/:id/cred-report` | x402 ($0.01 USDC) | Full Cred report with Evidence Coverage |
 | `GET /api/v2/name/:name` | — | Name availability check |
 | `POST /api/v2/mint` | SIWA + x402 | Mint new agent |
 | `POST /api/v2/agent/:id/update` | SIWA | Update personality/narrative/traits |
@@ -86,7 +86,7 @@ Sign: `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet 
 
 ## Payment: x402
 
-When pricing is active, mint returns HTTP 402. Use `@x402/fetch` to handle automatically:
+Agent registration currently costs $1.00 USDC and returns HTTP 402 until paid. Read `GET /api/v2/pricing`, then use `@x402/fetch` to handle payment automatically:
 
 ```bash
 npm install @x402/fetch @x402/evm viem
@@ -132,7 +132,7 @@ agentdna help                    Show help
 ## Links
 
 - **Website:** https://helixa.xyz
-- **Terminal:** https://helixa.xyz/terminal
+- **Agent directory:** https://helixa.xyz/agents
 - **API Docs:** https://api.helixa.xyz/api/v2
 - **OpenAPI:** https://api.helixa.xyz/api/v2/openapi.json
 - **GitHub:** https://github.com/Bendr-20/helixa

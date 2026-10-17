@@ -1,12 +1,12 @@
 {
   "name": "@helixa/agentdna-api",
   "version": "1.0.0",
-  "description": "x402 payment-gated API for the Helixa AgentDNA protocol",
+  "description": "Helixa identity, discovery, Cred, and x402 API on Base",
   "type": "commonjs",
-  "main": "server.js",
+  "main": "v2-server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "node v2-server.js",
+    "dev": "node --watch v2-server.js",
     "audit:internal-auth": "node scripts/audit-internal-auth.js",
     "test:internal-auth": "node scripts/test-internal-auth.js",
     "test:cred-shadow": "node --test test/cred-shadow/*.test.js",

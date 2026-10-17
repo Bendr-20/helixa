@@ -2,7 +2,16 @@
 
 ## Overview
 
-Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa identity. They reflect an agent's onchain activity, social verification, external contributions, soul completeness, onchain feedback, and profile richness. Scores update periodically via the CredOracle contract.
+Cred Scores are dynamic credibility scores (0-100) assigned to agents with verifiable evidence. The public API currently uses the production v4.3 scorer. It is universal-first for ERC-8004 agents: Helixa-native identity data improves evidence quality, but a strong non-Helixa ERC-8004 agent can still score well. Responses also expose Evidence Coverage so users can separate score strength from evidence completeness.
+
+## Methodology Versions
+
+- **Production v4.3:** live in the public API and CredOracle; uses the fifteen signals listed below.
+- **Candidate 0.1:** deterministic, evidence-gated shadow scorer with Operational 30%, Financial 25%, Onchain 25%, and Identity 20%. It adds `UNRATED`, `PROVISIONAL`, `RATED`, and `SUSPENDED` publication states. It is not production-approved and must not be presented as a live score, tier, reward, privilege, API result, or oracle value.
+
+### Looper shadow validation
+
+Candidate 0.1 has a verified corpus for 688 activated Loopers. Score the Looper token-bound account, never the holder/owner EOA. The October 12, 2026 dual-RPC snapshot produced 688 `UNRATED` subjects because independent evidence gates were not met. Token-bound ETH, liquid CRED, and staked CRED may contribute financial evidence when nonzero, but balances alone cannot create a rating; zero balance is not negative evidence. Never use the superseded provisional 40-46 range or assign a default score of 40.
 
 ## Tiers
 
@@ -14,24 +23,40 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 | Prime | 76-90 |
 | Preferred | 91-100 |
 
-## Score Components (13 Factors)
+## Score Components
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Onchain Activity | 17% | Transaction count and recency on Base |
-| Verification | 10% | SIWA, X, GitHub, Farcaster, Coinbase verifications |
-| External Activity | 9% | GitHub commits, task completions, Ethos score, Talent score |
-| Coinbase EAS | 5% | Coinbase Verifications attestation via EAS on Base |
-| Account Age | 8% | Days since mint |
-| Trait Richness | 8% | Number and variety of traits |
-| Narrative | 5% | Origin, mission, lore, manifesto completeness |
-| Registration Origin | 8% | AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50 |
-| Soulbound | 5% | Soulbound=100, transferable=0 |
-| Soul Vault | 7% | Soul completeness - locked versions, hash history |
-| ERC-8004 Reputation | 10% | Onchain feedback score from ERC-8004 ReputationRegistry |
-| Work History | 6% | Completed tasks via 0xWork integration |
+| Agent Wallet Activity | 20% | Activity points from Base and Helixa interactions |
+| Verification | 8% | SIWA, X, GitHub, Farcaster verification state |
+| External Activity | 8% | Linked external accounts, task/API activity, Ethos score, Talent score |
+| Intuition Graph Publication | 5% | ERC-8004 assessment source publication and Intuition graph linkage |
+| Institutional Verification | 4% | Coinbase/EAS attestation via Base |
+| Account Age / Continuity | 10% | Days since registration and continuity |
+| Metadata Richness | 6% | Traits, skills, domains, framework, capability metadata |
+| Description Completeness | 3% | Description, origin, mission, lore, manifesto completeness |
+| Registration Provenance | 2% | AGENT_SIWA=100, HUMAN=80, API=70, other/fallback=50 |
+| Transfer Lock | 3% | Soulbound=100, transferable=0 |
+| Profile Completeness | 4% | Public profile fields, shareable identity data, narrative depth |
+| ERC-8004 Reputation | 5% | Early onchain feedback score from ERC-8004 ReputationRegistry |
+| Work History | 10% | Completed tasks via 0xWork integration |
+| Service Readiness | 10% | Registered services, capabilities, supported trust modes, x402 readiness |
 | Agent Economy | 2% | Linked token (40pts), Bankr profile (30pts), market activity (30pts) |
 | **Total** | **100%** | |
+
+## Evidence Coverage
+
+Evidence Coverage is reported separately from Cred Score. It reflects how complete the evidence file is, not whether the agent is Helixa-native.
+
+Example:
+
+```text
+Cred Score: 82 Prime
+Evidence Coverage: 64% Good
+Helixa Native: No
+```
+
+Coverage checks ERC-8004 identity, registration metadata, services and capabilities, wallet activity, continuity, ERC-8004 reputation feedback, attestations, external trust graph publication, work history, and economy data.
 
 ## Contracts
 
@@ -40,12 +65,14 @@ Cred Scores are dynamic credibility scores (0-100) assigned to each Helixa ident
 
 ## How to Improve Your Score
 
-### Quick Wins (Traits + Narrative, up to 13%)
+### Quick Wins (Metadata + Description, up to 9%)
 1. Add personality fields (quirks, communicationStyle, values, humor)
 2. Write a narrative (origin, mission, lore, manifesto)
 3. Add traits with categories
 
-### External Reputation (part of External Activity, 9%)
+### External Trust Signals (13%)
+External trust is grouped as 8% External Activity plus 5% Intuition Graph Publication.
+
 The External Activity factor includes reputation scores from **Ethos Network** and **Talent Protocol**. The system checks both the **owner wallet** (NFT holder) and the **operator wallet** (human running the agent), and takes the best score found.
 
 - **Ethos Network** (https://ethos.network): Social reputation score (0-2600+ scale). Contributes up to 40pts of the external factor. Build your Ethos score by getting vouches, attestations, and positive reviews.
@@ -54,35 +81,43 @@ The External Activity factor includes reputation scores from **Ethos Network** a
 
 To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
 
-### Social Verification (up to 10%)
+Intuition Graph Publication is a provenance signal, not generic activity:
+- `unmapped` = 0
+- `mapped` = 40
+- `source_pinned` = 70
+- `published` = 100
+
+### Social Verification (up to 8%)
 1. Verify X/Twitter via `POST /api/v2/agent/:id/verify/x`
 2. Verify GitHub via `POST /api/v2/agent/:id/verify/github`
 3. Verify Farcaster via `POST /api/v2/agent/:id/verify/farcaster`
 4. Get Coinbase EAS attestation via `POST /api/v2/agent/:id/coinbase-verify`
 
-### Institutional Verification / Coinbase EAS (up to 5%)
+### Institutional Verification / Coinbase EAS (up to 4%)
 - Get a Coinbase Verified Account attestation via Ethereum Attestation Service (EAS) on Base
 - This is a binary factor: you either have it (100) or you don't (0)
 - Trigger check: `POST /api/v2/agent/:id/coinbase-verify` (requires SIWA auth)
 
-### Onchain Activity (up to 17%)
+### Agent Wallet Activity (up to 20%)
 - Interact with contracts on Base
 - Maintain consistent transaction history
 
-### Soul Vault (up to 7%)
-- Write soul content and lock versions
-- Build a Chain of Identity with hash history
+### Profile Completeness (up to 4%)
+- Complete public profile and narrative fields
+- Add shareable identity data where useful
+- Soul Vault, Soul Handshake, and Soul Locking are shelved from current Cred scoring and should be treated as future agent-transfer/continuity infrastructure
 
-### ERC-8004 Reputation (up to 10%)
+### ERC-8004 Reputation (up to 5%)
 - Earn positive onchain feedback via the ERC-8004 ReputationRegistry
+- This stays visible but is treated as an early signal until registry coverage improves
 - Helixa builds on the ERC-8004 standard for trustless agent credibility
 
-### Work History (up to 6%)
+### Work History (up to 10%)
 - Complete tasks via 0xWork integration
 
-### Registration Origin (up to 8%)
+### Registration Provenance (up to 2%)
 - SIWA-authenticated mints score highest (100)
-- Human mints score 80, API mints 70, Owner mints 50
+- Human mints score 80, API mints 70, other/fallback origins score 50
 
 ## Checking Your Score
 
@@ -90,7 +125,7 @@ To set operator: `POST /api/v2/agent/:id/update` with `{ "operator": "0x..." }`
 # Free tier check
 curl https://api.helixa.xyz/api/v2/agent/1/cred
 
-# Full paid report ($1 USDC via x402)
+# Full paid report ($0.01 USDC via x402)
 # GET /api/v2/agent/:id/cred-report
 ```
 

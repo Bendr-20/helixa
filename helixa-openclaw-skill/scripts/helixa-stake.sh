@@ -7,4 +7,5 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-"$(dirname "$0")/helixa-get.sh" "/api/v2/stake/$1"
+echo "CredStakingV2 is paused; no supported public staking API is available." >&2
+exit 2

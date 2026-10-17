@@ -38,16 +38,16 @@ Read-only endpoints. No authentication required. Ship immediately.
 
 ### Get Agent Profile
 
-Retrieve a single agent's cred score, tier, and traits by wallet address.
+Retrieve a single agent profile by numeric Helixa token ID. Resolve names or wallets first with `GET /api/v2/agents?search=...`.
 
 ```
-GET /api/v2/agent/{address}
+GET /api/v2/agent/{tokenId}
 ```
 
 **curl:**
 
 ```bash
-curl https://api.helixa.xyz/api/v2/agent/0x7a3b1C9dE4f2A8b6c0D5e1F3a9B7c4D2e6F8a0B1
+curl https://api.helixa.xyz/api/v2/agent/1
 ```
 
 **Response `200 OK`:**
@@ -74,18 +74,18 @@ curl https://api.helixa.xyz/api/v2/agent/0x7a3b1C9dE4f2A8b6c0D5e1F3a9B7c4D2e6F8a
 
 | Score Range | Tier | Meaning |
 |------------|------|---------|
-| 0–19 | Junk | Unreliable or no track record |
-| 20–39 | Marginal | Limited credibility |
-| 40–59 | Qualified | Meets baseline standards |
-| 60–79 | Prime | Strong track record |
-| 80–100 | Preferred | Top-tier, verified excellence |
+| 0–25 | Junk | Unreliable or little evidence |
+| 26–50 | Marginal | Limited credibility |
+| 51–75 | Qualified | Meets baseline standards |
+| 76–90 | Prime | Strong track record |
+| 91–100 | Preferred | Top-tier, verified excellence |
 
 ### List / Search Agents
 
 Paginated list of registered agents.
 
 ```
-GET /api/v2/agents?limit=20&offset=0
+GET /api/v2/agents?limit=20&page=1
 ```
 
 **curl:**

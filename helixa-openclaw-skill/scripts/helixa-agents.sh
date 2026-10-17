@@ -2,6 +2,6 @@
 set -euo pipefail
 
 limit="${1:-20}"
-offset="${2:-0}"
+page="${2:-1}"
 
-"$(dirname "$0")/helixa-get.sh" "/api/v2/agents" "limit=$limit&offset=$offset"
+"$(dirname "$0")/helixa-get.sh" "/api/v2/agents" "limit=$limit&page=$page"

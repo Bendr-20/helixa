@@ -13,10 +13,11 @@ const fadeUp = {
 };
 
 function getRarityTier(score: number): { label: string; className: string } {
-  if (score >= 70) return { label: 'Legendary', className: 'legendary' };
-  if (score >= 50) return { label: 'Epic', className: 'epic' };
-  if (score >= 25) return { label: 'Rare', className: 'rare' };
-  return { label: 'Common', className: 'common' };
+  if (score >= 91) return { label: 'Preferred', className: 'legendary' };
+  if (score >= 76) return { label: 'Prime', className: 'epic' };
+  if (score >= 51) return { label: 'Qualified', className: 'rare' };
+  if (score >= 26) return { label: 'Marginal', className: 'common' };
+  return { label: 'Junk', className: 'common' };
 }
 
 // Memoized row to prevent AuraPreview re-renders

@@ -24,7 +24,7 @@ const { toClientEvmSigner } = require('@x402/evm');
 async function generateSIWA(privateKey) {
   const wallet = new ethers.Wallet(privateKey);
   const address = wallet.address;
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const timestamp = Date.now().toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
   const signature = await wallet.signMessage(message);
   return `Bearer ${address}:${timestamp}:${signature}`;

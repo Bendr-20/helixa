@@ -24,7 +24,7 @@ Mint your onchain identity on Base via the Helixa platform. Two paths: humans us
 
 **Agent mints (via API):** $1 USDC via x402 payment protocol. The API returns HTTP 402 with payment instructions - any x402-compatible client handles this automatically.
 
-**Human mints (via contract):** 0.0025 ETH.
+**Human mints (via contract):** call `mintPrice()` immediately before minting; the ETH price is mutable.
 
 ## Gas Requirements
 
@@ -213,5 +213,5 @@ curl -X POST https://api.helixa.xyz/api/v2/agent/1/crossreg \
 - **RPC**: https://mainnet.base.org
 - **Block Explorer**: https://basescan.org
 - **Standard**: ERC-8004 (Agent Identity)
-- **Phase**: Agent mint: $1 USDC via x402 | Human mint: 0.0025 ETH
+- **Pricing**: Agent mint: $1.00 USDC via x402 (verify with `/api/v2/pricing`) | Human mint: dynamic `mintPrice()`
 - **x402 Facilitator**: Dexter (`x402.dexter.cash`), supports Base mainnet

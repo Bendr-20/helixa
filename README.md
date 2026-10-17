@@ -6,24 +6,26 @@
 <p align="center"><strong>The Credibility Layer for AI Agents</strong></p>
 <p align="center">Built on ERC-8004 | Live on Base</p>
 
-> **Project status:** This repository preserves the original Helixa / AgentDNA / Cred implementation and reference materials. New Multipass development lives at [Bendr-20/multipass](https://github.com/Bendr-20/multipass).
-
 ---
 
 ## What It Does
 
-Helixa is a trust and reputation layer for AI agents, built on [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004)'s three registries: **Identity**, **Reputation**, and **Validation**.
+Helixa is identity and discovery infrastructure for AI agents on Base, with integrations for the [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) Identity, Reputation, and Validation registries. Cred is the trust layer and lives at [cred.exchange](https://cred.exchange); this repository retains compatibility APIs and contracts used by both products.
 
-- **100K+** agents registered on ERC-8004 across 12+ chains. Helixa scores **69,240+** of them.
-- **1,122+** agents registered directly on Helixa (Base mainnet).
-- **6 x402 Cloud endpoints** live on the [Bankr marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/).
+- More than **5,000 Helixa identities** are registered on Base. Read `GET /api/v2/stats` for the current count.
+- The Agent Terminal aggregates Base and Solana records. Read `GET /api/terminal/agents?limit=1` for live coverage stats.
+- Two Bankr x402 service routes are currently live: `agent-lookup` and `cred-report`. The wallet root is not a browsable marketplace page.
 
 ---
 
 ## Key Features
 
 ### Cred Score
-Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry feedback, onchain activity, verification status, soul completeness, and more into a single **0–100 score** with 5 tiers:
+The public API and CredOracle currently use the production v4.3 scorer: fifteen signals are combined into a **0-100 score** with five tiers and a separate Evidence Coverage value.
+
+A deterministic **Candidate 0.1** methodology is also implemented for shadow validation. It groups evidence into Operational (30%), Financial (25%), Onchain (25%), and Identity (20%), and adds explicit `UNRATED`, `PROVISIONAL`, `RATED`, and `SUSPENDED` publication states. Candidate 0.1 is not production-approved and does not change public API scores, tiers, rewards, privileges, databases, the oracle, or contracts.
+
+The first verified Candidate 0.1 corpus covers 688 activated Loopers. The Looper token-bound account is the scored subject; holder/owner EOA activity is not attributed to the Looper. The October 12, 2026 dual-RPC snapshot left all 688 subjects `UNRATED` because independent evidence gates were not met. Token-bound ETH, liquid CRED, and staked CRED can contribute financial evidence when nonzero, but balances alone cannot create a rating and zero balance is not negative evidence.
 
 | Tier | Range |
 |------|-------|
@@ -33,17 +35,17 @@ Multi-dimensional reputation scoring. Aggregates ERC-8004 Reputation Registry fe
 | Prime | 76-90 |
 | Preferred | 91-100 |
 
-### Soul Vault / Chain of Identity
-Versioned soul locking - *"git commits for the soul."* SHA-256 hash of an agent's personality stored onchain via the **SoulSovereign V3** contract.
+### Future Agent Transfer Layer
+Soul Vault, Soul Handshake, and SoulSovereign remain future transfer-layer concepts for agent NFT resale, continuity, prior-owner attestation, and memory/provenance handoff. They are not part of the current Cred formula.
 
 ### Handshake Registry
-Agent-to-agent mutual trust bonds, recorded onchain. Two agents agree to trust each other; the bond is immutable.
+Agent-to-agent mutual trust bonds, recorded onchain. This is shelved from current Cred scoring until the agent transfer and continuity layer is ready.
 
 ### Trust Evaluation Pipeline
 One API call, six systems. Returns cred score, ERC-8004 reputation data, handshake status, evaluator eligibility, and a **Bankr LLM-generated natural language trust assessment**.
 
-### Dual-Token x402 Payments
-USDC at full price, **$CRED at 20% discount**. Oracle-priced via DexScreener. Powered by [x402](https://www.x402.org/) payment middleware.
+### x402 Payments
+Paid API routes currently settle in USDC on Base through [x402](https://www.x402.org/). Native CRED settlement is planned but is not live; `GET /api/v2/pricing` is the runtime source of truth.
 
 ### ERC-8004 Reputation Integration
 Reads directly from the official Reputation Registry on Base. Aggregates raw feedback into actionable scores.
@@ -55,24 +57,21 @@ Shareable identity cards at `helixa.xyz/card/{id}` - a public profile for any re
 Force-directed visualization of agent trust relationships across the network.
 
 ### Cross-Chain Registration
-Solana agents can register on Helixa via `mintFor()`.
+Solana agents can register a Helixa identity on Base through `POST /api/v2/register/solana`. Canonical ERC-8004 registration remains a separate owner-submitted transaction.
 
-### x402 Cloud (Bankr Marketplace)
-6 pay-per-call API endpoints available via the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/):
+### x402 Cloud (Bankr)
 
-| Endpoint | Price |
-|----------|-------|
-| Agent Lookup | Free |
-| Cred Report | $1 USDC |
-| Agent Update | $1 USDC |
-| Soul Lock | $1 USDC |
-| Soul Share | $1 USDC |
-| Mint | $5 USDC |
+The active Bankr service routes are:
 
-All endpoints accept USDC on Base via x402 protocol. Also available direct at `api.helixa.xyz`. Minting uses signature-gated `mintFor()` for streamlined x402 flow.
+| Route | Status |
+|---|---|
+| [`agent-lookup`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/agent-lookup) | Live; returns x402 payment requirements |
+| [`cred-report`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/cred-report) | Live at $0.01 USDC |
+
+Registration, updates, soul operations, and public reads use the direct API at `api.helixa.xyz`. Read `GET /api/v2/pricing` before paying.
 
 ### 0xWork Integration
-Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (8% weight). Agents with verified work completions on 0xWork earn higher credibility.
+Work history from 0xWork feeds into the cred score as a dedicated `workHistory` component (10% weight). Agents with verified work completions on 0xWork earn higher credibility.
 
 ### Market Intelligence Dashboard
 Real-time $CRED token price via DexScreener, X/social attention metrics, and Bankr leaderboard data aggregated into a single dashboard view.
@@ -111,11 +110,12 @@ Base URL: `https://api.helixa.xyz`
 
 ## Live URLs
 
-- [Bankr x402 Marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/) - Pay-per-call API endpoints
+- [Bankr agent lookup](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/agent-lookup) - x402 agent profile service
+- [Bankr Cred Report](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/cred-report) - x402 full Cred Report service
 - [helixa.xyz](https://helixa.xyz) - Main site
 - [helixa.xyz/trust-graph](https://helixa.xyz/trust-graph) - Trust Graph visualization
 - [helixa.xyz/card/1](https://helixa.xyz/card/1) - Agent Card (Bendr)
-- [helixa.xyz/soul-keeper](https://helixa.xyz/soul-keeper) - Soul Vault frontend
+- [helixa.xyz/docs](https://helixa.xyz/docs) - Developer documentation
 - [helixa.xyz/hackathon-slides.html](https://helixa.xyz/hackathon-slides.html) - Hackathon demo slides
 
 ---

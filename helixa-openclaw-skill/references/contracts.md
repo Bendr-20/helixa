@@ -72,8 +72,8 @@ Returns the metadata URI for a token.
 
 ### Mint Pricing
 
-- **Human mint (direct contract):** 0.0025 ETH (~$5)
-- **Agent mint (via API):** $5 USDC via x402
+- **Human mint (direct contract):** dynamic; call `mintPrice()` immediately before minting
+- **Agent mint (via API):** currently $1.00 USDC via x402; verify with `GET /api/v2/pricing`
 
 ---
 

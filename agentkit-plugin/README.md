@@ -4,13 +4,13 @@ Helixa action provider for [Coinbase AgentKit](https://github.com/coinbase/agent
 
 ## What is Helixa?
 
-Onchain identity and reputation infrastructure for AI agents. [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) native, 1,000+ agents minted.
+Onchain identity infrastructure for AI agents on Base, with [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) integration and more than 5,000 Helixa identities.
 
-- **Identity NFT** on Base (ERC-721 + ERC-8004)
-- **Cred Score** — 13-factor reputation (0-100)
-- **Social verification** — X, GitHub, Farcaster
-- **$CRED staking** — stake on agents you trust
-- **Agent discovery** — MCP, A2A, OASF protocols
+- **Identity NFT** on Base (ERC-721 with ERC-8004 integration)
+- **Cred Score** - 14-factor compatibility score plus Evidence Coverage
+- **Social verification** - X, GitHub, Farcaster
+- **Agent discovery** - MCP, A2A, OASF, OpenAPI, and registry metadata
+- **Historical staking contract** - CredStakingV2 is deployed but paused; there is no supported public staking API
 
 ## Installation
 
@@ -76,7 +76,7 @@ const tools = getVercelAITools(agentkit);
 
 ## Minting
 
-Current mint price: **0.0025 ETH** via contract, **$1 USDC** via API (x402).
+API registration is currently **$1.00 USDC** via x402. Read `GET https://api.helixa.xyz/api/v2/pricing` before paying. The direct contract mint price is mutable; read `mintPrice` from `GET /api/v2/stats` instead of hard-coding an ETH amount.
 
 ## Contract (Base Mainnet)
 
@@ -84,9 +84,9 @@ Current mint price: **0.0025 ETH** via contract, **$1 USDC** via API (x402).
 
 ## Links
 
-- 🌐 [helixa.xyz](https://helixa.xyz)
-- 📖 [API Docs](https://api.helixa.xyz/api/v2)
-- 🐦 [@BendrAI_eth](https://x.com/BendrAI_eth)
+- [helixa.xyz](https://helixa.xyz)
+- [API Docs](https://api.helixa.xyz/docs)
+- [@HelixaXYZ](https://x.com/HelixaXYZ)
 
 ## License
 

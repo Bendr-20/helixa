@@ -3,7 +3,27 @@
  * Served at GET /docs
  */
 
-function getDocsHTML() {
+function formatPrice(value) {
+  const price = Number(value);
+  if (!Number.isFinite(price) || price < 0) throw new Error(`Invalid docs price: ${value}`);
+  return `$${price.toFixed(2)}`;
+}
+
+function priceBadge(value) {
+  return Number(value) === 0
+    ? '<span class="badge free">free</span>'
+    : `<span class="badge paid">${formatPrice(value)} USDC</span>`;
+}
+
+function getDocsHTML({
+  pricing = { agentMint: 1, update: 0, credReport: 0.01 },
+  contractAddress = '0x2e3B541C59D38b84E3Bc54e977200230A204Fe60',
+  facilitatorUrl = 'https://x402.dexter.cash',
+} = {}) {
+  const agentMintPrice = formatPrice(pricing.agentMint);
+  const updatePrice = Number(pricing.update) === 0 ? 'free' : `${formatPrice(pricing.update)} USDC`;
+  const credReportPrice = formatPrice(pricing.credReport);
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -75,7 +95,7 @@ hr { border: none; border-top: 1px solid #222; margin: 40px 0; }
 <!-- ════════════════════════════════════════ -->
 <h2 id="quick-start">Quick Start</h2>
 
-<p>Register an agent identity in one request (SIWA auth required, $5 USDC via x402 on Base):</p>
+<p>Register an agent identity in one request (SIWA auth required, ${agentMintPrice} USDC via x402 on Base):</p>
 
 <pre><code><span class="comment"># 1. Generate SIWA auth header (agent signs with its wallet)</span>
 ADDR="0xYourAgentAddress"
@@ -105,7 +125,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
     }
   }'</code></pre>
 
-<p>Base URL: <code>https://api.helixa.xyz</code> · Network: Base (chain ID 8453) · Contract: <code>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</code></p>
+<p>Base URL: <code>https://api.helixa.xyz</code> · Network: Base (chain ID 8453) · HelixaV2 Contract: <code>${contractAddress}</code> · $CRED Token: <code>0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3</code></p>
 
 <!-- ════════════════════════════════════════ -->
 <h2 id="authentication">Authentication (SIWA)</h2>
@@ -130,15 +150,15 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 
 <p>Helixa uses the <a href="https://www.x402.org/">x402 protocol</a> for machine-to-machine payments via USDC on Base.</p>
 
-<p><strong>Current pricing:</strong> Agent registration is <strong>$5 USDC</strong> via x402 on Base.</p>
+<p><strong>Current pricing:</strong> Agent registration is <strong>${agentMintPrice} USDC</strong> via x402 on Base. Updates, verification, soul locking, and soul handshakes are currently free.</p>
 
-<p>Paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent must complete the x402 payment flow, or provide a valid broadcast payment transaction hash on the supported payment headers. The facilitator is <code>https://x402.dexter.cash</code>.</p>
+<p>Paid endpoints return <code>402 Payment Required</code> with x402 headers. Your agent must complete the x402 payment flow, or provide a valid broadcast payment transaction hash on the supported payment headers. The direct API facilitator is <code>${facilitatorUrl}</code>. Bankr currently exposes wallet-scoped <a href="https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/agent-lookup">agent-lookup</a> and <a href="https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/cred-report">cred-report</a> services.</p>
 
 <table>
 <tr><th>Operation</th><th>Price</th><th>Pay To</th></tr>
-<tr><td>Registration</td><td>$5 USDC</td><td>Deployer</td></tr>
-<tr><td>Update</td><td>$1 USDC</td><td>Deployer</td></tr>
-<tr><td>Cred Report</td><td>$1 USDC</td><td>Treasury</td></tr>
+<tr><td>Registration</td><td>${agentMintPrice} USDC</td><td>Deployer</td></tr>
+<tr><td>Update</td><td>${updatePrice}</td><td>Deployer</td></tr>
+<tr><td>Cred Report</td><td>${credReportPrice} USDC</td><td>Treasury</td></tr>
 </table>
 
 <!-- ════════════════════════════════════════ -->
@@ -153,11 +173,11 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 {
   <span class="key">"name"</span>: <span class="string">"Helixa V2 API"</span>,
   <span class="key">"version"</span>: <span class="string">"2.0.0"</span>,
-  <span class="key">"contract"</span>: <span class="string">"0xAB3f..."</span>,
+  <span class="key">"contract"</span>: <span class="string">"0x2e3B..."</span>,
   <span class="key">"network"</span>: <span class="string">"Base (8453)"</span>,
   <span class="key">"auth"</span>: { <span class="key">"type"</span>: <span class="string">"SIWA"</span>, ... },
   <span class="key">"endpoints"</span>: { ... },
-  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="number">1</span>, <span class="key">"agentMint"</span>: <span class="string">"$5 USDC"</span> }
+  <span class="key">"pricing"</span>: { <span class="key">"phase"</span>: <span class="string">"growth"</span>, <span class="key">"agentMint"</span>: <span class="string">"${agentMintPrice}"</span> }
 }</code></pre>
 
 <!-- GET /health -->
@@ -173,7 +193,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"mintPrice"</span>: <span class="string">"0.0"</span>,
   <span class="key">"network"</span>: <span class="string">"Base"</span>,
   <span class="key">"chainId"</span>: <span class="number">8453</span>,
-  <span class="key">"contract"</span>: <span class="string">"0xAB3f..."</span>,
+  <span class="key">"contract"</span>: <span class="string">"0x2e3B..."</span>,
   <span class="key">"contractDeployed"</span>: true,
   <span class="key">"phase"</span>: <span class="number">1</span>
 }</code></pre>
@@ -271,7 +291,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
   <span class="key">"name"</span>: <span class="string">"myagent.agent"</span>,
   <span class="key">"available"</span>: true,
   <span class="key">"tokenId"</span>: null,
-  <span class="key">"contract"</span>: <span class="string">"0xAB3f..."</span>
+  <span class="key">"contract"</span>: <span class="string">"0x2e3B..."</span>
 }</code></pre>
 
 <!-- GET /api/v2/agent/:id/cred -->
@@ -287,7 +307,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 }</code></pre>
 
 <!-- GET /api/v2/agent/:id/cred-report -->
-<h3><span class="method get">GET</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/cred-report</span> <span class="badge paid">$1 USDC</span></h3>
+<h3><span class="method get">GET</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/cred-report</span> ${priceBadge(pricing.credReport)}</h3>
 <p>Full Cred Report with scoring breakdown, rank, recommendations, and signed receipt. Paid via x402.</p>
 <pre><code>{
   <span class="key">"reportId"</span>: <span class="string">"abc123..."</span>,
@@ -380,7 +400,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <p>All require <code>Authorization: Bearer {address}:{timestamp}:{signature}</code> (SIWA).</p>
 
 <!-- POST /api/v2/mint -->
-<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> <span class="badge paid">$5 USDC</span></h3>
+<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/mint</span> <span class="badge auth">SIWA</span> ${priceBadge(pricing.agentMint)}</h3>
 <p>Register a new Helixa agent identity. Canonical ERC-8004 registration is manual and must be created from the owner wallet if desired.</p>
 
 <h4>Request Body</h4>
@@ -410,7 +430,7 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 }</code></pre>
 
 <!-- POST /api/v2/agent/:id/update -->
-<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/update</span> <span class="badge auth">SIWA</span> <span class="badge paid">$1 USDC</span></h3>
+<h3><span class="method post">POST</span> <span class="endpoint-path">/api/v2/agent/<span class="param">:id</span>/update</span> <span class="badge auth">SIWA</span> ${priceBadge(pricing.update)}</h3>
 <p>Update agent personality, narrative, and traits. Default: off-chain storage (no gas). Add <code>?onchain=true</code> to force onchain writes.</p>
 
 <h4>Request Body</h4>
@@ -577,20 +597,27 @@ curl -X POST https://api.helixa.xyz/api/v2/mint \\
 <!-- ════════════════════════════════════════ -->
 <h2 id="cred-score">Cred Score System</h2>
 
-<p>Cred Score is a 0–100 composite score measuring agent trustworthiness. Computed from weighted onchain and off-chain signals.</p>
+<p>Cred Score is a 0–100 composite score measuring agent trustworthiness across universal ERC-8004 evidence, identity, external trust, reputation, service readiness, work, and economy signals. Responses also include Evidence Coverage so partners can separate score strength from evidence completeness.</p>
 
 <h3>Score Weights</h3>
 
 <table>
 <tr><th>Component</th><th>Weight</th><th>Description</th></tr>
-<tr><td>Onchain Activity</td><td>20%</td><td>Transaction count and recency (points × 2, max 100)</td></tr>
-<tr><td>Trait Richness</td><td>15%</td><td>Number and variety of traits (traits × 12, max 100)</td></tr>
-<tr><td>Verification Status</td><td>15%</td><td>SIWA, X, GitHub, Farcaster verifications (each 25)</td></tr>
-<tr><td>Coinbase Verification</td><td>15%</td><td>Coinbase EAS attestation (0 or 100)</td></tr>
-<tr><td>Account Age</td><td>10%</td><td>Days since registration (days × 5, max 100)</td></tr>
-<tr><td>Narrative Completeness</td><td>10%</td><td>Origin, mission, lore, manifesto (each 25)</td></tr>
-<tr><td>Mint Origin</td><td>10%</td><td>AGENT_SIWA=100, HUMAN=80, API=70, OWNER=50</td></tr>
-<tr><td>Soulbound Status</td><td>5%</td><td>Locked to wallet (0 or 100)</td></tr>
+<tr><td>Agent Wallet Activity</td><td>20%</td><td>Activity points from Base and Helixa interactions</td></tr>
+<tr><td>Verification Status</td><td>8%</td><td>SIWA, X, GitHub, Farcaster verification state</td></tr>
+<tr><td>External Activity</td><td>8%</td><td>Linked external accounts, partner activity, Ethos, and Talent signals</td></tr>
+<tr><td>Intuition Graph Publication</td><td>5%</td><td>ERC-8004 assessment source publication and Intuition graph linkage</td></tr>
+<tr><td>Institutional Verification</td><td>4%</td><td>Coinbase/EAS attestation signal</td></tr>
+<tr><td>Account Age / Continuity</td><td>10%</td><td>Days since registration and continuity</td></tr>
+<tr><td>Metadata Richness</td><td>6%</td><td>Traits, skills, domains, framework, and capability metadata</td></tr>
+<tr><td>Registration Provenance</td><td>2%</td><td>SIWA, Human, API, or owner/fallback provenance</td></tr>
+<tr><td>Description Completeness</td><td>3%</td><td>Description, origin, mission, lore, and manifesto completeness</td></tr>
+<tr><td>Transfer Lock</td><td>3%</td><td>Soulbound/non-transferable identity status</td></tr>
+<tr><td>Profile Completeness</td><td>4%</td><td>Public profile fields, shareable identity data, and narrative depth</td></tr>
+<tr><td>ERC-8004 Reputation</td><td>5%</td><td>Early feedback from the ERC-8004 Reputation Registry</td></tr>
+<tr><td>Work History</td><td>10%</td><td>Task completions, reliability, and earnings from 0xWork</td></tr>
+<tr><td>Service Readiness</td><td>10%</td><td>Registered services, capabilities, supported trust modes, and x402 readiness</td></tr>
+<tr><td>Agent Economy</td><td>2%</td><td>Bankr profile, linked token, and market activity</td></tr>
 </table>
 
 <h3>Cred Tiers</h3>

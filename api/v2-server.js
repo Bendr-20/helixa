@@ -63,7 +63,7 @@ const { globalRateLimit, mintRateLimit } = require('./middleware/rateLimit');
 const {
     verifyUSDCPayment, requirePayment, requirePaymentLegacy,
     PRICING, PARTNER_PRICING, resolvePrice, usedPayments, saveUsedPayments,
-    buildCredReportPaymentRoute, formatUSDPrice, getCredTokenAmountForUSD, buildServicePricing,
+    buildCredReportPaymentRoute, formatUSDPrice, getCredTokenAmountForUSD, buildServicePricing, FACILITATOR_URL,
 } = require('./services/payments');
 const {
     V1_OG_WALLETS, REFERRAL_CODES, referralRegistry, referralStats,
@@ -3505,9 +3505,10 @@ app.post('/api/v2/mint-with-tx', requireSIWA, async (req, res) => {
 
 // ─── POST /api/v2/register/solana — Register a Solana agent on Base ───
 // No SIWA required (Solana agents can't sign EVM messages)
-// Generates an EVM wallet, mints via mintFor(), stores cross-chain link
+// Requires a caller-controlled EVM wallet, mints via mintFor(), stores the cross-chain link.
+// Helixa never generates or stores an EVM private key for this flow.
 app.post('/api/v2/register/solana', async (req, res) => {
-    const { name, framework, solanaAddress, soulbound } = req.body;
+    const { name, framework, solanaAddress, evmAddress, soulbound } = req.body;
 
     if (!name || typeof name !== 'string' || name.length < 1 || name.length > 64) {
         return res.status(400).json({ error: 'name required (1-64 chars)' });
@@ -3518,6 +3519,9 @@ app.post('/api/v2/register/solana', async (req, res) => {
     }
     if (!solanaAddress || typeof solanaAddress !== 'string' || solanaAddress.length < 32 || solanaAddress.length > 44) {
         return res.status(400).json({ error: 'solanaAddress required (base58 Solana public key)' });
+    }
+    if (!evmAddress || !ethers.isAddress(evmAddress)) {
+        return res.status(400).json({ error: 'evmAddress required (caller-controlled EVM wallet)' });
     }
 
     const fw = (framework || 'custom').toLowerCase();
@@ -3531,11 +3535,7 @@ app.post('/api/v2/register/solana', async (req, res) => {
     }
 
     try {
-        // Generate a fresh EVM wallet for this Solana agent
-        const evmWallet = ethers.Wallet.createRandom();
-        const evmAddress = evmWallet.address;
-
-        // Mint on Base via mintFor
+        // Mint on Base to the caller-controlled EVM wallet.
         console.log(`[SOLANA REG] ${name} (${fw}) solana:${solanaAddress} -> evm:${evmAddress}`);
         const tx = await contract.mintFor(
             evmAddress,     // to (owner)
@@ -3578,8 +3578,9 @@ app.post('/api/v2/register/solana', async (req, res) => {
                 framework TEXT,
                 registered_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
+            // Keep the legacy column empty for schema compatibility; never persist private keys.
             db.prepare(`INSERT INTO solana_registrations (token_id, solana_address, evm_address, evm_private_key, name, framework)
-                VALUES (?, ?, ?, ?, ?, ?)`).run(tokenId, solanaAddress, evmAddress, evmWallet.privateKey, name, fw);
+                VALUES (?, ?, ?, ?, ?, ?)`).run(tokenId, solanaAddress, evmAddress, '', name, fw);
             db.close();
             console.log(`[SOLANA REG] Stored in DB: #${tokenId} ${solanaAddress} -> ${evmAddress}`);
         } catch (dbErr) {
@@ -4838,7 +4839,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
     res.json({
         type: 'https://eips.ethereum.org/EIPS/eip-8004#registration-v1',
         name: 'Helixa',
-        description: 'Onchain identity and reputation infrastructure for AI agents on Base. 1,000+ agents, 11-factor Cred Scores, SIWA auth, and free public access during the current growth phase.',
+        description: 'Onchain identity infrastructure for AI agents on Base. More than 5,000 identities, Cred Scores with Evidence Coverage, SIWA auth, and free public reads.',
         image: 'https://api.helixa.xyz/api/v2/aura/1.png',
         services: [
             { name: 'web', endpoint: 'https://helixa.xyz' },
@@ -4846,7 +4847,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
             { name: 'MCP', endpoint: 'https://api.helixa.xyz/api/mcp', version: '2025-06-18' },
             { name: 'OASF', endpoint: 'https://api.helixa.xyz/.well-known/oasf-record.json', version: '0.8' },
         ],
-        x402Support: false,
+        x402Support: true,
         active: true,
         capabilities: ['agent-search', 'cred-scoring', 'identity-verification', 'agent-profiles', 'cross-registration'],
         registrations: [
@@ -4859,7 +4860,7 @@ app.get('/.well-known/agent-registration.json', (req, res) => {
 app.get('/.well-known/agent-registry', (req, res) => {
     res.json({
         name: 'Helixa',
-        description: 'Onchain identity and reputation layer for AI agents. ERC-8004 registry with Cred Scores, personality traits, and verifiable credentials.',
+        description: 'Onchain identity infrastructure for AI agents with ERC-8004 integration, Cred Scores, personality traits, and verifiable credentials.',
         version: '2.0.0',
         chain: 'base',
         chainId: 8453,
@@ -4885,11 +4886,13 @@ app.get('/.well-known/agent-registry', (req, res) => {
             docs: 'https://helixa.xyz/docs/getting-started',
         },
         pricing: {
-            mint: 'free',
-            update: 'free',
-            soulLock: 'free',
-            soulHandshake: 'free',
-            protocol: 'disabled',
+            mint: formatUSDPrice(PRICING.agentMint),
+            update: PRICING.update === 0 ? 'free' : formatUSDPrice(PRICING.update),
+            credReport: formatUSDPrice(PRICING.credReport),
+            soulLock: PRICING.soulLock === 0 ? 'free' : formatUSDPrice(PRICING.soulLock),
+            soulHandshake: PRICING.soulHandshake === 0 ? 'free' : formatUSDPrice(PRICING.soulHandshake),
+            protocol: 'x402',
+            currency: 'USDC',
         },
         auth: {
             type: 'SIWA',
@@ -4910,7 +4913,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
         info: {
             title: 'Helixa V2 API',
             version: '2.0.0',
-            description: 'Onchain identity and reputation for AI agents. Register identities, set personality traits, build Cred Scores, and verify agents via API with SIWA auth. Platform fees are currently waived.',
+            description: 'Onchain identity infrastructure for AI agents. Register identities, set personality traits, read Cred Scores, and verify agents via API with SIWA auth. Public reads and most updates are free; paid routes use x402 USDC on Base.',
             contact: { url: 'https://helixa.xyz' },
         },
         servers: [{ url: 'https://api.helixa.xyz', description: 'Production (Base Mainnet)' }],
@@ -4926,10 +4929,17 @@ app.get('/api/v2/openapi.json', (req, res) => {
                                 type: 'object',
                                 properties: {
                                     totalAgents: { type: 'integer' },
-                                    totalVerified: { type: 'integer' },
-                                    totalSoulLocked: { type: 'integer' },
-                                    totalHandshakes: { type: 'integer' },
-                                    avgCredScore: { type: 'number' },
+                                    totalCredScore: { type: 'number' },
+                                    frameworks: { type: 'integer' },
+                                    soulboundCount: { type: 'integer' },
+                                    totalHumans: { type: 'integer' },
+                                    totalOrganizations: { type: 'integer' },
+                                    mintPrice: { type: 'string', description: 'Current HelixaV2 contract mint price in ETH' },
+                                    network: { type: 'string', example: 'Base' },
+                                    chainId: { type: 'integer', example: 8453 },
+                                    contract: { type: 'string' },
+                                    contractDeployed: { type: 'boolean' },
+                                    phase: { type: 'integer' },
                                 },
                             } } },
                         },
@@ -4941,9 +4951,13 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     summary: 'List or search agents',
                     description: 'Returns registered Helixa agents. Use search param to filter by name or address.',
                     parameters: [
-                        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by agent name or wallet address' },
-                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100, maximum: 200 } },
-                        { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
+                        { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search by agent name, agent address, or owner address' },
+                        { name: 'page', in: 'query', schema: { type: 'integer', default: 1, minimum: 1 } },
+                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100, minimum: 1, maximum: 1000 } },
+                        { name: 'sort', in: 'query', schema: { type: 'string', enum: ['tokenId', 'credScore', 'points', 'name', 'mintedAt', 'framework'], default: 'tokenId' } },
+                        { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' } },
+                        { name: 'framework', in: 'query', schema: { type: 'string' } },
+                        { name: 'verified', in: 'query', schema: { type: 'boolean' } },
                     ],
                     responses: { '200': { description: 'Array of agent objects' } },
                 },
@@ -4955,21 +4969,26 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     responses: { '200': { description: 'Agent object with full personality, traits, narrative, and cred score' } },
                 },
             },
-            '/api/v2/agent/{address}/cred': {
+            '/api/v2/agent/{id}/cred': {
                 get: {
                     summary: 'Check agent Cred score',
-                    description: 'Returns the Cred score, tier, and factor breakdown for an agent by wallet address.',
-                    parameters: [{ name: 'address', in: 'path', required: true, schema: { type: 'string' }, description: 'Agent wallet address (0x...)' }],
+                    description: 'Returns the Cred score, tier, Evidence Coverage, and report link for an agent by Helixa token ID.',
+                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' }, description: 'Helixa token ID' }],
                     responses: {
                         '200': {
                             description: 'Cred score breakdown',
                             content: { 'application/json': { schema: {
                                 type: 'object',
                                 properties: {
-                                    address: { type: 'string' },
+                                    tokenId: { type: 'integer' },
+                                    name: { type: 'string' },
                                     credScore: { type: 'number' },
-                                    tier: { type: 'string', enum: ['basic', 'verified', 'trusted', 'elite', 'legendary'] },
-                                    factors: { type: 'object' },
+                                    tier: { type: 'string', enum: ['JUNK', 'MARGINAL', 'QUALIFIED', 'PRIME', 'PREFERRED'] },
+                                    tierLabel: { type: 'string' },
+                                    evidenceCoverage: { type: 'object' },
+                                    scale: { type: 'object' },
+                                    fullReportEndpoint: { type: 'string' },
+                                    fullReportPrice: { type: 'string' },
                                 },
                             } } },
                         },
@@ -4987,12 +5006,15 @@ app.get('/api/v2/openapi.json', (req, res) => {
                         required: true,
                         content: { 'application/json': { schema: {
                             type: 'object',
-                            required: ['outcome'],
+                            required: ['outcome', 'sessionId', 'timestamp'],
                             properties: {
-                                outcome: { type: 'string', enum: ['success', 'failure', 'partial'] },
-                                details: { type: 'string' },
+                                outcome: { type: 'string', enum: ['COMPLETED', 'FAILED', 'VIOLATED', 'DEFAULTED', 'INJECTED'] },
                                 sessionId: { type: 'string' },
-                                duration: { type: 'integer', description: 'Session duration in seconds' },
+                                timestamp: { type: 'string', format: 'date-time' },
+                                invoiceId: { type: 'string' },
+                                amountUsdc: { type: 'number' },
+                                counterparty: { type: 'string', pattern: '^0x[0-9a-fA-F]{40}$' },
+                                metadata: { type: 'object', additionalProperties: true },
                             },
                         } } },
                     },
@@ -5005,7 +5027,7 @@ app.get('/api/v2/openapi.json', (req, res) => {
             '/api/v2/mint': {
                 post: {
                     summary: 'Register a new agent identity',
-                    description: 'Requires SIWA authentication. Creates onchain identity with name, framework, personality, narrative, and traits. No platform fee required right now.',
+                    description: `Requires SIWA authentication and ${formatUSDPrice(PRICING.agentMint)} USDC via x402. Creates an onchain Helixa identity with name, framework, personality, narrative, and traits.`,
                     security: [{ siwa: [] }],
                     requestBody: {
                         required: true,
@@ -5050,12 +5072,17 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     },
                 },
             },
-            '/api/v2/agent/{id}/personality': {
-                put: {
-                    summary: 'Update agent personality',
+            '/api/v2/agent/{id}/update': {
+                post: {
+                    summary: 'Update agent profile',
+                    description: 'Updates personality, narrative, traits, operator, or social metadata. SIWA required; currently free.',
                     security: [{ siwa: [] }],
-                    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer' } }],
-                    responses: { '200': { description: 'Personality updated' } },
+                    parameters: [
+                        { name: 'id', in: 'path', required: true, schema: { type: 'integer' } },
+                        { name: 'onchain', in: 'query', required: false, schema: { type: 'boolean', default: false }, description: 'Write supported updates onchain instead of profile storage' },
+                    ],
+                    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
+                    responses: { '200': { description: 'Agent profile updated' }, '401': { description: 'Invalid SIWA authentication' } },
                 },
             },
             '/api/v2/agent/{id}/verify': {
@@ -5073,14 +5100,11 @@ app.get('/api/v2/openapi.json', (req, res) => {
                     responses: { '200': { description: 'ERC-721 metadata JSON' } },
                 },
             },
-            '/api/v2/leaderboard': {
+            '/api/v2/pricing': {
                 get: {
-                    summary: 'Agent leaderboard by Cred Score or Points',
-                    parameters: [
-                        { name: 'sort', in: 'query', schema: { type: 'string', enum: ['cred', 'points'], default: 'cred' } },
-                        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
-                    ],
-                    responses: { '200': { description: 'Sorted agent list' } },
+                    summary: 'Current API pricing',
+                    description: 'Returns current USDC prices, planned CRED estimates, and oracle status.',
+                    responses: { '200': { description: 'Pricing by service' } },
                 },
             },
         },
@@ -7044,10 +7068,10 @@ app.get('/api/v2/agent/:id/soul/handshakes', requireSIWA, async (req, res) => {
     }
 
     function getTier(cred) {
-        if (cred >= 80) return 'Preferred';
-        if (cred >= 60) return 'Prime';
-        if (cred >= 40) return 'Qualified';
-        if (cred >= 20) return 'Marginal';
+        if (cred >= 91) return 'Preferred';
+        if (cred >= 76) return 'Prime';
+        if (cred >= 51) return 'Qualified';
+        if (cred >= 26) return 'Marginal';
         return 'Junk';
     }
 
@@ -8986,7 +9010,7 @@ app.get('/api/v2/jobs/search', async (req, res) => {
 
 app.get('/docs', (req, res) => {
     res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(getDocsHTML());
+    res.send(getDocsHTML({ pricing: PRICING, contractAddress: V2_CONTRACT_ADDRESS, facilitatorUrl: FACILITATOR_URL }));
 });
 
 // ─── Trust Graph ────────────────────────────────────────────────
@@ -9152,7 +9176,7 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
             handshakeCount = hc?.cnt || 0;
         } catch {}
 
-        const tier = agent.credScore >= 91 ? 'Legendary' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Unrated';
+        const tier = agent.credScore >= 91 ? 'Preferred' : agent.credScore >= 76 ? 'Prime' : agent.credScore >= 51 ? 'Qualified' : agent.credScore >= 26 ? 'Marginal' : 'Junk';
         const tierColor = agent.credScore >= 91 ? '#f59e0b' : agent.credScore >= 76 ? '#a855f7' : agent.credScore >= 51 ? '#06b6d4' : agent.credScore >= 26 ? '#6b7280' : '#374151';
         const soulStatus = soulLocked ? '🔒 Soul Locked' : '🔓 Unlocked';
         const escapedName = (agent.name || `Agent #${tokenId}`).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

@@ -11,7 +11,7 @@ Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet {addres
 ```
 
 - `{address}` — agent's Ethereum wallet address (checksummed)
-- `{timestamp}` — Unix timestamp in seconds (must be within 5 minutes of server time)
+- `{timestamp}` - Unix timestamp in seconds or milliseconds (must be within 1 hour of server time)
 
 ## Auth Header
 
@@ -29,7 +29,7 @@ const { ethers } = require('ethers');
 async function getSiwaAuth(privateKey) {
   const wallet = new ethers.Wallet(privateKey);
   const address = wallet.address;
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const timestamp = Date.now().toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
   const signature = await wallet.signMessage(message);
   return `Bearer ${address}:${timestamp}:${signature}`;
@@ -57,7 +57,7 @@ import { base } from 'viem/chains';
 async function getSiwaAuth(privateKey) {
   const account = privateKeyToAccount(privateKey);
   const address = account.address;
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const timestamp = Date.now().toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${address} at ${timestamp}`;
   const signature = await account.signMessage({ message });
   return `Bearer ${address}:${timestamp}:${signature}`;
@@ -108,7 +108,7 @@ const res = await x402Fetch('https://api.helixa.xyz/api/v2/mint', {
 
 ## Token Expiry
 
-SIWA authentication tokens are valid for **5 minutes** from the Unix timestamp included in the signed message. After 5 minutes, the server will reject the token with a `401 timestamp expired` error.
+SIWA authentication tokens are valid for **1 hour** from the Unix timestamp included in the signed message. Expired or invalid signatures return `401 Invalid or expired SIWA token`.
 
 In automated or scripted contexts, generate a fresh SIWA header immediately before each API request rather than reusing a previously generated one. This avoids failures due to clock drift or delays between header generation and request execution.
 
@@ -117,12 +117,12 @@ In automated or scripted contexts, generate a fresh SIWA header immediately befo
 | Error | Cause | Fix |
 |-------|-------|-----|
 | 401 `invalid signature` | Wrong private key or malformed message | Verify message format exactly matches spec |
-| 401 `timestamp expired` | Timestamp >5 min from server time | Generate fresh timestamp |
+| 401 `Invalid or expired SIWA token` | Signature invalid or timestamp older than 1 hour | Generate a fresh timestamp and signature |
 | 401 `address mismatch` | Address in header doesn't match signer | Use same wallet for signing and header |
 
 ## Security Notes
 
 - Never log, print, or expose private keys
 - Store keys only in environment variables
-- SIWA timestamps expire after ~5 minutes — always generate fresh
+- SIWA timestamps expire after 1 hour; generate a fresh signature for each write flow
 - The signed message is domain-bound to `api.helixa.xyz`

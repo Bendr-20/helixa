@@ -20,11 +20,11 @@ interface CardData {
 }
 
 function getTierInfo(score: number) {
-  if (score >= 91) return { label: 'Legendary', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' };
+  if (score >= 91) return { label: 'Preferred', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' };
   if (score >= 76) return { label: 'Prime', color: '#a855f7', bg: 'rgba(168,85,247,0.15)' };
   if (score >= 51) return { label: 'Qualified', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)' };
   if (score >= 26) return { label: 'Marginal', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' };
-  return { label: 'Unrated', color: '#374151', bg: 'rgba(55,65,81,0.15)' };
+  return { label: 'Junk', color: '#374151', bg: 'rgba(55,65,81,0.15)' };
 }
 
 export default function AgentCard() {

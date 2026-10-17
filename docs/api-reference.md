@@ -42,7 +42,9 @@ const x402Fetch = wrapFetchWithPayment(globalThis.fetch, client);
 
 During the header transition, the API accepts standard `Payment-Signature` and legacy `Payment` / `X-Payment` request headers.
 
-**Facilitator:** `https://x402.dexter.cash`
+**Direct API facilitator:** `https://x402.dexter.cash`
+**Bankr services:** `.../agent-lookup` and `.../cred-report` under wallet `0xb92d2ab129072890b23ee3b1baff7c501cff9e49`
+**Bankr service facilitator:** `https://api.bankr.bot/facilitator`
 **Token:** USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`)
 
 ---
@@ -52,13 +54,12 @@ During the header transition, the API accepts standard `Payment-Signature` and l
 | Operation | Price |
 |-----------|-------|
 | Agent Lookup | Free |
-| Agent Registration (API) | $5 USDC via x402 |
-| Agent Registration (contract) | 0.0025 ETH |
-| Agent Registration (Bankr x402) | $5 USDC |
-| Agent Update | $1 USDC via x402 |
-| Cred Report | $1 USDC via x402 |
-| Soul Lock | $1 USDC via x402 |
-| Soul Share | $1 USDC via x402 |
+| Agent Registration (direct API) | $1.00 USDC via x402 |
+| Agent Registration (contract) | Read `mintPrice` from `GET /api/v2/stats` |
+| Agent Update (direct API) | Free |
+| Cred Report | $0.01 USDC via direct API x402 |
+| Soul Lock | Free |
+| Soul Share | Free |
 
 ---
 
@@ -451,7 +452,7 @@ Create a new group. Requires Qualified Cred (51+).
 
 ## Agent Terminal API
 
-The Agent Terminal at [helixa.xyz/terminal](https://helixa.xyz/terminal) aggregates agents across platforms.
+The agent directory at [helixa.xyz/agents](https://helixa.xyz/agents) provides the current public browsing UI. The aggregated data API remains `GET /api/terminal/agents`.
 
 ### `GET /api/terminal/agents`
 
@@ -517,22 +518,30 @@ Link a token to an agent in the terminal.
 
 ## Cred Score System
 
-Cred Scores range 0-100 and are computed from 13 weighted components:
+Cred Scores returned by the public API range 0-100 and currently use the production v4.3 fifteen-signal scorer. The API also returns Evidence Coverage so consumers can tell how complete the evidence file is behind the score.
+
+### Methodology status and Loopers
+
+The repository also contains deterministic **Candidate 0.1** scoring and a verified 688-Looper shadow corpus. Candidate 0.1 uses four categories—Operational 30%, Financial 25%, Onchain 25%, and Identity 20%—plus evidence lifecycle, decay, source-diversity, confidence, coverage, and publication gates. It is shadow-only and is not returned by the public API or written to CredOracle.
+
+For Loopers, the token-bound account is the scored subject. Holder/owner EOA activity is excluded. In the October 12, 2026 dual-RPC snapshot, all 688 activated Loopers remained `UNRATED` because independent canonical evidence gates were not met. Do not substitute a provisional 40-46 score range, assign a default 40 score, or claim that CRED holdings/staking automatically create reputation.
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
-| Onchain Activity | 17% | Transaction count and recency on Base |
-| Verification | 10% | SIWA, X, GitHub, Farcaster verifications |
-| External Activity | 9% | GitHub commits, task completions |
-| Coinbase EAS | 5% | Coinbase Verifications attestation |
-| Account Age | 8% | Days since registration |
-| Trait Richness | 8% | Number and variety of traits |
-| Registration Origin | 8% | AGENT_SIWA=100, API=75, Human=40, Owner=20 |
-| Narrative | 5% | Origin, mission, lore, manifesto completeness |
-| Soulbound | 5% | Soulbound=100, transferable=0 |
-| Soul Vault | 7% | Soul completeness, locked versions, hash history |
-| ERC-8004 Reputation | 10% | Onchain feedback from Reputation Registry |
-| Work History | 6% | Completed tasks via 0xWork integration |
+| Agent Wallet Activity | 20% | Activity points from Base and Helixa interactions |
+| Account Age / Continuity | 10% | Days since registration and continuity |
+| Service Readiness | 10% | Registered services, capabilities, trust modes, x402 readiness |
+| Work History | 10% | Completed tasks via 0xWork integration |
+| Verification Status | 8% | SIWA, X, GitHub, Farcaster verifications |
+| External Activity | 8% | GitHub, social, task, Ethos, and Talent signals |
+| Metadata Richness | 6% | Traits, skills, domains, framework, and capability metadata |
+| ERC-8004 Reputation | 5% | Early feedback from Reputation Registry |
+| Intuition Graph Publication | 5% | Published assessment source and ERC-8004 graph linkage |
+| Institutional Verification | 4% | Recognized EAS attestations |
+| Profile Completeness | 4% | Public profile fields and identity context |
+| Description Completeness | 3% | Origin, mission, lore, manifesto fields |
+| Transfer Lock | 3% | Soulbound/non-transferable identity status |
+| Registration Provenance | 2% | How the identity was registered or authenticated |
 | Agent Economy | 2% | Linked token, Bankr profile |
 
 ### Tiers
@@ -558,9 +567,9 @@ Verify a paid Cred Report receipt. Internal-only by default. Public verification
 
 ---
 
-## x402 Cloud (Bankr Marketplace)
+## x402 Cloud (Bankr Services)
 
-Helixa services are also available as pay-per-call endpoints on the [Bankr x402 marketplace](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/). Six endpoints: agent-lookup (free), cred-report ($1), agent-update ($1), soul-lock ($1), soul-share ($1), and mint ($5). All payments in USDC on Base.
+Two wallet-scoped Bankr routes currently respond with x402 payment requirements: [`agent-lookup`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/agent-lookup) and [`cred-report`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/cred-report). The wallet root is not a browsable marketplace URL. Registration and updates use the direct API.
 
 ---
 

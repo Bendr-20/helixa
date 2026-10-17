@@ -1,85 +1,85 @@
-# Helixa x402 API
+# Helixa API
 
-Payment-gated API for the Helixa protocol, powered by [x402](https://x402.org).
+Production API and discovery service for Helixa identity infrastructure on Base.
 
-## Quick Start
+- Production base URL: `https://api.helixa.xyz`
+- Local default: `http://127.0.0.1:3457`
+- Network: Base mainnet (chain ID `8453`)
+- HelixaV2: `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60`
+
+## Run locally
 
 ```bash
-npm install
+cd api
+npm ci
 npm start
 ```
 
-Server runs on `http://localhost:3402`.
+`npm start` runs `v2-server.js`. Set `V2_API_PORT` to override port `3457`.
 
-## Environment Variables
+Public reads can run without a signing key. Write paths, x402 settlement, internal routes, and receipt signing require the corresponding runtime secrets. Runtime secrets are loaded through `services/runtime-secrets.js`; do not put private keys or shared secrets in documentation or committed environment files.
 
-| Variable | Default | Description |
+Common configuration:
+
+| Variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `3402` | Server port |
-| `RPC_URL` | `https://mainnet.base.org` | Base mainnet RPC |
-| `CONTRACT_ADDRESS` | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | HelixaV2 contract |
-| `PAYWALL_ADDRESS` | *(none)* | Your wallet for USDC payments. If unset, paywall is disabled. |
-| `FACILITATOR_URL` | `https://x402.org/facilitator` | x402 facilitator endpoint |
-| `INTERNAL_API_KEY` | *(required)* | Shared secret for internal Bankr/x402 proxy routes. Use 32+ characters. |
-| `INTERNAL_API_KEY_PREVIOUS` | *(optional)* | Previous internal key kept temporarily during rollover so callers can migrate cleanly. |
-| `RECEIPT_HMAC_SECRET` | *(required)* | HMAC secret for cred-report receipt signing and verification. Use 32+ characters. |
-| `RECEIPT_HMAC_SECRET_PREVIOUS` | *(optional)* | Previous receipt HMAC secret kept temporarily so older receipts still verify during rollover. |
+| `V2_API_PORT` | `3457` | HTTP listen port |
+| `RPC_URL` | `https://mainnet.base.org` | Base write RPC |
+| `READ_RPC_URL` | `https://mainnet.base.org` | Primary Base read RPC |
+| `V2_CONTRACT` | HelixaV2 address above | Identity contract |
+| `DEPLOYER_ADDRESS` | `0x339559A2d1CD15059365FC7bD36b3047BbA480E0` | Current write wallet and x402/manual payment destination |
+| `DEPLOYER_KEY` | none | Optional local signing key; production loads the key from the configured secret manager |
+| `INTERNAL_API_KEY` | none | Internal proxy authentication; 32+ characters |
+| `INTERNAL_API_KEY_PREVIOUS` | none | Temporary rollover key |
+| `RECEIPT_HMAC_SECRET` | none | Cred Report receipt signing; 32+ characters |
+| `RECEIPT_HMAC_SECRET_PREVIOUS` | none | Temporary receipt rollover secret |
 
-### Internal auth audit
+See [INTERNAL_AUTH_ROTATION.md](./INTERNAL_AUTH_ROTATION.md) for internal-key rotation.
+
+## Start with discovery
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health` | Service health |
+| `GET /api/v2` | Live API discovery, auth, payments, and endpoint summary |
+| `GET /api/v2/pricing` | Current USDC pricing and planned CRED estimates |
+| `GET /api/v2/openapi.json` | OpenAPI 3.0 core integration schema |
+| `GET /docs` | Human-readable API documentation |
+| `GET /.well-known/agent-card.json` | A2A discovery |
+| `GET /.well-known/mcp/server-card.json` | MCP discovery |
+| `GET /.well-known/oasf-record.json` | OASF discovery |
+| `GET /.well-known/agent-registry` | Helixa registry manifest |
+
+The canonical public endpoint guide is [../docs/api-reference.md](../docs/api-reference.md). The agent-first quickstart is [../docs/docs/getting-started.md](../docs/docs/getting-started.md).
+
+## Current payment model
+
+Read `GET /api/v2/pricing` at runtime rather than hard-coding prices. At the time of this audit:
+
+- Agent registration: `$1.00 USDC` via x402
+- Full Cred Report: `$0.01 USDC` via x402
+- Agent update, verification, soul lock, and soul handshake: free
+- Native CRED x402 settlement: planned, not live
+
+Direct API x402 uses the facilitator configured in `services/payments.js`. Bankr currently exposes wallet-scoped [`agent-lookup`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/agent-lookup) and [`cred-report`](https://x402.bankr.bot/0xb92d2ab129072890b23ee3b1baff7c501cff9e49/cred-report) services; the wallet root is not a browsable marketplace URL.
+
+## Authentication
+
+Agent writes use SIWA:
+
+```text
+Authorization: Bearer <address>:<timestamp>:<signature>
+Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet <address> at <timestamp>
+```
+
+Timestamps may be Unix seconds or milliseconds and expire after one hour. Human and organization writes use SIWE or a Privy access token as documented by `GET /api/v2`.
+
+## Tests
 
 ```bash
 npm run audit:internal-auth
 npm run test:internal-auth
+npm test --if-present
 ```
 
-For the operational rotation checklist, see [`./INTERNAL_AUTH_ROTATION.md`](./INTERNAL_AUTH_ROTATION.md).
-
-## Endpoints
-
-### Free (no payment required)
-
-| Endpoint | Description |
-|---|---|
-| `GET /stats` | Total agents, total points, beta status |
-| `GET /search?name=X` | Find agents by name (partial match, max 10) |
-| `GET /aura/:id` | Aura SVG image for an agent |
-
-### Premium (x402 paywall — $1 USDC per query)
-
-| Endpoint | Description |
-|---|---|
-| `GET /agent/:id` | Full agent data + personality + traits + mutations + aura SVG |
-| `GET /verify/:id` | Verification status + reputation score |
-| `GET /reputation/:address` | Points, rarity tier, trait/mutation counts |
-
-## x402 Payment Flow
-
-1. Client calls a premium endpoint without payment → receives `402 Payment Required` with payment details in headers
-2. Client signs a USDC payment using x402 client SDK (`@x402/fetch` or `@x402/axios`)
-3. Client retries with `PAYMENT-SIGNATURE` header → receives data
-4. Payment settles via the x402 facilitator
-
-### Example Client (using @x402/fetch)
-
-```js
-import { wrapFetch } from "@x402/fetch";
-import { createWalletClient, http } from "viem";
-import { baseSepolia } from "viem/chains";
-
-const client = createWalletClient({ chain: baseSepolia, transport: http() });
-const fetchWithPayment = wrapFetch(fetch, client);
-
-const res = await fetchWithPayment("http://localhost:3402/agent/0");
-const data = await res.json();
-```
-
-## Architecture
-
-- **Zero infrastructure** — reads directly from the HelixaV2 contract on Base mainnet
-- **No database** — all data comes from onchain
-- **CORS enabled** — callable from any frontend
-- **Aura generation** — uses the SDK's deterministic SVG generator
-
-## Contract
-
-`0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` on Base mainnet
+Focused suites are also available through the `test:cred-*` scripts in `package.json`.

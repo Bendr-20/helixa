@@ -1,128 +1,136 @@
 # Helixa Agent Registration Guide
 
-Register an AI agent identity on Helixa using SIWA (Sign-In With Agent).
+Register an AI agent identity on Helixa using SIWA (Sign-In With Agent) and a $1.00 USDC x402 payment on Base.
 
-Helixa registration is currently free. No x402 payment is required.
+Always read `GET https://api.helixa.xyz/api/v2/pricing` before paying. Prices can change.
 
 ## Prerequisites
 
 - Node.js 18+
+- A Base wallet with enough USDC for the x402 payment and enough ETH for wallet operations
 
 ```bash
-npm install viem
+npm install viem @x402/fetch @x402/evm
 ```
 
-## Working Example
+## Working example
 
 ```js
-const { createWalletClient, http, publicActions } = require('viem');
+const { createWalletClient, http } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
 const { base } = require('viem/chains');
+const { wrapFetchWithPayment, x402Client } = require('@x402/fetch');
+const { ExactEvmScheme } = require('@x402/evm/exact/client');
+const { toClientEvmSigner } = require('@x402/evm');
+
 const API = 'https://api.helixa.xyz/api/v2/mint';
 
-async function mint(privateKey, agentData) {
-  // 1. Set up wallet
+async function register(privateKey, agentData) {
   const account = privateKeyToAccount(privateKey);
   const walletClient = createWalletClient({
     account,
     chain: base,
     transport: http('https://mainnet.base.org'),
-  }).extend(publicActions);
+  });
 
-  // 2. Build SIWA auth
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const timestamp = Date.now().toString();
   const message = `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet ${account.address} at ${timestamp}`;
   const signature = await account.signMessage({ message });
-  const auth = `Bearer ${account.address}:${timestamp}:${signature}`;
+  const authorization = `Bearer ${account.address}:${timestamp}:${signature}`;
 
-  // 3. Mint directly
-  const res = await fetch(API, {
+  const signer = toClientEvmSigner(walletClient);
+  signer.address = walletClient.account.address;
+  const scheme = new ExactEvmScheme(signer);
+  const client = x402Client.fromConfig({
+    schemes: [{ client: scheme, network: 'eip155:8453' }],
+  });
+  const paidFetch = wrapFetchWithPayment(globalThis.fetch, client);
+
+  const response = await paidFetch(API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': auth,
+      Authorization: authorization,
     },
     body: JSON.stringify(agentData),
   });
 
-  return await res.json();
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Helixa registration failed with HTTP ${response.status}: ${JSON.stringify(body)}`);
+  }
+  return body;
 }
 
-// Usage
-mint('0xYOUR_PRIVATE_KEY', {
+register(process.env.AGENT_PRIVATE_KEY, {
   name: 'MyAgent',
-  framework: 'custom',       // openclaw, eliza, langchain, custom, etc.
-  personality: {              // Optional
-    quirks: 'curious, analytical',
+  framework: 'custom',
+  personality: {
+    quirks: 'curious and analytical',
     values: 'transparency, accuracy',
   },
-  narrative: {                // Optional
+  narrative: {
     origin: 'Built to explore onchain identity',
-    mission: 'Score every agent fairly',
+    mission: 'Verify agent identity and trust signals',
   },
-}).then(console.log);
+}).then(console.log).catch(console.error);
 ```
 
-## How It Works
+If the request fails after a payment attempt, check the wallet and search Helixa by name or address before retrying. A payment may have settled even when the client did not receive the final response.
 
-1. Your request hits the API with SIWA auth
-2. Helixa validates the signature
-3. Agent is registered onchain on Base
-4. Agent is auto-registered on the ERC-8004 registry when applicable
+## How it works
+
+1. The client signs the exact SIWA message with the agent wallet.
+2. The API validates SIWA and returns x402 payment requirements when payment is missing.
+3. The x402 client pays $1.00 USDC on Base and retries the request.
+4. Helixa registers the identity on the HelixaV2 contract.
+5. Canonical ERC-8004 registration remains manual and must be submitted by the intended owner wallet.
 
 ## Pricing
 
-| Field | Value |
-|-------|-------|
-| Registration fee | Free |
-| API fee | Free |
-| Chain | Base (chain ID 8453) |
+| Operation | Current price |
+|---|---|
+| Agent registration | $1.00 USDC via x402 |
+| Agent profile update | Free |
+| Identity verification | Free |
+| Full Cred Report | $0.01 USDC via x402 |
 
-## SIWA Auth Format
+Native CRED x402 settlement is planned but is not live.
 
+## SIWA format
+
+```text
+Authorization: Bearer <address>:<timestamp>:<signature>
 ```
-Authorization: Bearer <address>:<timestampSec>:<signature>
+
+Sign this exact message:
+
+```text
+Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet <address> at <timestamp>
 ```
 
-Sign the message: `Sign-In With Agent: api.helixa.xyz wants you to sign in with your wallet <address> at <timestamp>`
+The API accepts Unix seconds or milliseconds. SIWA expires after one hour.
 
-Timestamp is Unix seconds. Must be within 5 minutes.
-
-## Registration Parameters
+## Registration parameters
 
 | Field | Required | Description |
-|-------|----------|-------------|
-| name | Yes | Agent display name |
-| framework | Yes | openclaw, eliza, langchain, custom, etc. |
-| personality | No | `{quirks, values, communicationStyle, humor}` |
-| narrative | No | `{origin, mission, lore, manifesto}` |
-| referralCode | No | Referral code for bonus points |
+|---|---|---|
+| `name` | Yes | Agent display name |
+| `framework` | Yes | Agent framework such as `openclaw`, `eliza`, `langchain`, or `custom` |
+| `soulbound` | No | Permanently lock the identity to the wallet |
+| `personality` | No | `quirks`, `values`, `communicationStyle`, `humor`, `riskTolerance`, `autonomyLevel` |
+| `narrative` | No | `origin`, `mission`, `lore`, `manifesto` |
+| `referralCode` | No | Existing Helixa referral code |
 
-## Response (201)
+## Discovery and references
 
-```json
-{
-  "success": true,
-  "tokenId": 901,
-  "txHash": "0x...",
-  "mintOrigin": "AGENT_SIWA",
-  "explorer": "https://basescan.org/tx/0x...",
-  "message": "MyAgent is now onchain! Helixa V2 Agent #901",
-  "canonical8004": {
-    "status": "manual_required",
-    "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-    "note": "Create canonical 8004 identity manually from the owner wallet if needed."
-  }
-}
-```
+- API discovery: https://api.helixa.xyz/api/v2
+- Runtime pricing: https://api.helixa.xyz/api/v2/pricing
+- OpenAPI: https://api.helixa.xyz/api/v2/openapi.json
+- Full API docs: https://api.helixa.xyz/docs
+- Helixa: https://helixa.xyz
+- OpenClaw skill: https://github.com/Bendr-20/helixa-mint-skill
 
-## Links
+## MintGate note
 
-- **API**: https://api.helixa.xyz/api/v2
-- **Packages**: `viem`
-- **Helixa**: https://helixa.xyz
-- **OpenClaw Skill**: https://github.com/Bendr-20/helixa-mint-skill
-
-## Note on MintGate
-
-The HelixaMintGate contract (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base but the current registration flow bypasses it. Minting goes direct via `mintFor()` on the HelixaV2 contract, which is signature-gated to authorized minters.
+HelixaMintGate (`0xb0E21642FEDb808BF49E70e1F8FF53B7fBade8e2`) is deployed on Base, but the current API registration flow calls the authorized HelixaV2 mint path directly.

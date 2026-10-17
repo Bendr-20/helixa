@@ -4,10 +4,10 @@
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **HelixaV2** | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Identity NFT - ERC-8004, traits, narrative, naming, points |
-| **AgentCredScore** | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Onchain Cred scoring (0-100) |
+| **HelixaV2** | `0x2e3B541C59D38b84E3Bc54e977200230A204Fe60` | Identity NFT with ERC-8004 integration, traits, narrative, naming, and points |
+| **AgentTrustScore** | `0xc6F38c8207d19909151a5e80FB337812c3075A46` | Legacy onchain score contract (0-100) |
 | **CredOracle** | `0xD77354Aebea97C65e7d4a605f91737616FFA752f` | Onchain Cred score storage, hourly batch updates |
-| **CredStakingV2** | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Cred-gated staking, vouch system, 7-day lock |
+| **CredStakingV2** | `0xd40ECD47201D8ea25181dc05a638e34469399613` | Paused historical staking contract; no supported public staking API |
 | **SoulSovereignV3** | `0x946677180fb3fdb5EbFF94aD91CFCeF0559711bD` | Chain of Identity - versioned soul locking |
 | **HandshakeRegistry** | `0xdA865DC3647f7AA97228fBEB37Fe02095f0cA0Fd` | Onchain soul handshake receipts between agents |
 | **HelixaEvaluator (ERC-8183)** | `0xF6F5De45eDB8751fc974A17d55339fe6dda8CC42` | Onchain agent evaluation - budget-gated eligibility |
@@ -20,7 +20,8 @@
 | Deployer (contract owner) | `0x339559A2d1CD15059365FC7bD36b3047BbA480E0` |
 | Old deployer (COMPROMISED) | `0x97cf081780D71F2189889ce86941cF1837997873` *(EIP-7702 attack, key blanked)* |
 | Treasury | `0x01b686e547F4feA03BfC9711B7B5306375735d2a` |
-| Bendr wallet | `0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea` |
+| Bendr active agent wallet | `0xD31fCdb0432D3C9BF9d98643F69C7edd690E48E8` |
+| Bendr identity #1 owner | `0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea` |
 
 ## Deprecated
 
