@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { createMultipassConsoleSnapshot, normalizeConsoleCred, renderMultipassConsole } from '../src/multipass-console.js';
 
-test('Network is a fifth isolated workspace and Multipass contains no RESTAP controls', () => {
+test('Network remains isolated beside the Swarm Command workspace and Multipass contains no RESTAP controls', () => {
   const [agent] = sampleAgents();
   const snapshot = createMultipassConsoleSnapshot({
     agents: [agent],
@@ -24,7 +24,7 @@ test('Network is a fifth isolated workspace and Multipass contains no RESTAP con
   for (const nav of root.querySelectorAll('.console-workspace-nav')) {
     assert.deepEqual(
       [...nav.querySelectorAll('[data-console-view]')].map((button) => button.dataset.consoleView),
-      ['chat', 'codex', 'wallet', 'multipass', 'network'],
+      ['missions', 'chat', 'codex', 'wallet', 'multipass', 'network'],
     );
     assert.equal(nav.querySelectorAll('[aria-current="page"]').length, 1);
     assert.equal(nav.querySelector('[data-console-view="network"]')?.getAttribute('aria-current'), 'page');
@@ -250,7 +250,7 @@ test('an exiting or final-month Pantheon position exposes no top-up control', ()
   assert.equal(panel?.querySelector('[data-action="approve-pantheon-cred"]'), null);
 });
 
-test('mobile Console exposes a portrait agent switcher and five mutually exclusive workspaces', () => {
+test('mobile Console exposes a portrait agent switcher and six mutually exclusive workspaces', () => {
   const agents = Array.from({ length: 45 }, (_, index) => ({
     ...sampleAgents()[index % 2],
     tokenId: String(index + 1),
@@ -287,7 +287,7 @@ test('mobile Console exposes a portrait agent switcher and five mutually exclusi
   assert.equal(switcher.querySelector('img')?.src, 'https://example.test/fool-spec.png');
   assert.match(switcher.querySelector('summary')?.textContent ?? '', /Fool Spec/i);
   assert.match(switcher.querySelector('summary')?.textContent ?? '', /45 owned/i);
-  assert.equal(mobileNav?.querySelectorAll('button').length, 5);
+  assert.equal(mobileNav?.querySelectorAll('button').length, 6);
   assert.ok(mobileNav?.querySelector('[data-console-view="codex"]'));
   assert.match(mobileNav?.querySelector('[data-console-view="multipass"]')?.textContent ?? '', /MultipassManage/i);
   assert.equal(mobileNav?.querySelectorAll('[aria-current="page"]').length, 1);
@@ -333,7 +333,7 @@ test('selected Looper exposes Codex before activation and Chat shows an explicit
   const codexSnapshot = createMultipassConsoleSnapshot({ agents: sampleAgents(), state: { ...baseState, consoleWorkspaceView: 'codex' } });
   const codexRoot = render(renderMultipassConsole(codexSnapshot));
   for (const nav of codexRoot.querySelectorAll('.console-workspace-nav')) {
-    assert.equal(nav.querySelectorAll('button').length, 5);
+    assert.equal(nav.querySelectorAll('button').length, 6);
     assert.equal(nav.querySelectorAll('[aria-current="page"]').length, 1);
     assert.equal(nav.querySelector('[data-console-view="codex"]')?.getAttribute('aria-current'), 'page');
     assert.equal(nav.querySelector('[data-console-view="codex"]')?.disabled, false);

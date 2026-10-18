@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "product": "Swarm Command",
+  "generatedAt": "2026-10-17T05:24:09.014Z",
+  "commit": "a9e69fa324ff9adc728dd025b59d99e8aa561a8f",
+  "status": "local_gates_passed_external_actions_blocked",
+  "commands": [
+    {
+      "name": "mission-api",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "52f58bed407c27d163d40cba447c5d9f0ab01a9661594ae60c2b48f61d58be57"
+    },
+    {
+      "name": "mission-web",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "c6703ecd40e3842337753c8e1b4c1dfe662ce2906e7223ea8c8995e5a404ebf7"
+    },
+    {
+      "name": "mission-contracts",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "9bb33051649ccf2407b79da4c3bf0391f886b919d4d9f1996c31e7764792e1d6"
+    },
+    {
+      "name": "mission-compile",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "d6ee0a71c21e7a54553513795d5aab82cc91e684511a43b6d7b9b777946a18e9"
+    },
+    {
+      "name": "forge-invariants",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "6e00521530be6717306eab6f93134597212b6fcf38e4c13a70c6db64f63fe8ce"
+    },
+    {
+      "name": "web-build",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "df1e6fa6c8d9a377e7ed6cd959bf0e244603157126f0e19ea44b9155886bb291"
+    },
+    {
+      "name": "ui-proof",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "72f2a7923a1cc418896603240ddcd7b51237f9cbad7a9c60070a3aa093e6e639"
+    },
+    {
+      "name": "diff-check",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "secret-scan",
+      "status": "passed",
+      "exitCode": 0,
+      "outputSha256": "1329bed5a664bbf035723754d90023adf1034d44b942c070a37741a1b762d35c"
+    }
+  ],
+  "externalBoundaries": [
+    {
+      "name": "pinned-id-agents-source",
+      "status": "passed",
+      "commit": "766d8f566386a020f0b8b5489beb6a2c6132d5d7",
+      "packageHash": "4b68881374d8c17181e3c6a8706df670b7d26941bb8a8b1b695e601c7d2e9a02"
+    },
+    {
+      "name": "legacy-full-regression-fixture",
+      "status": "blocked",
+      "reason": "Full suite is otherwise green after web-gate repair; looper-agent-account-release.test.mjs requires missing external /tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json with pinned SHA-256."
+    },
+    {
+      "name": "real-xmtp-dev-group",
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/xmtp-2026-10-17.json"
+    },
+    {
+      "name": "local-chain-84532-deployment-simulation",
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/base-sepolia-simulation.json",
+      "artifactLockedBy": "packages/contracts/test/mission-deployment-simulation.test.mjs"
+    },
+    {
+      "name": "base-testnet-deployment-simulation",
+      "status": "passed",
+      "proof": "review-artifacts/looper-missions/external-proof/base-sepolia-live-plan.json",
+      "artifactLockedBy": "packages/contracts/test/mission-live-deployment-plan.test.mjs"
+    },
+    {
+      "name": "base-testnet-deployment",
+      "status": "blocked",
+      "reason": "Separate review and explicit approval required before deployment or funding."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "review-artifacts/looper-missions/local-proof/implementation-review.md",
+      "bytes": 2665,
+      "sha256": "1f9699fc718dbbbf634a3b96454768f0042f54fa7c5ffc6e32e8f5aa827d5e55"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-1200.png",
+      "bytes": 198501,
+      "sha256": "c3c48210a1662f7a7bba9a8ac7a898fa9ee508832d0384f635c0054991689455"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-320.png",
+      "bytes": 177451,
+      "sha256": "2202dd5eaf10b45e21852fcd7c5fb028af713cdf3bb2b8f8e82b9c0d7836290d"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/swarm-command-390.png",
+      "bytes": 178010,
+      "sha256": "c9ea405f1393888ce6329301eb1425313390813658a4c44ea894d2eb6541cad8"
+    },
+    {
+      "path": "review-artifacts/looper-missions/local-proof/ui-proof.json",
+      "bytes": 603,
+      "sha256": "c3f14b22c8026381911ea2719ada73055b3da65749f41a8aaca5279b1c69c3b4"
+    }
+  ],
+  "coverage": {
+    "lifecycle": [
+      "create",
+      "publish",
+      "select",
+      "fund",
+      "launch",
+      "tasks",
+      "artifacts",
+      "approve",
+      "release",
+      "dispute",
+      "refund"
+    ],
+    "failurePaths": [
+      "partial_funding",
+      "ambiguous_vault",
+      "runtime_timeout",
+      "room_ambiguity",
+      "custody_transfer",
+      "reorg",
+      "arbitrator_timeout",
+      "restart_recovery"
+    ]
+  }
+}

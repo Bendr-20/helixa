@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "status": "verified_governance_pending",
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "observedAtMs": 1792278461749,
+  "rpcConsensus": true,
+  "anchor": {
+    "number": "48255086",
+    "hash": "0x5b02729b11e4ffd279c5619a6a98c446ab772bb707732740882e140875065175"
+  },
+  "packet": {
+    "commit": "dff99ebd7ec727eff603bec0d771582009ab2c69",
+    "sha256": "afeb2ff90b899b45aeba9bc94468e312b02ae09e1a498851d76348c1da823d18"
+  },
+  "missionCreationEnabled": false,
+  "governanceActionsBroadcast": false,
+  "runtime": {
+    "Safe": {
+      "address": "0x0cFA13912A8F58dcCd4993410D43Bfab5E0D39d7",
+      "byteLength": 171,
+      "runtimeCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c"
+    },
+    "mUSDC": {
+      "address": "0x87D0d29f1186a5828614B240F2004DC7893726ff",
+      "byteLength": 1965,
+      "runtimeCodeHash": "0x286574e4f05503403b067a9c4ad7dde5623199d4b47f63a2da9a21ecaeb245a1"
+    },
+    "mCRED": {
+      "address": "0x18D4E720d4bbF6535911d6B72741B6Ebe7f3cbf2",
+      "byteLength": 1965,
+      "runtimeCodeHash": "0xc29337f99f04eb1487b24312c2668ea96373360e0a0b05c57b340a7b8cc257ce"
+    },
+    "registry": {
+      "address": "0xF175B968DD8329C8B8A035A235eF95e62bbF8963",
+      "byteLength": 5227,
+      "runtimeCodeHash": "0xb42cdf54be29e319877a006bb6f34eb2543d19323b96ecb8dcb81e54ec30f1e6"
+    },
+    "factory": {
+      "address": "0x51447b6a804091e9a029bE4c5cF8c806C4BAc4De",
+      "byteLength": 13173,
+      "runtimeCodeHash": "0xaafa59928cbaf269d597525b35aedcf596157303932e94a7e6faaf94cbf9435f"
+    }
+  },
+  "safe": {
+    "address": "0x0cFA13912A8F58dcCd4993410D43Bfab5E0D39d7",
+    "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    "owners": [
+      "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+      "0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE"
+    ],
+    "threshold": "2",
+    "nonce": "0",
+    "version": "1.4.1"
+  },
+  "tokens": [
+    {
+      "address": "0x87D0d29f1186a5828614B240F2004DC7893726ff",
+      "name": "Swarm Test USDC",
+      "symbol": "mUSDC",
+      "decimals": 6,
+      "issuer": "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+      "totalSupply": "0"
+    },
+    {
+      "address": "0x18D4E720d4bbF6535911d6B72741B6Ebe7f3cbf2",
+      "name": "Swarm Test CRED",
+      "symbol": "mCRED",
+      "decimals": 18,
+      "issuer": "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+      "totalSupply": "0"
+    }
+  ],
+  "registry": {
+    "address": "0xF175B968DD8329C8B8A035A235eF95e62bbF8963",
+    "governance": "0x0cFA13912A8F58dcCd4993410D43Bfab5E0D39d7",
+    "emergencyCouncil": "0xD31fCdb0432D3C9BF9d98643F69C7edd690E48E8",
+    "minimumDelaySeconds": 86400
+  },
+  "factory": {
+    "address": "0x51447b6a804091e9a029bE4c5cF8c806C4BAc4De",
+    "registry": "0xF175B968DD8329C8B8A035A235eF95e62bbF8963",
+    "compatibility": 1
+  }
+}

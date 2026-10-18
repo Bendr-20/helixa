@@ -1,12 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { contentTypeAttachment } from '@xmtp/node-sdk';
+import {
+  contentTypeAttachment,
+  GroupPermissionsOptions,
+  MetadataField,
+  PermissionPolicy,
+  PermissionUpdateType,
+} from '@xmtp/node-sdk';
 
 import {
   createDeferredXmtpAgentClient,
   createLocalXmtpAgentClient,
   createNodeXmtpAgentClient,
+  createXmtpGroupPrimitives,
   normalizeDbEncryptionKey,
 } from '../src/xmtp-agent/index.js';
 
@@ -262,4 +269,68 @@ test('normalizeDbEncryptionKey accepts hex with or without 0x and plain text', (
   assert.deepEqual(normalizeDbEncryptionKey(plainHex), Buffer.from(plainHex, 'hex'));
   assert.deepEqual(normalizeDbEncryptionKey(`0x${plainHex}`), Buffer.from(plainHex, 'hex'));
   assert.deepEqual(normalizeDbEncryptionKey('multipass-worker-key'), Buffer.from('multipass-worker-key', 'utf8'));
+});
+
+
+test('generic XMTP primitives translate mission metadata and permissions to the live SDK contract', async () => {
+  const calls = [];
+  const group = {
+    id: 'group-1', name: 'Group', description: 'Description', appData: '{}',
+    async sync() { calls.push(['group.sync']); }, async metadata() { return { creatorInboxId: 'creator', conversationType: 'group' }; },
+    async members() { return [{ inboxId: 'member-1' }]; }, permissions() {
+      return { policyType: GroupPermissionsOptions.AdminOnly, policySet: { addMemberPolicy: PermissionPolicy.Admin } };
+    },
+    listAdmins() { return ['admin-1']; }, listSuperAdmins() { return ['super-1']; },
+    async updatePermission(...args) { calls.push(['permission', ...args]); },
+    async addMembersByIdentifiers(values) { calls.push(['add', values]); }, async removeMembersByIdentifiers(values) { calls.push(['remove', values]); },
+    async addAdmin(value) { calls.push(['admin', value]); }, async sendText(text, options) { calls.push(['send', text, options]); return 'message-1'; },
+    async messages() { return [{ id: 'message-1' }]; },
+  };
+  const conversations = {
+    async sync() { calls.push(['sync']); }, listGroups() { return [group]; },
+    async getConversationById(id) { return id === group.id ? group : undefined; },
+    async createGroupWithIdentifiers(ids, metadata) { calls.push(['create', ids, metadata]); return group; },
+  };
+  const primitives = createXmtpGroupPrimitives({ client: { conversations } });
+  assert.equal((await primitives.listGroups())[0].id, 'group-1');
+  assert.equal((await primitives.createGroup({
+    identifiers: [{ identifierKind: 0, identifier: '0x1' }],
+    metadata: {
+      name: 'Mission',
+      description: 'Private mission room',
+      appData: '{"marker":true}',
+      permissions: 'admin_only',
+    },
+  })).id, 'group-1');
+  const described = await primitives.describeGroup('group-1');
+  assert.equal(described.permissions.policyType, 'admin_only');
+  await primitives.updatePermissions('group-1', [
+    { permissionType: 'add_member', policy: 'admin' },
+    { permissionType: 'remove_member', policy: 'admin' },
+    { permissionType: 'update_metadata', policy: 'admin' },
+  ]);
+  await primitives.addMembers('group-1', [{ identifierKind: 0, identifier: '0x2' }]);
+  await primitives.removeMembers('group-1', [{ identifierKind: 0, identifier: '0x2' }]);
+  await primitives.addAdmin('group-1', 'admin-2');
+  assert.equal(await primitives.sendText('group-1', 'marker', { idempotencyKey: 'event-1' }), 'message-1');
+  assert.equal((await primitives.listMessages('group-1')).length, 1);
+  assert.deepEqual(calls.find(([name]) => name === 'create'), [
+    'create',
+    [{ identifierKind: 0, identifier: '0x1' }],
+    {
+      groupName: 'Mission',
+      groupDescription: 'Private mission room',
+      appData: '{"marker":true}',
+      permissions: GroupPermissionsOptions.AdminOnly,
+    },
+  ]);
+  assert.deepEqual(calls.filter(([name]) => name === 'permission'), [
+    ['permission', PermissionUpdateType.AddMember, PermissionPolicy.Admin, undefined],
+    ['permission', PermissionUpdateType.RemoveMember, PermissionPolicy.Admin, undefined],
+    ['permission', PermissionUpdateType.UpdateMetadata, PermissionPolicy.Admin, MetadataField.AppData],
+    ['permission', PermissionUpdateType.UpdateMetadata, PermissionPolicy.Admin, MetadataField.Description],
+    ['permission', PermissionUpdateType.UpdateMetadata, PermissionPolicy.Admin, MetadataField.GroupName],
+    ['permission', PermissionUpdateType.UpdateMetadata, PermissionPolicy.Admin, MetadataField.GroupImageUrlSquare],
+    ['permission', PermissionUpdateType.UpdateMetadata, PermissionPolicy.Admin, MetadataField.MessageExpirationFromNs],
+  ]);
 });

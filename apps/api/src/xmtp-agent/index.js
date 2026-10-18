@@ -1,4 +1,10 @@
-import { contentTypeAttachment } from '@xmtp/node-sdk';
+import {
+  contentTypeAttachment,
+  GroupPermissionsOptions,
+  MetadataField,
+  PermissionPolicy,
+  PermissionUpdateType,
+} from '@xmtp/node-sdk';
 import { hexToBytes } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -589,4 +595,152 @@ function requireThreadId(value) {
   const threadId = String(value ?? '').trim();
   if (!threadId) throw new TypeError('XMTP thread id is required.');
   return threadId;
+}
+
+export function createXmtpGroupPrimitives({ client } = {}) {
+  if (!client?.conversations) throw new TypeError('XMTP client conversations API is required.');
+  const conversations = client.conversations;
+  for (const name of ['sync', 'listGroups', 'getConversationById', 'createGroupWithIdentifiers']) {
+    if (typeof conversations[name] !== 'function') throw new TypeError('XMTP conversations.' + name + ' is required.');
+  }
+
+  async function syncGroups() { await conversations.sync(); }
+  async function listGroups() { await conversations.sync(); return Object.freeze([...await conversations.listGroups()]); }
+  async function getGroup(conversationId) {
+    await conversations.sync();
+    const group = await conversations.getConversationById(requireConversationId(conversationId));
+    return group ?? null;
+  }
+  async function createGroup({ identifiers, metadata } = {}) {
+    if (!Array.isArray(identifiers) || identifiers.length === 0) throw new TypeError('XMTP group identifiers are required.');
+    return conversations.createGroupWithIdentifiers(identifiers, normalizeGroupMetadata(metadata));
+  }
+  async function describeGroup(conversationId) {
+    const group = await requireGroup(conversationId);
+    await group.sync?.();
+    const [metadata, members] = await Promise.all([group.metadata(), group.members()]);
+    return Object.freeze({
+      conversationId: String(group.id), name: String(group.name ?? ''), description: String(group.description ?? ''),
+      appData: String(group.appData ?? ''), metadata: Object.freeze({ ...metadata }),
+      members: Object.freeze([...members]), permissions: normalizeGroupPermissions(group.permissions()),
+      admins: Object.freeze([...group.listAdmins()]), superAdmins: Object.freeze([...group.listSuperAdmins()]),
+    });
+  }
+  async function updatePermissions(conversationId, updates = []) {
+    if (!Array.isArray(updates) || updates.length === 0 || updates.length > 16) throw new TypeError('XMTP permission updates are invalid.');
+    const group = await requireGroup(conversationId);
+    for (const update of updates) {
+      if (!update || typeof update !== 'object' || Array.isArray(update)) throw new TypeError('XMTP permission update is invalid.');
+      const permissionType = normalizePermissionUpdateType(update.permissionType);
+      const policy = normalizePermissionPolicy(update.policy);
+      if (permissionType === PermissionUpdateType.UpdateMetadata && update.metadataField === undefined) {
+        for (const metadataField of CLOSED_METADATA_FIELDS) {
+          await group.updatePermission(permissionType, policy, metadataField);
+        }
+      } else {
+        await group.updatePermission(permissionType, policy, normalizeMetadataField(update.metadataField));
+      }
+    }
+  }
+  async function addMembers(conversationId, identifiers) { const group = await requireGroup(conversationId); await group.addMembersByIdentifiers(identifiers); }
+  async function removeMembers(conversationId, identifiers) { const group = await requireGroup(conversationId); await group.removeMembersByIdentifiers(identifiers); }
+  async function addAdmin(conversationId, inboxId) { const group = await requireGroup(conversationId); await group.addAdmin(String(inboxId)); }
+  async function sendText(conversationId, text, options = undefined) { const group = await requireGroup(conversationId); return group.sendText(String(text), options); }
+  async function listMessages(conversationId, options = {}) { const group = await requireGroup(conversationId); return Object.freeze([...(await group.messages(options))]); }
+
+  async function requireGroup(conversationId) {
+    const group = await getGroup(conversationId);
+    if (!group || typeof group.members !== 'function' || typeof group.permissions !== 'function') throw new Error('XMTP group not found: ' + conversationId);
+    return group;
+  }
+
+  return Object.freeze({ addAdmin, addMembers, createGroup, describeGroup, getGroup, listGroups, listMessages, removeMembers, sendText, syncGroups, updatePermissions });
+}
+
+function requireConversationId(value) {
+  const conversationId = String(value ?? '').trim();
+  if (!conversationId || conversationId.length > 512) throw new TypeError('XMTP conversation id is invalid.');
+  return conversationId;
+}
+
+function normalizeGroupMetadata(value = {}) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('XMTP group metadata is invalid.');
+  const metadata = {};
+  if (value.name !== undefined) metadata.groupName = String(value.name).slice(0, 100);
+  if (value.description !== undefined) metadata.groupDescription = String(value.description).slice(0, 500);
+  if (value.appData !== undefined) metadata.appData = String(value.appData).slice(0, 8192);
+  if (value.permissions !== undefined) metadata.permissions = normalizeGroupPermissionOption(value.permissions);
+  return Object.freeze(metadata);
+}
+
+const CLOSED_METADATA_FIELDS = Object.freeze([
+  MetadataField.AppData,
+  MetadataField.Description,
+  MetadataField.GroupName,
+  MetadataField.GroupImageUrlSquare,
+  MetadataField.MessageExpirationFromNs,
+]);
+
+const GROUP_PERMISSION_OPTIONS = Object.freeze({
+  default: GroupPermissionsOptions.Default,
+  admin_only: GroupPermissionsOptions.AdminOnly,
+  custom_policy: GroupPermissionsOptions.CustomPolicy,
+});
+
+const PERMISSION_UPDATE_TYPES = Object.freeze({
+  add_member: PermissionUpdateType.AddMember,
+  remove_member: PermissionUpdateType.RemoveMember,
+  add_admin: PermissionUpdateType.AddAdmin,
+  remove_admin: PermissionUpdateType.RemoveAdmin,
+  update_metadata: PermissionUpdateType.UpdateMetadata,
+});
+
+const PERMISSION_POLICIES = Object.freeze({
+  allow: PermissionPolicy.Allow,
+  deny: PermissionPolicy.Deny,
+  admin: PermissionPolicy.Admin,
+  super_admin: PermissionPolicy.SuperAdmin,
+  does_not_exist: PermissionPolicy.DoesNotExist,
+  other: PermissionPolicy.Other,
+});
+
+const METADATA_FIELDS = Object.freeze({
+  app_data: MetadataField.AppData,
+  description: MetadataField.Description,
+  group_name: MetadataField.GroupName,
+  group_image_url_square: MetadataField.GroupImageUrlSquare,
+  message_expiration_from_ns: MetadataField.MessageExpirationFromNs,
+  message_expiration_in_ns: MetadataField.MessageExpirationInNs,
+});
+
+function normalizeGroupPermissionOption(value) {
+  return normalizeEnum(value, GROUP_PERMISSION_OPTIONS, Object.values(GROUP_PERMISSION_OPTIONS), 'XMTP group permissions');
+}
+
+function normalizePermissionUpdateType(value) {
+  return normalizeEnum(value, PERMISSION_UPDATE_TYPES, Object.values(PERMISSION_UPDATE_TYPES), 'XMTP permission type');
+}
+
+function normalizePermissionPolicy(value) {
+  return normalizeEnum(value, PERMISSION_POLICIES, Object.values(PERMISSION_POLICIES), 'XMTP permission policy');
+}
+
+function normalizeMetadataField(value) {
+  if (value === undefined) return undefined;
+  return normalizeEnum(value, METADATA_FIELDS, Object.values(METADATA_FIELDS), 'XMTP metadata field');
+}
+
+function normalizeEnum(value, names, numbers, label) {
+  if (typeof value === 'string' && Object.hasOwn(names, value)) return names[value];
+  if (Number.isSafeInteger(value) && numbers.includes(value)) return value;
+  throw new TypeError(label + ' is invalid.');
+}
+
+function normalizeGroupPermissions(value = {}) {
+  const policyType = Object.entries(GROUP_PERMISSION_OPTIONS).find(([, numeric]) => numeric === value.policyType)?.[0] ?? 'unknown';
+  const policySet = {};
+  for (const [key, policy] of Object.entries(value.policySet ?? {})) {
+    policySet[key] = Object.entries(PERMISSION_POLICIES).find(([, numeric]) => numeric === policy)?.[0] ?? 'unknown';
+  }
+  return Object.freeze({ policyType, policySet: Object.freeze(policySet) });
 }

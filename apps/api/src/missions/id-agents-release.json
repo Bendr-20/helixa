@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/idchain-world/id-agents.git",
+  "commit": "766d8f566386a020f0b8b5489beb6a2c6132d5d7",
+  "gitTree": "b818afe79c092463a56798a2b417dc204cc4867e",
+  "package": {
+    "name": "id-agents",
+    "version": "0.1.113-beta",
+    "node": ">=20.0.0"
+  },
+  "license": {
+    "spdx": "MIT",
+    "copyright": "Copyright (c) 2026 ID Chain World",
+    "sha256": "acf7da9d04d383b9e946205dd4178ede0b44ebad2675e916c64d2491ee7791f8"
+  },
+  "protocols": {
+    "restap": "1.0",
+    "managerApi": "0.1.113-beta"
+  },
+  "hashes": {
+    "package.json": "4b68881374d8c17181e3c6a8706df670b7d26941bb8a8b1b695e601c7d2e9a02",
+    "package-lock.json": "bfb5cd7b1ee0ed020c9390f8de2eed4b386fe83417e247975994f37032f3f7b3",
+    "README.md": "053ff404d6b3504a435342d96146ce12d28e6751094e9244516285e70dbd19c7",
+    "src/agent-manager-db.ts": "ce481e8a0b491bdd79c140a79ba3fdb45550bcbf857bf51ac81728c09fcfea97",
+    "src/claude-agent-server.ts": "1aab815bfd8412f6b3d2a386da64e6d47d517eeed281484e270c0e9d3ed3497a",
+    "src/config-parser.ts": "14fb21a6a4b1a18fcf342860fa8ee238cfae4ebb525116643182bf256c4a4362",
+    "src/core/messaging-service.ts": "044de2319ca3006ead12b5c0be25521737a74843e85e8eb63815590d2924cbc5",
+    "src/protocol-defaults.ts": "29f0fbd01c1cbd38615c2152236318679095aa650f0707e0a45916da86df80f3"
+  },
+  "reviewedSurface": {
+    "manager": [
+      "POST /remote",
+      "POST /tasks",
+      "GET /tasks",
+      "GET /tasks/:ref",
+      "POST /tasks/:ref/claim",
+      "POST /tasks/:ref/done"
+    ],
+    "agent": [
+      "GET /health",
+      "GET /news",
+      "POST /talk-to",
+      "POST /news-to"
+    ],
+    "artifacts": [
+      "/artifact <agent-name> <path>"
+    ],
+    "genericRemoteExposedToMissionClients": false
+  }
+}

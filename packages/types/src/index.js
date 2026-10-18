@@ -1,5 +1,7 @@
 import { createRequire } from 'node:module';
 
+export * from './missions.js';
+
 const require = createRequire(import.meta.url);
 
 export const agentCardSchema = require('../schemas/agent-card.schema.json');
