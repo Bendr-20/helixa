@@ -24,6 +24,17 @@ const REGISTRY_ABI = [
 ];
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+export const SWARM_ADMIN_ARMORY_SNAPSHOT = Object.freeze({
+  url: 'https://armory-production-fc7d.up.railway.app/',
+  reviewedAt: '2026-10-18T19:25:00.000Z',
+  version: '0.1.0',
+  toolCount: 12,
+  realKeys: false,
+  mode: 'Public test',
+  payments: 'Prepare only',
+  blockerCount: 3,
+});
+
 export const SWARM_ADMIN_ACTIVATION = Object.freeze({
   chainId: 8453,
   chainHex: '0x2105',
@@ -180,6 +191,12 @@ export function renderSwarmAdmin({ state = createInitialSwarmAdminState(), walle
         '<div class="swarm-admin-boundary"><strong>Exact stage boundary</strong><p>Approves only Safe nonce 1 calling VersionRegistry.activateVersion for the reviewed MissionEscrowV1 version.</p><p>Token approval, token transfer, mission funding, and arbitrary contract calls are excluded.</p><p>The control unlocks only after Base reports activateAfter ' + escapeHtml(formatUtc(SWARM_ADMIN_ACTIVATION.activateAfterIso)) + ' and every nonce, signer, hash, threshold, governance, and version-state guard matches.</p></div>' +
         (ready ? '<button class="swarm-admin-primary" type="button" data-action="approve-swarm-activation-hash">' + (pendingRequest ? 'Confirming…' : 'Approve exact activation hash') + '</button>' : '') +
         renderStatus(state, { connected, expectedWallet, active, approved, activation }) +
+      '</section>' +
+      '<section class="swarm-admin-card" aria-label="Armory integration readiness">' +
+        '<div class="swarm-admin-card-heading"><div><span>Capability layer</span><h2>Armory readiness</h2></div><strong>Public test</strong></div>' +
+        '<dl class="swarm-admin-facts">' + fact('Version', SWARM_ADMIN_ARMORY_SNAPSHOT.version) + fact('Tools', String(SWARM_ADMIN_ARMORY_SNAPSHOT.toolCount)) + fact('Real Looper keys', 'Paused') + fact('Payments', SWARM_ADMIN_ARMORY_SNAPSHOT.payments) + '</dl>' +
+        '<div class="swarm-admin-boundary"><strong>Audited boundary</strong><p>Demo metering, receipt tamper rejection, owner/agent credential separation, approval denial, and MCP authentication passed.</p><p>Armory is not approved for real Looper keys, payout gating, or mission spend yet.</p><p>Production blockers: browser credential hardening, independently reproducible receipt bytes, and real Looper ownership issuance.</p></div>' +
+        '<div class="swarm-admin-wallet"><div><span>Snapshot</span><strong>' + escapeHtml(SWARM_ADMIN_ARMORY_SNAPSHOT.mode) + '</strong><small>' + escapeHtml(formatUtc(SWARM_ADMIN_ARMORY_SNAPSHOT.reviewedAt)) + ' · ' + escapeHtml(String(SWARM_ADMIN_ARMORY_SNAPSHOT.blockerCount)) + ' blockers</small></div><a class="swarm-admin-explorer" href="' + escapeHtml(SWARM_ADMIN_ARMORY_SNAPSHOT.url) + '" target="_blank" rel="noopener noreferrer">Open Armory</a></div>' +
       '</section>' +
       '<p class="swarm-admin-footnote">Safe Transaction Service is advisory. Readiness is derived from the connected Base provider and revalidated immediately before submission.</p>' +
     '</main>';

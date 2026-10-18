@@ -7,6 +7,7 @@ import { encodeFunctionData, encodeFunctionResult } from 'viem';
 import { createApp } from '../src/app.js';
 import {
   SWARM_ADMIN_ACTIVATION,
+  SWARM_ADMIN_ARMORY_SNAPSHOT,
   buildSwarmActivationApprovalTransaction,
   createInitialSwarmAdminState,
   readSwarmActivationState,
@@ -163,6 +164,11 @@ test('renders the completed proposal now and no activation control before verifi
   assert.match(document.body.textContent, /Confirmed on Base/i);
   assert.match(document.body.textContent, /No action is exposed/i);
   assert.match(document.body.textContent, /0xf3a0.*36ee/is);
+  assert.match(document.body.textContent, /Armory readiness/i);
+  assert.match(document.body.textContent, /Real Looper keys.*Paused/is);
+  assert.match(document.body.textContent, /not approved for real Looper keys, payout gating, or mission spend/i);
+  assert.equal(document.querySelector('[aria-label="Armory integration readiness"] a')?.href, SWARM_ADMIN_ARMORY_SNAPSHOT.url);
+  assert.equal(document.querySelectorAll('[aria-label="Armory integration readiness"] [data-action]').length, 0);
 });
 
 test('renders only the exact activation approval after verified onchain guards', () => {

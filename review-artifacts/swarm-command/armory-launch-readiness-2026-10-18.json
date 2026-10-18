@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-18T19:25:00Z",
+  "target": "https://armory-production-fc7d.up.railway.app",
+  "release": {
+    "version": "0.1.0",
+    "chain": "base",
+    "chainId": 8453,
+    "mode": "public-test",
+    "realKeys": false,
+    "toolCount": 12
+  },
+  "evidence": {
+    "demoStartBalanceMicro": 5000000,
+    "webSearchPriceMicro": 2000,
+    "postCallBalanceMicro": 4998000,
+    "postCallSpentMicro": 2000,
+    "receiptId": "rc_43680dbb80ba",
+    "receiptServerValid": true,
+    "tamperedReceiptValid": false,
+    "agentPolicyWriteStatus": 401,
+    "agentTopupStatus": 401,
+    "spendRequestStatus": 202,
+    "agentApprovalStatus": 401,
+    "ownerDenyStatus": 200,
+    "deniedSpendLedgerDeltaMicro": 0,
+    "unauthenticatedMcpCall": "JSON-RPC -32001"
+  },
+  "findings": [
+    {
+      "severity": "blocker-for-real-keys",
+      "id": "WEB-SECRET-HARDENING",
+      "summary": "Agent and owner credentials are stored in localStorage while the deployment sends no CSP or baseline browser security headers.",
+      "required": "Use short-lived split sessions or remove owner authority from persistent browser storage; add strict CSP and security headers; complete XSS review."
+    },
+    {
+      "severity": "blocker-for-receipt-gating",
+      "id": "RECEIPT-CANONICALIZATION",
+      "summary": "Receipts reject tampering through the server verifier, but the canonical signed-byte serialization is not published.",
+      "required": "Publish a versioned canonical serialization, test vector, independent verifier, and durable signing-key history."
+    },
+    {
+      "severity": "blocker-for-production-integration",
+      "id": "REAL-KEYS-PAUSED",
+      "summary": "realKeys is false, so receipts are bound to synthetic demo agents.",
+      "required": "Keep Armory out of payout-critical verification until real ownership issuance is separately reviewed."
+    },
+    {
+      "severity": "advisory",
+      "id": "CORS-WILDCARD",
+      "summary": "Authenticated surfaces inherit wildcard CORS and all-header MCP preflight.",
+      "required": "Restrict authenticated browser origins before production credentials."
+    },
+    {
+      "severity": "advisory",
+      "id": "STATUS-WORDING",
+      "summary": "Receipt retention and key-history durability are described inconsistently as live and roadmap.",
+      "required": "State retention guarantees consistently."
+    }
+  ],
+  "pilot": {
+    "name": "Armory Launch Readiness Drill",
+    "phase": "pre-activation, no chain writes",
+    "fundingUsdc": "0",
+    "agents": 3,
+    "allowedTools": [
+      "web.search",
+      "web.read",
+      "pdf.read",
+      "market.price",
+      "wallet.profile"
+    ],
+    "blockedTools": [
+      "memory.remember",
+      "image.generate",
+      "pay.send"
+    ],
+    "perAgentToolCapMicro": 100000,
+    "totalToolCapMicro": 250000,
+    "deliverables": [
+      "ledger reconciliation",
+      "receipt tamper test",
+      "MCP authorization test",
+      "security-header report",
+      "go/no-go recommendation"
+    ],
+    "postActivation": {
+      "missionFundingUsdc": "1.00",
+      "condition": "MissionEscrowV1 active and Armory excluded from payout-critical verification unless blockers close",
+      "separateApprovals": [
+        "registry activation",
+        "USDC allowance if required",
+        "1 USDC mission funding"
+      ]
+    }
+  },
+  "boundaries": [
+    "no signing",
+    "no broadcast",
+    "no token approval",
+    "no token transfer",
+    "no mission funding",
+    "no Armory real-key enablement"
+  ]
+}
