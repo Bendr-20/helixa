@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "network": "base-mainnet",
+  "chainId": 8453,
+  "safe": "0x7410A8CA3F3098D92300bfE110273A68f5fcc4FF",
+  "registry": "0xC2fbEF16EC0981bcfA7e878f6f78BF8DeBe2BcCB",
+  "safeTxHash": "0xa61cad7e0459f24a0bce966611c59eb6c44326426295b43115f010a4db34d7a8",
+  "dataHash": "0x344be2d59b1fea600cd2aa8ad95fc5b61b0d74983b4467d04667aa51c9e360c6",
+  "safeNonce": 0,
+  "confirmations": [
+    "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+    "0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE"
+  ],
+  "execution": {
+    "transactionHash": "0x3225d0b160136d02a4d6ece382a36e42d91574a4f87a0ee299eeb3bd9ced29cd",
+    "executedAt": "2026-10-18T18:11:15.000Z",
+    "status": "success",
+    "blockNumber": 52778864,
+    "blockHash": "0x42edb637dcc2cd7e42fd8a7907698be902039aa8525600d8c5289576cb5f0d20",
+    "outerTransaction": {
+      "from": "0x1278c1e48e3c9548a5d9f2b16dc27ed311b0697c",
+      "to": "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789",
+      "nonce": 5818941,
+      "valueWei": "0",
+      "type": 2,
+      "inputBytes": 40452,
+      "inputSha256": "98b0b21e7d8af754a83dc5586f43e0b8e62dc5c56804c55d8255138bec8d546e"
+    },
+    "receipt": {
+      "gasUsed": "4098051",
+      "effectiveGasPriceWei": "6000000",
+      "l2FeeWei": "24588306000000",
+      "l1FeeWei": "26340864510",
+      "totalFeeWei": "24614646864510",
+      "logCount": 167,
+      "logsSha256": "bd6d81803cb28d3b729355a173dd3d34ffe2a8734ef03208013d33ff9001dd29"
+    }
+  },
+  "rpcConsensus": {
+    "agreed": true,
+    "origins": [
+      "https://mainnet.base.org",
+      "https://base-mainnet.public.blastapi.io"
+    ],
+    "receiptCoordinatesMatch": true,
+    "postStateMatch": true
+  },
+  "postState": {
+    "safeNonce": 1,
+    "version": {
+      "id": "0x5fc16a65273a5c452de558226709b483548e34e8718ab2dbca37c6bcb3d5a3ac",
+      "status": "pending",
+      "creationCodeHash": "0xa63d768e1f54b9a7ae2fb227537734aaaba92db4d1c1b590a4aa47d0c900765a",
+      "runtimeCodeHash": "0x18f736651740a9830c76b3032b5ef734191cc0c30a8d02d638dba6b60bb72e91",
+      "supportedTokens": [
+        "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "0xAB3f23c2ABcB4E12Cc8B593C218A7ba64Ed17Ba3"
+      ],
+      "tokenCount": 2,
+      "activateAfter": 1792436907,
+      "activateAfterIso": "2026-10-19T19:08:27.000Z",
+      "retireAfter": 0,
+      "factoryCompatibility": 1
+    }
+  },
+  "excluded": {
+    "activation": "unattempted",
+    "tokenApproval": "unattempted",
+    "tokenTransfer": "unattempted",
+    "missionFunding": "unattempted"
+  },
+  "notes": [
+    "Safe Transaction Service was briefly stale immediately after execution; final chain and service evidence agree.",
+    "The outer transaction is an ERC-4337 EntryPoint bundle; the exact Safe transaction is identified by safeTxHash and post-state."
+  ]
+}
