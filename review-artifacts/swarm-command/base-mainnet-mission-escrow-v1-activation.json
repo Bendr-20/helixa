@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "status": "review_complete_no_sign_no_broadcast",
+  "network": "base-mainnet",
+  "chainId": 8453,
+  "proposal": {
+    "status": "complete",
+    "safeTxHash": "0xa61cad7e0459f24a0bce966611c59eb6c44326426295b43115f010a4db34d7a8",
+    "transactionHash": "0x3225d0b160136d02a4d6ece382a36e42d91574a4f87a0ee299eeb3bd9ced29cd",
+    "receiptArtifact": "review-artifacts/swarm-command/base-mainnet-governance-proposal-receipt.json"
+  },
+  "authority": {
+    "kind": "safe-2-of-2",
+    "address": "0x7410A8CA3F3098D92300bfE110273A68f5fcc4FF",
+    "version": "1.4.1",
+    "owners": [
+      "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+      "0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE"
+    ],
+    "threshold": 2,
+    "requiredNonce": 1
+  },
+  "activation": {
+    "action": "VersionRegistry.activateVersion(MissionEscrowV1)",
+    "registry": "0xC2fbEF16EC0981bcfA7e878f6f78BF8DeBe2BcCB",
+    "versionId": "0x5fc16a65273a5c452de558226709b483548e34e8718ab2dbca37c6bcb3d5a3ac",
+    "activateAfter": 1792436907,
+    "activateAfterIso": "2026-10-19T19:08:27.000Z",
+    "safeTransaction": {
+      "to": "0xC2fbEF16EC0981bcfA7e878f6f78BF8DeBe2BcCB",
+      "value": "0",
+      "data": "0x0a2203865fc16a65273a5c452de558226709b483548e34e8718ab2dbca37c6bcb3d5a3ac",
+      "operation": "CALL",
+      "operationCode": 0,
+      "safeTxGas": "0",
+      "baseGas": "0",
+      "gasPrice": "0",
+      "gasToken": "0x0000000000000000000000000000000000000000",
+      "refundReceiver": "0x0000000000000000000000000000000000000000",
+      "nonce": 1
+    },
+    "dataHash": "0xb909ecd607e6407e0029052d76f55597b40d9a53a4dbda48be30d574c662346c",
+    "safeTxHash": "0xf3a04f63765a1c95b1a02ba8aa23f641044d914c56bac5fb16f8657985a736ee",
+    "authorization": "owners-2-of-2-not-collected"
+  },
+  "ownerApproval": {
+    "action": "Safe.approveHash(exact activation safeTxHash)",
+    "requiredSigner": "0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE",
+    "to": "0x7410A8CA3F3098D92300bfE110273A68f5fcc4FF",
+    "value": "0",
+    "data": "0xd4d9bdcdf3a04f63765a1c95b1a02ba8aa23f641044d914c56bac5fb16f8657985a736ee",
+    "dataHash": "0x0811c8e7d49f4fe263eedc1f900763598334520ff808c777c35c8d94a5723bd0"
+  },
+  "requiredOnchainGuards": {
+    "chainId": 8453,
+    "safeNonce": 1,
+    "safeThreshold": 2,
+    "safeOwners": [
+      "0x339559A2d1CD15059365FC7bD36b3047BbA480E0",
+      "0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE"
+    ],
+    "registryGovernance": "0x7410A8CA3F3098D92300bfE110273A68f5fcc4FF",
+    "versionExists": true,
+    "versionStatus": "pending",
+    "versionActivateAfter": 1792436907,
+    "latestBlockTimestampAtLeast": 1792436907,
+    "safeGetTransactionHash": "0xf3a04f63765a1c95b1a02ba8aa23f641044d914c56bac5fb16f8657985a736ee",
+    "ownerApprovalRecorded": false
+  },
+  "pinnedBaseState": {
+    "blockNumber": 52778864,
+    "blockHash": "0x42edb637dcc2cd7e42fd8a7907698be902039aa8525600d8c5289576cb5f0d20",
+    "blockTimestamp": 1792347075,
+    "rpcOrigins": [
+      "https://mainnet.base.org",
+      "https://base-mainnet.public.blastapi.io"
+    ],
+    "consensus": "matched",
+    "ownerApprovalRecorded": false,
+    "safeNonce": 1,
+    "versionStatus": "pending",
+    "versionActivateAfter": 1792436907
+  },
+  "safeTransactionService": {
+    "role": "advisory_only",
+    "lookupStatusAtReview": 404,
+    "authorityForGuards": false
+  },
+  "forkProof": {
+    "kind": "pinned-base-mainnet-fork",
+    "blockNumber": 52778864,
+    "earlyActivationRejected": true,
+    "nonceUnchangedAfterEarlyRejection": true,
+    "activationSucceededAtTimestamp": 1792436908,
+    "finalSafeNonce": 2,
+    "finalVersionStatus": "active",
+    "externalBroadcast": false
+  },
+  "excluded": {
+    "signing": "not_performed",
+    "broadcast": "not_performed",
+    "tokenApproval": "not_performed",
+    "tokenTransfer": "not_performed",
+    "missionFunding": "not_performed",
+    "armoryKeys": "not_enabled",
+    "productionDeployment": "not_performed"
+  }
+}
