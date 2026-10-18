@@ -8241,3 +8241,57 @@ test('RESTAP unchanged send retries reuse identity and substantive edits rotate 
   assert.notEqual(calls[1].idempotencyKey, calls[2].idempotencyKey);
   assert.deepEqual(issued, keys);
 });
+
+test('Swarm Command loads live missions and creates a recruiting mission through the Console', async () => {
+  const root = setupDom('https://helixa.xyz/multipass/console');
+  const owner = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
+  const calls = [];
+  let mission = null;
+  const missionApi = {
+    async listPublic(input) { calls.push(['list', input]); return { missions: mission ? [mission] : [], nextCursor: null }; },
+    async create(input) { calls.push(['create', input]); return { result: { missionId: input.body.mission_id, revision: 0, state: 'draft' } }; },
+    async getPublic(input) { calls.push(['get', input]); return { mission }; },
+    async publish(input) {
+      calls.push(['publish', input]);
+      mission = { missionId: input.missionId, state: 'recruiting', revision: 1, publicSummary: 'Ship the working swarm.', applicationClosesAt: input.body.application_closes_at, launchDeadline: input.body.public_document.launch_deadline, publicDocument: input.body.public_document };
+      return { result: { missionId: input.missionId, revision: 1, state: 'recruiting' } };
+    },
+  };
+  const app = createApp({
+    root, loadDemo: async () => sampleData(), missionApi,
+    walletClient: createWalletClientFixture({ snapshot: { connected: true, address: owner, label: 'owner' } }),
+    fetchImpl: createConsoleOwnedAgentsFetch({ tokenIds: [617] }),
+    claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) },
+  });
+  await app.start(); await flushAsyncEvents(30);
+  root.querySelector('[data-console-view="missions"]')?.click(); await flushAsyncEvents(20);
+  assert.match(root.querySelector('.mission-alert')?.textContent ?? '', /Swarm Command is live on Base Sepolia/);
+  assert.equal(root.querySelector('[data-mission-action="new"]')?.disabled, false);
+  root.querySelector('[data-mission-action="new"]')?.click(); await flushAsyncEvents();
+  const form = root.querySelector('[data-mission-editor]');
+  assert.ok(form);
+  form.elements.namedItem('title').value = 'Operational Swarm';
+  form.elements.namedItem('summary').value = 'Ship the working swarm.';
+  form.elements.namedItem('roles').value = 'builder, reviewer';
+  form.elements.namedItem('application_deadline').value = '2026-10-20T16:00';
+  form.elements.namedItem('launch_deadline').value = '2026-10-22T16:00';
+  form.elements.namedItem('token').value = '0x87D00000000000000000000000000000000026ff';
+  form.elements.namedItem('symbol').value = 'mUSDC';
+  form.elements.namedItem('amount_raw').value = '1000000';
+  form.elements.namedItem('recipient').value = owner;
+  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  await flushAsyncEvents(40);
+  assert.match(root.querySelector('.mission-card')?.textContent ?? '', /Operational Swarm/);
+  assert.deepEqual(calls.map(([name]) => name), ['list', 'create', 'publish', 'list']);
+  const create = calls.find(([name]) => name === 'create')[1];
+  assert.equal(create.csrfToken, 'test-csrf');
+  assert.equal(create.body.refund_address, owner.toLowerCase());
+  assert.match(create.body.commitment_hash, /^[0-9a-f]{64}$/u);
+  assert.equal(calls.find(([name]) => name === 'publish')[1].expectedRevision, 0);
+  root.querySelector('[data-mission-id]')?.click(); await flushAsyncEvents();
+  assert.match(root.querySelector('#mission-detail-title')?.textContent ?? '', /Operational Swarm/);
+  assert.equal(calls.at(-1)[0], 'get');
+  root.querySelector('[data-mission-action="back"]')?.click();
+  assert.ok(root.querySelector('.mission-card'));
+});

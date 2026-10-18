@@ -58,6 +58,9 @@ import { getConsoleMessageIdentity } from './console-agent-thread.js';
 import { createImagePreview, prepareConsoleImage, preparedImageBlob } from './console-image-preparation.js';
 import { resolveConsoleOwnerProfile } from './console-owner-profile.js';
 import { createConsoleRestapNetworkApi } from './console-restap-network-api.js';
+import { createMissionApi } from './missions/api.js';
+import { bindMissionBoard } from './missions/mission-board.js';
+import { bindMissionEditor } from './missions/mission-editor.js';
 import { beginConsoleRestapNetworkLoad, clearConsoleRestapNetworkSelection, createInitialConsoleRestapNetworkState, failConsoleRestapNetworkLoad, getConsoleRestapNetworkSendFingerprint, normalizeConsoleRestapNetworkSendDraft, normalizeConsoleRestapNetworkPolicyDraft, resolveConsoleRestapNetworkLoad } from './console-restap-network.js';
 import { renderRuntimeSubmission } from './runtime-submission.js';
 import { bindToolManager, compactBankrToolImportInput, getPublicTools, mergeToolImportState, mergeToolRefreshState, renderPublicToolsPanel, renderToolRegistryManagerPanel } from './tool-manager.js';
@@ -93,11 +96,12 @@ const SITE_MENU_LINKS = [
 
 export { getConsoleMessageIdentity };
 
-export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaultSaveMultipass, claimApi = defaultClaimApi, walletClient, walletSigner, fetchImpl, prefetchProfiles, ensResolver = resolveEnsAddressOnBase, looperMintClient = defaultLooperMintClient, consoleOwnerProfileResolver = resolveConsoleOwnerProfile, consoleRestapNetworkApi, restapIdempotencyKeyFactory = createConsoleRestapSendKey, restapPollDelay = (milliseconds) => new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)), looperWalletController, pantheonCredReader, looperWalletReleaseConfig, releasedLooperLoader = loadReleasedLooperTokenIds, marketplaceListingsLoader = loadLooperMarketplaceListings, marketplaceActivationRosterLoader = loadDailyActivatedLooperTokenIds, marketplaceWalletValuesLoader = loadLooperWalletValues, marketplaceTimeoutMs, consolePreferenceStorage = globalThis.localStorage, prepareConsoleImageImpl = prepareConsoleImage, imagePreviewFactory = createImagePreview } = {}) {
+export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaultSaveMultipass, claimApi = defaultClaimApi, walletClient, walletSigner, fetchImpl, prefetchProfiles, ensResolver = resolveEnsAddressOnBase, looperMintClient = defaultLooperMintClient, consoleOwnerProfileResolver = resolveConsoleOwnerProfile, consoleRestapNetworkApi, restapIdempotencyKeyFactory = createConsoleRestapSendKey, restapPollDelay = (milliseconds) => new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)), looperWalletController, pantheonCredReader, looperWalletReleaseConfig, releasedLooperLoader = loadReleasedLooperTokenIds, marketplaceListingsLoader = loadLooperMarketplaceListings, marketplaceActivationRosterLoader = loadDailyActivatedLooperTokenIds, marketplaceWalletValuesLoader = loadLooperWalletValues, marketplaceTimeoutMs, consolePreferenceStorage = globalThis.localStorage, prepareConsoleImageImpl = prepareConsoleImage, imagePreviewFactory = createImagePreview, missionApi } = {}) {
   if (!root) throw new Error('createApp requires a root element');
 
   const activeWalletClient = walletClient ?? (walletSigner ? createLegacyWalletClient(walletSigner) : createInjectedWalletClient());
   const activeRestapNetworkApi = consoleRestapNetworkApi ?? createConsoleRestapNetworkApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
+  const activeMissionApi = missionApi ?? createMissionApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
   const activeLooperWalletReleaseConfig = looperWalletReleaseConfig ?? {
     implementation: REVIEWED_POLICY_ACCOUNT_IMPLEMENTATION,
     runtimeByteLength: REVIEWED_POLICY_ACCOUNT_RUNTIME_BYTE_LENGTH,
@@ -134,6 +138,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   let looperMarketplaceRequestId = 0;
   let consoleRestapNetworkAbortController = null;
   let consoleRestapNetworkMutationAbortController = null;
+  let consoleMissionAbortController = null;
   const consoleCodexCache = new Map();
   let consoleCodexArtifactHash = null;
   let preparedConsoleChallenge = null;
@@ -218,7 +223,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleAgentThread: consoleMockState?.consoleAgentThread ?? createInitialConsoleAgentThreadState(),
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
-    consoleMissions: consoleMockState?.consoleMissions ?? { status: 'disabled', missions: [] },
+    consoleMissions: consoleMockState?.consoleMissions ?? { status: 'idle', view: 'board', filter: null, missions: [], error: null },
     looperAgentWallet: consoleMockState?.looperAgentWallet ?? activeLooperWalletController.getSnapshot(),
     consoleMockMode: consoleMockState?.mode ?? null,
     walletSnapshot: consoleMockState?.walletSnapshot ?? activeWalletClient.getSnapshot(),
@@ -1953,6 +1958,87 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     if (view !== 'missions' && !state.consoleSelectedAgentId) return;
     state = { ...state, consoleWorkspaceView: view };
     render(root, state, handlers);
+    if (view === 'missions' && ['idle', 'disabled', 'error'].includes(state.consoleMissions?.status)) void loadConsoleMissions();
+  }
+
+  async function loadConsoleMissions(filter = state.consoleMissions?.filter ?? null) {
+    consoleMissionAbortController?.abort();
+    const controller = new AbortController();
+    consoleMissionAbortController = controller;
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loading', view: 'board', filter, error: null } };
+    render(root, state, handlers);
+    try {
+      const page = await activeMissionApi.listPublic({ state: filter, limit: 100, signal: controller.signal });
+      if (controller.signal.aborted) return;
+      state = { ...state, consoleMissions: { status: 'loaded', view: 'board', filter, missions: page.missions ?? [], nextCursor: page.nextCursor ?? null, error: null } };
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'error', view: 'board', error: getMissionErrorMessage(error) } };
+    } finally {
+      if (consoleMissionAbortController === controller) consoleMissionAbortController = null;
+      render(root, state, handlers);
+    }
+  }
+
+  async function openConsoleMission(missionId) {
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loading', view: 'board', error: null } };
+    render(root, state, handlers);
+    try {
+      const response = await activeMissionApi.getPublic({ missionId });
+      state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'detail', mission: response.mission, error: null } };
+    } catch (error) {
+      state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'error', view: 'board', error: getMissionErrorMessage(error) } };
+    }
+    render(root, state, handlers);
+  }
+
+  function closeConsoleMission() {
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'board', mission: null, error: null } };
+    render(root, state, handlers);
+  }
+
+  async function newConsoleMission() {
+    if (!state.consoleAuthenticatedWallet || !state.consoleCsrfToken) {
+      await connectConsoleWallet();
+      if (!state.consoleAuthenticatedWallet || !state.consoleCsrfToken) return;
+    }
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'editing', view: 'editor', ownerAddress: state.consoleAuthenticatedWallet, error: null } };
+    render(root, state, handlers);
+  }
+
+  function cancelConsoleMissionEditor() {
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'board', error: null } };
+    render(root, state, handlers);
+  }
+
+  async function submitConsoleMission(input) {
+    if (!state.consoleAuthenticatedWallet || !state.consoleCsrfToken) return newConsoleMission();
+    state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'saving', view: 'editor', error: null } };
+    render(root, state, handlers);
+    try {
+      const missionId = 'mission-' + globalThis.crypto.randomUUID();
+      const publicDocument = {
+        title: input.title, required_roles: [...input.roles], application_deadline: input.applicationDeadline,
+        launch_deadline: input.launchDeadline, allocations: input.allocations.map((item) => ({ ...item })),
+        funding: input.allocations.map((item) => ({ token: item.token, symbol: item.symbol, requiredRaw: item.amountRaw, fundedRaw: '0', finalized: false })),
+      };
+      const privateDocument = {};
+      const [privateSpecHash, termsHash, commitmentHash] = await Promise.all([
+        missionDigest(privateDocument), missionDigest(publicDocument), missionDigest({ privateDocument, publicDocument }),
+      ]);
+      await activeMissionApi.create({
+        expectedRevision: 0, idempotencyKey: 'create-' + missionId, csrfToken: state.consoleCsrfToken,
+        body: { mission_id: missionId, refund_address: state.consoleAuthenticatedWallet, public_summary: input.publicSummary, public_document: publicDocument, private_document: privateDocument, private_spec_hash: privateSpecHash, terms_hash: termsHash, commitment_hash: commitmentHash },
+      });
+      await activeMissionApi.publish({
+        missionId, expectedRevision: 0, idempotencyKey: 'publish-' + missionId, csrfToken: state.consoleCsrfToken,
+        body: { application_closes_at: input.applicationDeadline, public_document: publicDocument, private_document: privateDocument, commitment_hash: commitmentHash },
+      });
+      await loadConsoleMissions();
+    } catch (error) {
+      state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'editing', view: 'editor', error: getMissionErrorMessage(error) } };
+      render(root, state, handlers);
+    }
   }
 
   async function retryConsoleAgentActivation() {
@@ -2963,7 +3049,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -3096,6 +3182,28 @@ function createStaticSwarmProfileData(data, selectedIndex = 2) {
     sourceLabel: 'static public Multipass route',
     activation: { state: 'static_profile' },
   };
+}
+
+async function missionDigest(value) {
+  const bytes = new TextEncoder().encode(canonicalMissionJson(value));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function canonicalMissionJson(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalMissionJson).join(',') + ']';
+  if (!value || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) throw new TypeError('Mission terms contain unsupported data.');
+  return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonicalMissionJson(value[key])).join(',') + '}';
+}
+
+function getMissionErrorMessage(error) {
+  if (error?.status === 401 || error?.status === 403) return 'Connect and authenticate the mission owner wallet.';
+  if (error?.status === 409) return 'Mission state changed. Refresh and try again.';
+  if (error?.status === 404 || error?.status === 503 || error?.status === 0) return 'The Swarm Command service is unavailable. Retry in a moment.';
+  if (error instanceof TypeError) return error.message;
+  return 'The mission could not be saved. Retry without changing wallets.';
 }
 
 function defaultLoadDemo({ fetchImpl } = {}) {
@@ -5548,6 +5656,16 @@ function bindProductHomeEvents(root, handlers, state) {
   });
   root.querySelectorAll('[data-action="set-console-workspace-view"]').forEach((button) => {
     button.addEventListener('click', (event) => handlers.setConsoleWorkspaceView?.(event));
+  });
+  bindMissionBoard(root, {
+    newMission: handlers.newConsoleMission,
+    filter: handlers.loadConsoleMissions,
+    openMission: handlers.openConsoleMission,
+    back: handlers.closeConsoleMission,
+  });
+  bindMissionEditor(root, {
+    submit: handlers.submitConsoleMission,
+    cancel: handlers.cancelConsoleMissionEditor,
   });
   root.querySelector('[data-action="retry-console-agent-activation"]')?.addEventListener('click', () => handlers.retryConsoleAgentActivation?.());
   root.querySelector('[data-action="retry-console-codex"]')?.addEventListener('click', () => handlers.retryConsoleCodex?.());

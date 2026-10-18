@@ -51,6 +51,24 @@ test('create stores revision zero and the first ordered append-only event atomic
   ]);
 });
 
+test('mission listing supports bounded state filters and stable cursor pagination', async (t) => {
+  const { repository } = await fixture(t);
+  repository.createDraft(draftInput());
+  repository.createDraft({ ...draftInput(), missionId: 'mission-2', idempotencyKey: 'create-2' });
+  repository.createDraft({ ...draftInput(), missionId: 'mission-3', idempotencyKey: 'create-3' });
+  repository.updateMission({
+    missionId: 'mission-2', expectedRevision: 0, idempotencyKey: 'publish-2', operationKind: 'publish_mission',
+    body: { state: 'recruiting' }, patch: { state: 'recruiting' },
+    publicDocument: { title: 'Mission Two' }, privateDocument: { scope: 'safe' },
+    eventType: 'mission_published', commitmentHash: 'd'.repeat(64),
+  });
+  assert.deepEqual(repository.listMissions({ limit: 2 }).missions.map((mission) => mission.missionId), ['mission-1', 'mission-2']);
+  assert.equal(repository.listMissions({ limit: 2 }).nextCursor, 'mission-2');
+  assert.deepEqual(repository.listMissions({ limit: 2, cursor: 'mission-2' }).missions.map((mission) => mission.missionId), ['mission-3']);
+  assert.deepEqual(repository.listMissions({ state: 'recruiting' }).missions.map((mission) => mission.missionId), ['mission-2']);
+  assert.throws(() => repository.listMissions({ state: 'DROP TABLE missions' }), /state filter/i);
+});
+
 test('draft creation replays the same canonical request and rejects changed request data', async (t) => {
   const { repository, store } = await fixture(t);
   const input = draftInput();

@@ -12,10 +12,10 @@ export function missionCardView(mission = {}) {
     title: bounded(mission.title ?? mission.publicDocument?.title ?? mission.publicSummary, 'title', 1, 160),
     summary: bounded(mission.publicSummary, 'publicSummary', 1, 4096),
     state: mission.state,
-    funding: normalizeFunding(mission.funding ?? []),
+    funding: normalizeFunding(mission.funding ?? mission.publicDocument?.funding ?? []),
     roles: normalizeStrings(mission.roles ?? mission.publicDocument?.required_roles ?? [], 16, 128, 'roles'),
-    applicationClosesAt: nullableTimestamp(mission.applicationClosesAt),
-    launchDeadline: nullableTimestamp(mission.launchDeadline),
+    applicationClosesAt: nullableTimestamp(mission.applicationClosesAt ?? mission.publicDocument?.application_deadline),
+    launchDeadline: nullableTimestamp(mission.launchDeadline ?? mission.publicDocument?.launch_deadline),
     source: sourceView(mission.source ?? { label: 'helixa_ledger', status: 'current' }),
   });
 }

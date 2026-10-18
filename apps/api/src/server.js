@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { isIP } from 'node:net';
 import os from 'node:os';
@@ -21,6 +22,9 @@ import { createLooperMarketplacePreviewLoader } from './looper-marketplace-previ
 import { createLooperWalletValueRefresher, createLooperWalletValuesLoader } from './looper-wallet-values.js';
 import { createSqliteLooperNameStore } from './looper-name-store.js';
 import { readOpenSeaApiKey } from './loopers-sales/opensea.js';
+import { createMissionDatabase } from './missions/database.js';
+import { createMissionRepository } from './missions/repository.js';
+import { createMissionService } from './missions/service.js';
 import { createSqliteSavedRecords } from './saved-records.js';
 import { buildRestap3802Discovery } from './restap-3802-contracts.js';
 import { authorizeRestap3802Policy, loadRestap3802Policy } from './restap-3802-policy.js';
@@ -60,6 +64,8 @@ export function parseServerOptions(argv = [], env = process.env) {
     loopersAllowlistSnapshotPath: env.MULTIPASS_LOOPERS_ALLOWLIST_SNAPSHOT_PATH || null,
     looperCodexArtifactPath: env.MULTIPASS_LOOPER_CODEX_ARTIFACT_PATH || null,
     looperMarketplaceRosterPath: env.LOOPER_MARKETPLACE_ROSTER_PATH || null,
+    missionsEnabled: parseStrictBoolean(env.MULTIPASS_MISSIONS_ENABLED, 'MULTIPASS_MISSIONS_ENABLED') ?? false,
+    missionsDatabasePath: env.MULTIPASS_MISSIONS_DB_PATH || null,
     loopersAllowlistRegistrationPaused: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_PAUSED, 'MULTIPASS_LOOPERS_ALLOWLIST_PAUSED') ?? false,
     loopersAllowlistRequireBrowserOrigin: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN, 'MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN') ?? false,
     loopersAllowlistBlockedSources: parseStringList(env.MULTIPASS_LOOPERS_ALLOWLIST_BLOCKED_SOURCES),
@@ -154,6 +160,8 @@ export async function startServer(options = {}) {
     loopersAllowlistSnapshotPath: options.loopersAllowlistSnapshotPath ?? null,
     looperCodexArtifactPath: options.looperCodexArtifactPath ?? null,
     looperMarketplaceRosterPath: options.looperMarketplaceRosterPath ?? null,
+    missionsEnabled: options.missionsEnabled === true,
+    missionsDatabasePath: options.missionsDatabasePath ?? null,
     loopersAllowlistRegistrationPaused: Boolean(options.loopersAllowlistRegistrationPaused),
     loopersAllowlistRequireBrowserOrigin: Boolean(options.loopersAllowlistRequireBrowserOrigin),
     loopersAllowlistBlockedSources: options.loopersAllowlistBlockedSources ?? [],
@@ -209,6 +217,18 @@ export async function startServer(options = {}) {
   const savedRecords = options.savedRecords ?? (parsed.databasePath ? createSqliteSavedRecords({ databasePath: parsed.databasePath }) : null);
   const ownsLooperNameStore = !options.looperNameStore;
   const looperNameStore = options.looperNameStore ?? createSqliteLooperNameStore({ databasePath: parsed.databasePath ?? ':memory:' });
+  if (parsed.missionsEnabled && !options.missionService && !options.missionStore && !parsed.missionsDatabasePath) {
+    throw new Error('Swarm Command requires MULTIPASS_MISSIONS_DB_PATH when enabled.');
+  }
+  const ownsMissionStore = Boolean(parsed.missionsEnabled && !options.missionService && !options.missionStore);
+  const missionStore = options.missionStore ?? (ownsMissionStore
+    ? createMissionDatabase({ filename: parsed.missionsDatabasePath })
+    : null);
+  const missionService = options.missionService ?? (parsed.missionsEnabled
+    ? createMissionService({
+      repository: createMissionRepository({ store: missionStore, createId: () => 'operation-' + randomUUID() }),
+    })
+    : null);
   const activationService = options.activationService ?? activateHelixaRecord;
   const loopersAllowlist = options.loopersAllowlist
     ?? (parsed.loopersAllowlistPath
@@ -542,7 +562,7 @@ export async function startServer(options = {}) {
       store,
       baseUrl: apiBaseUrl,
       savedRecords,
-      missionService: options.missionService,
+      missionService,
       looperNameStore,
       activationService,
       allowedOrigins: parsed.allowedOrigins,
@@ -611,6 +631,8 @@ export async function startServer(options = {}) {
       ownsSavedRecords,
       looperNameStore,
       ownsLooperNameStore,
+      missionStore,
+      ownsMissionStore,
     }).catch(() => {});
     throw error;
   }
@@ -643,6 +665,8 @@ export async function startServer(options = {}) {
           ownsSavedRecords,
           looperNameStore,
           ownsLooperNameStore,
+          missionStore,
+          ownsMissionStore,
         });
       }
       return closePromise;
@@ -650,7 +674,7 @@ export async function startServer(options = {}) {
   };
 }
 
-async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, looperNameStore, ownsLooperNameStore }) {
+async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore }) {
   const errors = [];
   for (const close of [
     () => closeHttpServer(nodeServer),
@@ -661,6 +685,7 @@ async function closeServerResources({ consoleBootstrap, nodeServer, restapPublic
     () => consoleBootstrap?.closeClient?.(),
     () => ownsSavedRecords ? savedRecords?.close?.() : undefined,
     () => ownsLooperNameStore ? looperNameStore?.close?.() : undefined,
+    () => ownsMissionStore ? missionStore?.close?.() : undefined,
   ]) {
     try {
       await close();

@@ -40,6 +40,8 @@ test('parseServerOptions returns safe defaults', () => {
     loopersAllowlistSnapshotPath: null,
     looperCodexArtifactPath: null,
     looperMarketplaceRosterPath: null,
+    missionsEnabled: false,
+    missionsDatabasePath: null,
     loopersAllowlistRegistrationPaused: false,
     loopersAllowlistRequireBrowserOrigin: false,
     loopersAllowlistBlockedSources: [],
@@ -106,6 +108,8 @@ test('CLI flags override environment values', () => {
       loopersAllowlistSnapshotPath: null,
       looperCodexArtifactPath: null,
       looperMarketplaceRosterPath: null,
+      missionsEnabled: false,
+      missionsDatabasePath: null,
       loopersAllowlistRegistrationPaused: false,
       loopersAllowlistRequireBrowserOrigin: false,
       loopersAllowlistBlockedSources: [],
@@ -172,6 +176,8 @@ test('parseServerOptions accepts claim management security env', () => {
     loopersAllowlistSnapshotPath: null,
     looperCodexArtifactPath: null,
     looperMarketplaceRosterPath: null,
+    missionsEnabled: false,
+    missionsDatabasePath: null,
     loopersAllowlistRegistrationPaused: false,
     loopersAllowlistRequireBrowserOrigin: false,
     loopersAllowlistBlockedSources: [],
@@ -247,6 +253,33 @@ test('parseServerOptions rejects invalid ports', () => {
 test('parseServerOptions accepts database path from env or CLI', () => {
   assert.equal(parseServerOptions([], { MULTIPASS_DB_PATH: '/tmp/multipass.sqlite' }).databasePath, '/tmp/multipass.sqlite');
   assert.equal(parseServerOptions(['--database', '/tmp/cli.sqlite'], {}).databasePath, '/tmp/cli.sqlite');
+});
+
+test('parseServerOptions keeps Swarm Command off by default and strictly reads its durable database gate', () => {
+  assert.equal(parseServerOptions([], {}).missionsEnabled, false);
+  const enabled = parseServerOptions([], {
+    MULTIPASS_MISSIONS_ENABLED: 'true',
+    MULTIPASS_MISSIONS_DB_PATH: '/var/lib/helixa/swarm-command.sqlite',
+  });
+  assert.equal(enabled.missionsEnabled, true);
+  assert.equal(enabled.missionsDatabasePath, '/var/lib/helixa/swarm-command.sqlite');
+  assert.throws(() => parseServerOptions([], { MULTIPASS_MISSIONS_ENABLED: 'yes' }), /MULTIPASS_MISSIONS_ENABLED/);
+});
+
+test('startServer composes a durable Swarm Command service and serves public mission pages', async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'multipass-missions-server-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const missionsDatabasePath = path.join(directory, 'missions.sqlite');
+  const server = await startServer({
+    fixture: 'generic', host: '127.0.0.1', port: 0, missionsEnabled: true, missionsDatabasePath,
+    logger: { info() {}, warn() {}, error() {} },
+  });
+  try {
+    const response = await fetch(server.url + '/api/multipass/missions');
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { schema_version: '0.1.0', missions: [], nextCursor: null });
+  } finally { await server.close(); }
+  await assert.doesNotReject(() => import('node:fs/promises').then(({ stat }) => stat(missionsDatabasePath)));
 });
 
 test('parseServerOptions accepts Looper allowlist path from env or CLI', () => {

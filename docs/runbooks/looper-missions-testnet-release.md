@@ -36,6 +36,17 @@ The reviewed live plan uses a canonical Safe 1.4.1 proxy with threshold 2. Its o
 This command performs read-only dual-RPC verification and executes the exact deployment and Safe actions only inside a forked local EVM. It collects no authorization material and cannot broadcast. The resulting plan expires at its recorded `liveReadiness.validUntil` boundary and must be refreshed immediately before any separately approved broadcast.
 
 
+## Operational recruiting intake
+
+The production API mounts the durable mission ledger only when both settings are present:
+
+```text
+MULTIPASS_MISSIONS_ENABLED=true
+MULTIPASS_MISSIONS_DB_PATH=/var/lib/helixa/swarm-command.sqlite
+```
+
+The database is a separate mode-0600 STRICT/WAL ledger. Public mission list/detail reads require no wallet. Creating and publishing a recruiting mission requires the existing authenticated Console wallet session, CSRF token, exact revision, and idempotency key. This gate enables mission drafting and recruiting only; it does not mint tokens, activate the registry, fund a vault, launch agents, or settle funds. Those remain explicit owner/Safe transactions.
+
 ## Confirmed Base Sepolia deployment verification
 
 The deployment packet was broadcast only after separate approval and confirmed five infrastructure transactions in blocks 48,242,657–48,242,661. The canonical post-deployment manifest is `packages/contracts/deployments/swarm-command-base-sepolia.json`.

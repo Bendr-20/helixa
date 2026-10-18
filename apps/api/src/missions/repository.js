@@ -147,6 +147,23 @@ export function createMissionRepository({ store, createId, now = Date.now } = {}
     return row ? projectMission(row) : null;
   }
 
+  function listMissions({ state = null, limit = 20, cursor = null } = {}) {
+    if (state !== null && (typeof state !== 'string' || !/^[a-z][a-z_]{0,63}$/u.test(state))) throw new TypeError('Mission state filter is invalid.');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new TypeError('Mission list limit is invalid.');
+    if (cursor !== null) identifier(cursor, 'cursor');
+    const conditions = [];
+    const parameters = [];
+    if (state !== null) { conditions.push('state = ?'); parameters.push(state); }
+    if (cursor !== null) { conditions.push('mission_id > ?'); parameters.push(cursor); }
+    const where = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+    const rows = store.readAll('SELECT * FROM missions' + where + ' ORDER BY mission_id ASC LIMIT ?', [...parameters, limit + 1]);
+    const page = rows.slice(0, limit).map(projectMission);
+    return Object.freeze({
+      missions: Object.freeze(page),
+      nextCursor: rows.length > limit ? page.at(-1).missionId : null,
+    });
+  }
+
   function readRevision(missionIdValue, revisionValue) {
     const missionId = identifier(missionIdValue, 'missionId');
     const revision = nonNegativeInteger(revisionValue, 'revision');
@@ -175,7 +192,7 @@ export function createMissionRepository({ store, createId, now = Date.now } = {}
     })));
   }
 
-  return Object.freeze({ createDraft, listEvents, readMission, readRevision, updateMission });
+  return Object.freeze({ createDraft, listEvents, listMissions, readMission, readRevision, updateMission });
 
   function timestampNow() {
     const value = now();

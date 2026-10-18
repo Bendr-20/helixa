@@ -4,7 +4,8 @@ import { createConsoleAgentGalleryModel } from './console-agent-gallery.js';
 import { safeConsoleAvatarUrl } from './console-owner-profile.js';
 import { createInitialConsoleRestapNetworkState, getConsoleRestapNetworkStatus, renderConsoleRestapNetworkPanel } from './console-restap-network.js';
 import { CRED_ADDRESS, PANTHEON_STAKING_VAULT } from './looper-cred-pantheon.js';
-import { renderMissionBoard } from './missions/mission-board.js';
+import { renderMissionBoard, renderMissionDetail } from './missions/mission-board.js';
+import { renderMissionEditor } from './missions/mission-editor.js';
 import { renderMissionWorkspace } from './missions/mission-workspace.js';
 import { renderMissionSettlement } from './missions/mission-settlement.js';
 
@@ -268,6 +269,8 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
   const session = snapshot.session ?? {};
   const wallet = session.wallet ?? {};
   if (snapshot.workspaceView === 'missions') {
+    if (snapshot.missions?.view === 'editor') return renderMissionEditor(snapshot.missions);
+    if (snapshot.missions?.view === 'detail') return renderMissionDetail(snapshot.missions);
     if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);
     if (snapshot.missions?.view === 'settlement') return renderMissionSettlement(snapshot.missions);
     return renderMissionBoard(snapshot.missions);
