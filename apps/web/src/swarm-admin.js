@@ -14,6 +14,8 @@ export const SWARM_ADMIN_APPROVAL = Object.freeze({
   calldata: '0xd4d9bdcda61cad7e0459f24a0bce966611c59eb6c44326426295b43115f010a4db34d7a8',
   validUntil: '2026-10-18T19:08:27.000Z',
   activateAfter: '2026-10-19T19:08:27.000Z',
+  executedAt: '2026-10-18T18:11:15.000Z',
+  executedTransactionHash: '0x3225d0b160136d02a4d6ece382a36e42d91574a4f87a0ee299eeb3bd9ced29cd',
   action: 'Propose MissionEscrowV1',
   excluded: Object.freeze(['activation', 'token approval', 'token transfer', 'mission funding']),
 });
@@ -56,6 +58,7 @@ export async function readSwarmSafeApproval(provider) {
 
 export async function submitSwarmSafeApproval({ walletClient, now = Date.now(), pollDelay = defaultPollDelay } = {}) {
   if (!walletClient || typeof walletClient.getSnapshot !== 'function') throw new Error('Wallet client is unavailable.');
+  if (SWARM_ADMIN_APPROVAL.executedTransactionHash) throw new Error('This Safe proposal is already executed.');
   if (Number(now) >= Date.parse(SWARM_ADMIN_APPROVAL.validUntil)) throw new Error('This exact approval authorization expired.');
   const wallet = walletClient.getSnapshot();
   if (!wallet?.connected || !wallet.address) throw new Error('Connect the required owner wallet first.');
@@ -78,9 +81,10 @@ export function renderSwarmAdmin({ state = createInitialSwarmAdminState(), walle
   const expectedWallet = connected && isExpectedOwner(wallet.address);
   const expired = Date.now() >= Date.parse(SWARM_ADMIN_APPROVAL.validUntil);
   const pending = ['connecting', 'checking', 'submitting', 'confirming'].includes(state.status);
-  const approved = Boolean(state.approved || state.status === 'approved');
-  const actionDisabled = pending || expired || approved || !expectedWallet;
-  const status = renderStatus(state, { connected, expectedWallet, expired });
+  const completed = Boolean(SWARM_ADMIN_APPROVAL.executedTransactionHash);
+  const approved = completed || Boolean(state.approved || state.status === 'approved');
+  const actionDisabled = completed || pending || expired || approved || !expectedWallet;
+  const status = renderStatus(state, { connected, expectedWallet, expired, completed });
   const walletLabel = connected ? (wallet.label || shortenAddress(wallet.address)) : 'Not connected';
   return     '<main class="swarm-admin" aria-label="Swarm Admin">' +
       '<section class="swarm-admin-hero">' +
@@ -91,16 +95,15 @@ export function renderSwarmAdmin({ state = createInitialSwarmAdminState(), walle
       '<section class="swarm-admin-card" aria-label="MissionEscrowV1 proposal approval">' +
         '<div class="swarm-admin-card-heading"><div><span>Safe approval</span><h2>' + escapeHtml(SWARM_ADMIN_APPROVAL.action) + '</h2></div><strong>' + (approved ? 'Approved' : 'Awaiting owner') + '</strong></div>' +
         '<dl class="swarm-admin-facts">' +
-          fact('Network', 'Base · 8453') + fact('Safe', shortenAddress(SWARM_ADMIN_APPROVAL.safe)) + fact('Safe nonce', '0') + fact('Registry', shortenAddress(SWARM_ADMIN_APPROVAL.target)) +
+          fact('Network', 'Base · 8453') + fact('Safe', shortenAddress(SWARM_ADMIN_APPROVAL.safe)) + fact('Safe nonce', completed ? '1' : '0') + fact('Registry', shortenAddress(SWARM_ADMIN_APPROVAL.target)) +
         '</dl>' +
         '<div class="swarm-admin-hash"><span>Exact Safe transaction hash</span><code>' + escapeHtml(SWARM_ADMIN_APPROVAL.safeTxHash) + '</code></div>' +
-        '<div class="swarm-admin-wallet"><div><span>Required signer</span><strong>' + escapeHtml(walletLabel) + '</strong><small>' + escapeHtml(shortenAddress(SWARM_ADMIN_APPROVAL.owner)) + '</small></div>' +
-          '<button type="button" data-action="connect-swarm-admin-wallet" ' + (pending || wallet.configured === false ? 'disabled' : '') + '>' + (connected ? 'Switch wallet' : 'Connect wallet') + '</button></div>' +
-        '<div class="swarm-admin-boundary"><strong>Approval boundary</strong><p>Approves only the MissionEscrowV1 proposal at nonce 0.</p><p>Activation, token approval, token transfer, and mission funding are not included.</p><p>Approval window ends ' + escapeHtml(formatUtc(SWARM_ADMIN_APPROVAL.validUntil)) + '.</p></div>' +
-        '<button class="swarm-admin-primary" type="button" data-action="approve-swarm-safe-hash" ' + (actionDisabled ? 'disabled' : '') + '>' + (pending ? 'Confirming…' : approved ? 'Approval recorded' : 'Approve exact Safe hash') + '</button>' +
+        (completed ? '<div class="swarm-admin-wallet"><div><span>Proposal transaction</span><strong>Confirmed on Base</strong><small>' + escapeHtml(shortenAddress(SWARM_ADMIN_APPROVAL.executedTransactionHash)) + '</small></div><a class="swarm-admin-explorer" href="https://basescan.org/tx/' + escapeHtml(SWARM_ADMIN_APPROVAL.executedTransactionHash) + '" target="_blank" rel="noopener noreferrer">View receipt</a></div>' : '<div class="swarm-admin-wallet"><div><span>Required signer</span><strong>' + escapeHtml(walletLabel) + '</strong><small>' + escapeHtml(shortenAddress(SWARM_ADMIN_APPROVAL.owner)) + '</small></div><button type="button" data-action="connect-swarm-admin-wallet" ' + (pending || wallet.configured === false ? 'disabled' : '') + '>' + (connected ? 'Switch wallet' : 'Connect wallet') + '</button></div>') +
+        '<div class="swarm-admin-boundary"><strong>Stage boundary</strong><p>' + (completed ? 'MissionEscrowV1 was proposed with Safe nonce 0.' : 'Approves only the MissionEscrowV1 proposal at nonce 0.') + '</p><p>Activation, token approval, token transfer, and mission funding are not included.</p><p>' + (completed ? 'Activation requires a fresh approval after ' + escapeHtml(formatUtc(SWARM_ADMIN_APPROVAL.activateAfter)) + '.' : 'Approval window ends ' + escapeHtml(formatUtc(SWARM_ADMIN_APPROVAL.validUntil)) + '.') + '</p></div>' +
+        (completed ? '' : '<button class="swarm-admin-primary" type="button" data-action="approve-swarm-safe-hash" ' + (actionDisabled ? 'disabled' : '') + '>' + (pending ? 'Confirming…' : approved ? 'Approval recorded' : 'Approve exact Safe hash') + '</button>') +
         status +
       '</section>' +
-      '<p class="swarm-admin-footnote">This sends one zero-value <code>approveHash(bytes32)</code> transaction to the deployed 2-of-2 Safe. The second owner executes separately after verification.</p>' +
+      '<p class="swarm-admin-footnote">The proposal stage is complete. This page exposes no executable action until a separately reviewed activation packet is available.</p>' +
     '</main>';
 }
 
@@ -139,6 +142,7 @@ function shortenAddress(value) { const address = String(value ?? ''); return add
 function formatUtc(value) { return new Date(value).toISOString().replace('T', ' ').replace('.000Z', ' UTC'); }
 function fact(label, value) { return '<div><dt>' + escapeHtml(label) + '</dt><dd>' + escapeHtml(value) + '</dd></div>'; }
 function renderStatus(state, context) {
+  if (context.completed) return '<p class="swarm-admin-status success" role="status">Proposal confirmed. MissionEscrowV1 is pending its timelock; activation remains blocked.</p>';
   if (state.error) return '<p class="swarm-admin-status error" role="alert">' + escapeHtml(state.error) + '</p>';
   if (state.status === 'approved') return '<p class="swarm-admin-status success" role="status">Safe recorded the exact owner approval. Execution remains separate.</p>';
   if (state.hash) return '<p class="swarm-admin-status" role="status">Submitted <a href="https://basescan.org/tx/' + escapeHtml(state.hash) + '" target="_blank" rel="noopener noreferrer">view transaction</a>.</p>';

@@ -25,6 +25,7 @@ test('pins one Base Safe approveHash action with no arbitrary transaction fields
   assert.equal(SWARM_ADMIN_APPROVAL.safeTxHash, HASH);
   assert.equal(SWARM_ADMIN_APPROVAL.calldata, CALLDATA);
   assert.equal(SWARM_ADMIN_APPROVAL.target, '0xC2fbEF16EC0981bcfA7e878f6f78BF8DeBe2BcCB');
+  assert.equal(SWARM_ADMIN_APPROVAL.executedTransactionHash, '0x3225d0b160136d02a4d6ece382a36e42d91574a4f87a0ee299eeb3bd9ced29cd');
   assert.equal(SWARM_ADMIN_APPROVAL.excluded.join(','), 'activation,token approval,token transfer,mission funding');
 });
 
@@ -48,41 +49,19 @@ test('reads approval state through the connected provider without mutation', asy
   assert.equal(requests[1].params[0].to, SAFE);
 });
 
-test('simulates, submits, waits for success, and verifies approvedHashes', async () => {
-  const methods = [];
-  let approvalReads = 0;
+test('confirmed stage blocks every stale wallet mutation before provider access', async () => {
+  let calls = 0;
   const walletClient = {
-    getSnapshot: () => ({ connected: true, address: OWNER }),
-    request: async (payload) => {
-      methods.push(payload.method);
-      if (payload.method === 'eth_chainId') return '0x2105';
-      if (payload.method === 'eth_call') {
-        approvalReads += 1;
-        return approvalReads > 1 ? '0x' + '0'.repeat(63) + '1' : '0x';
-      }
-      if (payload.method === 'eth_getTransactionReceipt') return { status: '0x1', transactionHash: '0xapproved' };
-      throw new Error('unexpected request ' + payload.method);
-    },
-    sendTransaction: async (transaction) => {
-      assert.deepEqual(transaction, buildSwarmSafeApprovalTransaction(OWNER));
-      return '0xapproved';
-    },
+    getSnapshot: () => { calls += 1; return { connected: true, address: OWNER }; },
+    request: async () => { calls += 1; throw new Error('must not request'); },
+    sendTransaction: async () => { calls += 1; throw new Error('must not send'); },
   };
-  const result = await submitSwarmSafeApproval({ walletClient, now: Date.parse('2026-10-18T18:30:00Z'), pollDelay: async () => {} });
-  assert.equal(result.hash, '0xapproved');
-  assert.equal(result.approved, true);
-  assert.deepEqual(methods, ['eth_chainId', 'eth_call', 'eth_getTransactionReceipt', 'eth_chainId', 'eth_call']);
+  await assert.rejects(submitSwarmSafeApproval({ walletClient, now: Date.parse('2026-10-18T18:30:00Z') }), /already executed/i);
+  assert.equal(calls, 0);
 });
 
-test('blocks wrong wallet, wrong chain, and expired authorization before sending', async () => {
-  const base = {
-    getSnapshot: () => ({ connected: true, address: OWNER }),
-    request: async ({ method }) => method === 'eth_chainId' ? '0x1' : '0x',
-    sendTransaction: async () => { throw new Error('must not send'); },
-  };
-  await assert.rejects(submitSwarmSafeApproval({ walletClient: base, now: Date.parse('2026-10-18T18:30:00Z') }), /Base network/i);
-  await assert.rejects(submitSwarmSafeApproval({ walletClient: { ...base, getSnapshot: () => ({ connected: true, address: SAFE }) }, now: Date.parse('2026-10-18T18:30:00Z') }), /required owner wallet/i);
-  await assert.rejects(submitSwarmSafeApproval({ walletClient: { ...base, request: async ({ method }) => method === 'eth_chainId' ? '0x2105' : '0x' }, now: Date.parse('2026-10-18T19:09:00Z') }), /expired/i);
+test('approval reads fail closed on the wrong chain', async () => {
+  await assert.rejects(readSwarmSafeApproval({ request: async () => '0x1' }), /Base network/i);
 });
 
 test('renders a bounded mobile-safe admin action with exclusions and no calldata input', () => {
@@ -93,8 +72,10 @@ test('renders a bounded mobile-safe admin action with exclusions and no calldata
   const dom = new JSDOM(html);
   const { document } = dom.window;
   assert.equal(document.querySelectorAll('input, textarea, select').length, 0);
-  assert.equal(document.querySelectorAll('[data-action="approve-swarm-safe-hash"]').length, 1);
+  assert.equal(document.querySelectorAll('[data-action="approve-swarm-safe-hash"]').length, 0);
+  assert.equal(document.querySelectorAll('[data-action="connect-swarm-admin-wallet"]').length, 0);
   assert.match(document.body.textContent, /MissionEscrowV1/i);
+  assert.match(document.body.textContent, /Proposal confirmed/i);
   assert.match(document.body.textContent, /Activation.*not included/is);
   assert.match(document.body.textContent, /0xa61c.*d7a8/is);
 });
@@ -117,6 +98,6 @@ test('the production Swarm Admin route bypasses demo loading and binds the revie
   await app.start();
   assert.equal(demoCalls, 0);
   assert.match(root.textContent, /Swarm Admin/);
-  assert.equal(root.querySelectorAll('[data-action="approve-swarm-safe-hash"]').length, 1);
+  assert.equal(root.querySelectorAll('[data-action="approve-swarm-safe-hash"]').length, 0);
   assert.equal(dom.window.document.title, 'Swarm Admin | Helixa');
 });
