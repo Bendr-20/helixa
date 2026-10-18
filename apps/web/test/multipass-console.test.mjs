@@ -60,6 +60,25 @@ test('Network remains isolated beside the Swarm Command workspace and Multipass 
   }
 });
 
+test('disabled Swarm Command preview renders before wallet authentication', () => {
+  const snapshot = createMultipassConsoleSnapshot({
+    agents: [],
+    state: {
+      walletSnapshot: { connected: false, address: null },
+      consoleAuthenticatedWallet: null,
+      consoleOwnedAgents: { status: 'idle', agents: [] },
+      consoleSelectedAgentId: null,
+      consoleWorkspaceView: 'missions',
+      consoleMissions: { status: 'disabled', missions: [] },
+    },
+  });
+  const root = render(renderMultipassConsole(snapshot));
+  assert.ok(root.querySelector('.mission-board'));
+  assert.match(root.querySelector('.mission-alert[role="status"]')?.textContent ?? '', /Read-only preview/);
+  assert.equal(root.querySelector('[data-mission-action="new"]')?.disabled, true);
+  assert.equal(root.querySelector('.console-auth-gate'), null);
+});
+
 test('production entrypoint leaves wallet mutation controls enabled', async () => {
   const [mainSource, walletSource] = await Promise.all([
     readFile(new URL('../src/main.js', import.meta.url), 'utf8'),

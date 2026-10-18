@@ -267,6 +267,11 @@ function createConsoleRestapNetworkSnapshot(networkState, tokenId) {
 function renderConsolePrimaryWorkspace(snapshot = {}) {
   const session = snapshot.session ?? {};
   const wallet = session.wallet ?? {};
+  if (snapshot.workspaceView === 'missions') {
+    if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);
+    if (snapshot.missions?.view === 'settlement') return renderMissionSettlement(snapshot.missions);
+    return renderMissionBoard(snapshot.missions);
+  }
   if (wallet.connected && !wallet.authenticated) return renderConsoleAuthGate(wallet);
   if (!wallet.authenticated) {
     return renderConsoleAgentThread({
@@ -280,11 +285,6 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
     recall: snapshot.recall,
     contextItems: snapshot.threadContextItems,
   });
-  if (snapshot.workspaceView === 'missions') {
-    if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);
-    if (snapshot.missions?.view === 'settlement') return renderMissionSettlement(snapshot.missions);
-    return renderMissionBoard(snapshot.missions);
-  }
   if (!session.activeAgentId) return thread;
   let workspace;
   if (snapshot.workspaceView === 'codex') {
