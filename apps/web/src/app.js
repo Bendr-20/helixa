@@ -63,6 +63,7 @@ import { bindMissionBoard } from './missions/mission-board.js';
 import { bindMissionEditor } from './missions/mission-editor.js';
 import { beginConsoleRestapNetworkLoad, clearConsoleRestapNetworkSelection, createInitialConsoleRestapNetworkState, failConsoleRestapNetworkLoad, getConsoleRestapNetworkSendFingerprint, normalizeConsoleRestapNetworkSendDraft, normalizeConsoleRestapNetworkPolicyDraft, resolveConsoleRestapNetworkLoad } from './console-restap-network.js';
 import { renderRuntimeSubmission } from './runtime-submission.js';
+import { SWARM_ADMIN_APPROVAL, bindSwarmAdmin, createInitialSwarmAdminState, readSwarmSafeApproval, renderSwarmAdmin, submitSwarmSafeApproval } from './swarm-admin.js';
 import { bindToolManager, compactBankrToolImportInput, getPublicTools, mergeToolImportState, mergeToolRefreshState, renderPublicToolsPanel, renderToolRegistryManagerPanel } from './tool-manager.js';
 import { createInjectedWalletClient, createLegacyWalletClient, getWalletErrorMessage, shortenAddress } from './wallet-client.js';
 import { getAbsoluteShareUrl, getSafeMultipassSharePath, isSafeMultipassSharePath, renderSavePanel } from './save-panel.js';
@@ -77,6 +78,7 @@ const STATIC_SWARM_PROFILE_PATH = '/multipass/swarm/helixa';
 const PUBLIC_AGENTS_PATH = '/multipass/agents';
 const MULTIPASS_CONSOLE_PATH = '/multipass/console';
 const MULTIPASS_RUNTIME_PATH = '/multipass/runtime';
+const SWARM_ADMIN_PATH = '/multipass/swarm/admin';
 const CONSOLE_AGENT_NAME_OVERRIDES_STORAGE_KEY = `multipass.console.${'agentNameOverrides'}`;
 const CONSOLE_HIDDEN_MESSAGES_STORAGE_KEY = 'multipass.console.hiddenMessages.v1';
 const deferredConsoleRenders = new WeakMap();
@@ -224,6 +226,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
     consoleMissions: consoleMockState?.consoleMissions ?? { status: 'idle', view: 'board', filter: null, missions: [], error: null },
+    swarmAdmin: createInitialSwarmAdminState(),
     looperAgentWallet: consoleMockState?.looperAgentWallet ?? activeLooperWalletController.getSnapshot(),
     consoleMockMode: consoleMockState?.mode ?? null,
     walletSnapshot: consoleMockState?.walletSnapshot ?? activeWalletClient.getSnapshot(),
@@ -264,6 +267,12 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     if (state.pageKind === 'runtime') {
       state = { ...state, data: {}, staticData: {} };
       render(root, state, handlers);
+      return;
+    }
+    if (state.pageKind === 'swarm_admin') {
+      state = { ...state, data: {}, staticData: {}, walletSnapshot: activeWalletClient.getSnapshot() };
+      render(root, state, handlers);
+      if (state.walletSnapshot.connected && state.walletSnapshot.address) await refreshSwarmAdminApproval();
       return;
     }
     if (state.pageKind === 'looper_marketplace') {
@@ -3037,6 +3046,84 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     render(root, state, handlers);
   }
 
+  async function connectSwarmAdminWallet() {
+    state = { ...state, swarmAdmin: { ...state.swarmAdmin, status: 'connecting', error: null }, walletSnapshot: activeWalletClient.getSnapshot() };
+    render(root, state, handlers);
+    try {
+      const snapshot = activeWalletClient.getSnapshot();
+      if (snapshot.configured === false) throw new Error('Wallet connection is not configured for this build.');
+      if (snapshot.ready === false) throw new Error('Wallet options are still loading.');
+      await activeWalletClient.connect();
+      await activeWalletClient.waitForPreparedSigningProvider?.({ timeoutMs: 45_000 });
+      state = { ...state, walletSnapshot: activeWalletClient.getSnapshot() };
+      await refreshSwarmAdminApproval();
+    } catch (error) {
+      state = {
+        ...state,
+        walletSnapshot: activeWalletClient.getSnapshot(),
+        swarmAdmin: { ...state.swarmAdmin, status: 'error', error: getWalletErrorMessage(error) },
+      };
+      render(root, state, handlers);
+    }
+  }
+
+  async function refreshSwarmAdminApproval() {
+    state = { ...state, walletSnapshot: activeWalletClient.getSnapshot(), swarmAdmin: { ...state.swarmAdmin, status: 'checking', error: null } };
+    render(root, state, handlers);
+    try {
+      await ensureSwarmAdminBaseChain();
+      const approved = await readSwarmSafeApproval(activeWalletClient);
+      state = {
+        ...state,
+        walletSnapshot: activeWalletClient.getSnapshot(),
+        swarmAdmin: { ...state.swarmAdmin, status: approved ? 'approved' : 'ready', approved, error: null },
+      };
+    } catch (error) {
+      state = {
+        ...state,
+        walletSnapshot: activeWalletClient.getSnapshot(),
+        swarmAdmin: { ...state.swarmAdmin, status: 'error', error: getWalletErrorMessage(error) },
+      };
+    }
+    render(root, state, handlers);
+  }
+
+  async function approveSwarmSafeHash() {
+    state = { ...state, walletSnapshot: activeWalletClient.getSnapshot(), swarmAdmin: { ...state.swarmAdmin, status: 'submitting', error: null } };
+    render(root, state, handlers);
+    try {
+      let walletSnapshot = activeWalletClient.getSnapshot();
+      if (!walletSnapshot.connected || !walletSnapshot.address) {
+        await activeWalletClient.connect();
+        await activeWalletClient.waitForPreparedSigningProvider?.({ timeoutMs: 45_000 });
+        walletSnapshot = activeWalletClient.getSnapshot();
+      }
+      state = { ...state, walletSnapshot };
+      await ensureSwarmAdminBaseChain();
+      const result = await submitSwarmSafeApproval({ walletClient: activeWalletClient });
+      state = {
+        ...state,
+        walletSnapshot: activeWalletClient.getSnapshot(),
+        swarmAdmin: { status: 'approved', approved: true, hash: result.hash, error: null },
+      };
+    } catch (error) {
+      state = {
+        ...state,
+        walletSnapshot: activeWalletClient.getSnapshot(),
+        swarmAdmin: { ...state.swarmAdmin, status: 'error', error: getWalletErrorMessage(error) },
+      };
+    }
+    render(root, state, handlers);
+  }
+
+  async function ensureSwarmAdminBaseChain() {
+    const current = await activeWalletClient.request({ method: 'eth_chainId' });
+    if (String(current).toLowerCase() === SWARM_ADMIN_APPROVAL.chainHex) return;
+    await activeWalletClient.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: SWARM_ADMIN_APPROVAL.chainHex }] });
+    const switched = await activeWalletClient.request({ method: 'eth_chainId' });
+    if (String(switched).toLowerCase() !== SWARM_ADMIN_APPROVAL.chainHex) throw new Error('Switch the connected wallet to Base network.');
+  }
+
   async function logoutManagerSession() {
     const id = getManageIdentifier(state);
     if (!id) return;
@@ -3049,7 +3136,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -3115,6 +3202,7 @@ function getInitialPageKind() {
   if (isLooperAllowlistRoute(locationUrl)) return 'looper_allowlist';
   if (isStaticSwarmProfileRoute(locationUrl)) return 'profile';
   if (isMultipassRuntimeRoute(locationUrl)) return 'runtime';
+  if (isSwarmAdminRoute(locationUrl)) return 'swarm_admin';
   if (isMultipassConsoleRoute(locationUrl)) return 'console';
   if (isPublicAgentsRoute(locationUrl)) return 'agents';
   if (getSavedSlugFromLocation(locationUrl)) return 'profile';
@@ -3132,6 +3220,10 @@ function isMultipassConsoleRoute(locationUrl) {
 
 function isMultipassRuntimeRoute(locationUrl) {
   return locationUrl.pathname === MULTIPASS_RUNTIME_PATH || locationUrl.pathname === `${MULTIPASS_RUNTIME_PATH}/`;
+}
+
+function isSwarmAdminRoute(locationUrl) {
+  return locationUrl.pathname === SWARM_ADMIN_PATH || locationUrl.pathname === `${SWARM_ADMIN_PATH}/`;
 }
 
 function isLooperAllowlistRoute(locationUrl) {
@@ -4184,6 +4276,11 @@ function render(root, state, handlers = {}) {
     return;
   }
 
+  if (state.pageKind === 'swarm_admin') {
+    renderSwarmAdminPage(root, state, handlers);
+    return;
+  }
+
   if (state.pageKind === 'console') {
     if (deferConsoleRenderForFocusedSelector(root, state, handlers)) return;
     renderMultipassConsolePage(root, state, handlers);
@@ -4228,6 +4325,14 @@ function updateDocumentMetadataForPage(state) {
     setDocumentMeta('property', 'og:description', 'A wallet-owned Looper becomes a memory-bearing Bankr agent with XMTP messaging, Sibyl recall, and holder-reviewed actions.');
     setDocumentMeta('name', 'twitter:title', 'Loopers Runtime Console | Bankr RUNTIME');
     setDocumentMeta('name', 'twitter:description', 'A wallet-owned Looper becomes a memory-bearing Bankr agent with XMTP messaging, Sibyl recall, and holder-reviewed actions.');
+    return;
+  }
+  if (state.pageKind === 'swarm_admin') {
+    document.title = 'Swarm Admin | Helixa';
+    setDocumentMeta('name', 'description', 'Bounded governance controls for Swarm Command on Base.');
+    setDocumentMeta('property', 'og:url', 'https://helixa.xyz/multipass/swarm/admin');
+    setDocumentMeta('property', 'og:title', 'Swarm Admin | Helixa');
+    setDocumentMeta('property', 'og:description', 'Bounded governance controls for Swarm Command on Base.');
     return;
   }
   if (state.pageKind === 'console') {
@@ -5007,6 +5112,17 @@ export function bindConsoleAvatarFallbacks(root) {
       if (fallback) fallback.hidden = false;
     }, { once: true });
   }
+}
+
+function renderSwarmAdminPage(root, state, handlers = {}) {
+  root.innerHTML = `
+    <div class="record-shell swarm-admin-shell">
+      ${renderRecordHeader('Swarm Admin')}
+      ${renderSwarmAdmin({ state: state.swarmAdmin, wallet: state.walletSnapshot })}
+    </div>
+  `;
+  bindSiteMenu(root);
+  bindSwarmAdmin(root, { connect: handlers.connectSwarmAdminWallet, approve: handlers.approveSwarmSafeHash });
 }
 
 function renderMultipassConsolePage(root, state, handlers = {}) {
