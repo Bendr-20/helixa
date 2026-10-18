@@ -376,7 +376,8 @@ function patchedUpstream(url) {
   } };
 }
 
-export function validateLiveDeploymentPlan(plan) {
+export function validateLiveDeploymentPlan(plan, { now = Date.now() } = {}) {
+  if (!Number.isFinite(now)) throw new Error('Validation time must be finite.');
   if (!plan || plan.schemaVersion !== 1 || plan.status !== 'live_no_broadcast_simulation_passed') throw new Error('Invalid live plan status.');
   if (plan.externalBroadcast !== false || plan.broadcastApprovalGranted !== false) throw new Error('Live plan must remain no-broadcast and unapproved.');
   if (plan.chainId !== CHAIN_ID || plan.network !== 'base-sepolia') throw new Error('Live plan chain mismatch.');
@@ -397,7 +398,7 @@ export function validateLiveDeploymentPlan(plan) {
   });
   if (plan.simulation?.earlyActivationRejected !== true || plan.simulation?.activationSucceededAfterDelay !== true || plan.simulation?.externalBroadcast !== false) throw new Error('Pinned-fork lifecycle evidence missing.');
   if (plan.liveReadiness?.status !== 'approval_required') throw new Error('Broadcast approval boundary missing.');
-  if (!Number.isFinite(Date.parse(plan.liveReadiness.validUntil)) || Date.parse(plan.liveReadiness.validUntil) <= Date.now()) throw new Error('Live plan has expired and must be refreshed.');
+  if (!Number.isFinite(Date.parse(plan.liveReadiness.validUntil)) || Date.parse(plan.liveReadiness.validUntil) <= now) throw new Error('Live plan has expired and must be refreshed.');
   const forbidden = findForbiddenKey(plan);
   if (forbidden) throw new Error('Forbidden secret-bearing field: ' + forbidden + '.');
   return true;

@@ -167,3 +167,22 @@ test('verifier exposes no signing, sending, minting, funding, or governance muta
     assert.equal(source.includes(forbidden), false, forbidden);
   }
 });
+
+
+test('serializes reads per approved RPC origin to avoid public endpoint rate-limit bursts', async () => {
+  const fixture = testFixture();
+  const mock = makeFetch({ fixture });
+  const active = new Map();
+  const maximum = new Map();
+  const fetchImpl = async (url, init) => {
+    const origin = new URL(url).origin;
+    const count = (active.get(origin) ?? 0) + 1;
+    active.set(origin, count);
+    maximum.set(origin, Math.max(maximum.get(origin) ?? 0, count));
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    try { return await mock.fetchImpl(url, init); }
+    finally { active.set(origin, active.get(origin) - 1); }
+  };
+  await verifyMissionBaseSepoliaDeployment({ fetchImpl, deployment: fixture.deployment });
+  assert.deepEqual([...maximum.values()], [1, 1]);
+});

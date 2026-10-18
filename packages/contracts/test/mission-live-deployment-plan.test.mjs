@@ -11,7 +11,9 @@ test('historical live Base Sepolia plan remains byte-committed, unsigned, and no
   const bytes = await readFile(ARTIFACT);
   assert.equal(createHash('sha256').update(bytes).digest('hex'), 'afeb2ff90b899b45aeba9bc94468e312b02ae09e1a498851d76348c1da823d18');
   const artifact = JSON.parse(bytes.toString('utf8'));
-  assert.doesNotThrow(() => validateLiveDeploymentPlan(artifact));
+  const historicalVerificationTime = Date.parse(artifact.liveReadiness.validUntil) - 1;
+  assert.doesNotThrow(() => validateLiveDeploymentPlan(artifact, { now: historicalVerificationTime }));
+  assert.throws(() => validateLiveDeploymentPlan(artifact), /expired/);
   assert.equal(artifact.status, 'live_no_broadcast_simulation_passed');
   assert.equal(artifact.externalBroadcast, false);
   assert.equal(artifact.broadcastApprovalGranted, false);

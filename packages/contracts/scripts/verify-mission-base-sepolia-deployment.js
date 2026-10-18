@@ -172,13 +172,11 @@ export async function verifyMissionBaseSepoliaDeployment({ fetchImpl = globalThi
     try { return iface.decodeFunctionResult(functionName, raw); } catch { throw new Error(functionName + ' result is malformed.'); }
   };
 
-  const [ownersResult, thresholdResult, nonceResult, versionResult, singletonWord] = await Promise.all([
-    read(expected.authority.address, interfaces.safe, 'getOwners'),
-    read(expected.authority.address, interfaces.safe, 'getThreshold'),
-    read(expected.authority.address, interfaces.safe, 'nonce'),
-    read(expected.authority.address, interfaces.safe, 'VERSION'),
-    dual('eth_getStorageAt', [expected.authority.address, '0x0', blockTag], (value) => canonicalWord(value, 'Safe singleton slot'), 'Safe singleton slot'),
-  ]);
+  const ownersResult = await read(expected.authority.address, interfaces.safe, 'getOwners');
+  const thresholdResult = await read(expected.authority.address, interfaces.safe, 'getThreshold');
+  const nonceResult = await read(expected.authority.address, interfaces.safe, 'nonce');
+  const versionResult = await read(expected.authority.address, interfaces.safe, 'VERSION');
+  const singletonWord = await dual('eth_getStorageAt', [expected.authority.address, '0x0', blockTag], (value) => canonicalWord(value, 'Safe singleton slot'), 'Safe singleton slot');
   const owners = [...ownersResult[0]].map((value) => getAddress(value));
   const threshold = thresholdResult[0].toString();
   const nonce = nonceResult[0].toString();
@@ -188,19 +186,21 @@ export async function verifyMissionBaseSepoliaDeployment({ fetchImpl = globalThi
 
   const tokens = [];
   for (const token of expected.tokens) {
-    const [name, symbol, decimals, issuer, totalSupply] = await Promise.all([
-      read(token.address, interfaces.token, 'name'), read(token.address, interfaces.token, 'symbol'), read(token.address, interfaces.token, 'decimals'),
-      read(token.address, interfaces.token, 'issuer'), read(token.address, interfaces.token, 'totalSupply'),
-    ]);
+    const name = await read(token.address, interfaces.token, 'name');
+    const symbol = await read(token.address, interfaces.token, 'symbol');
+    const decimals = await read(token.address, interfaces.token, 'decimals');
+    const issuer = await read(token.address, interfaces.token, 'issuer');
+    const totalSupply = await read(token.address, interfaces.token, 'totalSupply');
     const observed = { address: token.address, name: name[0], symbol: symbol[0], decimals: Number(decimals[0]), issuer: getAddress(issuer[0]), totalSupply: totalSupply[0].toString() };
     if (observed.name !== token.name || observed.symbol !== token.symbol || observed.decimals !== token.decimals || observed.issuer !== token.issuer || observed.totalSupply !== '0') throw new Error(token.symbol + ' metadata, issuer, or supply/mint state drifted.');
     tokens.push(observed);
   }
 
-  const [governance, emergencyCouncil, minimumDelay, factoryRegistry, compatibility] = await Promise.all([
-    read(expected.registry.address, interfaces.registry, 'governance'), read(expected.registry.address, interfaces.registry, 'emergencyCouncil'), read(expected.registry.address, interfaces.registry, 'minimumDelay'),
-    read(expected.factory.address, interfaces.factory, 'registry'), read(expected.factory.address, interfaces.factory, 'FACTORY_COMPATIBILITY'),
-  ]);
+  const governance = await read(expected.registry.address, interfaces.registry, 'governance');
+  const emergencyCouncil = await read(expected.registry.address, interfaces.registry, 'emergencyCouncil');
+  const minimumDelay = await read(expected.registry.address, interfaces.registry, 'minimumDelay');
+  const factoryRegistry = await read(expected.factory.address, interfaces.factory, 'registry');
+  const compatibility = await read(expected.factory.address, interfaces.factory, 'FACTORY_COMPATIBILITY');
   if (getAddress(governance[0]) !== expected.registry.governance || getAddress(emergencyCouncil[0]) !== expected.registry.emergencyCouncil || minimumDelay[0].toString() !== String(expected.registry.minimumDelaySeconds)) throw new Error('Registry authority configuration drifted.');
   if (getAddress(factoryRegistry[0]) !== expected.factory.registry || compatibility[0].toString() !== String(expected.factory.compatibility)) throw new Error('Factory configuration drifted.');
 
