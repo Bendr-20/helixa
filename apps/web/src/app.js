@@ -63,7 +63,7 @@ import { bindMissionBoard } from './missions/mission-board.js';
 import { bindMissionEditor } from './missions/mission-editor.js';
 import { beginConsoleRestapNetworkLoad, clearConsoleRestapNetworkSelection, createInitialConsoleRestapNetworkState, failConsoleRestapNetworkLoad, getConsoleRestapNetworkSendFingerprint, normalizeConsoleRestapNetworkSendDraft, normalizeConsoleRestapNetworkPolicyDraft, resolveConsoleRestapNetworkLoad } from './console-restap-network.js';
 import { renderRuntimeSubmission } from './runtime-submission.js';
-import { SWARM_ADMIN_APPROVAL, bindSwarmAdmin, createInitialSwarmAdminState, readSwarmSafeApproval, renderSwarmAdmin, submitSwarmSafeApproval } from './swarm-admin.js';
+import { SWARM_ADMIN_ACTIVATION, bindSwarmAdmin, createInitialSwarmAdminState, readSwarmActivationState, renderSwarmAdmin, submitSwarmActivationApproval } from './swarm-admin.js';
 import { bindToolManager, compactBankrToolImportInput, getPublicTools, mergeToolImportState, mergeToolRefreshState, renderPublicToolsPanel, renderToolRegistryManagerPanel } from './tool-manager.js';
 import { createInjectedWalletClient, createLegacyWalletClient, getWalletErrorMessage, shortenAddress } from './wallet-client.js';
 import { getAbsoluteShareUrl, getSafeMultipassSharePath, isSafeMultipassSharePath, renderSavePanel } from './save-panel.js';
@@ -3072,11 +3072,11 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     render(root, state, handlers);
     try {
       await ensureSwarmAdminBaseChain();
-      const approved = await readSwarmSafeApproval(activeWalletClient);
+      const activation = await readSwarmActivationState(activeWalletClient);
       state = {
         ...state,
         walletSnapshot: activeWalletClient.getSnapshot(),
-        swarmAdmin: { ...state.swarmAdmin, status: approved ? 'approved' : 'ready', approved, error: null },
+        swarmAdmin: { ...state.swarmAdmin, status: activation.approved ? 'approved' : 'ready', approved: activation.approved, activation, error: null },
       };
     } catch (error) {
       state = {
@@ -3100,11 +3100,11 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       }
       state = { ...state, walletSnapshot };
       await ensureSwarmAdminBaseChain();
-      const result = await submitSwarmSafeApproval({ walletClient: activeWalletClient });
+      const result = await submitSwarmActivationApproval({ walletClient: activeWalletClient });
       state = {
         ...state,
         walletSnapshot: activeWalletClient.getSnapshot(),
-        swarmAdmin: { status: 'approved', approved: true, hash: result.hash, error: null },
+        swarmAdmin: { status: 'approved', approved: true, hash: result.hash, activation: result.activation, error: null },
       };
     } catch (error) {
       state = {
@@ -3118,10 +3118,10 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   async function ensureSwarmAdminBaseChain() {
     const current = await activeWalletClient.request({ method: 'eth_chainId' });
-    if (String(current).toLowerCase() === SWARM_ADMIN_APPROVAL.chainHex) return;
-    await activeWalletClient.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: SWARM_ADMIN_APPROVAL.chainHex }] });
+    if (String(current).toLowerCase() === SWARM_ADMIN_ACTIVATION.chainHex) return;
+    await activeWalletClient.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: SWARM_ADMIN_ACTIVATION.chainHex }] });
     const switched = await activeWalletClient.request({ method: 'eth_chainId' });
-    if (String(switched).toLowerCase() !== SWARM_ADMIN_APPROVAL.chainHex) throw new Error('Switch the connected wallet to Base network.');
+    if (String(switched).toLowerCase() !== SWARM_ADMIN_ACTIVATION.chainHex) throw new Error('Switch the connected wallet to Base network.');
   }
 
   async function logoutManagerSession() {
