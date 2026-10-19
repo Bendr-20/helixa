@@ -66,21 +66,13 @@ test('form normalization binds editable roles and contribution weights to the ve
   assert.equal(normalized.token.ticker, 'SIGSWARM');
 });
 
-test('manifest is deterministic, preparation-only, Base-bound, and explicit about pending Mosh integration', () => {
+test('manifest is deterministic, preparation-only, Base-bound, and contains no third-party settlement assumptions', () => {
   const normalized = normalizeSwarmLaunchDraft(draft());
   const manifest = buildSwarmLaunchManifest(normalized);
   assert.equal(manifest.schema, 'multipass.swarm-launch.v1');
   assert.equal(manifest.chainId, 8453);
   assert.equal(manifest.execution.mode, 'PREPARATION_ONLY');
-  assert.equal(manifest.settlement.provider, 'mosh');
-  assert.equal(manifest.settlement.scope, 'AGENT_BUNDLE_LIQUIDITY');
-  assert.equal(manifest.settlement.creatorFees.bundleClaimsBps, 8000);
-  assert.equal(manifest.settlement.creatorFees.moshPlatformBps, 2000);
-  assert.equal(manifest.settlement.creatorFees.looperContributionMapping, 'UNSPECIFIED');
-  assert.equal(manifest.settlement.creatorFees.teamShareBps, null);
-  assert.equal(manifest.settlement.integrationStatus, 'PENDING_VERIFIED_ADAPTER');
-  assert.equal('memberFeeBps' in manifest.settlement, false);
-  assert.equal('protocolFeeBps' in manifest.settlement, false);
+  assert.equal('settlement' in manifest, false);
   assert.equal(manifest.members.reduce((sum, member) => sum + member.contributionBps, 0), 10000);
   assert.equal(manifest.members.every((member) => member.vault.status === 'UNPREPARED'), true);
   assert.equal(canonicalSwarmLaunchJson(manifest), canonicalSwarmLaunchJson(buildSwarmLaunchManifest(normalized)));
@@ -91,10 +83,9 @@ test('Launchpad renders verified CRED, split, token terms, and no live-launch cl
   assert.match(html, /Form a swarm/i);
   assert.match(html, /Launch its token/i);
   assert.match(html, /avg CRED 73/i);
-  assert.match(html, /80% bundle claims/i);
-  assert.match(html, /20% Mosh platform/i);
-  assert.match(html, /not mapped to Looper contribution weights/i);
-  assert.doesNotMatch(html, /80% member vaults/i);
+  assert.doesNotMatch(html, /Mosh/i);
+  assert.doesNotMatch(html, /bundle claims/i);
+  assert.doesNotMatch(html, /third-party settlement/i);
   assert.match(html, /data-swarm-launch-submit[^>]*>Prepare launch manifest</i);
   assert.match(html, /No token, vault, curve, or fee stream will be deployed/i);
   assert.equal((html.match(/data-swarm-member/g) ?? []).length, 3);
