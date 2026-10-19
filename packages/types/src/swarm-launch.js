@@ -52,11 +52,27 @@ export function normalizeSwarmLaunchDraft(input = {}) {
   return Object.freeze({ members, app: normalizeApp(input.app), token: normalizeToken(input.token), gate });
 }
 
+export function normalizeSwarmLaunchRequestForm(formData, memberSlots = []) {
+  if (!formData || typeof formData.get !== 'function') throw new TypeError('Launch form is invalid.');
+  const get = (key) => String(formData.get(key) ?? '').trim();
+  const members = memberSlots.map((_, index) => ({
+    tokenId: get('member_' + index + '_token'),
+    ownerAddress: get('member_' + index + '_owner').toLowerCase(),
+    role: get('member_' + index + '_role'),
+    contributionBps: Number(get('member_' + index + '_bps')),
+  })).filter((member) => member.tokenId || member.ownerAddress || member.role || member.contributionBps);
+  if (members.length < SWARM_LAUNCH_LIMITS.minimumMembers || members.length > SWARM_LAUNCH_LIMITS.maximumMembers) throw new TypeError('Select three to five Loopers.');
+  const normalized = members.map((member) => deepFreeze({ tokenId: positiveUint(member.tokenId, 'Looper token ID'), ownerAddress: normalizeAddress(member.ownerAddress), role: bounded(member.role, 1, 96, 'member role'), contributionBps: integer(member.contributionBps, 1, SWARM_LAUNCH_LIMITS.totalContributionBps, 'contribution') }));
+  if (new Set(normalized.map((member) => member.tokenId)).size !== normalized.length) throw new TypeError('Swarm contains a duplicate Looper identity.');
+  if (normalized.reduce((sum, member) => sum + member.contributionBps, 0) !== SWARM_LAUNCH_LIMITS.totalContributionBps) throw new TypeError('Contribution weights must total exactly 10,000 bps.');
+  return deepFreeze({ members: normalized, app: normalizeApp({ name: get('app_name'), pitch: get('app_pitch'), template: get('app_template'), revenueModel: get('revenue_model'), shipTarget: get('ship_target') }), token: normalizeToken({ name: get('token_name'), ticker: get('token_ticker').toUpperCase(), supply: get('token_supply'), curve: get('token_curve') }) });
+}
+
 export function normalizeSwarmLaunchForm(formData, verifiedMembers = []) {
   if (!formData || typeof formData.get !== 'function') throw new TypeError('Launch form is invalid.');
   const get = (key) => String(formData.get(key) ?? '').trim();
   return normalizeSwarmLaunchDraft({
-    members: verifiedMembers.map((member) => ({ ...member, role: get('member_' + member.tokenId + '_role'), contributionBps: Number(get('member_' + member.tokenId + '_bps')) })),
+    members: verifiedMembers.map((member) => ({ ...member, ownerAddress: member.ownerAddress, role: get('member_' + member.tokenId + '_role'), contributionBps: Number(get('member_' + member.tokenId + '_bps')) })),
     app: { name: get('app_name'), pitch: get('app_pitch'), template: get('app_template'), revenueModel: get('revenue_model'), shipTarget: get('ship_target') },
     token: { name: get('token_name'), ticker: get('token_ticker').toUpperCase(), supply: get('token_supply'), curve: get('token_curve') },
   });
@@ -71,7 +87,7 @@ export function buildSwarmLaunchManifest(input = {}) {
     execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, requiresSeparateApproval: true },
     gate: { minimumMembers: SWARM_LAUNCH_LIMITS.minimumMembers, maximumMembers: SWARM_LAUNCH_LIMITS.maximumMembers, minimumAverageCred: SWARM_LAUNCH_LIMITS.minimumAverageCred, observedAverageCred: draft.gate.averageCred, methodologyVersions: [...new Set(draft.members.map((member) => member.cred.methodologyVersion))].sort() },
     app: { ...draft.app }, token: { ...draft.token },
-    members: draft.members.map((member) => ({ identity: { type: 'looper_erc721', chainId: SWARM_LAUNCH_CHAIN_ID, registry: SWARM_LAUNCH_LOOPERS_COLLECTION, tokenId: member.tokenId, erc8004Id: member.erc8004Id }, name: member.name, role: member.role, contributionBps: member.contributionBps, cred: { ...member.cred }, vault: { status: 'UNPREPARED', kind: 'UNSPECIFIED', address: null } })),
+    members: draft.members.map((member) => ({ identity: { type: 'looper_erc721', chainId: SWARM_LAUNCH_CHAIN_ID, registry: SWARM_LAUNCH_LOOPERS_COLLECTION, tokenId: member.tokenId, erc8004Id: member.erc8004Id }, consentAuthority: member.ownerAddress, name: member.name, role: member.role, contributionBps: member.contributionBps, cred: { ...member.cred }, vault: { status: 'UNPREPARED', kind: 'UNSPECIFIED', address: null } })),
   });
 }
 
@@ -86,7 +102,7 @@ export function canonicalSwarmLaunchJson(value) {
 
 function normalizeMembers(values) {
   if (!Array.isArray(values)) throw new TypeError('Swarm members are invalid.');
-  const members = values.map((member) => deepFreeze({ tokenId: canonicalUint(member?.tokenId, 'Looper token ID'), name: bounded(member?.name, 1, 128, 'member name'), role: bounded(member?.role, 1, 96, 'member role'), contributionBps: integer(member?.contributionBps, 1, SWARM_LAUNCH_LIMITS.totalContributionBps, 'contribution'), cred: normalizeCred(member?.cred), erc8004Id: normalizeErc8004Id(member?.erc8004Id) }));
+  const members = values.map((member) => deepFreeze({ tokenId: canonicalUint(member?.tokenId, 'Looper token ID'), ownerAddress: normalizeAddress(member?.ownerAddress), name: bounded(member?.name, 1, 128, 'member name'), role: bounded(member?.role, 1, 96, 'member role'), contributionBps: integer(member?.contributionBps, 1, SWARM_LAUNCH_LIMITS.totalContributionBps, 'contribution'), cred: normalizeCred(member?.cred), erc8004Id: normalizeErc8004Id(member?.erc8004Id) }));
   if (new Set(members.map((member) => member.tokenId)).size !== members.length) throw new TypeError('Swarm contains a duplicate Looper identity.');
   return Object.freeze(members);
 }
@@ -99,7 +115,9 @@ function normalizeCred(cred) {
 }
 function normalizeApp(app = {}) { return deepFreeze({ name: bounded(app.name, 1, 64, 'app name'), pitch: bounded(app.pitch, 1, 1024, 'app pitch'), template: closed(app.template, TEMPLATES, 'app template'), revenueModel: closed(app.revenueModel, REVENUE_MODELS, 'revenue model'), shipTarget: closed(app.shipTarget, SHIP_TARGETS, 'ship target') }); }
 function normalizeToken(token = {}) { const ticker = bounded(token.ticker, 2, 10, 'token ticker'); if (!/^[A-Z][A-Z0-9]{1,9}$/u.test(ticker)) throw new TypeError('Token ticker is invalid.'); return deepFreeze({ name: bounded(token.name, 1, 32, 'token name'), ticker, supply: closed(String(token.supply ?? ''), SUPPLIES, 'token supply'), supplyUnit: 'WHOLE_TOKENS', decimals: null, curve: closed(token.curve, CURVES, 'launch curve') }); }
+function normalizeAddress(value) { const text = String(value ?? '').toLowerCase(); if (!/^0x[0-9a-f]{40}$/u.test(text)) throw new TypeError('member owner address is invalid.'); return text; }
 function normalizeErc8004Id(value) { if (value === null || value === undefined || value === '') return null; const text = String(value); if (!/^\d+:\d+$/u.test(text)) throw new TypeError('ERC-8004 identity is invalid.'); return text; }
+function positiveUint(value, name) { const text = canonicalUint(value, name); if (text === '0') throw new TypeError(name + ' is invalid.'); return text; }
 function canonicalUint(value, name) { const text = String(value ?? ''); if (!/^(0|[1-9][0-9]*)$/u.test(text)) throw new TypeError(name + ' is invalid.'); return text; }
 function integer(value, min, max, name) { if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError(name + ' is invalid.'); return value; }
 function bounded(value, min, max, name) { if (typeof value !== 'string' || value.length < min || value.length > max) throw new TypeError(name + ' is invalid.'); return value; }

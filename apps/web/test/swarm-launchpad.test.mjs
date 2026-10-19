@@ -21,9 +21,9 @@ const freshCred = (score, tier = 'PRIME') => ({
 });
 
 const members = [
-  { tokenId: '1', name: 'Bendr 2.0', role: 'Lead', contributionBps: 4000, cred: freshCred(74, 'QUALIFIED'), erc8004Id: '8453:18531' },
-  { tokenId: '57', name: 'Cheryl', role: 'Builder', contributionBps: 3500, cred: freshCred(66, 'QUALIFIED'), erc8004Id: '8453:57' },
-  { tokenId: '74', name: 'Axiom', role: 'Operator', contributionBps: 2500, cred: freshCred(79), erc8004Id: '8453:74' },
+  { tokenId: '1', ownerAddress: '0x1111111111111111111111111111111111111111', name: 'Bendr 2.0', role: 'Lead', contributionBps: 4000, cred: freshCred(74, 'QUALIFIED'), erc8004Id: '8453:18531' },
+  { tokenId: '57', ownerAddress: '0x1111111111111111111111111111111111111111', name: 'Cheryl', role: 'Builder', contributionBps: 3500, cred: freshCred(66, 'QUALIFIED'), erc8004Id: '8453:57' },
+  { tokenId: '74', ownerAddress: '0x1111111111111111111111111111111111111111', name: 'Axiom', role: 'Operator', contributionBps: 2500, cred: freshCred(79), erc8004Id: '8453:74' },
 ];
 
 function draft(overrides = {}) {
@@ -89,4 +89,27 @@ test('Launchpad renders verified CRED, split, token terms, and no live-launch cl
   assert.match(html, /data-swarm-launch-submit[^>]*>Prepare launch manifest</i);
   assert.match(html, /No token, vault, curve, or fee stream will be deployed/i);
   assert.equal((html.match(/data-swarm-member/g) ?? []).length, 3);
+});
+
+
+test('Launchpad exposes editable multi-wallet roster fields before server verification', () => {
+  const html = renderSwarmLaunchpad({ status: 'editing', draft: draft(), authenticatedWallet: members[0].ownerAddress });
+  assert.match(html, /name="member_0_token"/i);
+  assert.match(html, /name="member_0_owner"/i);
+  assert.match(html, /Add another Looper/i);
+  assert.match(html, /server verifies ownership, controller, and CRED/i);
+});
+
+test('prepared Launchpad creates and signs a shareable consent request without deployment authority', () => {
+  const manifest = buildSwarmLaunchManifest(normalizeSwarmLaunchDraft(draft()));
+  const prepared = renderSwarmLaunchpad({ status: 'prepared', draft: draft(), manifest, manifestSha256: '0x' + 'a'.repeat(64), authenticatedWallet: members[0].ownerAddress });
+  assert.match(prepared, /Create consent request/i);
+  assert.match(prepared, /fieldset class="swarm-launch-editor" disabled/i);
+  assert.match(prepared, /data-swarm-launch-submit disabled[^>]*>Manifest prepared/i);
+  const proposal = { proposalId: 'consent-1', status: 'COLLECTING_CONSENT', deploymentAuthorized: false, manifestSha256: '0x' + 'a'.repeat(64), participants: [{ wallet: members[0].ownerAddress, tokenIds: ['1','57','74'], consentedAt: null }], expiresAt: Date.now() + 1000 };
+  const collecting = renderSwarmLaunchpad({ status: 'prepared', draft: draft(), manifest, manifestSha256: proposal.manifestSha256, proposal, consentUrl: 'https://helixa.xyz/multipass/console/?launch_consent=consent-1', authenticatedWallet: members[0].ownerAddress });
+  assert.match(collecting, /Awaiting 1 wallet consent/i);
+  assert.match(collecting, /Sign launch consent/i);
+  assert.match(collecting, /launch_consent=consent-1/i);
+  assert.doesNotMatch(collecting, /deployment authorized(?!:\s*false)/i);
 });

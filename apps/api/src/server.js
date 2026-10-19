@@ -15,6 +15,8 @@ import {
   DEFAULT_LOOPER_CRED_API_BASE_URL,
   DEFAULT_LOOPER_CRED_CONCURRENCY,
   DEFAULT_LOOPER_CRED_TIMEOUT_MS,
+  createLooperCredClient,
+  enrichOwnedLoopersWithCred,
 } from './looper-cred-client.js';
 import { createLooperCodexRuntime } from './looper-codex-runtime.js';
 import { createLooperMarketplaceListingsLoader } from './looper-marketplace.js';
@@ -25,7 +27,11 @@ import { readOpenSeaApiKey } from './loopers-sales/opensea.js';
 import { createMissionDatabase } from './missions/database.js';
 import { createMissionRepository } from './missions/repository.js';
 import { createMissionService } from './missions/service.js';
+import { createSwarmLaunchConsentService } from './missions/swarm-launch-consent.js';
+import { createSwarmLaunchConsentStore } from './missions/swarm-launch-consent-store.js';
+import { previewSwarmLaunch } from './missions/swarm-launch-preview.js';
 import { createSqliteSavedRecords } from './saved-records.js';
+import { verifyEthereumPersonalSignature } from './signature-verifier.js';
 import { buildRestap3802Discovery } from './restap-3802-contracts.js';
 import { authorizeRestap3802Policy, loadRestap3802Policy } from './restap-3802-policy.js';
 import { createRestapNewsAuthenticator } from './restap-news-auth.js';
@@ -229,6 +235,10 @@ export async function startServer(options = {}) {
       repository: createMissionRepository({ store: missionStore, createId: () => 'operation-' + randomUUID() }),
     })
     : null);
+  const ownsSwarmLaunchConsentStore = Boolean(parsed.databasePath && !options.savedRecords && !options.swarmLaunchConsentService && !options.swarmLaunchConsentStore);
+  const swarmLaunchConsentStore = options.swarmLaunchConsentStore ?? (ownsSwarmLaunchConsentStore
+    ? createSwarmLaunchConsentStore({ filename: parsed.databasePath })
+    : null);
   const activationService = options.activationService ?? activateHelixaRecord;
   const loopersAllowlist = options.loopersAllowlist
     ?? (parsed.loopersAllowlistPath
@@ -277,6 +287,7 @@ export async function startServer(options = {}) {
   let restapNetworkService;
   let restapNetworkProductionFoundation;
   let restapVerifiedSendService = options.restapVerifiedSendService ?? null;
+  let swarmLaunchConsentService = options.swarmLaunchConsentService ?? null;
   let closePromise = null;
 
   const nodeServer = http.createServer(async (req, res) => {
@@ -397,6 +408,24 @@ export async function startServer(options = {}) {
       ...consoleBootstrapOptions,
       logger: options.logger ?? console,
     });
+    if (!swarmLaunchConsentService && swarmLaunchConsentStore) {
+      const consentCredClient = createLooperCredClient({
+        baseUrl: parsed.loopersCredApiBaseUrl,
+        fetchImpl: parsed.fetchImpl ?? fetch,
+        timeoutMs: parsed.loopersCredTimeoutMs,
+      });
+      const consentOwnedAgentLoader = async (input) => enrichOwnedLoopersWithCred(
+        await consoleBootstrap.ownedAgentLoader(input),
+        { credClient: consentCredClient, concurrency: parsed.loopersCredConcurrency },
+      );
+      swarmLaunchConsentService = createSwarmLaunchConsentService({
+        store: swarmLaunchConsentStore,
+        preview: (input) => previewSwarmLaunch({ ...input, loadOwnedAgents: consentOwnedAgentLoader }),
+        authorizeLooper: consoleBootstrap.authorizeLooper,
+        verifySignature: options.signatureVerifier ?? verifyEthereumPersonalSignature,
+        createId: () => 'consent-' + randomUUID(),
+      });
+    }
 
     restapNetworkSigner = options.restapNetworkSigner ?? null;
     if (restapNetworkSigner !== null && !isRestapNetworkSigner(restapNetworkSigner)) throw new Error('RESTAP network signer unavailable.');
@@ -563,6 +592,7 @@ export async function startServer(options = {}) {
       baseUrl: apiBaseUrl,
       savedRecords,
       missionService,
+      swarmLaunchConsentService,
       looperNameStore,
       activationService,
       allowedOrigins: parsed.allowedOrigins,
@@ -633,6 +663,8 @@ export async function startServer(options = {}) {
       ownsLooperNameStore,
       missionStore,
       ownsMissionStore,
+      swarmLaunchConsentStore,
+      ownsSwarmLaunchConsentStore,
     }).catch(() => {});
     throw error;
   }
@@ -667,6 +699,8 @@ export async function startServer(options = {}) {
           ownsLooperNameStore,
           missionStore,
           ownsMissionStore,
+          swarmLaunchConsentStore,
+          ownsSwarmLaunchConsentStore,
         });
       }
       return closePromise;
@@ -674,7 +708,7 @@ export async function startServer(options = {}) {
   };
 }
 
-async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore }) {
+async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore, swarmLaunchConsentStore, ownsSwarmLaunchConsentStore }) {
   const errors = [];
   for (const close of [
     () => closeHttpServer(nodeServer),
@@ -686,6 +720,7 @@ async function closeServerResources({ consoleBootstrap, nodeServer, restapPublic
     () => ownsSavedRecords ? savedRecords?.close?.() : undefined,
     () => ownsLooperNameStore ? looperNameStore?.close?.() : undefined,
     () => ownsMissionStore ? missionStore?.close?.() : undefined,
+    () => ownsSwarmLaunchConsentStore ? swarmLaunchConsentStore?.close?.() : undefined,
   ]) {
     try {
       await close();

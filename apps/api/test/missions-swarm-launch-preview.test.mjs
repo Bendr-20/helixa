@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { previewSwarmLaunch } from '../src/missions/swarm-launch-preview.js';
 
+const OWNER = '0x1234567890abcdef1234567890abcdef12345678';
+
 const cred = (score, tier = 'QUALIFIED') => ({ status: 'available', score, tier, coverage: { score: 80, label: 'STRONG' }, freshness: { stale: false }, methodologyVersion: 'looper-cred-v1', computedAt: '2026-10-19T00:00:00.000Z' });
 const canonical = { chainId: 8453, contract: '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a', owner: '0x1234567890abcdef1234567890abcdef12345678', controllerVerified: true };
 const agents = [
@@ -27,4 +29,30 @@ test('preview rejects non-owned, stale, duplicate, and browser-invented member e
   await assert.rejects(() => previewSwarmLaunch({ owner: '0x1234567890abcdef1234567890abcdef12345678', input, loadOwnedAgents: async () => agents.map((agent, index) => index === 1 ? { ...agent, cred: { ...agent.cred, status: 'stale', freshness: { stale: true } } } : agent) }), /CRED|fresh/i);
   await assert.rejects(() => previewSwarmLaunch({ owner: '0x1234567890abcdef1234567890abcdef12345678', input: { ...input, members: [input.members[0], input.members[0], input.members[2]] }, loadOwnedAgents: async () => agents }), /duplicate/i);
   await assert.rejects(() => previewSwarmLaunch({ owner: '0x1234567890abcdef1234567890abcdef12345678', input, loadOwnedAgents: async () => agents.map((agent, index) => index === 1 ? { ...agent, controllerVerified: false } : agent) }), /ownership|controller/i);
+});
+
+
+test('preview validates a multi-wallet roster and records each canonical consent authority', async () => {
+  const secondOwner = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+  const multiInput = { ...input, members: [
+    { ...input.members[0], ownerAddress: OWNER },
+    { ...input.members[1], ownerAddress: secondOwner },
+    { ...input.members[2], ownerAddress: secondOwner },
+  ] };
+  const calls = [];
+  const result = await previewSwarmLaunch({ owner: OWNER, input: multiInput, loadOwnedAgents: async ({ address }) => {
+    calls.push(address);
+    return address === OWNER ? [agents[0]] : agents.slice(1).map((agent) => ({ ...agent, owner: secondOwner }));
+  } });
+  assert.deepEqual(calls.sort(), [OWNER, secondOwner].sort());
+  assert.deepEqual(result.manifest.members.map((member) => member.consentAuthority), [OWNER, secondOwner, secondOwner]);
+});
+
+test('preview requires the initiating wallet to control at least one nominated Looper', async () => {
+  const secondOwner = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+  await assert.rejects(() => previewSwarmLaunch({
+    owner: OWNER,
+    input: { ...input, members: input.members.map((member) => ({ ...member, ownerAddress: secondOwner })) },
+    loadOwnedAgents: async () => agents.map((agent) => ({ ...agent, owner: secondOwner })),
+  }), /initiating wallet/i);
 });

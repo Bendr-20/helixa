@@ -81,11 +81,14 @@ import { deriveX401ManifestFromFragments } from './x401-manifest.js';
 import { createDeferredXmtpAgentClient } from './xmtp-agent/index.js';
 import { handleMissionRequest } from './missions/routes.js';
 import { previewSwarmLaunch } from './missions/swarm-launch-preview.js';
+import { ConsentError } from './missions/swarm-launch-consent.js';
 
 export {
   createMissionService, MissionServiceError, MISSION_REQUEST_MAX_BYTES, projectPrivateMission, projectPublicMission,
 } from './missions/index.js';
 
+const SWARM_LAUNCH_WALLET_RATE_LIMIT = Object.freeze({ limit: 12, windowMs: 60_000 });
+const SWARM_LAUNCH_GLOBAL_RATE_LIMIT = Object.freeze({ limit: 120, windowMs: 60_000 });
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
 };
@@ -235,6 +238,7 @@ export function createMultipassApi({
   baseUrl,
   savedRecords,
   missionService,
+  swarmLaunchConsentService,
   activationService,
   allowedOrigins,
   adminSecret,
@@ -386,6 +390,9 @@ export function createMultipassApi({
     store,
     savedRecords,
     missionService: missionService ?? null,
+    swarmLaunchConsentService: swarmLaunchConsentService ?? null,
+    swarmLaunchWalletRateLimiter: createFixedWindowRateLimiter(SWARM_LAUNCH_WALLET_RATE_LIMIT),
+    swarmLaunchGlobalRateLimiter: createFixedWindowRateLimiter(SWARM_LAUNCH_GLOBAL_RATE_LIMIT),
     activationService,
     normalizedBaseUrl,
     allowedOrigins: normalizeAllowedOrigins(allowedOrigins, normalizedBaseUrl),
@@ -560,6 +567,9 @@ export function createMultipassApi({
         }
         if (error instanceof ApiNotFoundError) {
           return errorResponse(404, 'not_found', error.message);
+        }
+        if (error instanceof ConsentError) {
+          return errorResponse(error.status ?? 400, error.code, error.message);
         }
         if (error instanceof GroupActivationError) {
           return errorResponse(error.status ?? 400, error.code, error.message, error.details ?? {});
@@ -1428,9 +1438,35 @@ async function handleConsoleAgentMessage(request, context) {
 }
 
 async function handleLooperPost(request, parts, context) {
+  if (parts[2] === 'swarm-launch' && parts[3] === 'consents') {
+    const service = context.swarmLaunchConsentService;
+    if (!service) return errorResponse(503, 'not_configured', 'Swarm launch consent is not configured.');
+    const session = requireConsoleSession(request, context, { requireCsrf: true });
+    const throttle = checkSwarmLaunchRateLimit(session.wallet, context);
+    if (throttle) return throttle;
+    if (parts.length === 4) {
+      const input = await readBoundedJsonBody(request, 16 * 1024);
+      return jsonResponse({ schema_version: '0.1.0', proposal: await service.createProposal({ actorAddress: session.wallet, input }) }, 201, { 'cache-control': 'no-store' });
+    }
+    const proposalId = normalizeSwarmConsentProposalId(parts[4]);
+    if (parts.length === 6 && parts[5] === 'challenge') {
+      const body = await readBoundedJsonBody(request, 1024);
+      if (Object.keys(body).length !== 0) throw new ApiInputError('invalid_request', 'Consent challenge body must be empty.');
+      return jsonResponse({ schema_version: '0.1.0', challenge: await service.readChallenge({ actorAddress: session.wallet, proposalId }) }, 200, { 'cache-control': 'no-store' });
+    }
+    if (parts.length === 6 && parts[5] === 'sign') {
+      const body = await readBoundedJsonBody(request, 16 * 1024);
+      if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || typeof body.signature !== 'string') throw new ApiInputError('invalid_request', 'Consent signature request is invalid.');
+      return jsonResponse({ schema_version: '0.1.0', proposal: await service.recordConsent({ actorAddress: session.wallet, proposalId, signature: body.signature }) }, 200, { 'cache-control': 'no-store' });
+    }
+    return errorResponse(404, 'not_found', 'Route not found.');
+  }
+
   if (parts[2] === 'swarm-launch' && parts[3] === 'preview' && parts.length === 4) {
     const session = requireConsoleSession(request, context, { requireCsrf: true });
-    const body = await readJsonBody(request);
+    const throttle = checkSwarmLaunchRateLimit(session.wallet, context);
+    if (throttle) return throttle;
+    const body = await readBoundedJsonBody(request, 16 * 1024);
     const result = await previewSwarmLaunch({ owner: session.wallet, input: body, loadOwnedAgents: context.loopersOwnedAgentLoader });
     return jsonResponse({ schema_version: result.schemaVersion, status: result.status, manifest: result.manifest, manifest_sha256: result.manifestSha256 }, 200, { 'cache-control': 'no-store' });
   }
@@ -1525,6 +1561,14 @@ async function handleLooperPost(request, parts, context) {
 }
 
 async function handleLooperRead(request, url, parts, context) {
+  if (parts[2] === 'swarm-launch' && parts[3] === 'consents' && parts[4] && parts.length === 5) {
+    const service = context.swarmLaunchConsentService;
+    if (!service) return errorResponse(503, 'not_configured', 'Swarm launch consent is not configured.');
+    const session = requireConsoleSession(request, context);
+    const proposal = await service.readProposal({ actorAddress: session.wallet, proposalId: normalizeSwarmConsentProposalId(parts[4]) });
+    return jsonResponse({ schema_version: '0.1.0', proposal }, 200, { 'cache-control': 'no-store' });
+  }
+
   const previewMatch = url.pathname.match(/^\/api\/loopers\/marketplace\/preview\/([1-9]\d*)\.jpg$/u);
   if (previewMatch) {
     const tokenId = previewMatch[1];
@@ -2126,6 +2170,20 @@ function rejectExecutableWalletContext(value, path = '') {
     }
     rejectExecutableWalletContext(entry, nextPath);
   }
+}
+
+function checkSwarmLaunchRateLimit(wallet, context) {
+  const walletLimit = context.swarmLaunchWalletRateLimiter.check(String(wallet).toLowerCase());
+  const globalLimit = context.swarmLaunchGlobalRateLimiter.check('global');
+  if (walletLimit.allowed && globalLimit.allowed) return null;
+  const retryAfter = Math.max(walletLimit.retryAfterSeconds ?? 1, globalLimit.retryAfterSeconds ?? 1);
+  return errorResponse(429, 'swarm_launch_rate_limited', 'Swarm launch request limit exceeded.', undefined, { 'retry-after': String(retryAfter) });
+}
+
+function normalizeSwarmConsentProposalId(value) {
+  const text = String(value ?? '');
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(text)) throw new ApiInputError('invalid_request', 'Consent proposal ID is invalid.');
+  return text;
 }
 
 function normalizeLooperTokenId(value) {

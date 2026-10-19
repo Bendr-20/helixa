@@ -63,6 +63,7 @@ export interface MultipassApiOptions {
   baseUrl?: string;
   savedRecords?: SavedRecordsStore;
   missionService?: MissionService;
+  swarmLaunchConsentService?: { createProposal(input: Record<string, unknown>): Promise<unknown>; readProposal(input: Record<string, unknown>): Promise<unknown>; readChallenge(input: Record<string, unknown>): Promise<unknown>; recordConsent(input: Record<string, unknown>): Promise<unknown> };
   activationService?: (agent: string) => Promise<unknown> | unknown;
   allowedOrigins?: string[];
   adminSecret?: string | null;

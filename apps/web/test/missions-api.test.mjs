@@ -50,3 +50,23 @@ test('launch preview uses the fixed authenticated CSRF route without mutation re
   assert.equal(init.headers['idempotency-key'], undefined);
   assert.deepEqual(JSON.parse(init.body), { members: [], app: {}, token: {} });
 });
+
+
+test('launch consent client uses fixed authenticated proposal routes and CSRF only on writes', async () => {
+  const calls = [];
+  const api = createMissionApi({ fetchImpl: async (...args) => { calls.push(args); return response({ schema_version: '0.1.0', proposal: { proposalId: 'proposal-1' }, challenge: { message: 'sign' } }); } });
+  await api.createLaunchConsent({ csrfToken: 'csrf', body: { members: [] } });
+  await api.getLaunchConsent({ proposalId: 'proposal-1' });
+  await api.getLaunchConsentChallenge({ proposalId: 'proposal-1', csrfToken: 'csrf' });
+  await api.signLaunchConsent({ proposalId: 'proposal-1', csrfToken: 'csrf', signature: '0x' + 'aa'.repeat(65) });
+  assert.deepEqual(calls.map(([url]) => url), [
+    '/api/loopers/swarm-launch/consents',
+    '/api/loopers/swarm-launch/consents/proposal-1',
+    '/api/loopers/swarm-launch/consents/proposal-1/challenge',
+    '/api/loopers/swarm-launch/consents/proposal-1/sign',
+  ]);
+  assert.equal(calls[0][1].headers['x-csrf-token'], 'csrf');
+  assert.equal(calls[1][1].headers['x-csrf-token'], undefined);
+  assert.deepEqual(JSON.parse(calls[2][1].body), {});
+  assert.deepEqual(JSON.parse(calls[3][1].body), { signature: '0x' + 'aa'.repeat(65) });
+});

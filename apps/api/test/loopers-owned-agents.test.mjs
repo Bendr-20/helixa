@@ -539,3 +539,30 @@ test('POST /api/loopers/swarm-launch/preview recomputes an authenticated prepara
   assert.equal(json.manifest.execution.deploymentAuthorized, false);
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
+
+
+test('swarm launch consent routes require Console auth and dispatch exact proposal operations', async () => {
+  const calls = [];
+  const proposal = { proposalId: 'proposal-1', status: 'COLLECTING_CONSENT', deploymentAuthorized: false, manifestSha256: '0x' + 'a'.repeat(64), manifest: { execution: { deploymentAuthorized: false } }, participants: [], createdAt: 1, expiresAt: 2 };
+  const service = {
+    async createProposal(value) { calls.push(['create', value]); return proposal; },
+    async readProposal(value) { calls.push(['read', value]); return proposal; },
+    async readChallenge(value) { calls.push(['challenge', value]); return { proposalId: 'proposal-1', message: 'sign me', manifestSha256: proposal.manifestSha256, expiresAt: 2 }; },
+    async recordConsent(value) { calls.push(['consent', value]); return { ...proposal, status: 'CONSENT_COMPLETE' }; },
+  };
+  const api = createMultipassApi({
+    store: createMemoryStore(), swarmLaunchConsentService: service,
+    consoleAuthStore: { validateSession: ({ csrfToken, requireCsrf }) => { if (requireCsrf) assert.equal(csrfToken, 'consent-csrf'); return { wallet: WALLET.toLowerCase() }; } },
+  });
+  const headers = { ...AUTH_COOKIE, 'x-csrf-token': 'consent-csrf', 'content-type': 'application/json' };
+  const created = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents', { method: 'POST', headers, body: JSON.stringify({ members: [] }) }));
+  const read = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1', { headers: AUTH_COOKIE }));
+  const challenge = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1/challenge', { method: 'POST', headers, body: '{}' }));
+  const consent = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1/sign', { method: 'POST', headers, body: JSON.stringify({ signature: '0x' + 'aa'.repeat(65) }) }));
+  assert.deepEqual([created.status, read.status, challenge.status, consent.status], [201, 200, 200, 200]);
+  assert.deepEqual(calls.map(([name]) => name), ['create', 'read', 'challenge', 'consent']);
+  assert.equal(calls[0][1].actorAddress, WALLET.toLowerCase());
+  assert.deepEqual(calls[0][1].input, { members: [] });
+  assert.equal(calls[3][1].signature, '0x' + 'aa'.repeat(65));
+  assert.equal((await consent.json()).proposal.deploymentAuthorized, false);
+});

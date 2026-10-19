@@ -81,7 +81,7 @@ test('disabled Swarm Command preview renders before wallet authentication', () =
 
 test('Swarm Command renders token-launch preparation inside the existing Console workspace', () => {
   const agents = [...sampleAgents(), { tokenId: '74', name: 'Axiom', role: 'Operator', cred: canonicalCred(79), verified: true, href: '/multipass/?agent=74' }];
-  const members = agents.map((agent, index) => ({ tokenId: agent.tokenId, name: agent.name, role: agent.role, contributionBps: [4000, 3000, 3000][index], cred: agent.cred, erc8004Id: '8453:' + agent.tokenId }));
+  const members = agents.map((agent, index) => ({ tokenId: agent.tokenId, ownerAddress: '0x1234567890abcdef1234567890abcdef12345678', name: agent.name, role: agent.role, contributionBps: [4000, 3000, 3000][index], cred: agent.cred, erc8004Id: '8453:' + agent.tokenId }));
   const snapshot = createMultipassConsoleSnapshot({ agents, state: { walletSnapshot: { connected: true, address: '0x1234567890abcdef1234567890abcdef12345678' }, consoleAuthenticatedWallet: '0x1234567890abcdef1234567890abcdef12345678', consoleOwnedAgents: { status: 'loaded', agents }, consoleSelectedAgentId: '1', consoleWorkspaceView: 'missions', consoleMissions: { status: 'loaded', view: 'launchpad', missions: [] }, consoleLaunchpad: { status: 'editing', draft: { members, app: { name: 'Signal Swarm', pitch: 'Ship it.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' } }, manifest: null, error: null } } });
   const root = render(renderMultipassConsole(snapshot));
   assert.ok(root.querySelector('.swarm-launchpad'));

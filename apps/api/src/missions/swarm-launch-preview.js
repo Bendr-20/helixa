@@ -5,19 +5,24 @@ export async function previewSwarmLaunch({ owner, input, loadOwnedAgents } = {})
   const address = normalizeAddress(owner);
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Swarm launch preview is invalid.');
   if (typeof loadOwnedAgents !== 'function') throw new TypeError('Owned Looper verification is unavailable.');
-  const requests = normalizeMemberRequests(input.members);
-  const owned = await loadOwnedAgents({ address });
-  if (!Array.isArray(owned)) throw new TypeError('Owned Looper verification is unavailable.');
-  const byTokenId = new Map(owned.map((agent) => [canonicalTokenId(agent?.tokenId), agent]));
+  const requests = normalizeMemberRequests(input.members, address);
+  if (!requests.some((request) => request.ownerAddress === address)) throw new TypeError('The initiating wallet must control at least one nominated Looper.');
+  const ownerAgents = new Map();
+  for (const ownerAddress of [...new Set(requests.map((request) => request.ownerAddress))]) {
+    const owned = await loadOwnedAgents({ address: ownerAddress });
+    if (!Array.isArray(owned)) throw new TypeError('Owned Looper verification is unavailable.');
+    ownerAgents.set(ownerAddress, new Map(owned.map((agent) => [canonicalTokenId(agent?.tokenId), agent])));
+  }
   const members = requests.map((request) => {
-    const agent = byTokenId.get(request.tokenId);
-    if (!agent) throw new TypeError('Every launch member must be an owned Looper.');
+    const agent = ownerAgents.get(request.ownerAddress)?.get(request.tokenId);
+    if (!agent) throw new TypeError('Every launch member must be owned by its nominated consent wallet.');
     if (Number(agent.chainId) !== SWARM_LAUNCH_CHAIN_ID
       || String(agent.contract ?? '').toLowerCase() !== SWARM_LAUNCH_LOOPERS_COLLECTION.toLowerCase()
-      || String(agent.owner ?? '').toLowerCase() !== address
+      || String(agent.owner ?? '').toLowerCase() !== request.ownerAddress
       || agent.controllerVerified !== true) throw new TypeError('Canonical Looper ownership and controller evidence is required.');
     return {
       tokenId: request.tokenId,
+      ownerAddress: request.ownerAddress,
       name: bounded(String(agent.name ?? ''), 1, 128, 'member name'),
       role: request.role,
       contributionBps: request.contributionBps,
@@ -35,10 +40,11 @@ export async function previewSwarmLaunch({ owner, input, loadOwnedAgents } = {})
   });
 }
 
-function normalizeMemberRequests(values) {
+function normalizeMemberRequests(values, defaultOwner) {
   if (!Array.isArray(values) || values.length < 3 || values.length > 5) throw new TypeError('Select three to five Loopers.');
   const normalized = values.map((member) => ({
     tokenId: canonicalTokenId(member?.tokenId),
+    ownerAddress: normalizeAddress(member?.ownerAddress ?? defaultOwner),
     role: bounded(member?.role, 1, 96, 'member role'),
     contributionBps: boundedInteger(member?.contributionBps, 1, 10_000, 'contribution'),
   }));

@@ -151,7 +151,7 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
     }),
     restapNetwork: createConsoleRestapNetworkSnapshot(state.consoleRestapNetwork, activeAgent?.tokenId),
     missions: state.consoleMissions ?? { status: 'disabled', missions: [] },
-    launchpad: state.consoleLaunchpad ?? { status: 'idle', draft: { members: [], app: {}, token: {} }, manifest: null, error: null },
+    launchpad: { ...(state.consoleLaunchpad ?? { status: 'idle', draft: { members: [], app: {}, token: {} }, manifest: null, error: null }), authenticatedWallet: state.consoleAuthenticatedWallet ?? null },
     rosterDrawers: {
       mainOpen: Boolean(state.consoleMainRosterOpen),
       sidebarOpen: Boolean(state.consoleSidebarRosterOpen),

@@ -9,3 +9,5 @@ export { createMissionRuntimePolicy, verifyMissionRuntimeStartup } from './runti
 export { createMissionXmtpGroups, MissionXmtpError } from './xmtp-groups.js';
 export { createMissionXmtpOutbox, MISSION_XMTP_EVENT_TYPES } from './xmtp-outbox.js';
 export { createMissionLaunchCoordinator, MISSION_LAUNCH_OPERATION_STATES } from './launch-coordinator.js';
+export { createSwarmLaunchConsentService, buildSwarmLaunchConsentMessage, ConsentError } from './swarm-launch-consent.js';
+export { createSwarmLaunchConsentStore } from './swarm-launch-consent-store.js';
