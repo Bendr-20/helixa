@@ -80,6 +80,7 @@ import {
 import { deriveX401ManifestFromFragments } from './x401-manifest.js';
 import { createDeferredXmtpAgentClient } from './xmtp-agent/index.js';
 import { handleMissionRequest } from './missions/routes.js';
+import { previewSwarmLaunch } from './missions/swarm-launch-preview.js';
 
 export {
   createMissionService, MissionServiceError, MISSION_REQUEST_MAX_BYTES, projectPrivateMission, projectPublicMission,
@@ -1427,6 +1428,13 @@ async function handleConsoleAgentMessage(request, context) {
 }
 
 async function handleLooperPost(request, parts, context) {
+  if (parts[2] === 'swarm-launch' && parts[3] === 'preview' && parts.length === 4) {
+    const session = requireConsoleSession(request, context, { requireCsrf: true });
+    const body = await readJsonBody(request);
+    const result = await previewSwarmLaunch({ owner: session.wallet, input: body, loadOwnedAgents: context.loopersOwnedAgentLoader });
+    return jsonResponse({ schema_version: result.schemaVersion, status: result.status, manifest: result.manifest, manifest_sha256: result.manifestSha256 }, 200, { 'cache-control': 'no-store' });
+  }
+
   if (parts[2] === 'allowlist' && parts[3] === 'register' && parts.length === 4) {
     if (!context.loopersAllowlist) {
       return errorResponse(503, 'not_configured', 'Looper allowlist registration is not configured.');

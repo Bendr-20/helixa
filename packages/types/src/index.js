@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module';
 
 export * from './missions.js';
+export * from './swarm-launch.js';
 
 const require = createRequire(import.meta.url);
 

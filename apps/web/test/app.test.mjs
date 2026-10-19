@@ -8294,4 +8294,9 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   assert.equal(calls.at(-1)[0], 'get');
   root.querySelector('[data-mission-action="back"]')?.click();
   assert.ok(root.querySelector('.mission-card'));
+  root.querySelector('[data-mission-action="launchpad"]')?.click();
+  await flushAsyncEvents();
+  assert.ok(root.querySelector('.swarm-launchpad'));
+  assert.match(root.querySelector('.swarm-launch-gate')?.textContent ?? '', /at least three Loopers/i);
+  assert.equal(root.querySelector('[data-swarm-launch-submit]')?.disabled, true);
 });

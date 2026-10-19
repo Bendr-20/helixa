@@ -8,6 +8,7 @@ import { renderMissionBoard, renderMissionDetail } from './missions/mission-boar
 import { renderMissionEditor } from './missions/mission-editor.js';
 import { renderMissionWorkspace } from './missions/mission-workspace.js';
 import { renderMissionSettlement } from './missions/mission-settlement.js';
+import { renderSwarmLaunchpad } from './missions/swarm-launchpad.js';
 
 const CONSOLE_SAFETY_NOTE = 'Review-only operator surface. Your agent can brief and propose, but every action still waits for you.';
 const DEFAULT_CONSOLE_MISSION = 'Watch this agent, keep memory in Sibyl, and brief me before any proposal or outside action.';
@@ -150,6 +151,7 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
     }),
     restapNetwork: createConsoleRestapNetworkSnapshot(state.consoleRestapNetwork, activeAgent?.tokenId),
     missions: state.consoleMissions ?? { status: 'disabled', missions: [] },
+    launchpad: state.consoleLaunchpad ?? { status: 'idle', draft: { members: [], app: {}, token: {} }, manifest: null, error: null },
     rosterDrawers: {
       mainOpen: Boolean(state.consoleMainRosterOpen),
       sidebarOpen: Boolean(state.consoleSidebarRosterOpen),
@@ -269,6 +271,7 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
   const session = snapshot.session ?? {};
   const wallet = session.wallet ?? {};
   if (snapshot.workspaceView === 'missions') {
+    if (snapshot.missions?.view === 'launchpad') return renderSwarmLaunchpad(snapshot.launchpad);
     if (snapshot.missions?.view === 'editor') return renderMissionEditor(snapshot.missions);
     if (snapshot.missions?.view === 'detail') return renderMissionDetail(snapshot.missions);
     if (snapshot.missions?.view === 'workspace') return renderMissionWorkspace(snapshot.missions);

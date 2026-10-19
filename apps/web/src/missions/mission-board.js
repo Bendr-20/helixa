@@ -15,7 +15,7 @@ export function renderMissionBoard(state = {}) {
   const empty = disabled ? 'Swarm Command is staged, but mission creation is not enabled.' : busy ? 'Loading missions…' : 'No missions yet. Create the first one.';
   const controlsDisabled = disabled || busy || unavailable;
   return `<section class="mission-board" aria-labelledby="mission-board-title">
-    <header class="mission-surface-header"><div><span class="mission-eyebrow">Swarm Command</span><h2 id="mission-board-title">Fund work. Assemble Loopers. Ship.</h2><p>Public mission terms, exact onchain funding, isolated agent teams, and milestone settlement.</p></div><button type="button" data-mission-action="new" ${controlsDisabled ? 'disabled aria-disabled="true"' : ''}>New mission</button></header>
+    <header class="mission-surface-header"><div><span class="mission-eyebrow">Swarm Command</span><h2 id="mission-board-title">Fund work. Assemble Loopers. Ship.</h2><p>Public mission terms, exact onchain funding, isolated agent teams, and milestone settlement.</p></div><div class="mission-surface-actions"><button type="button" data-mission-action="launchpad" ${controlsDisabled ? 'disabled aria-disabled="true"' : ''}>Prepare token launch</button><button type="button" data-mission-action="new" ${controlsDisabled ? 'disabled aria-disabled="true"' : ''}>New mission</button></div></header>
     ${availability}
     <div class="mission-board-toolbar"><label>Filter <select data-mission-filter ${controlsDisabled ? 'disabled aria-disabled="true"' : ''}><option value="">All missions</option><option value="recruiting">Recruiting</option><option value="funding">Funding</option><option value="active">Active</option><option value="review">Review</option><option value="settled">Settled</option></select></label><span>Funding labels reflect finalized chain state only.</span></div>
     <div class="mission-card-grid">${missions.length ? missions.map(renderMissionCard).join('') : `<p class="mission-empty">${empty}</p>`}</div>
@@ -35,6 +35,7 @@ export function renderMissionDetail(state = {}) {
 }
 
 export function bindMissionBoard(root, handlers = {}) {
+  root.querySelector('[data-mission-action="launchpad"]')?.addEventListener('click', () => handlers.openLaunchpad?.());
   root.querySelector('[data-mission-action="new"]')?.addEventListener('click', () => handlers.newMission?.());
   root.querySelector('[data-mission-action="back"]')?.addEventListener('click', () => handlers.back?.());
   root.querySelector('[data-mission-filter]')?.addEventListener('change', (event) => handlers.filter?.(event.currentTarget.value));

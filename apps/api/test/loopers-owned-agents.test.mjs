@@ -523,3 +523,19 @@ test('bounded custody client rejects removed, malformed, wrong-token, excessive 
   assert.equal(oversizedCalls, 0);
   await assert.rejects(readLooperControllerEvidence({ publicClient: { readContract: async ({ functionName }) => functionName === 'erc8004AgentIdByLooper' ? 87069n : false }, tokenId: '617', controller: WALLET, blockNumber: 100 }), /not verified/i);
 });
+
+
+test('POST /api/loopers/swarm-launch/preview recomputes an authenticated preparation-only manifest', async () => {
+  const canonicalCred = (score, tier = 'QUALIFIED') => ({ status: 'available', score, tier, coverage: { score: 80, label: 'STRONG' }, freshness: { stale: false }, methodologyVersion: 'looper-cred-v1', computedAt: '2026-10-19T00:00:00.000Z' });
+  const agents = [['1', 'Bendr', '18531', 74], ['57', 'Cheryl', '57', 66], ['74', 'Axiom', '74', 79]].map(([tokenId, name, erc8004AgentId, score]) => ({ tokenId, name, erc8004AgentId, chainId: 8453, contract: '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a', owner: WALLET.toLowerCase(), controllerVerified: true, cred: canonicalCred(score, score >= 76 ? 'PRIME' : 'QUALIFIED') }));
+  const api = createMultipassApi({ store: createMemoryStore(), consoleAuthStore: { validateSession: ({ csrfToken, requireCsrf }) => { assert.equal(requireCsrf, true); assert.equal(csrfToken, 'preview-csrf'); return { wallet: WALLET.toLowerCase() }; } }, loopersOwnedAgentLoader: async ({ address }) => { assert.equal(address, WALLET.toLowerCase()); return agents; } });
+  const body = { members: [{ tokenId: '1', role: 'Lead', contributionBps: 4000 }, { tokenId: '57', role: 'Builder', contributionBps: 3500 }, { tokenId: '74', role: 'Operator', contributionBps: 2500 }], app: { name: 'Signal Swarm', pitch: 'Ship analytics.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' } };
+  const response = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/preview', { method: 'POST', headers: { ...AUTH_COOKIE, 'x-csrf-token': 'preview-csrf', 'content-type': 'application/json' }, body: JSON.stringify(body) }));
+  const json = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(json.status, 'PREPARATION_ONLY');
+  assert.match(json.manifest_sha256, /^0x[0-9a-f]{64}$/u);
+  assert.equal(json.manifest.members[0].name, 'Bendr');
+  assert.equal(json.manifest.execution.deploymentAuthorized, false);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});

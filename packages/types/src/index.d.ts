@@ -1,4 +1,5 @@
 export * from './missions.js';
+export * from './swarm-launch.js';
 
 export type SubjectType = 'agent' | 'human' | 'swarm' | 'collection' | 'project' | 'organization';
 export type MultipassStatus = 'draft' | 'link_ready' | 'active' | 'transfer_pending' | 'suspended' | 'archived';

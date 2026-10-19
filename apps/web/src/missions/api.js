@@ -12,13 +12,15 @@ export function createMissionApi({ fetchImpl, apiBase = '' } = {}) {
   if (typeof activeFetch !== 'function') throw new TypeError('fetchImpl must be a function.');
   const base = String(apiBase).replace(/\/$/u, '');
 
-  async function call(path, { method = 'GET', body, revision, idempotencyKey, csrfToken, signal } = {}) {
+  async function call(path, { method = 'GET', body, revision, idempotencyKey, csrfToken, csrfOnly = false, signal } = {}) {
     const headers = { accept: 'application/json' };
     if (body !== undefined) {
       validateRawAmounts(body);
       headers['content-type'] = 'application/json';
-      headers['if-match'] = String(nonNegativeInteger(revision, 'revision'));
-      headers['idempotency-key'] = idempotency(idempotencyKey);
+      if (!csrfOnly) {
+        headers['if-match'] = String(nonNegativeInteger(revision, 'revision'));
+        headers['idempotency-key'] = idempotency(idempotencyKey);
+      }
       headers['x-csrf-token'] = bounded(csrfToken, 'csrfToken', 1, 512);
     }
     let response;
@@ -44,6 +46,7 @@ export function createMissionApi({ fetchImpl, apiBase = '' } = {}) {
     getLaunchTerms({ missionId, signal } = {}) { return call('/api/multipass/missions/' + mission(missionId) + '/launch/terms', { signal }); },
     getWorkspace({ missionId, signal } = {}) { return call('/api/multipass/missions/' + mission(missionId) + '/workspace', { signal }); },
     getDispute({ missionId, milestoneId, disputeId, signal } = {}) { return call('/api/multipass/missions/' + mission(missionId) + '/milestones/' + encodeURIComponent(identifier(milestoneId, 'milestoneId')) + '/disputes/' + encodeURIComponent(identifier(disputeId, 'disputeId')), { signal }); },
+    previewSwarmLaunch(input) { exact(input, ['body', 'csrfToken', 'signal'], new Set(['signal']), 'launch preview'); return call('/api/loopers/swarm-launch/preview', { method: 'POST', body: input.body, csrfToken: input.csrfToken, csrfOnly: true, signal: input.signal }); },
     create(input) { exact(input, ['body', 'csrfToken', 'expectedRevision', 'idempotencyKey', 'signal'], new Set(['signal']), 'mission create'); return call('/api/multipass/missions', { method: 'POST', body: input.body, revision: input.expectedRevision, idempotencyKey: input.idempotencyKey, csrfToken: input.csrfToken, signal: input.signal }); },
     update: write('', 'PATCH'), publish: write('/publish'), cancel: write('/cancel'), apply: write('/applications'), selectTeam: write('/team'),
     signTerms: write('/launch/terms/sign'), publishManifest: write('/launch/manifest'), prepareVault: write('/vault/prepare'), retryLaunch: write('/launch/retry'), refundLaunch: write('/launch/refund'),

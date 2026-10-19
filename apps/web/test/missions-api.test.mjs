@@ -36,3 +36,17 @@ test('rejects stale/error responses and internal identifier leakage', async () =
   const leak = createMissionApi({ fetchImpl: async () => response({ schema_version: '0.1.0', workspace: { manager_location: '127.0.0.1' } }) });
   await assert.rejects(() => leak.getWorkspace({ missionId: 'mission-1' }), /internal field/);
 });
+
+
+test('launch preview uses the fixed authenticated CSRF route without mutation replay headers', async () => {
+  const calls = [];
+  const api = createMissionApi({ fetchImpl: async (...args) => { calls.push(args); return response({ schema_version: '0.1.0', status: 'PREPARATION_ONLY', manifest: {}, manifest_sha256: '0x' + 'a'.repeat(64) }); } });
+  await api.previewSwarmLaunch({ csrfToken: 'preview-csrf', body: { members: [], app: {}, token: {} } });
+  const [url, init] = calls[0];
+  assert.equal(url, '/api/loopers/swarm-launch/preview');
+  assert.equal(init.method, 'POST');
+  assert.equal(init.headers['x-csrf-token'], 'preview-csrf');
+  assert.equal(init.headers['if-match'], undefined);
+  assert.equal(init.headers['idempotency-key'], undefined);
+  assert.deepEqual(JSON.parse(init.body), { members: [], app: {}, token: {} });
+});
