@@ -12185,7 +12185,7 @@ h1 {
 
 /* Swarm Launchpad: preparation-only token launch slice */
 .mission-surface-actions{display:flex;flex-wrap:wrap;gap:.65rem;align-items:center;justify-content:flex-end}
-.swarm-launchpad{display:grid;gap:1rem;padding:1.1rem;color:var(--ink,#eef2e4)}
+.swarm-launchpad{--ink:#eef2e4;--muted:#9aa58f;--line:#293326;--panel:#11170f;--panel2:#171c13;--bg:#0a0d0a;--lime:#a3e635;display:grid;gap:1rem;padding:1.1rem;color:var(--ink)}
 .swarm-launchpad-hero{padding:1.25rem;border:1px solid var(--line,#293326);border-radius:1rem;background:linear-gradient(135deg,color-mix(in srgb,var(--panel,#11170f) 92%,var(--lime,#a3e635) 8%),var(--panel,#11170f))}
 .swarm-launchpad-hero h2{margin:.3rem 0 .6rem;font-size:clamp(1.7rem,4vw,3rem);line-height:1.02}
 .swarm-launchpad-hero h2 em{color:var(--lime,#a3e635);font-style:normal}
