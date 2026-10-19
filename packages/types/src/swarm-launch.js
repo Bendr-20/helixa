@@ -71,7 +71,18 @@ export function buildSwarmLaunchManifest(input = {}) {
     execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, requiresSeparateApproval: true },
     gate: { minimumMembers: SWARM_LAUNCH_LIMITS.minimumMembers, maximumMembers: SWARM_LAUNCH_LIMITS.maximumMembers, minimumAverageCred: SWARM_LAUNCH_LIMITS.minimumAverageCred, observedAverageCred: draft.gate.averageCred, methodologyVersions: [...new Set(draft.members.map((member) => member.cred.methodologyVersion))].sort() },
     app: { ...draft.app }, token: { ...draft.token },
-    settlement: { provider: 'mosh', topology: 'OPERATOR_VAULT_SEPARATED', memberFeeBps: 8000, protocolFeeBps: 2000, integrationStatus: 'PENDING_VERIFIED_ADAPTER' },
+    settlement: {
+      provider: 'mosh',
+      scope: 'AGENT_BUNDLE_LIQUIDITY',
+      topology: 'OPERATOR_VAULT_SEPARATED',
+      creatorFees: {
+        bundleClaimsBps: 8000,
+        moshPlatformBps: 2000,
+        looperContributionMapping: 'UNSPECIFIED',
+        teamShareBps: null,
+      },
+      integrationStatus: 'PENDING_VERIFIED_ADAPTER',
+    },
     members: draft.members.map((member) => ({ identity: { type: 'looper_erc721', chainId: SWARM_LAUNCH_CHAIN_ID, registry: SWARM_LAUNCH_LOOPERS_COLLECTION, tokenId: member.tokenId, erc8004Id: member.erc8004Id }, name: member.name, role: member.role, contributionBps: member.contributionBps, cred: { ...member.cred }, vault: { status: 'UNPREPARED', kind: 'UNSPECIFIED', address: null } })),
   });
 }
