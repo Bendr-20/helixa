@@ -6,10 +6,10 @@ import { buildSwarmLaunchConsentMessage, createSwarmLaunchConsentService } from 
 const OWNER = '0x1111111111111111111111111111111111111111';
 const PARTNER = '0x2222222222222222222222222222222222222222';
 const HASH = '0x' + 'a'.repeat(64);
-const manifest = Object.freeze({ execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, app: { name: 'A', pitch: 'Ship.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'T', ticker: 'TOKEN', supply: '1000000000', curve: 'bonding_curve_to_dex' }, members: [
-  { identity: { tokenId: '1' }, consentAuthority: OWNER },
-  { identity: { tokenId: '2' }, consentAuthority: PARTNER },
-  { identity: { tokenId: '3' }, consentAuthority: PARTNER },
+const manifest = Object.freeze({ schema: 'multipass.swarm-launch.v1', chainId: 8453, execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, app: { name: 'A', pitch: 'Ship.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'T', ticker: 'TOKEN', supply: '1000000000', curve: 'bonding_curve_to_dex' }, economics: { model: 'PROVIDER_NEUTRAL_V1', agentVesting: { allocationBps: 4500, cliffMonths: 6, durationMonths: 18 }, credRewards: { allocationBps: 1500, beneficiary: 'CRED_STAKERS', provider: 'UNSELECTED' }, swarmTreasury: { allocationBps: 1500, control: 'SWARM_MULTISIG_REQUIRED' }, publicDistribution: { allocationBps: 2500, mechanism: 'UNSELECTED' }, totalAllocationBps: 10000 }, members: [
+  { identity: { tokenId: '1' }, consentAuthority: OWNER, contributionBps: 4000 },
+  { identity: { tokenId: '2' }, consentAuthority: PARTNER, contributionBps: 3500 },
+  { identity: { tokenId: '3' }, consentAuthority: PARTNER, contributionBps: 2500 },
 ] });
 const input = { members: [{ tokenId: '1', ownerAddress: OWNER }, { tokenId: '2', ownerAddress: PARTNER }, { tokenId: '3', ownerAddress: PARTNER }], app: { name: 'A' }, token: { name: 'T' } };
 
@@ -45,6 +45,7 @@ test('initiator creates an immutable preparation-only proposal with per-wallet p
   ]);
   assert.equal(Object.hasOwn(proposal, 'signature'), false);
   assert.equal(f.previews.length, 1);
+  assert.deepEqual(f.records.get('proposal-1').input.economics, { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 });
 });
 
 test('only nominated wallets can read or sign a proposal', async () => {
@@ -94,4 +95,22 @@ test('invalid signatures, expired proposals, and changed canonical manifests fai
   const record = f.records.get('proposal-1'); record.expiresAt = 999;
   assert.equal((await f.service.readProposal({ actorAddress: OWNER, proposalId: 'proposal-1' })).status, 'EXPIRED');
   await assert.rejects(() => f.service.readChallenge({ actorAddress: OWNER, proposalId: 'proposal-1' }), /expired/i);
+});
+
+
+test('creates a deterministic readiness packet only for a participant after unanimous consent', async () => {
+  const f = fixture();
+  await f.service.createProposal({ actorAddress: OWNER, input });
+  await assert.rejects(() => f.service.createReadinessPacket({ actorAddress: OWNER, proposalId: 'proposal-1' }), /unanimous/i);
+  await f.service.recordConsent({ actorAddress: PARTNER, proposalId: 'proposal-1', signature: '0x' + 'aa'.repeat(65) });
+  await f.service.recordConsent({ actorAddress: OWNER, proposalId: 'proposal-1', signature: '0x' + 'aa'.repeat(65) });
+  const result = await f.service.createReadinessPacket({ actorAddress: OWNER, proposalId: 'proposal-1' });
+  assert.equal(result.packet.execution.mode, 'SIMULATION_ONLY');
+  assert.equal(result.packet.execution.deploymentAuthorized, false);
+  assert.equal(result.packet.sourceConsent.manifestSha256, HASH);
+  assert.match(result.packetSha256, /^0x[0-9a-f]{64}$/u);
+  assert.equal(f.previews.length, 4);
+  await assert.rejects(() => f.service.createReadinessPacket({ actorAddress: '0x3333333333333333333333333333333333333333', proposalId: 'proposal-1' }), /nominated/i);
+  f.records.get('proposal-1').expiresAt = 999;
+  await assert.rejects(() => f.service.createReadinessPacket({ actorAddress: OWNER, proposalId: 'proposal-1' }), /expired/i);
 });

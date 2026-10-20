@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { buildSwarmLaunchReadinessPacket, canonicalSwarmLaunchJson } from '../../../../packages/types/src/swarm-launch.js';
 
 const ADDRESS = /^0x[0-9a-f]{40}$/u;
 const ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
@@ -38,6 +39,16 @@ export function createSwarmLaunchConsentService({ store, preview, authorizeLoope
     async readProposal({ actorAddress, proposalId } = {}) {
       const { record } = await loadParty(actorAddress, proposalId);
       return project(record, now());
+    },
+    async createReadinessPacket({ actorAddress, proposalId } = {}) {
+      const { actor, record } = await loadParty(actorAddress, proposalId);
+      const currentTime = timestamp(now(), 'readinessAt');
+      const proposal = project(record, currentTime);
+      const packet = buildSwarmLaunchReadinessPacket({ proposal, now: currentTime });
+      const refreshed = await preview({ owner: actor, input: record.input });
+      assertPrepared(refreshed);
+      if (refreshed.manifestSha256 !== record.manifestSha256) throw new ConsentError('manifest_changed', 'Canonical launch manifest changed; create a new consent proposal.', 409);
+      return Object.freeze({ packet, packetSha256: '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(packet)).digest('hex') });
     },
     async readChallenge({ actorAddress, proposalId } = {}) {
       const { actor, record, participant } = await loadParty(actorAddress, proposalId);
@@ -100,6 +111,7 @@ function canonicalInputFromManifest(manifest) {
     members: manifest.members.map((member) => ({ tokenId: member.identity.tokenId, ownerAddress: member.consentAuthority, role: member.role, contributionBps: member.contributionBps })),
     app: { name: manifest.app.name, pitch: manifest.app.pitch, template: manifest.app.template, revenueModel: manifest.app.revenueModel, shipTarget: manifest.app.shipTarget },
     token: { name: manifest.token.name, ticker: manifest.token.ticker, supply: manifest.token.supply, curve: manifest.token.curve },
+    economics: { agentVestingBps: manifest.economics.agentVesting.allocationBps, credRewardsBps: manifest.economics.credRewards.allocationBps, swarmTreasuryBps: manifest.economics.swarmTreasury.allocationBps, publicDistributionBps: manifest.economics.publicDistribution.allocationBps, agentCliffMonths: manifest.economics.agentVesting.cliffMonths, agentVestingMonths: manifest.economics.agentVesting.durationMonths },
   };
 }
 function project(record, currentTime) {

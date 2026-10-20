@@ -59,14 +59,18 @@ test('launch consent client uses fixed authenticated proposal routes and CSRF on
   await api.getLaunchConsent({ proposalId: 'proposal-1' });
   await api.getLaunchConsentChallenge({ proposalId: 'proposal-1', csrfToken: 'csrf' });
   await api.signLaunchConsent({ proposalId: 'proposal-1', csrfToken: 'csrf', signature: '0x' + 'aa'.repeat(65) });
+  await api.createLaunchReadiness({ proposalId: 'proposal-1', csrfToken: 'csrf' });
   assert.deepEqual(calls.map(([url]) => url), [
     '/api/loopers/swarm-launch/consents',
     '/api/loopers/swarm-launch/consents/proposal-1',
     '/api/loopers/swarm-launch/consents/proposal-1/challenge',
     '/api/loopers/swarm-launch/consents/proposal-1/sign',
+    '/api/loopers/swarm-launch/consents/proposal-1/readiness',
   ]);
   assert.equal(calls[0][1].headers['x-csrf-token'], 'csrf');
   assert.equal(calls[1][1].headers['x-csrf-token'], undefined);
   assert.deepEqual(JSON.parse(calls[2][1].body), {});
   assert.deepEqual(JSON.parse(calls[3][1].body), { signature: '0x' + 'aa'.repeat(65) });
+  assert.deepEqual(JSON.parse(calls[4][1].body), {});
+  assert.equal(calls[4][1].headers['x-csrf-token'], 'csrf');
 });

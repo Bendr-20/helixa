@@ -31,6 +31,7 @@ function draft(overrides = {}) {
     members,
     app: { name: 'Signal Swarm', pitch: 'Agent-built analytics.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' },
     token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' },
+    economics: { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 },
     ...overrides,
   };
 }
@@ -58,12 +59,14 @@ test('form normalization binds editable roles and contribution weights to the ve
   const values = new Map([
     ['app_name', 'Signal Swarm'], ['app_pitch', 'Agent-built analytics.'], ['app_template', 'web_app'], ['revenue_model', 'subscription'], ['ship_target', '30_days'],
     ['token_name', 'Signal Swarm'], ['token_ticker', 'SIGSWARM'], ['token_supply', '1000000000'], ['token_curve', 'bonding_curve_to_dex'],
+    ['agent_vesting_bps', '4500'], ['cred_rewards_bps', '1500'], ['swarm_treasury_bps', '1500'], ['public_distribution_bps', '2500'], ['agent_cliff_months', '6'], ['agent_vesting_months', '18'],
     ['member_1_role', 'Lead'], ['member_1_bps', '4000'], ['member_57_role', 'Builder'], ['member_57_bps', '3500'], ['member_74_role', 'Operator'], ['member_74_bps', '2500'],
   ]);
   const normalized = normalizeSwarmLaunchForm({ get: (key) => values.get(key) ?? null }, members);
   assert.equal(normalized.members[1].role, 'Builder');
   assert.equal(normalized.members[1].contributionBps, 3500);
   assert.equal(normalized.token.ticker, 'SIGSWARM');
+  assert.equal(normalized.economics.totalAllocationBps, 10000);
 });
 
 test('manifest is deterministic, preparation-only, Base-bound, and contains no third-party settlement assumptions', () => {
@@ -88,6 +91,8 @@ test('Launchpad renders verified CRED, split, token terms, and no live-launch cl
   assert.doesNotMatch(html, /third-party settlement/i);
   assert.match(html, /data-swarm-launch-submit[^>]*>Prepare launch manifest</i);
   assert.match(html, /No token, vault, curve, or fee stream will be deployed/i);
+  assert.match(html, /name="agent_vesting_bps"[^>]*value="4500"/i);
+  assert.match(html, /name="cred_rewards_bps"[^>]*value="1500"/i);
   assert.equal((html.match(/data-swarm-member/g) ?? []).length, 3);
 });
 
@@ -112,4 +117,20 @@ test('prepared Launchpad creates and signs a shareable consent request without d
   assert.match(collecting, /Sign launch consent/i);
   assert.match(collecting, /launch_consent=consent-1/i);
   assert.doesNotMatch(collecting, /deployment authorized(?!:\s*false)/i);
+});
+
+
+test('unanimous consent unlocks a simulation-only readiness packet without selecting a provider', () => {
+  const manifest = buildSwarmLaunchManifest(normalizeSwarmLaunchDraft(draft()));
+  const proposal = { proposalId: 'consent-1', status: 'SIGNATURES_COLLECTED', deploymentAuthorized: false, manifestSha256: '0x' + 'a'.repeat(64), participants: [{ wallet: members[0].ownerAddress, tokenIds: ['1','57','74'], consentedAt: 1000 }], expiresAt: 2000 };
+  const collected = renderSwarmLaunchpad({ status: 'prepared', draft: draft(), manifest, manifestSha256: proposal.manifestSha256, proposal, authenticatedWallet: members[0].ownerAddress });
+  assert.match(collected, /Build readiness packet/i);
+  assert.match(collected, /unanimous preparation consent/i);
+
+  const readiness = { packet: { schema: 'multipass.swarm-launch-readiness.v1', execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 }, allocations: { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, totalBps: 10000 } }, packetSha256: '0x' + 'b'.repeat(64) };
+  const rendered = renderSwarmLaunchpad({ status: 'prepared', draft: draft(), manifest, manifestSha256: proposal.manifestSha256, proposal, readiness, authenticatedWallet: members[0].ownerAddress });
+  assert.match(rendered, /Simulation-only readiness packet/i);
+  assert.match(rendered, new RegExp(readiness.packetSha256));
+  assert.match(rendered, /Provider selected:\s*false/i);
+  assert.doesNotMatch(rendered, /Pantheon|OpenLaunch|Mosh/i);
 });

@@ -1449,6 +1449,11 @@ async function handleLooperPost(request, parts, context) {
       return jsonResponse({ schema_version: '0.1.0', proposal: await service.createProposal({ actorAddress: session.wallet, input }) }, 201, { 'cache-control': 'no-store' });
     }
     const proposalId = normalizeSwarmConsentProposalId(parts[4]);
+    if (parts.length === 6 && parts[5] === 'readiness') {
+      const body = await readBoundedJsonBody(request, 1024);
+      if (Object.keys(body).length !== 0) throw new ApiInputError('invalid_request', 'Readiness packet body must be empty.');
+      return jsonResponse({ schema_version: '0.1.0', readiness: await service.createReadinessPacket({ actorAddress: session.wallet, proposalId }) }, 200, { 'cache-control': 'no-store' });
+    }
     if (parts.length === 6 && parts[5] === 'challenge') {
       const body = await readBoundedJsonBody(request, 1024);
       if (Object.keys(body).length !== 0) throw new ApiInputError('invalid_request', 'Consent challenge body must be empty.');

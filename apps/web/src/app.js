@@ -61,7 +61,7 @@ import { createConsoleRestapNetworkApi } from './console-restap-network-api.js';
 import { createMissionApi } from './missions/api.js';
 import { bindMissionBoard } from './missions/mission-board.js';
 import { bindMissionEditor } from './missions/mission-editor.js';
-import { bindSwarmLaunchpad, normalizeSwarmLaunchRequestForm } from './missions/swarm-launchpad.js';
+import { SWARM_LAUNCH_DEFAULT_ECONOMICS, bindSwarmLaunchpad, normalizeSwarmLaunchRequestForm } from './missions/swarm-launchpad.js';
 import { beginConsoleRestapNetworkLoad, clearConsoleRestapNetworkSelection, createInitialConsoleRestapNetworkState, failConsoleRestapNetworkLoad, getConsoleRestapNetworkSendFingerprint, normalizeConsoleRestapNetworkSendDraft, normalizeConsoleRestapNetworkPolicyDraft, resolveConsoleRestapNetworkLoad } from './console-restap-network.js';
 import { renderRuntimeSubmission } from './runtime-submission.js';
 import { SWARM_ADMIN_ACTIVATION, bindSwarmAdmin, createInitialSwarmAdminState, readSwarmActivationState, renderSwarmAdmin, submitSwarmActivationApproval } from './swarm-admin.js';
@@ -2035,6 +2035,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
           members,
           app: { name: '', pitch: '', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' },
           token: { name: '', ticker: '', supply: '1000000000', curve: 'bonding_curve_to_dex' },
+          economics: { ...SWARM_LAUNCH_DEFAULT_ECONOMICS },
         },
         manifest: null,
         error: null,
@@ -2058,6 +2059,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
           members: draft.members.map(({ tokenId, ownerAddress, role, contributionBps }) => ({ tokenId, ownerAddress, role, contributionBps })),
           app: { ...draft.app },
           token: { ...draft.token },
+          economics: { agentVestingBps: draft.economics.agentVesting.allocationBps, credRewardsBps: draft.economics.credRewards.allocationBps, swarmTreasuryBps: draft.economics.swarmTreasury.allocationBps, publicDistributionBps: draft.economics.publicDistribution.allocationBps, agentCliffMonths: draft.economics.agentVesting.cliffMonths, agentVestingMonths: draft.economics.agentVesting.durationMonths },
         },
       });
       if (state.consoleLaunchpad?.requestId !== requestId || state.consoleMissions?.view !== 'launchpad') return;
@@ -2098,6 +2100,19 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     render(root, state, handlers);
   }
 
+  async function createConsoleLaunchReadiness() {
+    const proposalId = state.consoleLaunchpad?.proposal?.proposalId;
+    if (!proposalId || state.consoleLaunchpad?.proposal?.status !== 'SIGNATURES_COLLECTED' || !state.consoleCsrfToken) return;
+    try {
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'building_readiness', error: null } }; render(root, state, handlers);
+      const response = await activeMissionApi.createLaunchReadiness({ proposalId, csrfToken: state.consoleCsrfToken });
+      const readiness = response.readiness;
+      if (readiness?.packet?.execution?.mode !== 'SIMULATION_ONLY' || readiness?.packet?.execution?.deploymentAuthorized !== false || readiness?.packet?.execution?.providerSelected !== false || !/^0x[0-9a-f]{64}$/u.test(readiness?.packetSha256 ?? '')) throw new Error('Readiness packet response is invalid.');
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', readiness, error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', readiness: null, error: String(error?.message ?? 'Readiness packet failed.') } }; }
+    render(root, state, handlers);
+  }
+
   async function signConsoleLaunchConsent() {
     const proposalId = state.consoleLaunchpad?.proposal?.proposalId;
     if (!proposalId || !state.consoleCsrfToken) return;
@@ -2119,7 +2134,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       const proposal = response.proposal;
       if (proposal?.deploymentAuthorized !== false || proposal?.manifest?.execution?.deploymentAuthorized !== false) throw new Error('Consent proposal is invalid.');
       const members = proposal.manifest.members.map((member) => ({ tokenId: member.identity.tokenId, ownerAddress: member.consentAuthority, name: member.name, role: member.role, contributionBps: member.contributionBps, cred: member.cred, erc8004Id: member.identity.erc8004Id }));
-      state = { ...state, consoleWorkspaceView: 'missions', consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'launchpad', error: null }, consoleLaunchpad: { status: 'prepared', requestId: (state.consoleLaunchpad?.requestId ?? 0) + 1, draft: { members, app: proposal.manifest.app, token: proposal.manifest.token }, manifest: proposal.manifest, manifestSha256: proposal.manifestSha256, proposal, consentUrl: launchConsentUrl(proposalId), error: null } };
+      state = { ...state, consoleWorkspaceView: 'missions', consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'launchpad', error: null }, consoleLaunchpad: { status: 'prepared', requestId: (state.consoleLaunchpad?.requestId ?? 0) + 1, draft: { members, app: proposal.manifest.app, token: proposal.manifest.token, economics: proposal.manifest.economics }, manifest: proposal.manifest, manifestSha256: proposal.manifestSha256, proposal, readiness: null, consentUrl: launchConsentUrl(proposalId), error: null } };
       render(root, state, handlers);
     } catch (error) {
       state = { ...state, consoleMissions: { ...state.consoleMissions, error: String(error?.message ?? 'Consent proposal is unavailable.') } };
@@ -2127,7 +2142,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  function launchRequestBody(draft) { return { members: draft.members.map(({ tokenId, ownerAddress, role, contributionBps }) => ({ tokenId, ownerAddress, role, contributionBps })), app: { ...draft.app }, token: { ...draft.token } }; }
+  function launchRequestBody(draft) { const economics = draft.economics ?? SWARM_LAUNCH_DEFAULT_ECONOMICS; return { members: draft.members.map(({ tokenId, ownerAddress, role, contributionBps }) => ({ tokenId, ownerAddress, role, contributionBps })), app: { ...draft.app }, token: { ...draft.token }, economics: { agentVestingBps: economics.agentVestingBps ?? economics.agentVesting?.allocationBps, credRewardsBps: economics.credRewardsBps ?? economics.credRewards?.allocationBps, swarmTreasuryBps: economics.swarmTreasuryBps ?? economics.swarmTreasury?.allocationBps, publicDistributionBps: economics.publicDistributionBps ?? economics.publicDistribution?.allocationBps, agentCliffMonths: economics.agentCliffMonths ?? economics.agentVesting?.cliffMonths, agentVestingMonths: economics.agentVestingMonths ?? economics.agentVesting?.durationMonths } }; }
   function launchConsentUrl(proposalId) { const url = new URL(window.location.href); url.searchParams.set('launch_consent', proposalId); return url.href; }
 
   function closeConsoleMission() {
@@ -3265,7 +3280,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -5919,6 +5934,7 @@ function bindProductHomeEvents(root, handlers, state) {
     removeMember: handlers.removeConsoleLaunchMember,
     createConsent: handlers.createConsoleLaunchConsent,
     signConsent: handlers.signConsoleLaunchConsent,
+    createReadiness: handlers.createConsoleLaunchReadiness,
     back: handlers.closeConsoleMission,
   });
   root.querySelector('[data-action="retry-console-agent-activation"]')?.addEventListener('click', () => handlers.retryConsoleAgentActivation?.());

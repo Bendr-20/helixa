@@ -548,7 +548,8 @@ test('swarm launch consent routes require Console auth and dispatch exact propos
     async createProposal(value) { calls.push(['create', value]); return proposal; },
     async readProposal(value) { calls.push(['read', value]); return proposal; },
     async readChallenge(value) { calls.push(['challenge', value]); return { proposalId: 'proposal-1', message: 'sign me', manifestSha256: proposal.manifestSha256, expiresAt: 2 }; },
-    async recordConsent(value) { calls.push(['consent', value]); return { ...proposal, status: 'CONSENT_COMPLETE' }; },
+    async recordConsent(value) { calls.push(['consent', value]); return { ...proposal, status: 'SIGNATURES_COLLECTED' }; },
+    async createReadinessPacket(value) { calls.push(['readiness', value]); return { packet: { execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false } }, packetSha256: '0x' + 'b'.repeat(64) }; },
   };
   const api = createMultipassApi({
     store: createMemoryStore(), swarmLaunchConsentService: service,
@@ -559,10 +560,14 @@ test('swarm launch consent routes require Console auth and dispatch exact propos
   const read = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1', { headers: AUTH_COOKIE }));
   const challenge = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1/challenge', { method: 'POST', headers, body: '{}' }));
   const consent = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1/sign', { method: 'POST', headers, body: JSON.stringify({ signature: '0x' + 'aa'.repeat(65) }) }));
-  assert.deepEqual([created.status, read.status, challenge.status, consent.status], [201, 200, 200, 200]);
-  assert.deepEqual(calls.map(([name]) => name), ['create', 'read', 'challenge', 'consent']);
+  const readiness = await api.handleRequest(new Request('https://helixa.test/api/loopers/swarm-launch/consents/proposal-1/readiness', { method: 'POST', headers, body: '{}' }));
+  assert.deepEqual([created.status, read.status, challenge.status, consent.status, readiness.status], [201, 200, 200, 200, 200]);
+  assert.deepEqual(calls.map(([name]) => name), ['create', 'read', 'challenge', 'consent', 'readiness']);
   assert.equal(calls[0][1].actorAddress, WALLET.toLowerCase());
   assert.deepEqual(calls[0][1].input, { members: [] });
   assert.equal(calls[3][1].signature, '0x' + 'aa'.repeat(65));
   assert.equal((await consent.json()).proposal.deploymentAuthorized, false);
+  const readinessJson = await readiness.json();
+  assert.equal(readinessJson.readiness.packet.execution.deploymentAuthorized, false);
+  assert.match(readinessJson.readiness.packetSha256, /^0x[0-9a-f]{64}$/u);
 });
