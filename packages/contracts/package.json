@@ -6,6 +6,7 @@
   "scripts": {
     "compile": "node scripts/compile-loopers.js",
     "compile:missions": "node scripts/compile-mission-escrow.js",
+    "compile:swarm-launch": "node scripts/compile-swarm-launch.js",
     "simulate:missions": "node scripts/simulate-mission-deployment.js",
     "simulate:missions:live": "node scripts/prepare-mission-base-sepolia-plan.js",
     "prepare:missions:base-mainnet-activation": "node scripts/prepare-mission-base-mainnet-activation.js",
