@@ -13,6 +13,7 @@ test('swarm launch execution contracts compile deterministically with locked ABI
     'NonTransferableVestingStream',
     'PullRevenueSplitter',
     'SwarmContributionRegistry',
+    'SwarmLaunchFactory',
   ]);
 
   for (const artifact of Object.values(first.contracts)) {
@@ -34,6 +35,13 @@ test('swarm launch execution contracts compile deterministically with locked ABI
   assert.equal(splitterFunctions.has('setShares'), false);
   assert.equal(splitterFunctions.has('owner'), false);
   assert.equal(splitterFunctions.has('release'), true);
+
+  const factoryFunctions = functionNames(first.contracts.SwarmLaunchFactory.abi);
+  assert.equal(factoryFunctions.has('deploy'), true);
+  assert.equal(factoryFunctions.has('predict'), true);
+  assert.equal(factoryFunctions.has('setImplementation'), false);
+  assert.equal(factoryFunctions.has('setSigner'), false);
+  assert.equal(factoryFunctions.has('owner'), false);
 });
 
 function functionNames(abi) {

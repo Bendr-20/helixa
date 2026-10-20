@@ -11,6 +11,7 @@ const SOURCE_NAMES = Object.freeze([
   'src/missions/launch/SwarmContributionRegistry.sol',
   'src/missions/launch/NonTransferableVestingStream.sol',
   'src/missions/launch/PullRevenueSplitter.sol',
+  'src/missions/launch/SwarmLaunchFactory.sol',
 ]);
 const EXPECTED_COMPILER = '0.8.24';
 
