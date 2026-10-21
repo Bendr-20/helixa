@@ -33,9 +33,9 @@
 ## Verification gates
 
 - [x] Run each focused test at RED and record the expected missing-feature failure before production edits; rerun GREEN after each slice.
-- [ ] Run all Swarm Launch JS tests and Foundry tests. JS: 18/18 pass, including executable high-s and malicious ERC-1271 reentrancy probes. Foundry test source compiles with pinned solc (11 contracts); `forge` remains unavailable on this host.
+- [x] Run all Swarm Launch JS tests and Foundry tests. JS: 18/18 pass, including executable high-s and malicious ERC-1271 reentrancy probes. Native Foundry executed the Swarm factory suite: 6/6 pass.
 - [x] Run the full applicable `@helixa/loopers-contracts` test suite (137 pass; sole failure is the known unrelated missing `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json` fixture); exclude only the known unrelated missing historical `/tmp` fixture if it is the sole unrelated failure and name it.
 - [x] Run deterministic compilation twice and compare source/artifact hashes.
-- [x] Run available formatting/whitespace and syntax checks plus EIP-170 runtime/initcode size checks (no repository formatter executable is installed).
-- [ ] Run the Base fork/read-only verification when a public Base RPC and fork tooling are available; otherwise capture the exact missing prerequisite/error. Hardened public Base RPC reads succeeded using only `eth_chainId` and `eth_getCode` and precisely reported `FACTORY_NOT_DEPLOYED`; `forge`/`anvil` remain unavailable, so no local fork was run.
+- [x] Run formatting/whitespace, syntax, scoped Forge lint, and EIP-170/EIP-3860 size checks. The new factory passes `forge fmt --check`; scoped lint reports notes only; runtime remains deployable with 416 bytes of Foundry-measured margin.
+- [x] Run Base fork/read-only verification. A local Anvil fork of Base chain 8453 through PublicNode verified the canonical packet and used only `eth_chainId` and `eth_getCode`; it precisely reported `FACTORY_NOT_DEPLOYED` for the intentional placeholder factory address without signing or broadcasting.
 - [x] Inspect the final diff, verify no secret/signature material or provider calldata is present, confirm no RPC send methods are reachable, and commit all source changes locally.
