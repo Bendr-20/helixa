@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import * as launchpad from '../src/missions/swarm-launchpad.js';
+import { canonicalSwarmLaunchJson } from '../../../packages/types/src/swarm-launch.js';
 
 const HASH = '0x' + 'b'.repeat(64);
 const CONSENT_HASH = '0x' + 'a'.repeat(64);
@@ -32,7 +34,7 @@ const packet = {
   execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, broadcastPrepared: false, transactionCount: 0 },
   safety: { keysIncluded: false, signaturesIncluded: false, transactionDataIncluded: false, calldataIncluded: false, secretsIncluded: false, externalAdapterDataIncluded: false, rpcSendMethodsAllowed: false },
 };
-const preview = { packet, packetSha256: '0x' + 'c'.repeat(64) };
+const preview = { packet, packetSha256: '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(packet)).digest('hex') };
 
 function baseState(overrides = {}) { return { draft: { members: [], app: {}, token: {} }, readiness, executionPreview: null, ...overrides }; }
 
@@ -65,9 +67,9 @@ test('execution review form normalizes exact members, recipients, and one to fou
   assert.deepEqual(result.revenueAssets, [values.get('revenue_asset_0'), values.get('revenue_asset_1')]);
 });
 
-test('validated execution preview renders complete review terms and no execution controls', () => {
+test('validated execution preview renders complete review terms and no execution controls', async () => {
   assert.equal(typeof launchpad.validateSwarmLaunchExecutionPreview, 'function');
-  const validated = launchpad.validateSwarmLaunchExecutionPreview(preview, readiness);
+  const validated = await launchpad.validateSwarmLaunchExecutionPreview(preview, readiness);
   const html = launchpad.renderSwarmLaunchpad(baseState({ executionPreview: validated }));
   for (const expected of ['Signal Swarm', 'SIG', packet.plan.token.totalSupply, packet.plan.allocations.agentVestingAmount, packet.plan.allocations.credRewardsAmount, packet.plan.allocations.swarmTreasuryAmount, packet.plan.allocations.publicDistributionAmount, packet.deployment.token, packet.deployment.registry, packet.deployment.splitter, ...packet.deployment.streams, HASH, CONSENT_HASH, preview.packetSha256]) assert.match(html, new RegExp(expected));
   assert.match(html, /Provider adapter:\s*not selected/i);
@@ -78,14 +80,32 @@ test('validated execution preview renders complete review terms and no execution
   assert.doesNotMatch(html, /data-(?:sign|approve|deploy|execute|broadcast|calldata)/i);
 });
 
-test('execution preview response validation fails closed on lineage, signer order, signatures, or executable state', () => {
+test('execution preview response validation fails closed on hash, lineage, signer order, signatures, executable state, or hidden aliases', async () => {
   assert.equal(typeof launchpad.validateSwarmLaunchExecutionPreview, 'function');
+  const withPacket = (nextPacket) => ({ packet: nextPacket, packetSha256: '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(nextPacket)).digest('hex') });
   const cases = [
-    { ...preview, packet: { ...packet, sourceReadiness: { ...packet.sourceReadiness, sha256: '0x' + 'd'.repeat(64) } } },
-    { ...preview, packet: { ...packet, authorization: { ...packet.authorization, requiredSigners: [...packet.authorization.requiredSigners].reverse() } } },
-    { ...preview, packet: { ...packet, authorization: { ...packet.authorization, signatures: ['0x12'] } } },
-    { ...preview, packet: { ...packet, execution: { ...packet.execution, transactionCount: 1 } } },
-    { ...preview, packet: { ...packet, safety: { ...packet.safety, calldataIncluded: true } } },
+    { ...preview, packetSha256: '0x' + 'c'.repeat(64) },
+    withPacket({ ...packet, sourceReadiness: { ...packet.sourceReadiness, sha256: '0x' + 'd'.repeat(64) } }),
+    withPacket({ ...packet, authorization: { ...packet.authorization, requiredSigners: [...packet.authorization.requiredSigners].reverse() } }),
+    withPacket({ ...packet, authorization: { ...packet.authorization, signatures: ['0x12'] } }),
+    withPacket({ ...packet, execution: { ...packet.execution, transactionCount: 1 } }),
+    withPacket({ ...packet, safety: { ...packet.safety, calldataIncluded: true } }),
+    withPacket({ ...packet, signedTransaction: '0x12' }),
+    withPacket({ ...packet, privateKeys: ['0x12'] }),
   ];
-  for (const value of cases) assert.throws(() => launchpad.validateSwarmLaunchExecutionPreview(value, readiness), /invalid|unsafe|lineage|signer/i);
+  for (const value of cases) await assert.rejects(() => launchpad.validateSwarmLaunchExecutionPreview(value, readiness), /invalid|unsafe|lineage|signer|hash|material/i);
+});
+
+test('predicted streams stay labeled by canonical signer then token ordering for repeated owners', () => {
+  const repeatedReadiness = structuredClone(readiness);
+  repeatedReadiness.packet.agentVesting.allocations[0].consentAuthority = '0x3333333333333333333333333333333333333333';
+  repeatedReadiness.packet.agentVesting.allocations[1].consentAuthority = '0x1111111111111111111111111111111111111111';
+  repeatedReadiness.packet.agentVesting.allocations[2].consentAuthority = '0x1111111111111111111111111111111111111111';
+  const repeatedPacket = structuredClone(packet);
+  repeatedPacket.authorization.requiredSigners = ['0x1111111111111111111111111111111111111111', '0x3333333333333333333333333333333333333333'];
+  repeatedPacket.plan.requiredSigners = [...repeatedPacket.authorization.requiredSigners];
+  const html = launchpad.renderSwarmLaunchpad(baseState({ readiness: repeatedReadiness, executionPreview: { packet: repeatedPacket, packetSha256: preview.packetSha256 } }));
+  const result = html.slice(html.indexOf('swarm-launch-execution-review-result'));
+  assert.ok(result.indexOf('Looper #2') < result.indexOf('Looper #3'));
+  assert.ok(result.indexOf('Looper #3') < result.indexOf('Looper #1'));
 });

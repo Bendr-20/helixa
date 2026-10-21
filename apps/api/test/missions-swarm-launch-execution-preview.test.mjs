@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createSwarmLaunchConsentService } from '../src/missions/swarm-launch-consent.js';
 import { canonicalSwarmLaunchJson } from '../../../packages/types/src/swarm-launch.js';
+import { buildSwarmLaunchExecutionReadiness } from '../../../packages/contracts/scripts/swarm-launch-execution-manifest.js';
+import { verifySwarmLaunchPacket } from '../../../packages/contracts/scripts/verify-swarm-launch-packet.js';
 
 const OWNER = '0x1111111111111111111111111111111111111111';
 const PARTNER = '0x2222222222222222222222222222222222222222';
 const FACTORY = '0x9999999999999999999999999999999999999999';
 const HASH = '0x' + 'a'.repeat(64);
-const manifest = Object.freeze({ schema: 'multipass.swarm-launch.v1', chainId: 8453, execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, app: { name: 'A', pitch: 'Ship.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Token', ticker: 'TOKEN', supply: '100000000', curve: 'bonding_curve_to_dex' }, economics: { model: 'PROVIDER_NEUTRAL_V1', agentVesting: { allocationBps: 4500, cliffMonths: 6, durationMonths: 18 }, credRewards: { allocationBps: 1500, beneficiary: 'CRED_STAKERS', provider: 'UNSELECTED' }, swarmTreasury: { allocationBps: 1500, control: 'SWARM_MULTISIG_REQUIRED' }, publicDistribution: { allocationBps: 2500, mechanism: 'UNSELECTED' }, totalAllocationBps: 10000 }, members: [
+const ARTIFACTS = Object.freeze({ compilerVersion: '0.8.24', sourceHash: 'b'.repeat(64), contracts: Object.fromEntries(['FixedSupplySwarmToken', 'SwarmContributionRegistry', 'NonTransferableVestingStream', 'PullRevenueSplitter', 'SwarmLaunchFactory'].map((name) => [name, { bytecode: '0x00', deployedBytecode: '0x00', abi: [] }])) });
+const contractFixture = JSON.parse(await readFile(new URL('../../../packages/contracts/fixtures/swarm-launch/base-mainnet-preparation-input.json', import.meta.url)));
+const manifest = Object.freeze({ schema: 'multipass.swarm-launch.v1', chainId: 8453, identity: { registry: '0x1234567890123456789012345678901234567890' }, execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, app: { name: 'A', pitch: 'Ship.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Token', ticker: 'TOKEN', supply: '100000000', curve: 'bonding_curve_to_dex' }, economics: { model: 'PROVIDER_NEUTRAL_V1', agentVesting: { allocationBps: 4500, cliffMonths: 6, durationMonths: 18 }, credRewards: { allocationBps: 1500, beneficiary: 'CRED_STAKERS', provider: 'UNSELECTED' }, swarmTreasury: { allocationBps: 1500, control: 'SWARM_MULTISIG_REQUIRED' }, publicDistribution: { allocationBps: 2500, mechanism: 'UNSELECTED' }, totalAllocationBps: 10000 }, members: [
   { identity: { tokenId: '1' }, consentAuthority: OWNER, contributionBps: 4000 },
   { identity: { tokenId: '2' }, consentAuthority: PARTNER, contributionBps: 3500 },
   { identity: { tokenId: '3' }, consentAuthority: PARTNER, contributionBps: 2500 },
@@ -28,6 +33,7 @@ const request = Object.freeze({
 function fixture(overrides = {}) {
   const records = new Map();
   const calls = [];
+  const verifierCalls = [];
   const store = {
     create(value) { records.set(value.proposalId, { ...value, consents: [] }); return records.get(value.proposalId); },
     read(id) { return records.get(id) ?? null; },
@@ -46,14 +52,15 @@ function fixture(overrides = {}) {
   });
   const service = createSwarmLaunchConsentService({
     store, createId: () => 'proposal-1', now: overrides.now ?? (() => 1_000),
-    preview: async () => ({ manifest, manifestSha256: HASH, input }),
+    preview: overrides.preview ?? (async () => ({ manifest, manifestSha256: HASH, input })),
     authorizeLooper: async ({ tokenId, wallet }) => ({ tokenId, owner: wallet, controllerVerified: true }),
     verifySignature: async () => true,
     factoryAddress: Object.hasOwn(overrides, 'factoryAddress') ? overrides.factoryAddress : FACTORY,
     executionArtifacts: Object.hasOwn(overrides, 'executionArtifacts') ? overrides.executionArtifacts : { pinned: true },
     executionPacketBuilder: builder,
+    executionPacketVerifier: overrides.executionPacketVerifier ?? (async (packet) => { verifierCalls.push(packet); return { status: 'VERIFIED_OFFLINE' }; }),
   });
-  return { service, records, calls };
+  return { service, records, calls, verifierCalls };
 }
 
 async function unanimous(f) {
@@ -69,6 +76,7 @@ test('derives a canonical execution conversion and delegates only server-authori
   assert.equal(first.packet.execution.mode, 'PREPARATION_ONLY');
   assert.match(first.packetSha256, /^0x[0-9a-f]{64}$/u);
   assert.equal(f.calls.length, 2);
+  assert.equal(f.verifierCalls.length, 2);
   assert.equal(f.calls[0].chainId, 8453);
   assert.equal(f.calls[0].factoryAddress, FACTORY);
   assert.equal(f.calls[0].consentManifest, manifest);
@@ -111,8 +119,41 @@ test('rejects any builder result that is executable, signed, transactional, or n
     { execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, broadcastPrepared: false, transactionCount: 0 }, authorization: { status: 'SIGNATURES_ATTACHED_UNVERIFIED', signatures: ['0x12'] } },
   ];
   for (const unsafe of unsafeCases) {
-    const f = fixture({ executionPacketBuilder: (value) => { const packet = { ...unsafe, schema: 'multipass.swarm-token-launch-packet.v1', chainId: 8453, factory: FACTORY, sourceReadiness: { sha256: value.readinessPacketSha256 }, safety: { keysIncluded: false, signaturesIncluded: false, transactionDataIncluded: false, calldataIncluded: false, secretsIncluded: false, externalAdapterDataIncluded: false, rpcSendMethodsAllowed: false } }; return { manifest: packet, manifestSha256: '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(packet)).digest('hex'), typedData: {} }; } });
+    const f = fixture({ executionPacketBuilder: (value) => { const packet = { ...unsafe, schema: 'multipass.swarm-token-launch-packet.v1', chainId: 8453, factory: FACTORY, sourceReadiness: { sha256: value.readinessPacketSha256 }, safety: { keysIncluded: false, signaturesIncluded: false, transactionDataIncluded: false, calldataIncluded: false, secretsIncluded: false, externalAdapterDataIncluded: false, rpcSendMethodsAllowed: false } }; return { manifest: packet, manifestSha256: '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(packet)).digest('hex'), typedData: {} }; }, executionPacketVerifier: async () => ({ status: 'REJECTED' }) });
     await unanimous(f);
-    await assert.rejects(() => f.service.createExecutionPreview({ actorAddress: OWNER, proposalId: 'proposal-1', input: request }), /preparation|unsafe|invalid/i);
+    await assert.rejects(() => f.service.createExecutionPreview({ actorAddress: OWNER, proposalId: 'proposal-1', input: request }), /preparation|unsafe|invalid|offline/i);
+  }
+});
+
+test('real canonical builder and offline verifier accept repeated authorities and reject closed-schema tampering', async () => {
+  const canonicalConsent = structuredClone(contractFixture.consentManifest);
+  canonicalConsent.members.forEach((entry, index) => { entry.consentAuthority = index === 0 ? OWNER : PARTNER; });
+  const manifestSha256 = '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(canonicalConsent)).digest('hex');
+  const preview = async () => ({ manifest: canonicalConsent, manifestSha256, input });
+  let canonicalEnvelope;
+  const captureBuilder = (value) => { canonicalEnvelope = buildSwarmLaunchExecutionReadiness(value); return canonicalEnvelope; };
+  const valid = fixture({ preview, executionArtifacts: ARTIFACTS, executionPacketBuilder: captureBuilder, executionPacketVerifier: verifySwarmLaunchPacket });
+  await unanimous(valid);
+  const result = await valid.service.createExecutionPreview({ actorAddress: OWNER, proposalId: 'proposal-1', input: request });
+  assert.equal(result.packet.plan.contributions.length, 3);
+  assert.deepEqual(result.packet.plan.requiredSigners, [OWNER, PARTNER]);
+
+  const mutate = (edit, rehash = true) => { const next = structuredClone(canonicalEnvelope); edit(next); if (rehash) next.manifestSha256 = '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(next.manifest)).digest('hex'); return next; };
+  const attacks = [
+    mutate((next) => { delete next.manifest.plan; }),
+    mutate((next) => { delete next.manifest.deployment; }),
+    mutate((next) => { delete next.manifest.compiler; }),
+    mutate((next) => { delete next.manifest.conversion; }),
+    mutate((next) => { next.manifest.unknown = true; }),
+    mutate((next) => { next.manifest.signedTransaction = '0x12'; }),
+    mutate((next) => { next.manifest.privateKeys = ['0x12']; }),
+    mutate((next) => { next.manifestSha256 = '0x' + 'c'.repeat(64); }, false),
+    mutate((next) => { next.typedData.domain.chainId = 1; }, false),
+    mutate((next) => { next.manifest.deployment.token = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; }),
+  ];
+  for (const attack of attacks) {
+    const f = fixture({ preview, executionArtifacts: ARTIFACTS, executionPacketBuilder: () => attack, executionPacketVerifier: verifySwarmLaunchPacket });
+    await unanimous(f);
+    await assert.rejects(() => f.service.createExecutionPreview({ actorAddress: OWNER, proposalId: 'proposal-1', input: request }), /schema|missing|unknown|hash|canonical|lineage|compiler|prediction|typed|invalid/i);
   }
 });

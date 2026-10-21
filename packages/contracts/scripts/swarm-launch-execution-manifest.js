@@ -276,9 +276,8 @@ function derivePlan(parentHash, readiness, consent, conversion) {
   const byToken = new Map(conversion.members.map((entry) => [entry.tokenId, entry.beneficiary]));
   const combined = readiness.agentVesting.allocations.map((entry) => ({
     agentKey: keccak256(coder.encode(['uint256', 'address', 'uint256'], [CHAIN_ID, consent.identity.registry, entry.tokenId])),
-    beneficiary: byToken.get(entry.tokenId), bps: entry.shareBps, signer: entry.consentAuthority,
-  })).sort((a, b) => BigInt(a.signer) < BigInt(b.signer) ? -1 : 1);
-  if (new Set(combined.map((entry) => entry.signer)).size !== combined.length) throw new TypeError('Consent authorities must be unique for unanimous execution.');
+    tokenId: entry.tokenId, beneficiary: byToken.get(entry.tokenId), bps: entry.shareBps, signer: entry.consentAuthority,
+  })).sort((a, b) => BigInt(a.signer) < BigInt(b.signer) ? -1 : BigInt(a.signer) > BigInt(b.signer) ? 1 : BigInt(a.tokenId) < BigInt(b.tokenId) ? -1 : 1);
   let allocated = 0n;
   const vestingAmounts = combined.map((entry, index) => {
     const amount = index + 1 === combined.length ? agent - allocated : shareOf(agent, entry.bps);
@@ -293,7 +292,7 @@ function derivePlan(parentHash, readiness, consent, conversion) {
     vestingAmounts,
     revenueShares: combined.map((entry) => ({ payee: entry.beneficiary, bps: entry.bps })),
     revenueAssets: conversion.revenueAssets,
-    requiredSigners: combined.map((entry) => entry.signer),
+    requiredSigners: [...new Set(combined.map((entry) => entry.signer))],
   };
 }
 
@@ -338,7 +337,7 @@ function normalizePlan(value, readinessPacketSha256) {
   const revenueAssets = value.revenueAssets.map((entry) => address(entry, true, 'revenue asset'));
   if (new Set(revenueAssets).size !== revenueAssets.length) throw new TypeError('Revenue assets must be unique.');
 
-  if (!Array.isArray(value.requiredSigners) || value.requiredSigners.length !== contributions.length) throw new TypeError('Every member must be a required signer.');
+  if (!Array.isArray(value.requiredSigners) || value.requiredSigners.length < 1 || value.requiredSigners.length > contributions.length) throw new TypeError('One to member-count unique authorities are required.');
   const requiredSigners = value.requiredSigners.map((entry) => address(entry, false, 'required signer'));
   for (let index = 0; index < requiredSigners.length; index += 1) {
     if (index > 0 && BigInt(requiredSigners[index]) <= BigInt(requiredSigners[index - 1])) throw new TypeError('Required signers must be unique and numerically sorted.');

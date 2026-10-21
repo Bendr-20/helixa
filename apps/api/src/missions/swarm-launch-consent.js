@@ -11,7 +11,7 @@ const MONTH_SECONDS = 2_592_000;
 const START_DELAY_SECONDS = 604_800;
 const EXECUTION_TIMING_POLICY = 'SOURCE_CONSENT_EXPIRY_PLUS_7D_30D_MONTHS_V1';
 
-export function createSwarmLaunchConsentService({ store, preview, authorizeLooper, verifySignature, createId, now = Date.now, ttlMs = DEFAULT_TTL_MS, factoryAddress = null, executionArtifacts = null, executionPacketBuilder = null } = {}) {
+export function createSwarmLaunchConsentService({ store, preview, authorizeLooper, verifySignature, createId, now = Date.now, ttlMs = DEFAULT_TTL_MS, factoryAddress = null, executionArtifacts = null, executionPacketBuilder = null, executionPacketVerifier = null } = {}) {
   for (const [label, value] of Object.entries({ preview, authorizeLooper, verifySignature, createId, now })) if (typeof value !== 'function') throw new TypeError(label + ' is required.');
   if (!store || !['create', 'read', 'consent'].every((method) => typeof store[method] === 'function')) throw new TypeError('Consent store is invalid.');
   if (!Number.isSafeInteger(ttlMs) || ttlMs < 60_000 || ttlMs > 7 * DEFAULT_TTL_MS) throw new TypeError('Consent TTL is invalid.');
@@ -62,7 +62,7 @@ export function createSwarmLaunchConsentService({ store, preview, authorizeLoope
       const readiness = await createReadiness(actorAddress, proposalId);
       const current = project(record, now());
       if (current.status !== 'SIGNATURES_COLLECTED') throw new ConsentError('consent_changed', 'Unanimous live consent is required.', 409);
-      if (!factoryAddress || typeof executionPacketBuilder !== 'function' || !executionArtifacts) throw new ConsentError('not_configured', 'Swarm launch execution factory is not configured.', 503);
+      if (!factoryAddress || typeof executionPacketBuilder !== 'function' || typeof executionPacketVerifier !== 'function' || !executionArtifacts) throw new ConsentError('not_configured', 'Swarm launch execution factory is not configured.', 503);
       const factory = nonzeroAddress(factoryAddress, 'factory address');
       const conversion = executionConversion(input, readiness.packet, readiness.packetSha256);
       const built = await executionPacketBuilder({
@@ -74,7 +74,10 @@ export function createSwarmLaunchConsentService({ store, preview, authorizeLoope
         conversion,
         artifacts: executionArtifacts,
       });
-      return validateExecutionPreview(built, readiness.packetSha256, factory, readiness.packet);
+      const report = await executionPacketVerifier(built, { artifacts: executionArtifacts });
+      if (report?.status !== 'VERIFIED_OFFLINE') throw new TypeError('Execution preview packet did not pass exact offline verification.');
+      if (built.manifest.execution?.mode !== 'PREPARATION_ONLY' || built.manifest.execution?.deploymentAuthorized !== false || built.manifest.execution?.broadcastPrepared !== false || built.manifest.execution?.transactionCount !== 0 || built.manifest.authorization?.status !== 'NOT_ATTACHED' || built.manifest.authorization?.signatures?.length !== 0) throw new TypeError('Execution preview packet is not unsigned preparation-only material.');
+      return Object.freeze({ packet: built.manifest, packetSha256: built.manifestSha256 });
     },
     async readChallenge({ actorAddress, proposalId } = {}) {
       const { actor, record, participant } = await loadParty(actorAddress, proposalId);
@@ -158,30 +161,6 @@ function executionConversion(input, readiness, readinessPacketSha256) {
   const seed = { schema: 'multipass.swarm-launch-execution-conversion.v1', parentReadinessSha256: readinessPacketSha256, timing, members, recipients, revenueAssets };
   const deploymentSalt = '0x' + createHash('sha256').update('HELIXA_SWARM_LAUNCH_EXECUTION_SALT_V1\n' + canonicalSwarmLaunchJson(seed)).digest('hex');
   return Object.freeze({ ...seed, deploymentSalt });
-}
-function validateExecutionPreview(built, readinessPacketSha256, factoryAddress, readiness) {
-  const packet = built?.manifest;
-  const packetSha256 = String(built?.manifestSha256 ?? '').toLowerCase();
-  if (!packet || !MANIFEST_HASH.test(packetSha256)) throw new TypeError('Execution preview packet is invalid.');
-  const calculated = '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(packet)).digest('hex');
-  if (calculated !== packetSha256 || packet.schema !== 'multipass.swarm-token-launch-packet.v1' || packet.chainId !== 8453 || packet.factory !== factoryAddress || packet.sourceReadiness?.sha256 !== readinessPacketSha256) throw new TypeError('Execution preview packet lineage or hash is invalid.');
-  const execution = packet.execution;
-  const authorization = packet.authorization;
-  const safety = packet.safety;
-  if (execution?.mode !== 'PREPARATION_ONLY' || execution?.deploymentAuthorized !== false || execution?.broadcastPrepared !== false || execution?.transactionCount !== 0 || authorization?.status !== 'NOT_ATTACHED' || !Array.isArray(authorization?.signatures) || authorization.signatures.length !== 0) throw new TypeError('Execution preview packet is not safe preparation-only material.');
-  const expectedSigners = [...new Set(readiness.agentVesting.allocations.map((entry) => entry.consentAuthority))].sort((left, right) => BigInt(left) < BigInt(right) ? -1 : BigInt(left) > BigInt(right) ? 1 : 0);
-  if (!Array.isArray(authorization.requiredSigners) || authorization.requiredSigners.length !== expectedSigners.length || authorization.requiredSigners.some((entry, index) => address(entry) !== expectedSigners[index])) throw new TypeError('Execution preview required signers are invalid.');
-  for (const field of ['keysIncluded', 'signaturesIncluded', 'transactionDataIncluded', 'calldataIncluded', 'secretsIncluded', 'externalAdapterDataIncluded', 'rpcSendMethodsAllowed']) if (safety?.[field] !== false) throw new TypeError('Execution preview packet safety declaration is invalid.');
-  assertNoExecutableMaterial(packet);
-  return Object.freeze({ packet, packetSha256 });
-}
-function assertNoExecutableMaterial(value) {
-  if (Array.isArray(value)) { value.forEach(assertNoExecutableMaterial); return; }
-  if (!value || typeof value !== 'object') return;
-  for (const [key, child] of Object.entries(value)) {
-    if (/^(?:privateKey|secretKey|calldata|rawTransaction|transaction|transactions|signature)$/iu.test(key)) throw new TypeError('Execution preview packet contains hidden executable material.');
-    assertNoExecutableMaterial(child);
-  }
 }
 function exactKeys(value, required, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new TypeError(label + ' is invalid.');

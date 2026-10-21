@@ -78,6 +78,23 @@ test('normalizes Console millisecond consent expiry into reviewed onchain second
   assert.equal(prepared.manifest.plan.start, 1_900_518_400);
 });
 
+test('deduplicates repeated member consent authorities without dropping member contributions', async () => {
+  const base = input(wallets().map((wallet) => wallet.address), await artifactsPromise);
+  const shared = base.readinessManifest.agentVesting.allocations[0].consentAuthority;
+  base.readinessManifest.agentVesting.allocations[1].consentAuthority = shared;
+  base.consentManifest.members[1].consentAuthority = shared;
+  base.readinessManifest.sourceConsent.manifestSha256 = hash(base.consentManifest);
+  base.readinessPacketSha256 = hash(base.readinessManifest);
+  base.conversion.parentReadinessSha256 = base.readinessPacketSha256;
+  const prepared = buildSwarmLaunchExecutionReadiness(base);
+  assert.equal(prepared.manifest.plan.contributions.length, 3);
+  assert.deepEqual(prepared.manifest.plan.requiredSigners, [...new Set(base.readinessManifest.agentVesting.allocations.map((entry) => entry.consentAuthority))].sort((a, b) => BigInt(a) < BigInt(b) ? -1 : 1));
+  const changedMember = structuredClone(base); changedMember.conversion.members[1].beneficiary = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const changed = buildSwarmLaunchExecutionReadiness(changedMember);
+  assert.notEqual(changed.manifest.deployment.deploymentId, prepared.manifest.deployment.deploymentId);
+  assert.notEqual(changed.manifest.authorization.digest, prepared.manifest.authorization.digest);
+});
+
 test('matches onchain deployment ID, digest, and CREATE2 predictions', async () => {
   const artifacts = await artifactsPromise;
   const provider = new BrowserProvider(ganache.provider({ chain: { chainId: 8453 }, logging: { quiet: true } }));

@@ -95,9 +95,13 @@ export function normalizeSwarmLaunchExecutionReviewForm(formData, readiness) {
   return Object.freeze({ beneficiaries: Object.freeze(beneficiaries.map(Object.freeze)), recipients: Object.freeze(recipients), revenueAssets: Object.freeze(revenueAssets) });
 }
 
-export function validateSwarmLaunchExecutionPreview(value, readiness) {
+export async function validateSwarmLaunchExecutionPreview(value, readiness) {
   if (!validReadiness(readiness) || !value || typeof value !== 'object' || Array.isArray(value) || !/^0x[0-9a-f]{64}$/u.test(value.packetSha256 ?? '')) throw new TypeError('Execution preview response is invalid.');
   const packet = value.packet;
+  if (!packet || typeof packet !== 'object' || Array.isArray(packet)) throw new TypeError('Execution preview packet is invalid.');
+  const calculatedHash = await sha256Hex(canonicalSwarmLaunchJson(packet));
+  if (calculatedHash !== value.packetSha256) throw new TypeError('Execution preview packet hash is invalid.');
+  assertNoHiddenExecutionMaterial(packet);
   if (!packet || packet.schema !== 'multipass.swarm-token-launch-packet.v1' || packet.chainId !== 8453 || packet.sourceReadiness?.sha256 !== readiness.packetSha256 || packet.sourceReadiness?.artifact?.sourceConsent?.manifestSha256 !== readiness.packet.sourceConsent.manifestSha256) throw new TypeError('Execution preview lineage is invalid.');
   if (packet.execution?.mode !== 'PREPARATION_ONLY' || packet.execution?.deploymentAuthorized !== false || packet.execution?.broadcastPrepared !== false || packet.execution?.transactionCount !== 0) throw new TypeError('Execution preview state is unsafe.');
   if (packet.authorization?.status !== 'NOT_ATTACHED' || !Array.isArray(packet.authorization?.signatures) || packet.authorization.signatures.length !== 0) throw new TypeError('Execution preview authorization is invalid.');
@@ -149,13 +153,27 @@ function renderExecutionReview(state) {
   const packet = state.executionPreview.packet;
   const token = packet.plan.token; const amounts = packet.plan.allocations;
   const signers = packet.authorization.requiredSigners.map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`).join('');
-  const sortedMembers = [...state.readiness.packet.agentVesting.allocations].sort((left, right) => compareAddresses(left.consentAuthority, right.consentAuthority));
+  const sortedMembers = [...state.readiness.packet.agentVesting.allocations].sort((left, right) => compareAddresses(left.consentAuthority, right.consentAuthority) || (BigInt(left.tokenId) < BigInt(right.tokenId) ? -1 : 1));
   const streams = packet.deployment.streams.map((entry, index) => `<li>Looper #${escapeHtml(sortedMembers[index].tokenId)} · <code>${escapeHtml(entry)}</code></li>`).join('');
   return `<section class="swarm-launch-execution-review-result"><h3>Reviewed execution preparation</h3><p><strong>Provider adapter: not selected</strong> · <strong>Deployment authorized: false</strong> · <strong>Transactions: 0</strong></p><dl><div><dt>Token</dt><dd>${escapeHtml(token.name)} (${escapeHtml(token.symbol)}) · ${escapeHtml(token.decimals)} decimals · ${escapeHtml(token.totalSupply)} base units</dd></div><div><dt>Allocation amounts</dt><dd>Agent vesting ${escapeHtml(amounts.agentVestingAmount)} · CRED rewards ${escapeHtml(amounts.credRewardsAmount)} · Swarm treasury ${escapeHtml(amounts.swarmTreasuryAmount)} · Public distribution ${escapeHtml(amounts.publicDistributionAmount)}</dd></div><div><dt>Vesting schedule</dt><dd>Start ${escapeHtml(packet.plan.start)} · ${escapeHtml(packet.plan.cliff / 2_592_000)} months cliff · ${escapeHtml(packet.plan.duration / 2_592_000)} months duration</dd></div><div><dt>Source consent hash</dt><dd><code>${escapeHtml(packet.sourceReadiness.artifact.sourceConsent.manifestSha256)}</code></dd></div><div><dt>Source readiness hash</dt><dd><code>${escapeHtml(packet.sourceReadiness.sha256)}</code></dd></div><div><dt>Packet hash</dt><dd><code>${escapeHtml(state.executionPreview.packetSha256)}</code></dd></div></dl><h4>Required execution signers</h4><ul>${signers}</ul><h4>Predicted contracts</h4><ul><li>Token · <code>${escapeHtml(packet.deployment.token)}</code></li><li>Registry · <code>${escapeHtml(packet.deployment.registry)}</code></li><li>Splitter · <code>${escapeHtml(packet.deployment.splitter)}</code></li>${streams}</ul><p>Separate execution consent remains required. No signatures, transaction data, calldata, or broadcast material are attached.</p></section>`;
 }
 function validReadiness(value) { return Boolean(value?.packet?.schema === 'multipass.swarm-launch-readiness.v1' && value.packet.execution?.mode === 'SIMULATION_ONLY' && value.packet.execution?.deploymentAuthorized === false && value.packet.execution?.providerSelected === false && value.packet.execution?.transactionCount === 0 && /^0x[0-9a-f]{64}$/u.test(value.packetSha256 ?? '') && Array.isArray(value.packet.agentVesting?.allocations)); }
 function reviewAddress(value, allowZero, label) { const text=String(value??'').trim().toLowerCase(); if(!/^0x[0-9a-f]{40}$/u.test(text)||(!allowZero&&/^0x0{40}$/u.test(text)))throw new TypeError(label+' is invalid.'); return text; }
 function compareAddresses(left, right) { const a=BigInt(left); const b=BigInt(right); return a<b?-1:a>b?1:0; }
+async function sha256Hex(value) {
+  if (!globalThis.crypto?.subtle) throw new TypeError('Execution preview hash verification is unavailable.');
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return '0x' + [...new Uint8Array(digest)].map((entry) => entry.toString(16).padStart(2, '0')).join('');
+}
+function assertNoHiddenExecutionMaterial(value) {
+  if (Array.isArray(value)) { value.forEach(assertNoHiddenExecutionMaterial); return; }
+  if (!value || typeof value !== 'object') return;
+  for (const [key, child] of Object.entries(value)) {
+    const normalized = key.replace(/[^a-z]/giu, '').toLowerCase();
+    if (['privatekey', 'privatekeys', 'secretkey', 'secretkeys', 'signedtransaction', 'signedtransactions', 'rawtransaction', 'rawtransactions', 'transaction', 'transactions', 'calldata', 'transactiondata', 'signature', 'rpcurl', 'providercredentials', 'apikey'].includes(normalized)) throw new TypeError('Execution preview contains hidden executable material.');
+    assertNoHiddenExecutionMaterial(child);
+  }
+}
 function shortAddress(value) { const text=String(value??''); return text.length===42 ? text.slice(0,6)+'…'+text.slice(-4) : text; }
 function options(values, selected) { return [...values].map((value) => `<option value="${escapeAttribute(value)}" ${value === selected ? 'selected' : ''}>${escapeHtml(label(value))}</option>`).join(''); }
 function label(value) { return String(value).replaceAll('_', ' ').replace(/\b\w/gu, (char) => char.toUpperCase()); }

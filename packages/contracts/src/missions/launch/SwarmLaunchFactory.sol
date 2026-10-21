@@ -387,9 +387,10 @@ contract SwarmLaunchFactory {
     }
 
     function _validateSigners(address[] calldata signers, uint256 memberCount) private pure {
-        if (signers.length != memberCount) revert InvalidPlan();
+        uint256 signerCount = signers.length;
+        if (signerCount == 0 || signerCount > memberCount) revert InvalidPlan();
         address previous;
-        for (uint256 index; index < memberCount; ++index) {
+        for (uint256 index; index < signerCount; ++index) {
             address signer = signers[index];
             if (signer == address(0) || signer <= previous) revert InvalidPlan();
             previous = signer;

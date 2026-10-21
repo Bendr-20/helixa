@@ -130,7 +130,8 @@ test('binds every token and allocation field into deployment ID and rejects unsa
     allocations: { ...plan.allocations, swarmTreasuryRecipient: plan.allocations.credRewardsRecipient },
   };
   await assert.rejects(factory.predict(duplicatedRecipient), /revert|InvalidPlan/i);
-  await assert.rejects(factory.predict({ ...plan, requiredSigners: plan.requiredSigners.slice(0, 2) }), /revert|InvalidPlan/i);
+  await assert.rejects(factory.predict({ ...plan, requiredSigners: [] }), /revert|InvalidPlan/i);
+  await assert.rejects(factory.predict({ ...plan, requiredSigners: [plan.requiredSigners[0], plan.requiredSigners[0]] }), /revert|InvalidPlan/i);
   await assert.rejects(factory.predict({ ...plan, allocations: { ...plan.allocations, publicDistributionAmount: '2501' } }), /revert|InvalidPlan/i);
 });
 

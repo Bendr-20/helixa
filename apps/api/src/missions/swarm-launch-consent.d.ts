@@ -29,6 +29,7 @@ export interface SwarmLaunchConsentServiceOptions {
   factoryAddress?: string | null;
   executionArtifacts?: unknown;
   executionPacketBuilder?: (input: Record<string, unknown>) => Promise<unknown> | unknown;
+  executionPacketVerifier?: (packet: unknown, options: { artifacts: unknown }) => Promise<{ status: string }> | { status: string };
 }
 
 export declare function createSwarmLaunchConsentService(options: SwarmLaunchConsentServiceOptions): SwarmLaunchConsentService;

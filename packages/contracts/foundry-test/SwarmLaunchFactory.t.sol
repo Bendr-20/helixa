@@ -121,6 +121,19 @@ contract SwarmLaunchFactoryTest {
         factory.deploy(plan, signatures);
     }
 
+    function testOneAuthorityCanAuthorizeThreeOwnedMemberContributions() external {
+        SwarmLaunchFactory factory = new SwarmLaunchFactory();
+        uint256 key = 0xA11CE;
+        address[] memory signers = new address[](1);
+        signers[0] = VM.addr(key);
+        SwarmLaunchFactory.LaunchPlan memory plan = _basePlan(signers);
+        bytes32 digest = factory.authorizationDigest(factory.computeDeploymentId(plan), plan.authorizationDeadline);
+        bytes[] memory signatures = new bytes[](1);
+        signatures[0] = _signature(key, digest);
+        (address token,,,) = factory.deploy(plan, signatures);
+        require(token != address(0) && plan.contributions.length == 3, "shared authority launch failed");
+    }
+
     function testRejectsHighSEoaSignature() external {
         SwarmLaunchFactory factory = new SwarmLaunchFactory();
         (SwarmLaunchFactory.LaunchPlan memory plan, uint256[] memory keys) = _eoaPlan();

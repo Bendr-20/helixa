@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { open } from 'node:fs/promises';
 import http from 'node:http';
 import { isIP } from 'node:net';
 import os from 'node:os';
@@ -52,11 +53,13 @@ import { createRestapNetworkProductionFoundation, parseRestapNetworkProductionCo
 import { hasRestapNetworkEnvironment, parseRestapNetworkServiceConfig, startRestapNetworkService } from './restap-network/service.js';
 import { composeRestapVerifiedSendProduction } from './restap-network/verified-send-production.js';
 import { buildSwarmLaunchExecutionReadiness } from '../../../packages/contracts/scripts/swarm-launch-execution-manifest.js';
+import { verifySwarmLaunchPacket } from '../../../packages/contracts/scripts/verify-swarm-launch-packet.js';
 
 const DEFAULT_FIXTURE = 'generic';
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8787;
 const DEFAULT_RESTAP_TALK_TIMEOUT_MS = 15_000;
+const MAX_SWARM_EXECUTION_ARTIFACT_BYTES = 4 * 1024 * 1024;
 const DEFAULT_RESTAP_TALK_LIMITS = Object.freeze({
   perIpPerMinute: 20,
   perSessionPerMinute: 10,
@@ -82,6 +85,8 @@ export function parseServerOptions(argv = [], env = process.env) {
     looperMarketplaceRosterPath: env.LOOPER_MARKETPLACE_ROSTER_PATH || null,
     missionsEnabled: parseStrictBoolean(env.MULTIPASS_MISSIONS_ENABLED, 'MULTIPASS_MISSIONS_ENABLED') ?? false,
     missionsDatabasePath: env.MULTIPASS_MISSIONS_DB_PATH || null,
+    swarmLaunchFactoryAddress: normalizeOptionalAddress(env.MULTIPASS_SWARM_LAUNCH_FACTORY_ADDRESS, 'MULTIPASS_SWARM_LAUNCH_FACTORY_ADDRESS'),
+    swarmLaunchExecutionArtifactsPath: parseOptionalBoundedString(env.MULTIPASS_SWARM_LAUNCH_ARTIFACTS_PATH, 'MULTIPASS_SWARM_LAUNCH_ARTIFACTS_PATH', 4096),
     loopersAllowlistRegistrationPaused: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_PAUSED, 'MULTIPASS_LOOPERS_ALLOWLIST_PAUSED') ?? false,
     loopersAllowlistRequireBrowserOrigin: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN, 'MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN') ?? false,
     loopersAllowlistBlockedSources: parseStringList(env.MULTIPASS_LOOPERS_ALLOWLIST_BLOCKED_SOURCES),
@@ -185,6 +190,8 @@ export async function startServer(options = {}) {
     looperMarketplaceRosterPath: options.looperMarketplaceRosterPath ?? null,
     missionsEnabled: options.missionsEnabled === true,
     missionsDatabasePath: options.missionsDatabasePath ?? null,
+    swarmLaunchFactoryAddress: normalizeOptionalAddress(options.swarmLaunchFactoryAddress, 'swarmLaunchFactoryAddress'),
+    swarmLaunchExecutionArtifactsPath: parseOptionalBoundedString(options.swarmLaunchExecutionArtifactsPath, 'swarmLaunchExecutionArtifactsPath', 4096),
     loopersAllowlistRegistrationPaused: Boolean(options.loopersAllowlistRegistrationPaused),
     loopersAllowlistRequireBrowserOrigin: Boolean(options.loopersAllowlistRequireBrowserOrigin),
     loopersAllowlistBlockedSources: options.loopersAllowlistBlockedSources ?? [],
@@ -242,6 +249,10 @@ export async function startServer(options = {}) {
     loopersPublicClients: options.loopersPublicClients,
     fetchImpl: options.fetchImpl,
   };
+  const swarmLaunchExecutionArtifactsLoader = options.swarmLaunchExecutionArtifactsLoader ?? loadPinnedSwarmLaunchExecutionArtifacts;
+  const swarmLaunchExecutionArtifacts = options.swarmLaunchExecutionArtifacts ?? (parsed.swarmLaunchExecutionArtifactsPath
+    ? await swarmLaunchExecutionArtifactsLoader(parsed.swarmLaunchExecutionArtifactsPath)
+    : null);
   const { store, fixtureName } = await loadFixtureStore({ fixture: parsed.fixture });
   if (parsed.credifiOwnerOptInEnabled && !parsed.databasePath) {
     throw new Error('MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED requires MULTIPASS_DB_PATH.');
@@ -475,9 +486,10 @@ export async function startServer(options = {}) {
         authorizeLooper: consoleBootstrap.authorizeLooper,
         verifySignature: options.signatureVerifier ?? verifyEthereumPersonalSignature,
         createId: () => 'consent-' + randomUUID(),
-        factoryAddress: options.swarmLaunchFactoryAddress ?? null,
-        executionArtifacts: options.swarmLaunchExecutionArtifacts ?? null,
+        factoryAddress: parsed.swarmLaunchFactoryAddress,
+        executionArtifacts: swarmLaunchExecutionArtifacts,
         executionPacketBuilder: options.swarmLaunchExecutionPacketBuilder ?? buildSwarmLaunchExecutionReadiness,
+        executionPacketVerifier: options.swarmLaunchExecutionPacketVerifier ?? verifySwarmLaunchPacket,
       });
     }
     if (!swarmInvitationService && swarmInvitationStore) {
@@ -980,6 +992,38 @@ function normalizeOptionalBaseUrl(value, source) {
     return url.href.endsWith('/') ? url.href.slice(0, -1) : url.href;
   } catch {
     throw new Error(`Invalid URL for ${source}: ${value}`);
+  }
+}
+
+function normalizeOptionalAddress(value, source) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/u.test(normalized) || /^0x0{40}$/u.test(normalized)) throw new Error(`Invalid factory address for ${source}.`);
+  return normalized;
+}
+
+export async function loadPinnedSwarmLaunchExecutionArtifacts(filePath) {
+  const normalized = parseOptionalBoundedString(filePath, 'swarm launch execution artifact path', 4096);
+  if (!normalized) throw new Error('Swarm launch execution artifact path is required.');
+  const handle = await open(normalized, 'r');
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size < 2 || stat.size > MAX_SWARM_EXECUTION_ARTIFACT_BYTES) throw new Error('Swarm launch execution artifact file size is invalid.');
+    const bytes = await handle.readFile();
+    if (bytes.byteLength > MAX_SWARM_EXECUTION_ARTIFACT_BYTES) throw new Error('Swarm launch execution artifact file is too large.');
+    try {
+      const parsed = JSON.parse(bytes.toString('utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.compilerVersion !== '0.8.24' || !/^[0-9a-f]{64}$/u.test(parsed.sourceHash ?? '') || !parsed.contracts || typeof parsed.contracts !== 'object') throw new Error('invalid object');
+      for (const name of ['FixedSupplySwarmToken', 'SwarmContributionRegistry', 'NonTransferableVestingStream', 'PullRevenueSplitter', 'SwarmLaunchFactory']) {
+        const artifact = parsed.contracts[name];
+        if (!artifact || !Array.isArray(artifact.abi) || !/^0x(?:[0-9a-f]{2})+$/u.test(artifact.bytecode ?? '') || !/^0x(?:[0-9a-f]{2})+$/u.test(artifact.deployedBytecode ?? '')) throw new Error('invalid contract artifact');
+      }
+      return Object.freeze(parsed);
+    } catch {
+      throw new Error('Swarm launch execution artifact JSON is invalid.');
+    }
+  } finally {
+    await handle.close();
   }
 }
 

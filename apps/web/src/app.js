@@ -2552,7 +2552,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'building_execution_review', executionPreview: null, error: null } }; render(root, state, handlers);
       const response = await activeMissionApi.createLaunchExecutionPreview({ proposalId, csrfToken: state.consoleCsrfToken, body });
       if (state.consoleLaunchpad?.readiness?.packetSha256 !== readiness.packetSha256) throw new Error('Readiness packet changed during execution review.');
-      const executionPreview = validateSwarmLaunchExecutionPreview(response.executionPreview, readiness);
+      const executionPreview = await validateSwarmLaunchExecutionPreview(response.executionPreview, readiness);
+      if (state.consoleLaunchpad?.readiness?.packetSha256 !== readiness.packetSha256) throw new Error('Readiness packet changed during execution review.');
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', executionPreview, error: null } };
     } catch (error) {
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', executionPreview: null, error: String(error?.message ?? 'Execution review failed.') } };
