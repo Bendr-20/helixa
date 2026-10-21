@@ -315,7 +315,7 @@ contract SwarmLaunchFactory {
             allocation.agentVestingBps == 0 || allocation.credRewardsBps == 0 || allocation.swarmTreasuryBps == 0
                 || allocation.publicDistributionBps == 0
                 || uint256(allocation.agentVestingBps) + allocation.credRewardsBps + allocation.swarmTreasuryBps
-                    + allocation.publicDistributionBps != TOTAL_BPS
+                        + allocation.publicDistributionBps != TOTAL_BPS
         ) revert InvalidPlan();
         address cred = allocation.credRewardsRecipient;
         address treasury = allocation.swarmTreasuryRecipient;
@@ -349,7 +349,8 @@ contract SwarmLaunchFactory {
         uint256 allocated;
         for (uint256 index; index < count; ++index) {
             SwarmContributionRegistry.Contribution calldata contribution = contributions[index];
-            if (contribution.agentKey == bytes32(0) || contribution.beneficiary == address(0) || contribution.bps == 0) {
+            if (contribution.agentKey == bytes32(0) || contribution.beneficiary == address(0) || contribution.bps == 0)
+            {
                 revert InvalidPlan();
             }
             for (uint256 prior; prior < index; ++prior) {
