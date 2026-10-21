@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createConsoleCreditApi, createInitialConsoleCreditState, renderConsoleCreditPanel } from '../src/console-credit.js';
@@ -62,4 +63,14 @@ test('credit workspace disables new quotes while a borrow needs reconciliation',
   const html = renderConsoleCreditPanel({ status: 'ready', selectedTokenId: TOKEN_ID, overview: { ...OVERVIEW, borrowing: { status: 'RECONCILIATION_REQUIRED', quoteId: 'quote-1' } } }, { tokenId: TOKEN_ID });
   assert.match(html, /New borrowing is locked until an operator reconciles/i);
   assert.match(html, /<button type="submit" disabled>Preview terms<\/button>/u);
+});
+
+
+test('credit workspace owns a high-contrast product surface and touch-safe controls', async () => {
+  const css = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8');
+  assert.match(css, /\.console-credit-workspace \{[^}]*--credit-bg:/s);
+  assert.match(css, /\.console-credit-workspace \{[^}]*background:/s);
+  assert.match(css, /\.console-credit-workspace :is\(button, input\)[^{]*\{[^}]*min-height: 44px/s);
+  assert.match(css, /\.console-credit-workspace input:not\(\[type="checkbox"\]\)[^{]*\{[^}]*background:/s);
+  assert.match(css, /\.console-credit-confirm input\[type="checkbox"\][^{]*\{[^}]*width: 20px/s);
 });
