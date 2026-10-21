@@ -19,7 +19,7 @@ function response() {
   };
 }
 
-test('GET /:id serves the dedicated record and unsupported Loopers return 404', async () => {
+test('GET /:id/cred serves the dedicated record and unsupported Loopers return 404', async () => {
   const { module, router } = fakeExpress();
   const service = {
     async getByLooperId(id) {
@@ -28,7 +28,7 @@ test('GET /:id serves the dedicated record and unsupported Loopers return 404', 
     },
   };
   createLooperCredRouter({ expressModule: module, service });
-  const route = router.routes.find(item => item.routePath === '/:id');
+  const route = router.routes.find(item => item.routePath === '/:id/cred');
   const ok = response();
   await route.handler({ params: { id: '2431' } }, ok);
   assert.equal(ok.statusCode, 200);

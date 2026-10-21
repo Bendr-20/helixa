@@ -6,7 +6,7 @@ function createLooperCredRouter({ expressModule, service = createLooperCredServi
   if (!expressModule || typeof expressModule.Router !== 'function') throw new TypeError('expressModule.Router is required');
   if (!service || typeof service.getByLooperId !== 'function') throw new TypeError('service.getByLooperId is required');
   const router = expressModule.Router();
-  router.get('/:id', async (req, res) => {
+  router.get('/:id/cred', async (req, res) => {
     try {
       const record = await service.getByLooperId(req.params.id);
       res.set('Cache-Control', 'no-store');
