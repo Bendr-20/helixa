@@ -265,6 +265,9 @@ app.use(securityHeaders);
 app.use(cors);
 app.use(globalRateLimit);
 
+// Free, read-only, fail-closed Looper CRED pilot route. Mount before payment middleware.
+app.use('/api/v2/looper', createLooperCredRouter({ expressModule: express }));
+
 // Trust Graph Dashboard — mounted as static before any middleware can interfere
 app.use('/trust-graph', express.static(path.resolve(__dirname, 'public', 'trust-graph.html')));
 
@@ -9216,8 +9219,6 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
     }
 });
-
-app.use('/api/v2/looper', createLooperCredRouter({ expressModule: express }));
 
 // 404 handler
 app.use((req, res) => {

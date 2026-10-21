@@ -54,8 +54,10 @@ test('server mount precedes 404 and live slice stays isolated from legacy CRED s
   const apiRoot = path.join(__dirname, '../..');
   const server = fs.readFileSync(path.join(apiRoot, 'v2-server.js'), 'utf8');
   const mount = server.indexOf("app.use('/api/v2/looper'");
+  const paymentMiddleware = server.indexOf('// Mount: Internal key bypass');
   const notFound = server.indexOf('// 404 handler');
-  assert.ok(mount > -1 && mount < notFound, 'Looper CRED router must be mounted before 404');
+  assert.ok(mount > -1 && mount < paymentMiddleware, 'free Looper CRED router must be mounted before payment middleware');
+  assert.ok(mount < notFound, 'Looper CRED router must be mounted before 404');
   assert.match(server, /app\.get\('\/api\/v2\/agent\/:id\/cred'/u, 'legacy AgentDNA CRED route must remain present');
   for (const file of ['service.js', 'router.js']) {
     const source = fs.readFileSync(path.join(apiRoot, 'cred-looper-live', file), 'utf8');
