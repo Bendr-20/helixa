@@ -52,6 +52,11 @@ test('parseServerOptions returns safe defaults', () => {
     loopersCredApiBaseUrl: 'https://api.helixa.xyz',
     loopersCredTimeoutMs: 4000,
     loopersCredConcurrency: 4,
+    consoleCreditEnabled: false,
+    consoleCreditApiBaseUrl: 'https://backend.credi.fi',
+    consoleCreditCredBaseUrl: 'https://helixa.xyz',
+    consoleCreditMinCred: 40,
+    consoleCreditTimeoutMs: 10000,
     bankrLlmKey: null,
     bankrReadonlyApiKey: null,
     bankrLlmModel: null,
@@ -120,6 +125,11 @@ test('CLI flags override environment values', () => {
       loopersCredApiBaseUrl: 'https://api.helixa.xyz',
       loopersCredTimeoutMs: 4000,
       loopersCredConcurrency: 4,
+    consoleCreditEnabled: false,
+    consoleCreditApiBaseUrl: 'https://backend.credi.fi',
+    consoleCreditCredBaseUrl: 'https://helixa.xyz',
+    consoleCreditMinCred: 40,
+    consoleCreditTimeoutMs: 10000,
       bankrLlmKey: null,
       bankrReadonlyApiKey: null,
       bankrLlmModel: null,
@@ -188,6 +198,11 @@ test('parseServerOptions accepts claim management security env', () => {
     loopersCredApiBaseUrl: 'https://api.helixa.xyz',
     loopersCredTimeoutMs: 4000,
     loopersCredConcurrency: 4,
+    consoleCreditEnabled: false,
+    consoleCreditApiBaseUrl: 'https://backend.credi.fi',
+    consoleCreditCredBaseUrl: 'https://helixa.xyz',
+    consoleCreditMinCred: 40,
+    consoleCreditTimeoutMs: 10000,
     bankrLlmKey: null,
     bankrReadonlyApiKey: null,
     bankrLlmModel: null,
@@ -243,6 +258,24 @@ test('parseServerOptions configures bounded server-side Looper CRED reads withou
     () => parseServerOptions([], { MULTIPASS_LOOPER_CRED_CONCURRENCY: '17' }),
     /MULTIPASS_LOOPER_CRED_CONCURRENCY/,
   );
+});
+
+test('parseServerOptions keeps Console credit disabled by default and bounds the private-beta gate', () => {
+  assert.equal(parseServerOptions([], {}).consoleCreditEnabled, false);
+  const options = parseServerOptions([], {
+    MULTIPASS_CREDIT_ENABLED: 'true',
+    MULTIPASS_CREDIFI_API_BASE_URL: 'https://backend.credi.fi',
+    MULTIPASS_CREDIT_CRED_BASE_URL: 'https://helixa.xyz',
+    MULTIPASS_CREDIT_MIN_CRED: '40',
+    MULTIPASS_CREDIT_TIMEOUT_MS: '7000',
+  });
+  assert.equal(options.consoleCreditEnabled, true);
+  assert.equal(options.consoleCreditApiBaseUrl, 'https://backend.credi.fi');
+  assert.equal(options.consoleCreditCredBaseUrl, 'https://helixa.xyz');
+  assert.equal(options.consoleCreditMinCred, 40);
+  assert.equal(options.consoleCreditTimeoutMs, 7000);
+  assert.throws(() => parseServerOptions([], { MULTIPASS_CREDIT_MIN_CRED: '101' }), /MULTIPASS_CREDIT_MIN_CRED/);
+  assert.throws(() => parseServerOptions([], { MULTIPASS_CREDIT_ENABLED: 'yes' }), /MULTIPASS_CREDIT_ENABLED/);
 });
 
 test('parseServerOptions rejects invalid ports', () => {
@@ -699,6 +732,7 @@ test('startServer composes Console and Looper CRED configuration into the correc
   let bootstrapOptions;
   let apiOptions;
   const runtime = { async handleMessage() {}, async getThread() { return null; } };
+  const consoleCreditService = { async getOverview() { return {}; } };
   const server = await startServer({
     fixture: 'generic',
     host: '127.0.0.1',
@@ -708,6 +742,7 @@ test('startServer composes Console and Looper CRED configuration into the correc
     loopersCredApiBaseUrl: 'https://cred.internal.example',
     loopersCredTimeoutMs: 2500,
     loopersCredConcurrency: 3,
+    consoleCreditService,
     consoleBootstrapFactory: async (options) => {
       bootstrapOptions = options;
       return {
@@ -734,6 +769,7 @@ test('startServer composes Console and Looper CRED configuration into the correc
     assert.equal(apiOptions.loopersCredApiBaseUrl, 'https://cred.internal.example');
     assert.equal(apiOptions.loopersCredTimeoutMs, 2500);
     assert.equal(apiOptions.loopersCredConcurrency, 3);
+    assert.equal(apiOptions.consoleCreditService, consoleCreditService);
   } finally {
     await server.close();
   }

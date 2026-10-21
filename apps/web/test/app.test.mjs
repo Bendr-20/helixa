@@ -8300,3 +8300,87 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   assert.match(root.querySelector('.swarm-launch-gate')?.textContent ?? '', /at least three Loopers/i);
   assert.equal(root.querySelector('[data-swarm-launch-submit]')?.disabled, true);
 });
+
+test('Console credit keeps login, vouch, broad permission, quote, and borrow as separate owner actions', async () => {
+  const root = setupDom('https://helixa.xyz/multipass/console');
+  const owner = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
+  const account = '0x9999999999999999999999999999999999999999';
+  const calls = [];
+  let loggedIn = false;
+  let accepted = false;
+  let authorized = false;
+  let borrowed = false;
+  const overview = () => ({
+    account, cred: { score: 42, tier: 'Marginal', minimumScore: 40 },
+    flags: { minimumLoanAmount: 5, loanTwoFactorRequired: false, loanTwoFactorAvailableChannels: [], blockBorrowReason: null, evcAuthorizations: { '8453-vault-12': { isAuthorized: authorized } } },
+    markets: [{ chainId: 8453, marketId: 'base-usdc-2500:stable-12', vaultId: 'vault-12', userAccessible: true, acceptsNewBorrowers: true }],
+    commitments: [{ id: 'vouch-1', status: accepted ? 'accepted' : 'offered', sponsorWalletAddress: '0x3333333333333333333333333333333333333333', remainingMicro: 5_000_000, chainId: 8453, marketId: 'base-usdc-2500:stable-12' }],
+    balance: { credit: { availableCredit: borrowed ? 0 : 5_000_000 } },
+    loans: borrowed ? [{ id: 'loan-1', status: 'approved', amount: 5, payments: [] }] : [],
+  });
+  const consoleCreditApi = {
+    async overview(input) { calls.push(['overview', input]); if (!loggedIn) throw Object.assign(new Error('Sign this Looper into Credifi.'), { status: 401, code: 'credifi_login_required' }); return overview(); },
+    async challenge(input) { calls.push(['challenge', input]); return { account, message: 'Sign this Credifi challenge' }; },
+    async verify(input) { calls.push(['verify', input]); loggedIn = true; return { authenticated: true }; },
+    async acceptVouch(input) { calls.push(['accept', input]); accepted = true; return { id: 'vouch-1', status: 'accepted' }; },
+    async prepareAuthorization(input) { const preparedAt = Date.now(); calls.push(['prepare', input]); return { required: true, scope: 'ALL_EVC_SUBACCOUNTS_FOR_WALLET_PREFIX', evc: '0x1111111111111111111111111111111111111111', operator: '0x2222222222222222222222222222222222222222', preparedAt: new Date(preparedAt).toISOString(), expiresAt: new Date(preparedAt + 120_000).toISOString(), transaction: { chainId: 8453, from: owner.toLowerCase(), to: account, value: '0', data: '0x1234' } }; },
+    async preview(input) { calls.push(['preview', input]); return { commitment: { id: 'vouch-1' }, quoteSha256: 'a'.repeat(64), quote: { quoteId: 'quote-1', quoteExpiresAt: '2026-10-21T23:30:00.000Z', fee: { feeMicro: 0 }, loan: { amount: 5, interestRate: 15, totalRepayment: 5.01, loanTerms: { termDays: 30, repaymentType: 'bullet' } }, paymentSchedule: [{ dueDate: '2026-11-20T23:00:00.000Z', amount: 5.01 }] } }; },
+    async borrow(input) { calls.push(['borrow', input]); borrowed = true; return { loan: { id: 'loan-1', status: 'approved' } }; },
+  };
+  const walletState = { mode: 'active', canTransact: true, tokenId: '617', owner, account, nativeWei: '0', tokens: [], activation: { state: 'idle' }, send: { state: 'idle' }, policy: { state: 'idle' } };
+  const walletRequests = [];
+  const walletClient = createWalletClientFixture({
+    snapshot: { connected: true, address: owner, label: 'owner' },
+    signMessage: async (message) => { calls.push(['sign', { message }]); return { wallet: owner, signature: '0x1234' }; },
+    request: async (payload) => {
+      walletRequests.push(payload);
+      if (payload.method === 'eth_chainId') return '0x2105';
+      if (payload.method === 'eth_sendTransaction') { authorized = true; return '0x' + 'b'.repeat(64); }
+      throw new Error('Unexpected wallet request ' + payload.method);
+    },
+  });
+  const app = createApp({
+    root, loadDemo: async () => sampleData(), walletClient, consoleCreditApi,
+    fetchImpl: createConsoleOwnedAgentsFetch({ wallet: owner, tokenIds: [617] }),
+    looperWalletController: { getSnapshot: () => walletState, async select() { return walletState; } },
+    claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) },
+  });
+  await app.start(); await flushAsyncEvents(30);
+
+  root.querySelector('[data-console-view="credit"]')?.click(); await flushAsyncEvents(20);
+  assert.match(root.textContent, /Sign this Looper into Credifi/);
+  root.querySelector('[data-action="login-console-credit"]')?.click(); await flushAsyncEvents(30);
+  assert.match(root.textContent, /Accept vouch/);
+  assert.deepEqual(calls.filter(([name]) => ['overview', 'challenge', 'sign', 'verify'].includes(name)).slice(-5).map(([name]) => name), ['overview', 'challenge', 'sign', 'verify', 'overview']);
+
+  root.querySelector('[data-action="accept-console-credit-vouch"]')?.click(); await flushAsyncEvents(30);
+  assert.match(root.textContent, /Review authorization/);
+  assert.equal(calls.some(([name]) => name === 'prepare'), false);
+  root.querySelector('[data-action="prepare-console-credit-authorization"]')?.click(); await flushAsyncEvents(20);
+  assert.match(root.textContent, /all EVC subaccounts for this wallet prefix/i);
+  assert.equal(walletRequests.some((request) => request.method === 'eth_sendTransaction'), false);
+
+  root.querySelector('[data-action="submit-console-credit-authorization"]')?.click(); await flushAsyncEvents(20);
+  assert.equal(walletRequests.filter((request) => request.method === 'eth_sendTransaction').length, 1);
+  assert.equal(calls.filter(([name]) => name === 'prepare').length, 2);
+  assert.match(root.textContent, /Refresh after confirmation/);
+  root.querySelector('[data-action="refresh-console-credit"]')?.click(); await flushAsyncEvents(20);
+
+  const previewForm = root.querySelector('[data-action="preview-console-credit"]');
+  previewForm.elements.namedItem('amount').value = '5';
+  previewForm.elements.namedItem('maxAprPercent').value = '25';
+  previewForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await flushAsyncEvents(20);
+  assert.match(root.textContent, /\$5\.01 total/);
+  assert.equal(calls.some(([name]) => name === 'borrow'), false);
+
+  const borrowForm = root.querySelector('[data-action="borrow-console-credit"]');
+  borrowForm.elements.namedItem('confirmed').checked = true;
+  borrowForm.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await flushAsyncEvents(30);
+  assert.match(root.textContent, /loan-1/i);
+  const borrow = calls.find(([name]) => name === 'borrow')[1];
+  assert.equal(borrow.confirmBorrow, true);
+  assert.equal(borrow.quoteId, 'quote-1');
+  assert.equal(borrow.quoteSha256, 'a'.repeat(64));
+});

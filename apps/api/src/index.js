@@ -25,6 +25,7 @@ import { createConsoleAgentRuntime } from './agent-runtime/index.js';
 import { createBankrLlmClient } from './bankr-llm/index.js';
 import { searchBankrMarketplaceSkills } from './bankr-marketplace-catalog.js';
 import { createConsoleAuthStore } from './console-auth.js';
+import { ConsoleCreditError } from './console-credit.js';
 import {
   CONSOLE_IMAGE_REQUEST_MAX_BYTES,
   normalizeConsoleImageAttachment,
@@ -116,6 +117,9 @@ const CONSOLE_CODEX_REQUEST_MAX_BYTES = 16 * 1024;
 const RESTAP_NETWORK_CONSOLE_REQUEST_MAX_BYTES = 16 * 1024;
 const CONSOLE_CODEX_WALLET_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 const CONSOLE_CODEX_GLOBAL_RATE_LIMIT = { limit: 1_200, windowMs: 60_000 };
+const CONSOLE_CREDIT_REQUEST_MAX_BYTES = 16 * 1024;
+const CONSOLE_CREDIT_WALLET_RATE_LIMIT = { limit: 30, windowMs: 60_000 };
+const CONSOLE_CREDIT_GLOBAL_RATE_LIMIT = { limit: 300, windowMs: 60_000 };
 const CONSOLE_CODEX_WALLET_MAX_BUCKETS = 2_400;
 const CONSOLE_CODEX_OPERATIONS = new Set([
   'getTokenProfile',
@@ -268,6 +272,7 @@ export function createMultipassApi({
   loopersCredTimeoutMs,
   loopersCredConcurrency,
   consoleAuthStore,
+  consoleCreditService,
   consoleRuntimeRegistry,
   restapNetworkActivationLeases,
   restapNetworkCustodyReconciler,
@@ -402,6 +407,9 @@ export function createMultipassApi({
     cookieName: MANAGER_COOKIE_NAME,
     consoleCookieName: CONSOLE_COOKIE_NAME,
     consoleAuthStore: consoleAuthStore ?? createConsoleAuthStore(),
+    consoleCreditService: consoleCreditService ?? null,
+    consoleCreditWalletRateLimiter: createFixedWindowRateLimiter(CONSOLE_CREDIT_WALLET_RATE_LIMIT),
+    consoleCreditGlobalRateLimiter: createFixedWindowRateLimiter(CONSOLE_CREDIT_GLOBAL_RATE_LIMIT),
     fetchImpl,
     loopersAllowlist,
     loopersAllowlistSnapshot,
@@ -573,6 +581,9 @@ export function createMultipassApi({
         }
         if (error instanceof GroupActivationError) {
           return errorResponse(error.status ?? 400, error.code, error.message, error.details ?? {});
+        }
+        if (error instanceof ConsoleCreditError) {
+          return errorResponse(error.status ?? 400, error.code, error.message, error.details);
         }
         if (error instanceof AllowlistInputError) {
           return errorResponse(400, error.code, error.message);
@@ -1084,7 +1095,12 @@ async function handlePostRequest(request, parts, context) {
     return handleConsoleCodexQuery(request, context);
   }
 
+  if (parts[2] === 'console' && parts[3] === 'credit' && parts[4] && parts.length === 5) {
+    return handleConsoleCreditAction(request, parts[4], context);
+  }
+
   if (parts[2] === 'console' && parts[3] === 'agent' && parts[4] === 'activate' && parts.length === 5) {
+
     return handleConsoleAgentActivate(request, context);
   }
 
@@ -1186,8 +1202,60 @@ async function handleConsoleSessionVerify(request, context) {
 function handleConsoleSessionLogout(request, context) {
   assertTrustedOrigin(request, context);
   const sessionId = parseCookies(request.headers.get('cookie')).get(context.consoleCookieName);
-  if (sessionId) context.consoleAuthStore.revokeSession(sessionId);
+  if (sessionId) {
+    context.consoleCreditService?.revokeAll?.({ sessionKey: createHash('sha256').update(sessionId).digest('hex') });
+    context.consoleAuthStore.revokeSession(sessionId);
+  }
   return jsonResponse({ schema_version: '0.1.0', ok: true }, 200, { 'set-cookie': clearConsoleSessionCookie(context) });
+}
+
+async function handleConsoleCreditAction(request, action, context) {
+  if (!context.consoleCreditService) return errorResponse(404, 'not_found', 'Route not found.');
+  const session = requireConsoleSession(request, context, { requireCsrf: true });
+  const walletLimit = context.consoleCreditWalletRateLimiter.check(session.wallet);
+  const globalLimit = context.consoleCreditGlobalRateLimiter.check('global');
+  if (!walletLimit.allowed || !globalLimit.allowed) {
+    const retryAfter = Math.max(walletLimit.retryAfterSeconds ?? 1, globalLimit.retryAfterSeconds ?? 1);
+    return errorResponse(429, 'credit_rate_limited', 'Credit request limit exceeded.', undefined, { 'retry-after': String(retryAfter) });
+  }
+  const body = await readBoundedJsonBody(request, CONSOLE_CREDIT_REQUEST_MAX_BYTES);
+  const expectedFields = {
+    challenge: ['tokenId'],
+    verify: ['signature', 'tokenId'],
+    overview: ['tokenId'],
+    'accept-vouch': ['commitmentId', 'tokenId'],
+    'prepare-authorization': ['commitmentId', 'tokenId'],
+    'request-two-factor': ['channel', 'tokenId'],
+    'verify-two-factor': ['code', 'tokenId'],
+    preview: ['amount', 'commitmentId', 'maxAprPercent', 'tokenId'],
+    borrow: ['commitmentId', 'confirmBorrow', 'quoteId', 'quoteSha256', 'tokenId'],
+  }[action];
+  if (!expectedFields) return errorResponse(404, 'not_found', 'Route not found.');
+  assertExactCreditRequest(body, expectedFields);
+  const tokenId = normalizeLooperTokenId(body.tokenId);
+  const identity = await authorizeConsoleLooper({ tokenId, wallet: session.wallet, context });
+  const input = { sessionKey: session.sessionKey, identity };
+  const service = context.consoleCreditService;
+  if (action === 'challenge') return jsonResponse(await service.requestLoginChallenge(input));
+  if (action === 'verify') return jsonResponse(await service.verifyLogin({ ...input, signature: body.signature }));
+  if (action === 'overview') return jsonResponse(await service.getOverview(input));
+  if (action === 'accept-vouch') return jsonResponse(await service.acceptVouch({ ...input, commitmentId: body.commitmentId }));
+  if (action === 'prepare-authorization') return jsonResponse(await service.prepareAuthorization({ ...input, commitmentId: body.commitmentId }));
+  if (action === 'request-two-factor') return jsonResponse(await service.requestTwoFactor({ ...input, channel: body.channel }));
+  if (action === 'verify-two-factor') return jsonResponse(await service.verifyTwoFactor({ ...input, code: body.code }));
+  if (action === 'preview') return jsonResponse(await service.previewLoan({ ...input, commitmentId: body.commitmentId, amount: body.amount, maxAprPercent: body.maxAprPercent }));
+  return jsonResponse(await service.createLoan({ ...input, commitmentId: body.commitmentId, quoteId: body.quoteId, quoteSha256: body.quoteSha256, confirmBorrow: body.confirmBorrow }));
+}
+
+function assertExactCreditRequest(body, expectedFields) {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.getPrototypeOf(body) !== Object.prototype) {
+    throw new ApiInputError('invalid_credit_request', 'Credit request must be a JSON object.');
+  }
+  const actual = Object.keys(body).sort();
+  const expected = [...expectedFields].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new ApiInputError('invalid_credit_request', 'Credit request contains unknown or missing fields.');
+  }
 }
 
 async function handleConsoleCodexQuery(request, context) {
@@ -2105,11 +2173,14 @@ function requireConsoleSession(request, context, { requireCsrf = false } = {}) {
   const sessionId = parseCookies(request.headers.get('cookie')).get(context.consoleCookieName);
   if (!sessionId) throw new ApiUnauthorizedError('Authenticated Console wallet session is required.');
   try {
-    return context.consoleAuthStore.validateSession({
-      sessionId,
-      csrfToken: request.headers.get('x-csrf-token') ?? '',
-      requireCsrf,
-    });
+    return {
+      ...context.consoleAuthStore.validateSession({
+        sessionId,
+        csrfToken: request.headers.get('x-csrf-token') ?? '',
+        requireCsrf,
+      }),
+      sessionKey: createHash('sha256').update(sessionId).digest('hex'),
+    };
   } catch (error) {
     throw new ApiForbiddenError(error.message);
   }

@@ -77,6 +77,22 @@ MULTIPASS_LOOPER_CRED_CONCURRENCY=4
 
 The production-safe base URL is the default, no secret is required, the timeout is capped at 30 seconds, and concurrency is capped at 16. Multipass validates the returned chain, canonical ERC-8004 registry, identity ID, Loopers collection, Looper token ID, score, coverage, freshness, methodology, and timestamps before exposing a score. Failures return `cred.status: "unavailable"`; stale backend snapshots retain their score only with explicit stale freshness metadata. Legacy `credScore` and `credLabel` fields are derived solely from validated canonical `cred` during migration.
 
+### Console credit private beta
+
+The authenticated Multipass Console can expose a sponsor-vouch credit workspace for a selected, currently owned Looper. It gates Credifi access on live canonical CRED, keeps the Credifi bearer session server-side, validates current market and EVC configuration, and separates vouch acceptance, permission review, quote review, and borrowing into distinct owner actions. The beta does not claim to submit a public credit application because Credifi does not expose an application endpoint.
+
+The feature is disabled by default:
+
+```bash
+MULTIPASS_CREDIT_ENABLED=true
+MULTIPASS_CREDIFI_API_BASE_URL=https://backend.credi.fi
+MULTIPASS_CREDIT_CRED_BASE_URL=https://helixa.xyz
+MULTIPASS_CREDIT_MIN_CRED=40
+MULTIPASS_CREDIT_TIMEOUT_MS=10000
+```
+
+No static Credifi API key is configured. The owner signs a fresh Credifi challenge that the server binds to the exact Looper account, `credi.fi`, and Base; the resulting bearer token remains in bounded server memory for the authenticated Console session. Logout revokes that local session. The beta accepts only Base USDC (`0x833589fcd6edb6e08f4c7c32d4f71b54bda02913`) in the exact vouched vault. The EVC permission is broad across all subaccounts sharing the wallet prefix; the Console displays that scope, validates canonical calldata, and re-fetches the live configuration immediately before wallet broadcast. Quotes are single-use, concurrent vouch/borrow submissions are serialized, and an uncertain loan result locks new borrowing for operator reconciliation instead of permitting a retry.
+
 Advertise a production URL while listening locally:
 
 ```bash

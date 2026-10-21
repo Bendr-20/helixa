@@ -9,6 +9,12 @@ import { activateHelixaRecord } from './activation-records.js';
 import { readAllowlistFile } from './allowlist-snapshot.js';
 import { createJsonAllowlistStore, createMemoryAllowlistStore } from './allowlist-store.js';
 import { createConsoleProductionBootstrap } from './console-production-bootstrap.js';
+import {
+  DEFAULT_CREDIFI_API_BASE_URL,
+  DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
+  DEFAULT_LOOPER_CREDIT_MIN_CRED,
+  createConsoleCreditService,
+} from './console-credit.js';
 import { loadFixtureStore } from './fixtures.js';
 import { createMultipassApi } from './index.js';
 import {
@@ -91,6 +97,11 @@ export function parseServerOptions(argv = [], env = process.env) {
     loopersCredApiBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_LOOPER_CRED_API_BASE_URL, 'MULTIPASS_LOOPER_CRED_API_BASE_URL') ?? DEFAULT_LOOPER_CRED_API_BASE_URL,
     loopersCredTimeoutMs: parseBoundedPositiveInteger(env.MULTIPASS_LOOPER_CRED_TIMEOUT_MS, DEFAULT_LOOPER_CRED_TIMEOUT_MS, 'MULTIPASS_LOOPER_CRED_TIMEOUT_MS', 30_000),
     loopersCredConcurrency: parseBoundedPositiveInteger(env.MULTIPASS_LOOPER_CRED_CONCURRENCY, DEFAULT_LOOPER_CRED_CONCURRENCY, 'MULTIPASS_LOOPER_CRED_CONCURRENCY', 16),
+    consoleCreditEnabled: parseStrictBoolean(env.MULTIPASS_CREDIT_ENABLED, 'MULTIPASS_CREDIT_ENABLED') ?? false,
+    consoleCreditApiBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_CREDIFI_API_BASE_URL, 'MULTIPASS_CREDIFI_API_BASE_URL') ?? DEFAULT_CREDIFI_API_BASE_URL,
+    consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_CREDIT_CRED_BASE_URL, 'MULTIPASS_CREDIT_CRED_BASE_URL') ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
+    consoleCreditMinCred: parseBoundedNonnegativeInteger(env.MULTIPASS_CREDIT_MIN_CRED, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'MULTIPASS_CREDIT_MIN_CRED', 100),
+    consoleCreditTimeoutMs: parseBoundedPositiveInteger(env.MULTIPASS_CREDIT_TIMEOUT_MS, 10_000, 'MULTIPASS_CREDIT_TIMEOUT_MS', 30_000),
     bankrLlmKey: env.BANKR_LLM_KEY || env.BANKR_API_KEY || null,
     bankrReadonlyApiKey: env.BANKR_READONLY_API_KEY || null,
     bankrLlmModel: env.MULTIPASS_AGENT_LLM_MODEL || null,
@@ -178,6 +189,11 @@ export async function startServer(options = {}) {
     loopersCredApiBaseUrl: normalizeOptionalBaseUrl(options.loopersCredApiBaseUrl ?? DEFAULT_LOOPER_CRED_API_BASE_URL, 'loopersCredApiBaseUrl'),
     loopersCredTimeoutMs: parseBoundedPositiveInteger(options.loopersCredTimeoutMs, DEFAULT_LOOPER_CRED_TIMEOUT_MS, 'loopersCredTimeoutMs', 30_000),
     loopersCredConcurrency: parseBoundedPositiveInteger(options.loopersCredConcurrency, DEFAULT_LOOPER_CRED_CONCURRENCY, 'loopersCredConcurrency', 16),
+    consoleCreditEnabled: options.consoleCreditEnabled === true,
+    consoleCreditApiBaseUrl: normalizeOptionalBaseUrl(options.consoleCreditApiBaseUrl ?? DEFAULT_CREDIFI_API_BASE_URL, 'consoleCreditApiBaseUrl'),
+    consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(options.consoleCreditCredBaseUrl ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL, 'consoleCreditCredBaseUrl'),
+    consoleCreditMinCred: parseBoundedNonnegativeInteger(options.consoleCreditMinCred, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'consoleCreditMinCred', 100),
+    consoleCreditTimeoutMs: parseBoundedPositiveInteger(options.consoleCreditTimeoutMs, 10_000, 'consoleCreditTimeoutMs', 30_000),
     bankrLlmKey: options.bankrLlmKey ?? null,
     bankrReadonlyApiKey: options.bankrReadonlyApiKey ?? null,
     bankrLlmModel: options.bankrLlmModel ?? null,
@@ -258,6 +274,15 @@ export async function startServer(options = {}) {
   const looperWalletValuesLoaderFactory = options.looperWalletValuesLoaderFactory
     ?? createLooperWalletValuesLoader;
   const apiFactory = options.apiFactory ?? createMultipassApi;
+  const consoleCreditService = options.consoleCreditService ?? (parsed.consoleCreditEnabled
+    ? createConsoleCreditService({
+      fetchImpl: parsed.fetchImpl ?? fetch,
+      apiBaseUrl: parsed.consoleCreditApiBaseUrl,
+      credBaseUrl: parsed.consoleCreditCredBaseUrl,
+      minCredScore: parsed.consoleCreditMinCred,
+      requestTimeoutMs: parsed.consoleCreditTimeoutMs,
+    })
+    : null);
   const restapPolicyLoader = options.restapPolicyLoader ?? loadRestap3802Policy;
   const restapPolicyAuthorizer = options.restapPolicyAuthorizer ?? authorizeRestap3802Policy;
   const restapPublicSessionStoreFactory = options.restapPublicSessionStoreFactory ?? createRestapPublicSessionStore;
@@ -617,6 +642,7 @@ export async function startServer(options = {}) {
       loopersPublicClients: consoleBootstrap.publicClients,
       loopersAuthorizer: consoleBootstrap.authorizeLooper,
       consoleAuthStore: options.consoleAuthStore,
+      consoleCreditService,
       consoleRuntimeRegistry: consoleBootstrap.runtimeRegistry,
       restapNetworkActivationLeases: consoleBootstrap.activationLeases,
       restapNetworkCustodyReconciler: consoleBootstrap.restapNetworkCustodyReconciler,
@@ -929,6 +955,15 @@ function parseBoundedPositiveInteger(value, fallback, source, max) {
   if (value === undefined || value === null || value === '') return fallback;
   const parsed = parseOptionalPositiveInteger(value, source);
   if (parsed > max) throw new Error(`Invalid positive integer for ${source}: ${value}`);
+  return parsed;
+}
+
+function parseBoundedNonnegativeInteger(value, fallback, source, max) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > max) {
+    throw new Error(`Invalid non-negative integer for ${source}: ${value}`);
+  }
   return parsed;
 }
 

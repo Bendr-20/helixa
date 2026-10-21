@@ -12214,3 +12214,45 @@ h1 {
 .swarm-launch-actions{display:flex;flex-wrap:wrap;gap:.7rem;justify-content:flex-end}
 .swarm-launch-manifest{max-height:28rem;overflow:auto;padding:1rem;border:1px solid var(--line,#293326);border-radius:.8rem;background:#070a07;color:#c8f169;font-size:.75rem;white-space:pre-wrap;word-break:break-word}
 @media(max-width:720px){.swarm-launch-steps,.swarm-launch-fields{grid-template-columns:1fr}.swarm-launch-fields label:has(textarea){grid-column:auto}.mission-surface-actions{justify-content:stretch}.mission-surface-actions button{flex:1 1 auto}}
+
+/* Console credit private beta */
+.console-credit-workspace { display: grid; gap: 1rem; padding: clamp(1rem, 2.4vw, 2rem); color: var(--ink, #eef4f1); }
+.console-credit-header, .console-credit-section > header, .console-credit-quote > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.console-credit-header h2, .console-credit-section h3, .console-credit-quote h4 { margin: .15rem 0 .35rem; }
+.console-credit-header p, .console-credit-section header small { max-width: 54rem; color: var(--muted, #a9b8b2); }
+.console-credit-cautions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; padding: .8rem 1rem; border: 1px solid rgba(122, 222, 180, .24); background: rgba(24, 73, 57, .2); border-radius: 14px; }
+.console-credit-cautions span, .console-credit-state { padding: .22rem .55rem; border: 1px solid rgba(255,255,255,.13); border-radius: 999px; font-size: .78rem; }
+.console-credit-gate, .console-credit-section, .console-credit-quote, .console-credit-authorization { padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(8, 16, 14, .55); }
+.console-credit-gate { min-height: 12rem; display: grid; place-content: center; justify-items: start; gap: .65rem; }
+.console-credit-gate > strong { font-size: 2rem; }
+.console-credit-gate-blocked { border-color: rgba(255, 172, 79, .38); }
+.console-credit-error, .console-credit-notice { margin: 0; padding: .75rem 1rem; border-radius: 12px; }
+.console-credit-error { color: #ffd0c8; background: rgba(128, 35, 28, .28); border: 1px solid rgba(255, 126, 108, .35); }
+.console-credit-notice { color: #c9ffe8; background: rgba(24, 99, 72, .25); border: 1px solid rgba(94, 224, 166, .3); }
+.console-credit-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.console-credit-metrics article { display: grid; gap: .25rem; padding: .9rem; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: rgba(255,255,255,.025); }
+.console-credit-metrics span, .console-credit-section header span, .console-credit-authorization > span, .console-credit-quote header span { color: var(--muted, #a9b8b2); font-size: .76rem; text-transform: uppercase; letter-spacing: .08em; }
+.console-credit-metrics strong { font-size: 1.35rem; }
+.console-credit-list, .console-credit-section, .console-credit-authorization, .console-credit-quote { display: grid; gap: .8rem; }
+.console-credit-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .8rem 0; border-top: 1px solid rgba(255,255,255,.08); }
+.console-credit-row:first-child { border-top: 0; }
+.console-credit-row > div { display: grid; gap: .16rem; }
+.console-credit-row small, .console-credit-empty p { color: var(--muted, #a9b8b2); }
+.console-credit-form { display: grid; grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) auto; gap: .75rem; align-items: end; }
+.console-credit-form label { display: grid; gap: .35rem; }
+.console-credit-form input { width: 100%; }
+.console-credit-authorization { border-color: rgba(255, 181, 79, .4); background: rgba(91, 55, 12, .2); }
+.console-credit-authorization dl, .console-credit-quote dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: 0; }
+.console-credit-authorization dl div, .console-credit-quote dl div { padding: .65rem; border-radius: 10px; background: rgba(255,255,255,.035); }
+.console-credit-authorization dt, .console-credit-quote dt { color: var(--muted, #a9b8b2); font-size: .76rem; }
+.console-credit-authorization dd, .console-credit-quote dd { margin: .18rem 0 0; overflow-wrap: anywhere; }
+.console-credit-schedule, .console-credit-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.console-credit-schedule span { padding: .45rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; }
+.console-credit-confirm { display: flex; gap: .6rem; align-items: flex-start; margin-bottom: .7rem; }
+.console-credit-confirm input { margin-top: .2rem; }
+@media (max-width: 760px) {
+  .console-credit-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .console-credit-header, .console-credit-section > header, .console-credit-quote > header, .console-credit-row { flex-direction: column; }
+  .console-credit-form { grid-template-columns: 1fr; }
+  .console-credit-authorization dl, .console-credit-quote dl { grid-template-columns: 1fr; }
+}

@@ -59,6 +59,7 @@ import { createImagePreview, prepareConsoleImage, preparedImageBlob } from './co
 import { resolveConsoleOwnerProfile } from './console-owner-profile.js';
 import { createConsoleRestapNetworkApi } from './console-restap-network-api.js';
 import { createMissionApi } from './missions/api.js';
+import { bindConsoleCredit, createConsoleCreditApi, createInitialConsoleCreditState } from './console-credit.js';
 import { bindMissionBoard } from './missions/mission-board.js';
 import { bindMissionEditor } from './missions/mission-editor.js';
 import { SWARM_LAUNCH_DEFAULT_ECONOMICS, bindSwarmLaunchpad, normalizeSwarmLaunchRequestForm } from './missions/swarm-launchpad.js';
@@ -99,12 +100,13 @@ const SITE_MENU_LINKS = [
 
 export { getConsoleMessageIdentity };
 
-export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaultSaveMultipass, claimApi = defaultClaimApi, walletClient, walletSigner, fetchImpl, prefetchProfiles, ensResolver = resolveEnsAddressOnBase, looperMintClient = defaultLooperMintClient, consoleOwnerProfileResolver = resolveConsoleOwnerProfile, consoleRestapNetworkApi, restapIdempotencyKeyFactory = createConsoleRestapSendKey, restapPollDelay = (milliseconds) => new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)), looperWalletController, pantheonCredReader, looperWalletReleaseConfig, releasedLooperLoader = loadReleasedLooperTokenIds, marketplaceListingsLoader = loadLooperMarketplaceListings, marketplaceActivationRosterLoader = loadDailyActivatedLooperTokenIds, marketplaceWalletValuesLoader = loadLooperWalletValues, marketplaceTimeoutMs, consolePreferenceStorage = globalThis.localStorage, prepareConsoleImageImpl = prepareConsoleImage, imagePreviewFactory = createImagePreview, missionApi } = {}) {
+export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaultSaveMultipass, claimApi = defaultClaimApi, walletClient, walletSigner, fetchImpl, prefetchProfiles, ensResolver = resolveEnsAddressOnBase, looperMintClient = defaultLooperMintClient, consoleOwnerProfileResolver = resolveConsoleOwnerProfile, consoleRestapNetworkApi, consoleCreditApi, restapIdempotencyKeyFactory = createConsoleRestapSendKey, restapPollDelay = (milliseconds) => new Promise((resolve) => globalThis.setTimeout(resolve, milliseconds)), looperWalletController, pantheonCredReader, looperWalletReleaseConfig, releasedLooperLoader = loadReleasedLooperTokenIds, marketplaceListingsLoader = loadLooperMarketplaceListings, marketplaceActivationRosterLoader = loadDailyActivatedLooperTokenIds, marketplaceWalletValuesLoader = loadLooperWalletValues, marketplaceTimeoutMs, consolePreferenceStorage = globalThis.localStorage, prepareConsoleImageImpl = prepareConsoleImage, imagePreviewFactory = createImagePreview, missionApi } = {}) {
   if (!root) throw new Error('createApp requires a root element');
 
   const activeWalletClient = walletClient ?? (walletSigner ? createLegacyWalletClient(walletSigner) : createInjectedWalletClient());
   const activeRestapNetworkApi = consoleRestapNetworkApi ?? createConsoleRestapNetworkApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
   const activeMissionApi = missionApi ?? createMissionApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
+  const activeConsoleCreditApi = consoleCreditApi ?? createConsoleCreditApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
   const activeLooperWalletReleaseConfig = looperWalletReleaseConfig ?? {
     implementation: REVIEWED_POLICY_ACCOUNT_IMPLEMENTATION,
     runtimeByteLength: REVIEWED_POLICY_ACCOUNT_RUNTIME_BYTE_LENGTH,
@@ -141,6 +143,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   let looperMarketplaceRequestId = 0;
   let consoleRestapNetworkAbortController = null;
   let consoleRestapNetworkMutationAbortController = null;
+  let consoleCreditAbortController = null;
   let consoleMissionAbortController = null;
   const consoleCodexCache = new Map();
   let consoleCodexArtifactHash = null;
@@ -160,6 +163,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleRestapNetworkAbortController = null;
     consoleRestapNetworkMutationAbortController?.abort();
     consoleRestapNetworkMutationAbortController = null;
+    consoleCreditAbortController?.abort();
+    consoleCreditAbortController = null;
     clearConsoleImagePreview();
     consoleCodexCache.clear();
     consoleCodexArtifactHash = null;
@@ -220,12 +225,13 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleSidebarRosterOpen: false,
     consoleSelectedAgentId: consoleMockState?.consoleSelectedAgentId ?? null,
     consoleWorkspaceView: consoleMockState
-      ? (['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(consoleMockState.consoleWorkspaceView) ? consoleMockState.consoleWorkspaceView : 'chat')
+      ? (['chat', 'wallet', 'multipass', 'codex', 'network', 'credit', 'missions'].includes(consoleMockState.consoleWorkspaceView) ? consoleMockState.consoleWorkspaceView : 'chat')
       : null,
     consoleParticipantAgentIds: consoleMockState?.consoleParticipantAgentIds ?? [],
     consoleAgentThread: consoleMockState?.consoleAgentThread ?? createInitialConsoleAgentThreadState(),
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
+    consoleCredit: consoleMockState?.consoleCredit ?? createInitialConsoleCreditState(),
     consoleMissions: consoleMockState?.consoleMissions ?? { status: 'idle', view: 'board', filter: null, missions: [], error: null },
     consoleLaunchpad: consoleMockState?.consoleLaunchpad ?? { status: 'idle', requestId: 0, draft: { members: [], app: {}, token: {} }, manifest: null, error: null },
     swarmAdmin: createInitialSwarmAdminState(),
@@ -1966,11 +1972,224 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   function setConsoleWorkspaceView(event) {
     const view = String(event?.currentTarget?.dataset?.consoleView ?? '').trim();
-    if (!['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(view)) return;
+    if (!['chat', 'wallet', 'multipass', 'codex', 'network', 'credit', 'missions'].includes(view)) return;
     if (view !== 'missions' && !state.consoleSelectedAgentId) return;
     state = { ...state, consoleWorkspaceView: view };
     render(root, state, handlers);
     if (view === 'missions' && ['idle', 'disabled', 'error'].includes(state.consoleMissions?.status)) void loadConsoleMissions();
+    if (view === 'credit' && ['idle', 'error', 'blocked'].includes(state.consoleCredit?.status)) void refreshConsoleCredit();
+  }
+
+  function createConsoleCreditContext() {
+    const tokenId = String(state.consoleSelectedAgentId ?? '').trim();
+    const csrfToken = String(state.consoleCsrfToken ?? '').trim();
+    const wallet = normalizeConsoleWalletKey(state.consoleAuthenticatedWallet);
+    if (!tokenId || !csrfToken || !wallet) throw new Error('Authenticate the Console wallet and select a Looper first.');
+    return { tokenId, csrfToken, wallet, sessionGeneration: state.consoleSessionGeneration };
+  }
+
+  function isCurrentConsoleCreditContext(context) {
+    return context.sessionGeneration === state.consoleSessionGeneration
+      && context.tokenId === String(state.consoleSelectedAgentId ?? '').trim()
+      && context.wallet === normalizeConsoleWalletKey(state.consoleAuthenticatedWallet);
+  }
+
+  function beginConsoleCreditOperation(status, patch = {}) {
+    consoleCreditAbortController?.abort();
+    const controller = new AbortController();
+    consoleCreditAbortController = controller;
+    state = { ...state, consoleCredit: { ...state.consoleCredit, status, error: null, notice: null, ...patch } };
+    render(root, state, handlers);
+    return controller;
+  }
+
+  function failConsoleCredit(error, context) {
+    if (!isCurrentConsoleCreditContext(context) || error?.name === 'AbortError') return;
+    if (error?.code === 'credifi_login_required') {
+      state = { ...state, consoleCredit: { ...createInitialConsoleCreditState(context.tokenId), status: 'login_required' } };
+    } else if (['cred_gate_failed', 'cred_expired', 'cred_not_current'].includes(error?.code)) {
+      state = { ...state, consoleCredit: { ...createInitialConsoleCreditState(context.tokenId), status: 'blocked', error: String(error?.message ?? 'This Looper is not eligible for the credit beta.'), details: error?.details ?? null } };
+    } else {
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'error', error: getConsoleCreditErrorMessage(error) } };
+    }
+    render(root, state, handlers);
+  }
+
+  async function refreshConsoleCredit({ notice = null } = {}) {
+    let context;
+    try { context = createConsoleCreditContext(); } catch (error) {
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'error', error: error.message } };
+      render(root, state, handlers);
+      return;
+    }
+    const controller = beginConsoleCreditOperation('loading');
+    try {
+      const overview = await activeConsoleCreditApi.overview({ tokenId: context.tokenId, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', selectedTokenId: context.tokenId, overview, authorization: null, quote: null, error: null, notice } };
+    } catch (error) {
+      failConsoleCredit(error, context);
+    } finally {
+      if (consoleCreditAbortController === controller) consoleCreditAbortController = null;
+      if (isCurrentConsoleCreditContext(context)) render(root, state, handlers);
+    }
+  }
+
+  async function loginConsoleCredit() {
+    const context = createConsoleCreditContext();
+    const controller = beginConsoleCreditOperation('signing');
+    try {
+      const challenge = await activeConsoleCreditApi.challenge({ tokenId: context.tokenId, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      const account = String(state.looperAgentWallet?.account ?? '').toLowerCase();
+      if (!/^0x[0-9a-f]{40}$/u.test(account) || account !== String(challenge.account ?? '').toLowerCase()) throw new Error('Credifi challenge account does not match the selected Looper.');
+      const signed = await activeWalletClient.signMessage(challenge.message);
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      await activeConsoleCreditApi.verify({ tokenId: context.tokenId, signature: signed.signature, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      consoleCreditAbortController = null;
+      return refreshConsoleCredit({ notice: 'Credifi session established for this Looper.' });
+    } catch (error) {
+      failConsoleCredit(error, context);
+    } finally {
+      if (consoleCreditAbortController === controller) consoleCreditAbortController = null;
+    }
+  }
+
+  async function acceptConsoleCreditVouch(commitmentId) {
+    const context = createConsoleCreditContext();
+    const controller = beginConsoleCreditOperation('mutating');
+    try {
+      await activeConsoleCreditApi.acceptVouch({ tokenId: context.tokenId, commitmentId: String(commitmentId), csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      consoleCreditAbortController = null;
+      return refreshConsoleCredit({ notice: 'Vouch accepted. No permission was granted and no funds were borrowed.' });
+    } catch (error) { failConsoleCredit(error, context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function prepareConsoleCreditAuthorization(commitmentId) {
+    const context = createConsoleCreditContext();
+    const controller = beginConsoleCreditOperation('authorizing');
+    try {
+      const prepared = await activeConsoleCreditApi.prepareAuthorization({ tokenId: context.tokenId, commitmentId: String(commitmentId), csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', authorization: { ...prepared, commitmentId: String(commitmentId) }, error: null, notice: prepared.required ? null : 'Credifi authorization is already active for this vault.' } };
+      render(root, state, handlers);
+    } catch (error) { failConsoleCredit(error, context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function submitConsoleCreditAuthorization() {
+    const context = createConsoleCreditContext();
+    const prepared = state.consoleCredit?.authorization;
+    if (!prepared?.required || prepared.scope !== 'ALL_EVC_SUBACCOUNTS_FOR_WALLET_PREFIX') return;
+    const transaction = prepared.transaction;
+    const looperAccount = String(state.looperAgentWallet?.account ?? '').toLowerCase();
+    if (!transaction || String(transaction.from ?? '').toLowerCase() !== context.wallet || String(transaction.to ?? '').toLowerCase() !== looperAccount || String(transaction.value) !== '0') {
+      return failConsoleCredit(new Error('Prepared authorization no longer matches this wallet and Looper.'), context);
+    }
+    const controller = beginConsoleCreditOperation('authorizing', { authorization: prepared });
+    try {
+      const refreshed = await activeConsoleCreditApi.prepareAuthorization({ tokenId: context.tokenId, commitmentId: prepared.commitmentId, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      if (!refreshed.required) {
+        consoleCreditAbortController = null;
+        return refreshConsoleCredit({ notice: 'Credifi authorization is already active for this vault.' });
+      }
+      const reviewedShape = ({ scope, operator, evc, accountPrefix, operatorBitField, transaction: value }) => JSON.stringify({ scope, operator, evc, accountPrefix, operatorBitField, transaction: value });
+      if (reviewedShape(refreshed) !== reviewedShape(prepared)) {
+        state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', authorization: { ...refreshed, commitmentId: prepared.commitmentId }, error: null, notice: 'Authorization configuration changed. Review the refreshed permission before signing.' } };
+        render(root, state, handlers);
+        return;
+      }
+      const authorizationExpiresAt = Date.parse(String(refreshed.expiresAt ?? ''));
+      if (!Number.isFinite(authorizationExpiresAt) || authorizationExpiresAt <= Date.now()) throw new Error('Prepared authorization expired before wallet submission.');
+      const freshTransaction = refreshed.transaction;
+      if (!freshTransaction || String(freshTransaction.from ?? '').toLowerCase() !== context.wallet || String(freshTransaction.to ?? '').toLowerCase() !== looperAccount || String(freshTransaction.value) !== '0') throw new Error('Fresh authorization no longer matches this wallet and Looper.');
+      const chainId = String(await activeWalletClient.request({ method: 'eth_chainId' })).toLowerCase();
+      if (chainId !== '0x2105') await activeWalletClient.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
+      const transactionHash = await activeWalletClient.request({ method: 'eth_sendTransaction', params: [{ from: freshTransaction.from, to: freshTransaction.to, data: freshTransaction.data, value: '0x0' }] });
+      if (!/^0x[0-9a-f]{64}$/iu.test(String(transactionHash ?? ''))) throw new Error('Wallet did not return an authorization transaction hash.');
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', authorization: null, quote: null, error: null, notice: 'Authorization submitted on Base: ' + shortConsoleHash(transactionHash) + '. Refresh after confirmation.' } };
+      render(root, state, handlers);
+    } catch (error) { failConsoleCredit(new Error(getWalletErrorMessage(error)), context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function requestConsoleCreditTwoFactor(channel) {
+    const context = createConsoleCreditContext();
+    const controller = beginConsoleCreditOperation('mutating');
+    try {
+      await activeConsoleCreditApi.requestTwoFactor({ tokenId: context.tokenId, channel: String(channel), csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', notice: 'Credifi sent a new ' + String(channel) + ' verification code.' } };
+      render(root, state, handlers);
+    } catch (error) { failConsoleCredit(error, context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function verifyConsoleCreditTwoFactor(code) {
+    const context = createConsoleCreditContext();
+    const controller = beginConsoleCreditOperation('mutating');
+    try {
+      await activeConsoleCreditApi.verifyTwoFactor({ tokenId: context.tokenId, code: String(code ?? '').trim(), csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      consoleCreditAbortController = null;
+      return refreshConsoleCredit({ notice: 'Credifi loan verification completed.' });
+    } catch (error) { failConsoleCredit(error, context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function previewConsoleCredit({ commitmentId, amount, maxAprPercent }) {
+    const context = createConsoleCreditContext();
+    const numericAmount = Number(amount);
+    const numericApr = Number(maxAprPercent);
+    const controller = beginConsoleCreditOperation('quoting', { amount: String(amount), maxAprPercent: String(maxAprPercent), quote: null });
+    try {
+      const preview = await activeConsoleCreditApi.preview({ tokenId: context.tokenId, commitmentId: String(commitmentId), amount: numericAmount, maxAprPercent: numericApr, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', quote: { ...preview, status: 'reviewed' }, authorization: null, error: null, notice: 'Live quote loaded. Review every term before borrowing.' } };
+      render(root, state, handlers);
+    } catch (error) { failConsoleCredit(error, context); }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  async function borrowConsoleCredit({ confirmed }) {
+    const context = createConsoleCreditContext();
+    const preview = state.consoleCredit?.quote;
+    if (!confirmed || !preview?.quote?.quoteId || !preview?.quoteSha256 || !preview?.commitment?.id) {
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'ready', error: 'Review the live quote and confirm the exact terms before borrowing.' } };
+      render(root, state, handlers);
+      return;
+    }
+    const controller = beginConsoleCreditOperation('borrowing', { quote: { ...preview, status: 'borrowing' } });
+    try {
+      const result = await activeConsoleCreditApi.borrow({ tokenId: context.tokenId, commitmentId: preview.commitment.id, quoteId: preview.quote.quoteId, quoteSha256: preview.quoteSha256, confirmBorrow: true, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      consoleCreditAbortController = null;
+      return refreshConsoleCredit({ notice: 'Loan ' + String(result.loan?.id ?? '') + ' submitted. Credifi confirmed the reviewed Looper, Base USDC market, and recipient binding.' });
+    } catch (error) {
+      if (error?.code === 'loan_creation_indeterminate' && isCurrentConsoleCreditContext(context)) {
+        consoleCreditAbortController = null;
+        return refreshConsoleCredit({ notice: 'Borrow result is uncertain. Loan state was refreshed and new borrowing is locked pending operator reconciliation.' });
+      }
+      failConsoleCredit(error, context);
+    }
+    finally { if (consoleCreditAbortController === controller) consoleCreditAbortController = null; }
+  }
+
+  function getConsoleCreditErrorMessage(error) {
+    if (error?.status === 404) return 'Console credit is not enabled on this deployment.';
+    if (error?.status === 429) return 'Credit requests are temporarily rate limited. Wait and retry.';
+    if (error?.code === 'loan_creation_indeterminate') return 'Borrow result is uncertain. Review the refreshed loan list before any retry.';
+    return String(error?.message ?? 'Console credit is temporarily unavailable.').slice(0, 512);
+  }
+
+  function shortConsoleHash(value) {
+    const text = String(value ?? '');
+    return text.length > 18 ? text.slice(0, 10) + '…' + text.slice(-8) : text;
   }
 
   async function loadConsoleMissions(filter = state.consoleMissions?.filter ?? null) {
@@ -2221,6 +2440,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       consoleRestapNetworkAbortController = null;
       consoleRestapNetworkMutationAbortController?.abort();
       consoleRestapNetworkMutationAbortController = null;
+      consoleCreditAbortController?.abort();
+      consoleCreditAbortController = null;
     }
     const activationRequestId = state.consoleActivationRequestId + 1;
     const codexRequestId = state.consoleCodexRequestId + 1;
@@ -2252,6 +2473,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       },
       consoleCodex: createLoadingConsoleCodexState(normalizedTokenId, codexRequestId),
       consoleRestapNetwork: clearConsoleRestapNetworkSelection(state.consoleRestapNetwork, normalizedTokenId),
+      consoleCredit: selectionChanged ? createInitialConsoleCreditState(normalizedTokenId) : state.consoleCredit,
     };
     writeLastLooperForWallet({
       storage: consolePreferenceStorage,
@@ -3280,7 +3502,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -3666,6 +3888,7 @@ export function clearConsoleSessionState(state = {}, { walletSnapshot = {}, stat
     consoleAgentThread: createInitialConsoleAgentThreadState(),
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
+    consoleCredit: createInitialConsoleCreditState(),
     looperAgentWallet: {
       mode: 'read_only',
       reason: 'not_selected',
@@ -5927,6 +6150,17 @@ function bindProductHomeEvents(root, handlers, state) {
   bindMissionEditor(root, {
     submit: handlers.submitConsoleMission,
     cancel: handlers.cancelConsoleMissionEditor,
+  });
+  bindConsoleCredit(root, {
+    refresh: handlers.refreshConsoleCredit,
+    login: handlers.loginConsoleCredit,
+    acceptVouch: handlers.acceptConsoleCreditVouch,
+    prepareAuthorization: handlers.prepareConsoleCreditAuthorization,
+    submitAuthorization: handlers.submitConsoleCreditAuthorization,
+    requestTwoFactor: handlers.requestConsoleCreditTwoFactor,
+    verifyTwoFactor: handlers.verifyConsoleCreditTwoFactor,
+    preview: handlers.previewConsoleCredit,
+    borrow: handlers.borrowConsoleCredit,
   });
   bindSwarmLaunchpad(root, {
     prepare: handlers.prepareConsoleSwarmLaunch,
