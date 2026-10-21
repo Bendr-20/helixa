@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { BrowserProvider, Contract, ContractFactory, Wallet } from 'ethers';
 import ganache from 'ganache';
+import solc from 'solc';
 
 import { compileSwarmLaunchContracts } from '../scripts/compile-swarm-launch.js';
 
@@ -133,6 +134,35 @@ test('binds every token and allocation field into deployment ID and rejects unsa
   await assert.rejects(factory.predict({ ...plan, allocations: { ...plan.allocations, publicDistributionAmount: '2501' } }), /revert|InvalidPlan/i);
 });
 
+test('rejects a high-s malleated EOA authorization onchain', async () => {
+  const { factory, plan, signatures } = await harness();
+  const original = signatures[0];
+  const signatureS = BigInt('0x' + original.slice(66, 130));
+  const highS = (0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141n - signatureS).toString(16).padStart(64, '0');
+  const v = original.slice(130, 132).toLowerCase() === '1b' ? '1c' : '1b';
+  signatures[0] = original.slice(0, 66) + highS + v;
+  await assert.rejects(factory.deploy(plan, signatures), /revert|InvalidAuthorization/i);
+});
+
+test('malicious ERC-1271 callbacks cannot reenter factory deployment', async () => {
+  const artifacts = await compileSwarmLaunchContracts();
+  const provider = new BrowserProvider(ganache.provider({ chain: { chainId: 8453 }, logging: { quiet: true } }));
+  const deployer = await provider.getSigner();
+  const factory = await new ContractFactory(artifacts.contracts.SwarmLaunchFactory.abi, artifacts.contracts.SwarmLaunchFactory.bytecode, deployer).deploy();
+  await factory.waitForDeployment();
+  const helper = compileReentrant1271();
+  const wallets = [];
+  for (let index = 0; index < 3; index += 1) { const wallet = await new ContractFactory(helper.abi, helper.bytecode, deployer).deploy(); await wallet.waitForDeployment(); wallets.push(wallet); }
+  wallets.sort((left, right) => left.target.toLowerCase().localeCompare(right.target.toLowerCase()));
+  const block = await provider.getBlock('latest');
+  const plan = fixture(wallets.map((wallet) => wallet.target), Number(block.timestamp));
+  const reentry = factory.interface.encodeFunctionData('deploy', [plan, []]);
+  for (const wallet of wallets) await (await wallet.configure(factory.target, reentry)).wait();
+  const deploymentId = await factory.computeDeploymentId(plan);
+  await (await factory.deploy(plan, ['0x01', '0x01', '0x01'])).wait();
+  assert.notEqual(await factory.tokenOf(deploymentId), '0x0000000000000000000000000000000000000000');
+});
+
 test('refuses factory creation outside Base chain ID 8453', async () => {
   const artifacts = await compileSwarmLaunchContracts();
   const provider = new BrowserProvider(ganache.provider({ chain: { chainId: 1 }, logging: { quiet: true } }));
@@ -140,3 +170,13 @@ test('refuses factory creation outside Base chain ID 8453', async () => {
   const factory = new ContractFactory(artifacts.contracts.SwarmLaunchFactory.abi, artifacts.contracts.SwarmLaunchFactory.bytecode, signer);
   await assert.rejects(factory.deploy(), /revert|WrongChain/i);
 });
+
+function compileReentrant1271() {
+  const source = 'pragma solidity 0.8.24; contract Reentrant1271 { address target; bytes payload; function configure(address t, bytes calldata p) external { target=t; payload=p; } function isValidSignature(bytes32, bytes calldata) external returns(bytes4) { (bool ok,)=target.call(payload); return ok ? bytes4(0) : bytes4(0x1626ba7e); } }';
+  const input = { language: 'Solidity', sources: { 'Reentrant1271.sol': { content: source } }, settings: { optimizer: { enabled: true, runs: 200 }, outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } } };
+  const output = JSON.parse(solc.compile(JSON.stringify(input)));
+  const errors = output.errors?.filter((entry) => entry.severity === 'error') ?? [];
+  if (errors.length) throw new Error(errors.map((entry) => entry.formattedMessage).join('\n'));
+  const contract = output.contracts['Reentrant1271.sol'].Reentrant1271;
+  return { abi: contract.abi, bytecode: '0x' + contract.evm.bytecode.object };
+}

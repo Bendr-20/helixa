@@ -12,21 +12,22 @@ This runbook covers deterministic packet generation and read-only verification o
 
 ## Execution-plan prerequisites
 
-Start from a signed `multipass.swarm-launch-execution-plan.v1` readiness manifest. Before generation it must resolve all of the following:
+Start from the immutable canonical `multipass.swarm-launch-readiness.v1` artifact and its exact `multipass.swarm-launch.v1` consent-manifest ancestor. The generator verifies both SHA-256 links and every member consent authority, token ID, contribution weight, allocation, and vesting-month field. A reviewed `multipass.swarm-launch-execution-conversion.v1` child binds the exact parent readiness hash and resolves only the execution details absent from the immutable parent:
 
 1. Token name, symbol, 18 decimals, and fixed base-unit supply.
 2. Four allocation bps values totaling exactly 10,000. Defaults are 4,500 agent vesting / 1,500 CRED-staker rewards / 1,500 swarm treasury / 2,500 public distribution, but the signed readiness values control.
 3. Explicit amounts matching deterministic bps math. The first three category amounts round down and public distribution receives the deterministic remainder.
 4. Three nonzero, mutually distinct fixed recipients for CRED rewards, treasury, and public distribution.
-5. A non-`UNSELECTED` mechanism for each recipient category. The current onchain mechanism is `DIRECT_FIXED_RECIPIENT`.
-6. Three to five members with unique agent keys, nonzero vesting beneficiaries, contribution bps totaling 10,000, and one unanimous consent authority per member.
-7. Sorted required signer addresses, vesting times, authorization expiry, revenue splitter terms, and a nonzero deployment salt.
+5. Exactly `DIRECT_FIXED_RECIPIENT` for CRED rewards, treasury, and public distribution; alternatives are rejected.
+6. Timing under the closed `SOURCE_CONSENT_EXPIRY_PLUS_7D_30D_MONTHS_V1` policy: authorization deadline equals the parent consent expiry, start is exactly seven days later, and cliff/duration are the parent readiness months multiplied by 30 days. Operators cannot choose alternate timing for the same parent hash.
+7. Three to five members with unique agent keys, nonzero vesting beneficiaries, contribution bps totaling 10,000, and one unanimous consent authority per member.
+8. Sorted required signer addresses, vesting times, authorization expiry, revenue splitter terms, and a nonzero deployment salt.
 
 Member vesting amounts use contribution bps. Every member except the last receives floor(agent allocation × contribution bps / 10,000); the last member receives the exact remainder. The factory validates every amount again onchain.
 
 ## Generate the canonical no-broadcast packet
 
-Copy the example and replace every placeholder with values from the signed readiness plan. The example factory address is intentionally not a deployment claim.
+Copy the example while preserving the exact parent artifacts and their hashes. Replace only reviewed conversion resolutions and the placeholder factory address. The example factory address is intentionally not a deployment claim. Unknown fields at any relevant schema level are rejected.
 
 ```bash
 cd packages/contracts
@@ -88,7 +89,7 @@ The following remain separate, explicit human-controlled gates after generation 
 
 1. Independent contract/security review and Base-fork pass against the actual factory address.
 2. Approval of the final signed readiness manifest and byte-identical packet.
-3. Offline unanimous EOA/ERC-1271 signature attachment review. Attachment remains pure and `AUTHORIZED_NO_BROADCAST`.
+3. Offline unanimous signature attachment review. Closed deterministic EOA recovery may produce `SIGNATURES_VERIFIED_EOA_OFFLINE` and `AUTHORIZED_NO_BROADCAST`. ERC-1271 attachments are structural only (`SIGNATURES_ATTACHED_UNVERIFIED`), move to `SIGNATURES_ATTACHED_NO_BROADCAST`, and keep `deploymentAuthorized: false` until a separately approved pinned-state/onchain proof exists. Callback-based verification is forbidden.
 4. Explicit deployment approval by the authorized operator.
 5. Separate wallet invocation and broadcast approval.
 6. Post-deployment code, event, balances, vesting funding, recipient balances, and zero factory residue verification.

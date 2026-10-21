@@ -9,6 +9,8 @@ import { Interface, TypedDataEncoder, keccak256 } from 'ethers';
 import { canonicalSwarmLaunchJson } from '../../types/src/swarm-launch.js';
 import { compileSwarmLaunchContracts } from './compile-swarm-launch.js';
 import {
+  attachSwarmLaunchExecutionSignatures,
+  buildSwarmLaunchExecutionReadiness,
   computeSwarmLaunchDeploymentId,
   computeSwarmLaunchPredictions,
 } from './swarm-launch-execution-manifest.js';
@@ -17,14 +19,27 @@ const BASE_CHAIN_ID = 8453;
 const ALLOWED_RPC_METHODS = new Set(['eth_chainId', 'eth_getCode', 'eth_call']);
 
 export async function verifySwarmLaunchPacket(packet, { artifacts, rpcUrl, fetchImpl = globalThis.fetch } = {}) {
+  exactKeys(packet, ['manifest', 'manifestSha256', 'typedData'], 'launch packet envelope');
   if (!packet?.manifest || packet.manifest.schema !== 'multipass.swarm-token-launch-packet.v1') throw new TypeError('Launch packet schema is invalid.');
   const manifest = packet.manifest;
   if (manifest.chainId !== BASE_CHAIN_ID) throw new TypeError('Launch packet must target Base chain ID 8453.');
-  if (manifest.execution?.broadcastPrepared !== false || manifest.execution?.transactionCount !== 0) throw new TypeError('Launch packet is not no-broadcast.');
   const calculatedHash = '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(manifest)).digest('hex');
   if (calculatedHash !== packet.manifestSha256) throw new TypeError('Launch packet manifest hash mismatch.');
 
   const compiled = artifacts ?? await compileSwarmLaunchContracts();
+  const prepared = buildSwarmLaunchExecutionReadiness({
+    chainId: manifest.chainId,
+    factoryAddress: manifest.factory,
+    readinessPacketSha256: manifest.sourceReadiness?.sha256,
+    readinessManifest: manifest.sourceReadiness?.artifact,
+    consentManifest: manifest.sourceReadiness?.consentManifest,
+    conversion: manifest.conversion?.artifact,
+    artifacts: compiled,
+  });
+  let reconstructed = prepared;
+  if (manifest.authorization?.status !== 'NOT_ATTACHED') reconstructed = await attachSwarmLaunchExecutionSignatures(prepared, manifest.authorization?.signatures);
+  if (canonicalSwarmLaunchJson(packet) !== canonicalSwarmLaunchJson(reconstructed)) throw new TypeError('Launch packet violates the closed canonical schema or reconstructed state.');
+  if (manifest.execution.broadcastPrepared !== false || manifest.execution.transactionCount !== 0 || manifest.safety.rpcSendMethodsAllowed !== false) throw new TypeError('Launch packet is not no-broadcast.');
   if (compiled.sourceHash !== manifest.compiler?.sourceHash || compiled.compilerVersion !== manifest.compiler?.version) {
     throw new TypeError('Launch packet compiler evidence mismatch.');
   }
@@ -55,6 +70,9 @@ export async function verifySwarmLaunchPacket(packet, { artifacts, rpcUrl, fetch
   const baseReport = {
     status: 'VERIFIED_OFFLINE',
     chainId: BASE_CHAIN_ID,
+    schemaVerified: true,
+    lineageVerified: true,
+    allocationSummariesVerified: true,
     packetHashVerified: true,
     deploymentIdVerified: true,
     create2Verified: true,
@@ -137,3 +155,10 @@ async function main(argv) {
 function valueAfter(argv, flag) { const index = argv.indexOf(flag); return index === -1 ? undefined : argv[index + 1]; }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main(process.argv.slice(2));
+
+function exactKeys(value, keys, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(label + ' is invalid.');
+  const expected = new Set(keys);
+  for (const key of Object.keys(value)) if (!expected.has(key)) throw new TypeError(label + ' contains unknown key: ' + key + '.');
+  for (const key of keys) if (!Object.hasOwn(value, key)) throw new TypeError(label + ' is missing key: ' + key + '.');
+}

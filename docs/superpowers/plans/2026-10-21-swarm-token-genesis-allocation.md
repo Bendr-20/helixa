@@ -20,12 +20,22 @@
 - [x] **RED/GREEN — read-only verifier:** add `packages/contracts/test/swarm-launch-read-only-verifier.test.mjs` and `packages/contracts/scripts/verify-swarm-launch-packet.js`; validate packet hashes, compiler/source hashes, bytecode sizes, Base RPC chain/code reads, CREATE2 parity, and optional local Base fork simulation using only `eth_chainId`, `eth_getCode`, `eth_call` or a local fork process—never `eth_sendTransaction`/raw transaction methods.
 - [x] **Scripts/docs:** update `packages/contracts/package.json` scripts and `docs/runbooks/swarm-token-launch.md` with generation, deterministic/fork verification, unavailable-RPC reporting, and future approval gates.
 
+## Independent review corrections
+
+- [x] Replace the self-authored execution-plan readiness input with the canonical `multipass.swarm-launch-readiness.v1` parent plus a closed deterministic child conversion artifact that binds its exact hash, consent lineage, and fixed timing policy.
+- [x] Derive `authorizationDeadline`, `start`, `cliff`, and `duration` from parent fields and fixed reviewed constants; reject every mismatch and unknown key.
+- [x] Restrict all three allocation mechanisms to `DIRECT_FIXED_RECIPIENT`.
+- [x] Make signature attachment pure and deterministic: closed EOA recovery only, structural/unverified ERC-1271 attachment, no callbacks, and no ERC-1271 offline authorization claim.
+- [x] Add strict closed-schema packet verification that reconstructs and compares lineage, hashes, plan, allocation summaries, CREATE2 predictions, EIP-712 data/digest, compiler evidence, and exact safety/execution states.
+- [x] Add regression probes for unknown keys, recomputed outer hashes, lineage/timing/mechanism mutation, unsafe state combinations, hidden transaction/key/calldata fields, high-s EOA signatures, and malicious ERC-1271 reentrancy.
+- [x] Rerun focused/full tests, deterministic compilation, formatting/diff, sizes, and Base read-only verification before checking these tasks.
+
 ## Verification gates
 
 - [x] Run each focused test at RED and record the expected missing-feature failure before production edits; rerun GREEN after each slice.
-- [ ] Run all Swarm Launch JS tests and Foundry tests. JS: 11/11 pass. Foundry source compiles with pinned solc; `forge` is unavailable on this host.
-- [x] Run the full applicable `@helixa/loopers-contracts` test suite (130 pass; sole failure is the known unrelated missing `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json` fixture); exclude only the known unrelated missing historical `/tmp` fixture if it is the sole unrelated failure and name it.
+- [ ] Run all Swarm Launch JS tests and Foundry tests. JS: 18/18 pass, including executable high-s and malicious ERC-1271 reentrancy probes. Foundry test source compiles with pinned solc (11 contracts); `forge` remains unavailable on this host.
+- [x] Run the full applicable `@helixa/loopers-contracts` test suite (137 pass; sole failure is the known unrelated missing `/tmp/looper-agent-account-base-preview-2026-09-22T1849Z.json` fixture); exclude only the known unrelated missing historical `/tmp` fixture if it is the sole unrelated failure and name it.
 - [x] Run deterministic compilation twice and compare source/artifact hashes.
 - [x] Run available formatting/whitespace and syntax checks plus EIP-170 runtime/initcode size checks (no repository formatter executable is installed).
-- [ ] Run the Base fork/read-only verification when a public Base RPC and fork tooling are available; otherwise capture the exact missing prerequisite/error. Public Base RPC reads succeeded for chain/code and precisely reported `FACTORY_NOT_DEPLOYED`; `forge`/`anvil` are unavailable, so no local fork was run.
+- [ ] Run the Base fork/read-only verification when a public Base RPC and fork tooling are available; otherwise capture the exact missing prerequisite/error. Hardened public Base RPC reads succeeded using only `eth_chainId` and `eth_getCode` and precisely reported `FACTORY_NOT_DEPLOYED`; `forge`/`anvil` remain unavailable, so no local fork was run.
 - [x] Inspect the final diff, verify no secret/signature material or provider calldata is present, confirm no RPC send methods are reachable, and commit all source changes locally.

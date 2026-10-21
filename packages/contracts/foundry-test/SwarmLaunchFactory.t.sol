@@ -33,6 +33,21 @@ contract Factory1271Signer {
     }
 }
 
+contract ReentrantFactory1271Signer {
+    address private target;
+    bytes private payload;
+
+    function configure(address target_, bytes calldata payload_) external {
+        target = target_;
+        payload = payload_;
+    }
+
+    function isValidSignature(bytes32, bytes calldata) external returns (bytes4) {
+        (bool reentered,) = target.call(payload);
+        return reentered ? bytes4(0) : bytes4(0x1626ba7e);
+    }
+}
+
 contract SwarmLaunchFactoryTest {
     FactoryVm private constant VM = FactoryVm(address(uint160(uint256(keccak256("hevm cheat code")))));
     bytes32 private constant READINESS_HASH = keccak256("readiness");
@@ -104,6 +119,40 @@ contract SwarmLaunchFactoryTest {
         VM.warp(plan.authorizationDeadline);
         VM.expectRevert(SwarmLaunchFactory.AuthorizationExpired.selector);
         factory.deploy(plan, signatures);
+    }
+
+    function testRejectsHighSEoaSignature() external {
+        SwarmLaunchFactory factory = new SwarmLaunchFactory();
+        (SwarmLaunchFactory.LaunchPlan memory plan, uint256[] memory keys) = _eoaPlan();
+        bytes32 digest = factory.authorizationDigest(factory.computeDeploymentId(plan), plan.authorizationDeadline);
+        bytes[] memory signatures = _sign(digest, keys);
+        (uint8 v, bytes32 r, bytes32 s) = VM.sign(keys[0], digest);
+        uint256 curveOrder = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
+        signatures[0] = abi.encodePacked(r, bytes32(curveOrder - uint256(s)), v == 27 ? uint8(28) : uint8(27));
+        VM.expectRevert(SwarmLaunchFactory.InvalidAuthorization.selector);
+        factory.deploy(plan, signatures);
+    }
+
+    function testMaliciousERC1271CannotReenterDeployment() external {
+        SwarmLaunchFactory factory = new SwarmLaunchFactory();
+        ReentrantFactory1271Signer[] memory wallets = new ReentrantFactory1271Signer[](3);
+        address[] memory signers = new address[](3);
+        for (uint256 index; index < 3; ++index) { wallets[index] = new ReentrantFactory1271Signer(); signers[index] = address(wallets[index]); }
+        for (uint256 left; left < signers.length; ++left) {
+            for (uint256 right = left + 1; right < signers.length; ++right) {
+                if (signers[left] > signers[right]) {
+                    (signers[left], signers[right]) = (signers[right], signers[left]);
+                    (wallets[left], wallets[right]) = (wallets[right], wallets[left]);
+                }
+            }
+        }
+        SwarmLaunchFactory.LaunchPlan memory plan = _basePlan(signers);
+        bytes[] memory empty = new bytes[](0);
+        bytes memory reentry = abi.encodeCall(SwarmLaunchFactory.deploy, (plan, empty));
+        bytes[] memory signatures = new bytes[](3);
+        for (uint256 index; index < 3; ++index) { wallets[index].configure(address(factory), reentry); signatures[index] = hex"01"; }
+        (address token,,,) = factory.deploy(plan, signatures);
+        require(token != address(0), "outer ERC1271 deployment failed");
     }
 
     function testAcceptsThreeUnanimousERC1271Wallets() external {

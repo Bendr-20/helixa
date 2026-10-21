@@ -1,131 +1,303 @@
 {
   "chainId": 8453,
   "factoryAddress": "0x1000000000000000000000000000000000000001",
-  "readinessPacketSha256": "0xa6b2c8eec68277ef36b05c1b185c80477a28bbdbd1ec02b934f8e909ebe6412e",
+  "readinessPacketSha256": "0x8e64701084f87647e7cb1c567e9b32ba498ce7b7ed62a0da9703eefadeac6ffb",
   "readinessManifest": {
-    "schema": "multipass.swarm-launch-execution-plan.v1",
+    "schema": "multipass.swarm-launch-readiness.v1",
     "chainId": 8453,
-    "token": {
-      "name": "Swarm Signal",
-      "symbol": "SIG",
-      "decimals": 18,
-      "totalSupply": "10003000000000000000000"
+    "sourceConsent": {
+      "proposalId": "swarm-signal-consent-v1",
+      "manifestSha256": "0xf0c7e1752d5ade35284ba98fa5c46332c0f601651eac4077bbfda3ee01d15d60",
+      "expiresAt": 1899913600
+    },
+    "execution": {
+      "mode": "SIMULATION_ONLY",
+      "deploymentAuthorized": false,
+      "providerSelected": false,
+      "onchainTargets": [],
+      "transactionCount": 0,
+      "requiresSeparateExecutionConsent": true
     },
     "allocations": {
       "agentVestingBps": 4500,
       "credRewardsBps": 1500,
       "swarmTreasuryBps": 1500,
       "publicDistributionBps": 2500,
-      "agentVestingAmount": "4501350000000000000000",
-      "credRewardsAmount": "1500450000000000000000",
-      "swarmTreasuryAmount": "1500450000000000000000",
-      "publicDistributionAmount": "2500750000000000000000",
-      "credRewardsRecipient": "0x0000000000000000000000000000000000000005",
-      "swarmTreasuryRecipient": "0x0000000000000000000000000000000000000006",
-      "publicDistributionRecipient": "0x0000000000000000000000000000000000000007"
+      "totalBps": 10000
+    },
+    "agentVesting": {
+      "cliffMonths": 6,
+      "durationMonths": 18,
+      "allocations": [
+        {
+          "tokenId": "1",
+          "consentAuthority": "0x1111111111111111111111111111111111111111",
+          "shareBps": 3333,
+          "beneficiaryStatus": "UNRESOLVED",
+          "beneficiaryAddress": null
+        },
+        {
+          "tokenId": "2",
+          "consentAuthority": "0x2222222222222222222222222222222222222222",
+          "shareBps": 3333,
+          "beneficiaryStatus": "UNRESOLVED",
+          "beneficiaryAddress": null
+        },
+        {
+          "tokenId": "3",
+          "consentAuthority": "0x3333333333333333333333333333333333333333",
+          "shareBps": 3334,
+          "beneficiaryStatus": "UNRESOLVED",
+          "beneficiaryAddress": null
+        }
+      ]
+    },
+    "credRewards": {
+      "beneficiary": "CRED_STAKERS",
+      "provider": "UNSELECTED",
+      "stakingAsset": "CRED",
+      "targetAddress": null
+    },
+    "swarmTreasury": {
+      "control": "SWARM_MULTISIG_REQUIRED",
+      "address": null
+    },
+    "publicDistribution": {
+      "mechanism": "UNSELECTED",
+      "adapter": null
+    },
+    "requiredPrimitives": {
+      "contributionRegistry": {
+        "weights": "CONSENTED_CONTRIBUTION_BPS",
+        "mutable": false,
+        "address": null
+      },
+      "agentVesting": {
+        "implementation": "AUDITED_EXTERNAL_STREAMS_REQUIRED",
+        "transferable": false,
+        "addresses": []
+      },
+      "revenueSplitter": {
+        "mode": "PULL_MULTI_ASSET",
+        "weights": "CONSENTED_CONTRIBUTION_BPS",
+        "implementation": "UNSELECTED",
+        "address": null
+      },
+      "swapHook": {
+        "required": false,
+        "implementation": "UNSELECTED",
+        "address": null
+      }
+    },
+    "requiredGates": [
+      "REVALIDATE_LOOPER_OWNERSHIP",
+      "REVALIDATE_LOOPER_CONTROLLERS",
+      "REVALIDATE_CRED",
+      "SELECT_AND_REVIEW_EXECUTION_PROVIDER",
+      "RESOLVE_VESTING_BENEFICIARIES",
+      "SIMULATE_ON_BASE_FORK",
+      "COLLECT_SEPARATE_EXECUTION_CONSENT"
+    ]
+  },
+  "consentManifest": {
+    "schema": "multipass.swarm-launch.v1",
+    "chainId": 8453,
+    "identity": {
+      "type": "looper_erc721",
+      "chainId": 8453,
+      "registry": "0x1649cd37f4748807b4882fc48765ba0b2affa94a"
+    },
+    "execution": {
+      "mode": "PREPARATION_ONLY",
+      "deploymentAuthorized": false,
+      "requiresSeparateApproval": true
+    },
+    "gate": {
+      "minimumMembers": 3,
+      "maximumMembers": 5,
+      "minimumAverageCred": 65,
+      "observedAverageCred": 71,
+      "methodologyVersions": [
+        "looper-cred-v1"
+      ]
+    },
+    "app": {
+      "name": "Swarm Signal",
+      "pitch": "Ship deterministic coordination.",
+      "template": "protocol",
+      "revenueModel": "protocol_fees",
+      "shipTarget": "30_days"
+    },
+    "token": {
+      "name": "Swarm Signal",
+      "ticker": "SIG",
+      "supply": "100000000",
+      "supplyUnit": "WHOLE_TOKENS",
+      "decimals": null,
+      "curve": "bonding_curve_to_dex"
+    },
+    "economics": {
+      "model": "PROVIDER_NEUTRAL_V1",
+      "agentVesting": {
+        "allocationBps": 4500,
+        "cliffMonths": 6,
+        "durationMonths": 18
+      },
+      "credRewards": {
+        "allocationBps": 1500,
+        "beneficiary": "CRED_STAKERS",
+        "provider": "UNSELECTED"
+      },
+      "swarmTreasury": {
+        "allocationBps": 1500,
+        "control": "SWARM_MULTISIG_REQUIRED"
+      },
+      "publicDistribution": {
+        "allocationBps": 2500,
+        "mechanism": "UNSELECTED"
+      },
+      "totalAllocationBps": 10000
     },
     "members": [
       {
-        "agentKey": "0x0101010101010101010101010101010101010101010101010101010101010101",
-        "beneficiary": "0x0000000000000000000000000000000000000002",
+        "identity": {
+          "type": "looper_erc721",
+          "chainId": 8453,
+          "registry": "0x1649cd37f4748807b4882fc48765ba0b2affa94a",
+          "tokenId": "1",
+          "erc8004Id": "8453:1"
+        },
+        "consentAuthority": "0x1111111111111111111111111111111111111111",
+        "name": "One",
+        "role": "Lead",
         "contributionBps": 3333,
-        "consentAuthority": "0x1111111111111111111111111111111111111111"
+        "cred": {
+          "status": "available",
+          "score": 70,
+          "tier": "QUALIFIED",
+          "coverage": {
+            "score": 80,
+            "label": "STRONG"
+          },
+          "freshness": {
+            "stale": false
+          },
+          "methodologyVersion": "looper-cred-v1",
+          "computedAt": "2026-10-20T00:00:00.000Z"
+        },
+        "vault": {
+          "status": "UNPREPARED",
+          "kind": "UNSPECIFIED",
+          "address": null
+        }
       },
       {
-        "agentKey": "0x0202020202020202020202020202020202020202020202020202020202020202",
-        "beneficiary": "0x0000000000000000000000000000000000000003",
+        "identity": {
+          "type": "looper_erc721",
+          "chainId": 8453,
+          "registry": "0x1649cd37f4748807b4882fc48765ba0b2affa94a",
+          "tokenId": "2",
+          "erc8004Id": "8453:2"
+        },
+        "consentAuthority": "0x2222222222222222222222222222222222222222",
+        "name": "Two",
+        "role": "Build",
         "contributionBps": 3333,
-        "consentAuthority": "0x2222222222222222222222222222222222222222"
+        "cred": {
+          "status": "available",
+          "score": 71,
+          "tier": "QUALIFIED",
+          "coverage": {
+            "score": 80,
+            "label": "STRONG"
+          },
+          "freshness": {
+            "stale": false
+          },
+          "methodologyVersion": "looper-cred-v1",
+          "computedAt": "2026-10-20T00:00:00.000Z"
+        },
+        "vault": {
+          "status": "UNPREPARED",
+          "kind": "UNSPECIFIED",
+          "address": null
+        }
       },
       {
-        "agentKey": "0x0303030303030303030303030303030303030303030303030303030303030303",
-        "beneficiary": "0x0000000000000000000000000000000000000004",
+        "identity": {
+          "type": "looper_erc721",
+          "chainId": 8453,
+          "registry": "0x1649cd37f4748807b4882fc48765ba0b2affa94a",
+          "tokenId": "3",
+          "erc8004Id": "8453:3"
+        },
+        "consentAuthority": "0x3333333333333333333333333333333333333333",
+        "name": "Three",
+        "role": "Operate",
         "contributionBps": 3334,
-        "consentAuthority": "0x3333333333333333333333333333333333333333"
+        "cred": {
+          "status": "available",
+          "score": 72,
+          "tier": "QUALIFIED",
+          "coverage": {
+            "score": 80,
+            "label": "STRONG"
+          },
+          "freshness": {
+            "stale": false
+          },
+          "methodologyVersion": "looper-cred-v1",
+          "computedAt": "2026-10-20T00:00:00.000Z"
+        },
+        "vault": {
+          "status": "UNPREPARED",
+          "kind": "UNSPECIFIED",
+          "address": null
+        }
       }
-    ],
-    "credRewards": {
-      "mechanism": "DIRECT_FIXED_RECIPIENT",
-      "recipient": "0x0000000000000000000000000000000000000005"
-    },
-    "swarmTreasury": {
-      "mechanism": "DIRECT_FIXED_RECIPIENT",
-      "recipient": "0x0000000000000000000000000000000000000006"
-    },
-    "publicDistribution": {
-      "mechanism": "DIRECT_FIXED_RECIPIENT",
-      "recipient": "0x0000000000000000000000000000000000000007"
-    }
+    ]
   },
-  "plan": {
-    "readinessHash": "0xa6b2c8eec68277ef36b05c1b185c80477a28bbdbd1ec02b934f8e909ebe6412e",
-    "start": 1900000000,
-    "cliff": 15552000,
-    "duration": 46656000,
-    "authorizationDeadline": 1899913600,
+  "conversion": {
+    "schema": "multipass.swarm-launch-execution-conversion.v1",
+    "parentReadinessSha256": "0x8e64701084f87647e7cb1c567e9b32ba498ce7b7ed62a0da9703eefadeac6ffb",
+    "timing": {
+      "policy": "SOURCE_CONSENT_EXPIRY_PLUS_7D_30D_MONTHS_V1",
+      "authorizationDeadline": 1899913600,
+      "start": 1900518400,
+      "cliff": 15552000,
+      "duration": 46656000
+    },
     "deploymentSalt": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-    "token": {
-      "name": "Swarm Signal",
-      "symbol": "SIG",
-      "decimals": 18,
-      "totalSupply": "10003000000000000000000"
-    },
-    "allocations": {
-      "agentVestingBps": 4500,
-      "credRewardsBps": 1500,
-      "swarmTreasuryBps": 1500,
-      "publicDistributionBps": 2500,
-      "agentVestingAmount": "4501350000000000000000",
-      "credRewardsAmount": "1500450000000000000000",
-      "swarmTreasuryAmount": "1500450000000000000000",
-      "publicDistributionAmount": "2500750000000000000000",
-      "credRewardsRecipient": "0x0000000000000000000000000000000000000005",
-      "swarmTreasuryRecipient": "0x0000000000000000000000000000000000000006",
-      "publicDistributionRecipient": "0x0000000000000000000000000000000000000007"
-    },
-    "contributions": [
+    "members": [
       {
-        "agentKey": "0x0101010101010101010101010101010101010101010101010101010101010101",
-        "beneficiary": "0x0000000000000000000000000000000000000002",
-        "bps": 3333
+        "tokenId": "1",
+        "beneficiary": "0x0000000000000000000000000000000000000002"
       },
       {
-        "agentKey": "0x0202020202020202020202020202020202020202020202020202020202020202",
-        "beneficiary": "0x0000000000000000000000000000000000000003",
-        "bps": 3333
+        "tokenId": "2",
+        "beneficiary": "0x0000000000000000000000000000000000000003"
       },
       {
-        "agentKey": "0x0303030303030303030303030303030303030303030303030303030303030303",
-        "beneficiary": "0x0000000000000000000000000000000000000004",
-        "bps": 3334
+        "tokenId": "3",
+        "beneficiary": "0x0000000000000000000000000000000000000004"
       }
     ],
-    "vestingAmounts": [
-      "1500299955000000000000",
-      "1500299955000000000000",
-      "1500750090000000000000"
-    ],
-    "revenueShares": [
-      {
-        "payee": "0x0000000000000000000000000000000000000002",
-        "bps": 5000
+    "recipients": {
+      "credRewards": {
+        "mechanism": "DIRECT_FIXED_RECIPIENT",
+        "recipient": "0x0000000000000000000000000000000000000005"
       },
-      {
-        "payee": "0x0000000000000000000000000000000000000003",
-        "bps": 3000
+      "swarmTreasury": {
+        "mechanism": "DIRECT_FIXED_RECIPIENT",
+        "recipient": "0x0000000000000000000000000000000000000006"
       },
-      {
-        "payee": "0x0000000000000000000000000000000000000004",
-        "bps": 2000
+      "publicDistribution": {
+        "mechanism": "DIRECT_FIXED_RECIPIENT",
+        "recipient": "0x0000000000000000000000000000000000000007"
       }
-    ],
+    },
     "revenueAssets": [
       "0x0000000000000000000000000000000000000000"
-    ],
-    "requiredSigners": [
-      "0x1111111111111111111111111111111111111111",
-      "0x2222222222222222222222222222222222222222",
-      "0x3333333333333333333333333333333333333333"
     ]
   }
 }
