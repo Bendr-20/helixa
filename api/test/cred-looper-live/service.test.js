@@ -10,7 +10,7 @@ const {
 } = require('../../cred-looper-live/service');
 
 const BLOCK = {
-  number: '0x64',
+  number: '0x6c',
   hash: '0x' + 'ab'.repeat(32),
   timestamp: '0x6ad92400',
 };
@@ -58,7 +58,7 @@ function makeRpc(overrides = {}) {
   const calls = [];
   const values = {
     eth_chainId: '0x2105',
-    eth_blockNumber: '0x64',
+    eth_blockNumber: '0x80',
     eth_getBlockByNumber: BLOCK,
     eth_getCode: '0x60006000',
     owner: '0x' + addressWord(PILOT.controller),
@@ -91,7 +91,7 @@ function service(rpc, now = Date.parse('2026-10-21T20:45:00Z')) {
 }
 
 test('publishes exact identity-bound provisional score 42 at one common Base block', async () => {
-  const rpc = makeRpc({ 'base_mainnet:eth_blockNumber': '0x65', 'base_drpc:eth_blockNumber': '0x64' });
+  const rpc = makeRpc({ 'base_mainnet:eth_blockNumber': '0x81', 'base_drpc:eth_blockNumber': '0x80' });
   const record = await service(rpc).getByLooperId('2431');
 
   assert.equal(record.methodologyId, METHODOLOGY_ID);
@@ -111,11 +111,21 @@ test('publishes exact identity-bound provisional score 42 at one common Base blo
     erc8004IdentityId: '89144',
   });
   assert.equal(record.actorEpoch.controller, PILOT.controller);
-  assert.equal(record.evidence.block.number, '100');
+  assert.equal(record.actorEpoch.startedAt, null);
+  assert.equal(record.actorEpoch.startTimeStatus, 'NOT_ASSERTED_BY_LIVE_PILOT');
+  assert.equal(record.evidence.block.number, '108');
   assert.equal(record.freshness, 'FRESH');
   assert.equal(Date.parse(record.validUntil) - Date.parse(record.computedAt), 60_000);
-  assert.ok(rpc.calls.filter(call => call.method === 'eth_call').every(call => call.params[1] === '0x64'));
+  assert.ok(rpc.calls.filter(call => call.method === 'eth_call').every(call => call.params[1] === '0x6c'));
   assert.deepEqual([...new Set(rpc.calls.map(call => call.provider.url))], PROVIDERS.map(provider => provider.url));
+});
+
+test('uses one agreed block at least 20 confirmations behind both provider heads', async () => {
+  const rpc = makeRpc();
+  const record = await service(rpc).getByLooperId('2431');
+  assert.equal(record.evidence.block.number, '108');
+  assert.ok(rpc.calls.filter(call => call.method === 'eth_call').every(call => call.params[1] === '0x6c'));
+  await assert.rejects(() => service(makeRpc({ eth_blockNumber: '0x13' })).getByLooperId('2431'), /confirmation depth/i);
 });
 
 test('accepts the onchain second equal to the approved opening boundary', async () => {
@@ -141,9 +151,10 @@ test('Credifi repayment is identity-bound observation with zero score impact', a
     repaymentTxHash: PILOT.credifi.repaymentTxHash,
     recipient: PILOT.account,
     actor: PILOT.controller,
-    receiptStatus: 'SUCCEEDED',
+    receiptStatus: 'TRANSACTION_SUCCEEDED',
+    providerAttributionStatus: 'PENDING_PROVIDER_ATTESTATION',
     scoreImpact: 0,
-    reasonCode: 'CREDIFI_REPAYMENT_OBSERVED_PENDING_PROVIDER_ATTESTATION',
+    reasonCode: 'CREDIFI_REPAYMENT_TX_OBSERVED_PENDING_PROVIDER_ATTESTATION',
   }]);
   assert.equal(record.scoreComponents.reduce((sum, component) => sum + component.scoreImpact, 0), 42);
 });

@@ -6,6 +6,7 @@ const MAX_CACHE_TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 const MAX_RPC_RESPONSE_BYTES = 512 * 1024;
 const MAX_RETRIES = 1;
+const MIN_CONFIRMATIONS = 20n;
 const ALLOWED_RPC_METHODS = Object.freeze(new Set([
   'eth_chainId',
   'eth_blockNumber',
@@ -27,7 +28,7 @@ const PILOT = Object.freeze({
   account: '0xee37097c267ceb22b553e0e947d19c5ce4ba696c',
   controller: '0xd31fcdb0432d3c9bf9d98643f69c7edd690e48e8',
   erc8004IdentityId: '89144',
-  actorEpochStartedAt: PILOT_OPENED_AFTER,
+  actorEpochId: 'looper:2431:controller:0xd31fcdb0432d3c9bf9d98643f69c7edd690e48e8:pilot-v1',
   pantheon: Object.freeze({
     cred: '0xab3f23c2abcb4e12cc8b593c218a7ba64ed17ba3',
     vault: '0xbf52aaf8b6c82fad0220b5378022ea4fc0a98fdb',
@@ -200,7 +201,9 @@ async function collectEvidence(rpc) {
   const chainIds = await Promise.all(PROVIDERS.map(provider => rpc(provider, 'eth_chainId', [])));
   if (chainIds.some(value => value !== '0x2105')) throw new Error('both providers must report exact Base chain ID 8453');
   const heads = await Promise.all(PROVIDERS.map(provider => rpc(provider, 'eth_blockNumber', []))).then(values => values.map((value, index) => canonicalQuantity(value, `provider ${index} head`)));
-  const commonNumber = heads[0] < heads[1] ? heads[0] : heads[1];
+  const lowestHead = heads[0] < heads[1] ? heads[0] : heads[1];
+  if (lowestHead < MIN_CONFIRMATIONS) throw new Error('provider head is below the minimum confirmation depth');
+  const commonNumber = lowestHead - MIN_CONFIRMATIONS;
   const tag = blockTag(commonNumber);
   const blocks = await Promise.all(PROVIDERS.map(provider => rpc(provider, 'eth_getBlockByNumber', [tag, false]))).then(values => values.map(value => normalizeBlock(value, commonNumber)));
   const block = assertSameObject(blocks[0], blocks[1], 'common block');
@@ -292,9 +295,10 @@ function buildRecord(evidence, computedAtMs, ttlMs) {
       erc8004IdentityId: PILOT.erc8004IdentityId,
     },
     actorEpoch: {
-      actorEpochId: `looper:${PILOT.tokenId}:controller:${PILOT.controller}:epoch:${PILOT.actorEpochStartedAt}`,
+      actorEpochId: PILOT.actorEpochId,
       controller: PILOT.controller,
-      startedAt: PILOT.actorEpochStartedAt,
+      startedAt: null,
+      startTimeStatus: 'NOT_ASSERTED_BY_LIVE_PILOT',
     },
     methodologyId: METHODOLOGY_ID,
     ratingStatus: 'PROVISIONAL',
@@ -306,7 +310,7 @@ function buildRecord(evidence, computedAtMs, ttlMs) {
     reasonCodes: [
       'LOOPER_CLOSED_PILOT_IDENTITY_VERIFIED_ACTIVATED',
       'PANTHEON_SIX_MONTH_POSITION_OPENED',
-      'CREDIFI_REPAYMENT_OBSERVED_PENDING_PROVIDER_ATTESTATION',
+      'CREDIFI_REPAYMENT_TX_OBSERVED_PENDING_PROVIDER_ATTESTATION',
     ],
     scoreComponents: [
       { component: 'verifiedActivatedBaseline', scoreImpact: 40, reasonCode: 'LOOPER_CLOSED_PILOT_IDENTITY_VERIFIED_ACTIVATED' },
@@ -318,9 +322,10 @@ function buildRecord(evidence, computedAtMs, ttlMs) {
       repaymentTxHash: PILOT.credifi.repaymentTxHash,
       recipient: PILOT.account,
       actor: PILOT.controller,
-      receiptStatus: 'SUCCEEDED',
+      receiptStatus: 'TRANSACTION_SUCCEEDED',
+      providerAttributionStatus: 'PENDING_PROVIDER_ATTESTATION',
       scoreImpact: 0,
-      reasonCode: 'CREDIFI_REPAYMENT_OBSERVED_PENDING_PROVIDER_ATTESTATION',
+      reasonCode: 'CREDIFI_REPAYMENT_TX_OBSERVED_PENDING_PROVIDER_ATTESTATION',
     }],
     evidence,
     computedAt,
@@ -360,6 +365,7 @@ module.exports = Object.freeze({
   MAX_CACHE_TTL_MS,
   REQUEST_TIMEOUT_MS,
   MAX_RPC_RESPONSE_BYTES,
+  MIN_CONFIRMATIONS,
   ALLOWED_RPC_METHODS,
   PROVIDERS,
   PILOT,
