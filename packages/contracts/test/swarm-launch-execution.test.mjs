@@ -10,6 +10,7 @@ test('swarm launch execution contracts compile deterministically with locked ABI
   assert.equal(first.compilerVersion, '0.8.24');
   assert.equal(first.sourceHash, second.sourceHash);
   assert.deepEqual(Object.keys(first.contracts).sort(), [
+    'FixedSupplySwarmToken',
     'NonTransferableVestingStream',
     'PullRevenueSplitter',
     'SwarmContributionRegistry',
@@ -20,6 +21,16 @@ test('swarm launch execution contracts compile deterministically with locked ABI
     assert.match(artifact.bytecode, /^0x[0-9a-f]+$/u);
     assert.match(artifact.deployedBytecode, /^0x[0-9a-f]+$/u);
   }
+
+  const tokenFunctions = functionNames(first.contracts.FixedSupplySwarmToken.abi);
+  assert.equal(tokenFunctions.has('mint'), false);
+  assert.equal(tokenFunctions.has('owner'), false);
+  assert.equal(tokenFunctions.has('pause'), false);
+  assert.equal(tokenFunctions.has('blacklist'), false);
+  assert.equal(tokenFunctions.has('upgradeTo'), false);
+  assert.equal(tokenFunctions.has('transfer'), true);
+  assert.equal(tokenFunctions.has('approve'), true);
+  assert.equal(tokenFunctions.has('transferFrom'), true);
 
   const registryFunctions = functionNames(first.contracts.SwarmContributionRegistry.abi);
   assert.equal(registryFunctions.has('setContribution'), false);

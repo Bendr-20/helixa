@@ -7,6 +7,8 @@
     "compile": "node scripts/compile-loopers.js",
     "compile:missions": "node scripts/compile-mission-escrow.js",
     "compile:swarm-launch": "node scripts/compile-swarm-launch.js",
+    "prepare:swarm-launch:base-mainnet": "node scripts/generate-swarm-launch-packet.js --input fixtures/swarm-launch/base-mainnet-preparation-input.json",
+    "verify:swarm-launch": "node scripts/verify-swarm-launch-packet.js",
     "simulate:missions": "node scripts/simulate-mission-deployment.js",
     "simulate:missions:live": "node scripts/prepare-mission-base-sepolia-plan.js",
     "prepare:missions:base-mainnet-activation": "node scripts/prepare-mission-base-mainnet-activation.js",

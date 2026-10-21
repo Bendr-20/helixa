@@ -1,0 +1,131 @@
+{
+  "chainId": 8453,
+  "factoryAddress": "0x1000000000000000000000000000000000000001",
+  "readinessPacketSha256": "0xa6b2c8eec68277ef36b05c1b185c80477a28bbdbd1ec02b934f8e909ebe6412e",
+  "readinessManifest": {
+    "schema": "multipass.swarm-launch-execution-plan.v1",
+    "chainId": 8453,
+    "token": {
+      "name": "Swarm Signal",
+      "symbol": "SIG",
+      "decimals": 18,
+      "totalSupply": "10003000000000000000000"
+    },
+    "allocations": {
+      "agentVestingBps": 4500,
+      "credRewardsBps": 1500,
+      "swarmTreasuryBps": 1500,
+      "publicDistributionBps": 2500,
+      "agentVestingAmount": "4501350000000000000000",
+      "credRewardsAmount": "1500450000000000000000",
+      "swarmTreasuryAmount": "1500450000000000000000",
+      "publicDistributionAmount": "2500750000000000000000",
+      "credRewardsRecipient": "0x0000000000000000000000000000000000000005",
+      "swarmTreasuryRecipient": "0x0000000000000000000000000000000000000006",
+      "publicDistributionRecipient": "0x0000000000000000000000000000000000000007"
+    },
+    "members": [
+      {
+        "agentKey": "0x0101010101010101010101010101010101010101010101010101010101010101",
+        "beneficiary": "0x0000000000000000000000000000000000000002",
+        "contributionBps": 3333,
+        "consentAuthority": "0x1111111111111111111111111111111111111111"
+      },
+      {
+        "agentKey": "0x0202020202020202020202020202020202020202020202020202020202020202",
+        "beneficiary": "0x0000000000000000000000000000000000000003",
+        "contributionBps": 3333,
+        "consentAuthority": "0x2222222222222222222222222222222222222222"
+      },
+      {
+        "agentKey": "0x0303030303030303030303030303030303030303030303030303030303030303",
+        "beneficiary": "0x0000000000000000000000000000000000000004",
+        "contributionBps": 3334,
+        "consentAuthority": "0x3333333333333333333333333333333333333333"
+      }
+    ],
+    "credRewards": {
+      "mechanism": "DIRECT_FIXED_RECIPIENT",
+      "recipient": "0x0000000000000000000000000000000000000005"
+    },
+    "swarmTreasury": {
+      "mechanism": "DIRECT_FIXED_RECIPIENT",
+      "recipient": "0x0000000000000000000000000000000000000006"
+    },
+    "publicDistribution": {
+      "mechanism": "DIRECT_FIXED_RECIPIENT",
+      "recipient": "0x0000000000000000000000000000000000000007"
+    }
+  },
+  "plan": {
+    "readinessHash": "0xa6b2c8eec68277ef36b05c1b185c80477a28bbdbd1ec02b934f8e909ebe6412e",
+    "start": 1900000000,
+    "cliff": 15552000,
+    "duration": 46656000,
+    "authorizationDeadline": 1899913600,
+    "deploymentSalt": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "token": {
+      "name": "Swarm Signal",
+      "symbol": "SIG",
+      "decimals": 18,
+      "totalSupply": "10003000000000000000000"
+    },
+    "allocations": {
+      "agentVestingBps": 4500,
+      "credRewardsBps": 1500,
+      "swarmTreasuryBps": 1500,
+      "publicDistributionBps": 2500,
+      "agentVestingAmount": "4501350000000000000000",
+      "credRewardsAmount": "1500450000000000000000",
+      "swarmTreasuryAmount": "1500450000000000000000",
+      "publicDistributionAmount": "2500750000000000000000",
+      "credRewardsRecipient": "0x0000000000000000000000000000000000000005",
+      "swarmTreasuryRecipient": "0x0000000000000000000000000000000000000006",
+      "publicDistributionRecipient": "0x0000000000000000000000000000000000000007"
+    },
+    "contributions": [
+      {
+        "agentKey": "0x0101010101010101010101010101010101010101010101010101010101010101",
+        "beneficiary": "0x0000000000000000000000000000000000000002",
+        "bps": 3333
+      },
+      {
+        "agentKey": "0x0202020202020202020202020202020202020202020202020202020202020202",
+        "beneficiary": "0x0000000000000000000000000000000000000003",
+        "bps": 3333
+      },
+      {
+        "agentKey": "0x0303030303030303030303030303030303030303030303030303030303030303",
+        "beneficiary": "0x0000000000000000000000000000000000000004",
+        "bps": 3334
+      }
+    ],
+    "vestingAmounts": [
+      "1500299955000000000000",
+      "1500299955000000000000",
+      "1500750090000000000000"
+    ],
+    "revenueShares": [
+      {
+        "payee": "0x0000000000000000000000000000000000000002",
+        "bps": 5000
+      },
+      {
+        "payee": "0x0000000000000000000000000000000000000003",
+        "bps": 3000
+      },
+      {
+        "payee": "0x0000000000000000000000000000000000000004",
+        "bps": 2000
+      }
+    ],
+    "revenueAssets": [
+      "0x0000000000000000000000000000000000000000"
+    ],
+    "requiredSigners": [
+      "0x1111111111111111111111111111111111111111",
+      "0x2222222222222222222222222222222222222222",
+      "0x3333333333333333333333333333333333333333"
+    ]
+  }
+}

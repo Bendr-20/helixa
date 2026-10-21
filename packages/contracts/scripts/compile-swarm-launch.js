@@ -8,6 +8,7 @@ import solc from 'solc';
 
 const CONTRACT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_NAMES = Object.freeze([
+  'src/missions/launch/FixedSupplySwarmToken.sol',
   'src/missions/launch/SwarmContributionRegistry.sol',
   'src/missions/launch/NonTransferableVestingStream.sol',
   'src/missions/launch/PullRevenueSplitter.sol',
@@ -29,6 +30,7 @@ export async function compileSwarmLaunchContracts() {
     language: 'Solidity',
     sources,
     settings: {
+      viaIR: true,
       optimizer: { enabled: true, runs: 200 },
       evmVersion: 'paris',
       metadata: { bytecodeHash: 'none', appendCBOR: false },
