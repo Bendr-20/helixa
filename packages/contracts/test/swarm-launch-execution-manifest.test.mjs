@@ -66,6 +66,18 @@ test('fails closed on unknown fields, lineage drift, timing drift, and non-direc
   assert.throws(() => buildSwarmLaunchExecutionReadiness({ ...base, consentManifest: driftedConsent, readinessManifest, readinessPacketSha256, conversion: { ...base.conversion, parentReadinessSha256: readinessPacketSha256 } }), /lineage/i);
 });
 
+test('normalizes Console millisecond consent expiry into reviewed onchain seconds', async () => {
+  const base = input(wallets().map((wallet) => wallet.address), await artifactsPromise);
+  base.readinessManifest.sourceConsent.expiresAt = 1_899_913_600_000;
+  base.readinessPacketSha256 = hash(base.readinessManifest);
+  base.conversion.parentReadinessSha256 = base.readinessPacketSha256;
+  base.conversion.timing.authorizationDeadline = 1_899_913_600;
+  base.conversion.timing.start = 1_900_518_400;
+  const prepared = buildSwarmLaunchExecutionReadiness(base);
+  assert.equal(prepared.manifest.plan.authorizationDeadline, 1_899_913_600);
+  assert.equal(prepared.manifest.plan.start, 1_900_518_400);
+});
+
 test('matches onchain deployment ID, digest, and CREATE2 predictions', async () => {
   const artifacts = await artifactsPromise;
   const provider = new BrowserProvider(ganache.provider({ chain: { chainId: 8453 }, logging: { quiet: true } }));

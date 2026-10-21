@@ -1659,6 +1659,18 @@ function strictInvitationToken(value) { if (typeof value !== 'string' || !/^[1-9
 function strictInvitationTokens(value) { if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitee roster must contain one to four Loopers.'); return value.map(strictInvitationToken); }
 function strictInvitationIdempotency(value) { if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value)) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation idempotency key is invalid.'); return value; }
 function strictOpaqueInvitationId(value, kind) { const text = String(value ?? ''); if (!new RegExp('^' + kind + '_[a-f0-9]{64}$', 'u').test(text)) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation link ID is invalid.'); return text; }
+function assertSwarmExecutionPreviewBody(value) {
+  if (!plainObjectWithKeys(value, ['beneficiaries', 'recipients', 'revenueAssets'])) throw new ApiInputError('invalid_request', 'Execution preview request is invalid.');
+  if (!Array.isArray(value.beneficiaries) || value.beneficiaries.length < 1 || value.beneficiaries.length > 5 || value.beneficiaries.some((entry) => !plainObjectWithKeys(entry, ['tokenId', 'beneficiary']) || typeof entry.tokenId !== 'string' || typeof entry.beneficiary !== 'string')) throw new ApiInputError('invalid_request', 'Execution preview beneficiaries are invalid.');
+  if (!plainObjectWithKeys(value.recipients, ['credRewards', 'swarmTreasury', 'publicDistribution']) || Object.values(value.recipients).some((entry) => typeof entry !== 'string')) throw new ApiInputError('invalid_request', 'Execution preview recipients are invalid.');
+  if (!Array.isArray(value.revenueAssets) || value.revenueAssets.length < 1 || value.revenueAssets.length > 4 || value.revenueAssets.some((entry) => typeof entry !== 'string')) throw new ApiInputError('invalid_request', 'Execution preview revenue assets are invalid.');
+}
+
+function plainObjectWithKeys(value, keys) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
+  const actual = Object.keys(value).sort(); const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
 
 async function handleLooperPost(request, parts, context) {
   if (parts[2] === 'swarm-invitations') return handleSwarmInvitationPost(request, parts, context);
@@ -1673,6 +1685,12 @@ async function handleLooperPost(request, parts, context) {
       return jsonResponse({ schema_version: '0.1.0', proposal: await service.createProposal({ actorAddress: session.wallet, input }) }, 201, { 'cache-control': 'no-store' });
     }
     const proposalId = normalizeSwarmConsentProposalId(parts[4]);
+    if (parts.length === 6 && parts[5] === 'execution-preview') {
+      if (typeof service.createExecutionPreview !== 'function') return errorResponse(503, 'not_configured', 'Swarm launch execution preview is not configured.');
+      const body = await readBoundedJsonBody(request, 16 * 1024);
+      assertSwarmExecutionPreviewBody(body);
+      return jsonResponse({ schema_version: '0.1.0', executionPreview: await service.createExecutionPreview({ actorAddress: session.wallet, proposalId, input: body }) }, 200, { 'cache-control': 'no-store' });
+    }
     if (parts.length === 6 && parts[5] === 'readiness') {
       const body = await readBoundedJsonBody(request, 1024);
       if (Object.keys(body).length !== 0) throw new ApiInputError('invalid_request', 'Readiness packet body must be empty.');

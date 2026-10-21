@@ -12431,3 +12431,7 @@ h1 {
   .console-credit-cautions { align-items: flex-start; flex-direction: column; }
   .console-credit-cautions span { width: 100%; }
 }
+.swarm-launch-execution-review,.swarm-launch-execution-review-result{display:grid;gap:.8rem;padding:1rem;border:1px solid color-mix(in srgb,#60a5fa 45%,var(--line,#293326));border-radius:.8rem;background:var(--panel,#11170f)}
+.swarm-launch-execution-review form{grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}.swarm-launch-execution-review label{display:grid;gap:.3rem;min-width:0;font-size:.75rem;font-weight:700;color:var(--muted,#9aa58f)}.swarm-launch-execution-review button{grid-column:1/-1}
+.swarm-launch-execution-review-result dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;margin:0}.swarm-launch-execution-review-result dl>div{padding:.7rem;border:1px solid var(--line,#293326);border-radius:.6rem;background:var(--panel2,#171c13);min-width:0}.swarm-launch-execution-review-result dt{color:var(--muted,#9aa58f);font-size:.72rem;font-weight:700;text-transform:uppercase}.swarm-launch-execution-review-result dd{margin:.25rem 0 0;overflow-wrap:anywhere}
+@media(max-width:720px){.swarm-launch-steps,.swarm-launch-fields,.swarm-launch-execution-review form,.swarm-launch-execution-review-result dl{grid-template-columns:1fr}.swarm-launch-fields label:has(textarea){grid-column:auto}.mission-surface-actions{justify-content:stretch}.mission-surface-actions button{flex:1 1 auto}}

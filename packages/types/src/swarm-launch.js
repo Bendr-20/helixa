@@ -39,8 +39,9 @@ export function evaluateSwarmLaunchGate(input = {}) {
   }
   if (invalidCred) blockers.push('Every member requires an authoritative CRED score.');
   if (staleCred) blockers.push('Every member requires a fresh CRED observation.');
-  const averageCred = scores.length === members.length && scores.length ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
-  if (averageCred !== null && averageCred < SWARM_LAUNCH_LIMITS.minimumAverageCred) blockers.push('Swarm average CRED must be at least 65.');
+  const totalCred = scores.reduce((sum, score) => sum + score, 0);
+  const averageCred = scores.length === members.length && scores.length ? Math.round(totalCred / scores.length) : null;
+  if (averageCred !== null && totalCred < SWARM_LAUNCH_LIMITS.minimumAverageCred * scores.length) blockers.push('Swarm average CRED must be at least 65.');
   if (invalidContribution || totalContributionBps !== SWARM_LAUNCH_LIMITS.totalContributionBps) blockers.push('Contribution weights must be positive integers totaling exactly 10,000 bps.');
   return Object.freeze({ eligible: blockers.length === 0, averageCred, totalContributionBps, blockers: Object.freeze(blockers) });
 }

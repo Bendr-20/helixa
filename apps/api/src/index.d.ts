@@ -38,6 +38,10 @@ export interface SavedRecordsStore extends MemoryStore {
   updatePublicProfile(identifier: string, edits?: Record<string, unknown>, input?: Record<string, unknown>): unknown;
 }
 
+export interface SwarmLaunchExecutionPreviewRequest { beneficiaries: readonly { tokenId: string; beneficiary: string }[]; recipients: { credRewards: string; swarmTreasury: string; publicDistribution: string }; revenueAssets: readonly string[]; }
+export interface SwarmLaunchExecutionPreview { packet: Readonly<Record<string, unknown>>; packetSha256: string; }
+export interface SwarmLaunchConsentService { createProposal(input: Record<string, unknown>): Promise<unknown>; readProposal(input: Record<string, unknown>): Promise<unknown>; createReadinessPacket(input: Record<string, unknown>): Promise<unknown>; createExecutionPreview(input: { actorAddress: string; proposalId: string; input: SwarmLaunchExecutionPreviewRequest }): Promise<SwarmLaunchExecutionPreview>; readChallenge(input: Record<string, unknown>): Promise<unknown>; recordConsent(input: Record<string, unknown>): Promise<unknown>; }
+
 export type SignatureVerifier = (input: { wallet: string; message: string; signature: string }) => boolean | Promise<boolean>;
 
 export declare function createSwarmInvitationStore(options: { filename: string; maxActiveDraftsPerOwner?: number; maxActiveDrafts?: number }): Record<string, unknown>;
@@ -83,6 +87,7 @@ export interface MultipassApiOptions {
   missionService?: MissionService;
   swarmLaunchConsentService?: { createProposal(input: Record<string, unknown>): Promise<unknown>; readProposal(input: Record<string, unknown>): Promise<unknown>; createReadinessPacket(input: Record<string, unknown>): Promise<unknown>; readChallenge(input: Record<string, unknown>): Promise<unknown>; recordConsent(input: Record<string, unknown>): Promise<unknown> };
   swarmInvitationService?: { createDraft(input: Record<string, unknown>): Promise<unknown>; readDraft(input: Record<string, unknown>): Promise<unknown>; addInvite(input: Record<string, unknown>): Promise<unknown>; revoke(input: Record<string, unknown>): Promise<unknown>; closeDraft(input: Record<string, unknown>): Promise<unknown>; readInvite(input: Record<string, unknown>): Promise<unknown>; respond(input: Record<string, unknown>): Promise<unknown> };
+  swarmLaunchConsentService?: SwarmLaunchConsentService;
   activationService?: (agent: string) => Promise<unknown> | unknown;
   allowedOrigins?: string[];
   adminSecret?: string | null;

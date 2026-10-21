@@ -242,7 +242,8 @@ function normalizeConversion(value, parentHash, readiness) {
   exactKeys(value, ['schema', 'parentReadinessSha256', 'timing', 'deploymentSalt', 'members', 'recipients', 'revenueAssets'], 'execution conversion');
   if (value.schema !== CONVERSION_SCHEMA || bytes32(value.parentReadinessSha256, 'conversion parent hash') !== parentHash) throw new TypeError('Execution conversion parent readiness lineage is invalid.');
   exactKeys(value.timing, ['policy', 'authorizationDeadline', 'start', 'cliff', 'duration'], 'conversion timing');
-  const expectedTiming = { policy: TIMING_POLICY, authorizationDeadline: readiness.sourceConsent.expiresAt, start: readiness.sourceConsent.expiresAt + START_DELAY_SECONDS, cliff: readiness.agentVesting.cliffMonths * MONTH_SECONDS, duration: readiness.agentVesting.durationMonths * MONTH_SECONDS };
+  const authorizationDeadline = onchainTimestamp(readiness.sourceConsent.expiresAt);
+  const expectedTiming = { policy: TIMING_POLICY, authorizationDeadline, start: authorizationDeadline + START_DELAY_SECONDS, cliff: readiness.agentVesting.cliffMonths * MONTH_SECONDS, duration: readiness.agentVesting.durationMonths * MONTH_SECONDS };
   if (canonicalSwarmLaunchJson(value.timing) !== canonicalSwarmLaunchJson(expectedTiming)) throw new TypeError('Execution conversion timing does not match the reviewed deterministic policy.');
   if (!Array.isArray(value.members) || value.members.length !== readiness.agentVesting.allocations.length) throw new TypeError('Conversion member resolutions are invalid.');
   const members = value.members.map((entry, i) => {
@@ -445,6 +446,7 @@ function bytes32(value, label) { const text = String(value ?? '').toLowerCase();
 function hex(value, label) { const text = String(value ?? ''); if (!/^0x(?:[0-9a-fA-F]{2})+$/u.test(text)) throw new TypeError(label + ' is invalid.'); return text.toLowerCase(); }
 function address(value, allowZero, label) { let normalized; try { normalized = getAddress(String(value ?? '')).toLowerCase(); } catch { throw new TypeError(label + ' is invalid.'); } if (!allowZero && normalized === ZERO_ADDRESS) throw new TypeError(label + ' is invalid.'); return normalized; }
 function integer(value, min, max, label) { if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError(label + ' is invalid.'); return value; }
+function onchainTimestamp(value) { return value > 10_000_000_000 ? Math.floor(value / 1000) : value; }
 function uintString(value, label) { const text = String(value ?? ''); if (!/^[1-9][0-9]*$/u.test(text)) throw new TypeError(label + ' is invalid.'); return text; }
 function bounded(value, min, max, label) { if (typeof value !== 'string' || value.length < min || value.length > max) throw new TypeError(label + ' is invalid.'); return value; }
 

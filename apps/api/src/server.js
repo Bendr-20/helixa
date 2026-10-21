@@ -51,6 +51,7 @@ import { loadRestapNetworkFileSigner } from './restap-network/grants.js';
 import { createRestapNetworkProductionFoundation, parseRestapNetworkProductionConfig } from './restap-network/production.js';
 import { hasRestapNetworkEnvironment, parseRestapNetworkServiceConfig, startRestapNetworkService } from './restap-network/service.js';
 import { composeRestapVerifiedSendProduction } from './restap-network/verified-send-production.js';
+import { buildSwarmLaunchExecutionReadiness } from '../../../packages/contracts/scripts/swarm-launch-execution-manifest.js';
 
 const DEFAULT_FIXTURE = 'generic';
 const DEFAULT_HOST = '127.0.0.1';
@@ -474,6 +475,9 @@ export async function startServer(options = {}) {
         authorizeLooper: consoleBootstrap.authorizeLooper,
         verifySignature: options.signatureVerifier ?? verifyEthereumPersonalSignature,
         createId: () => 'consent-' + randomUUID(),
+        factoryAddress: options.swarmLaunchFactoryAddress ?? null,
+        executionArtifacts: options.swarmLaunchExecutionArtifacts ?? null,
+        executionPacketBuilder: options.swarmLaunchExecutionPacketBuilder ?? buildSwarmLaunchExecutionReadiness,
       });
     }
     if (!swarmInvitationService && swarmInvitationStore) {

@@ -60,12 +60,15 @@ test('launch consent client uses fixed authenticated proposal routes and CSRF on
   await api.getLaunchConsentChallenge({ proposalId: 'proposal-1', csrfToken: 'csrf' });
   await api.signLaunchConsent({ proposalId: 'proposal-1', csrfToken: 'csrf', signature: '0x' + 'aa'.repeat(65) });
   await api.createLaunchReadiness({ proposalId: 'proposal-1', csrfToken: 'csrf' });
+  const executionBody = { beneficiaries: [{ tokenId: '1', beneficiary: '0x1111111111111111111111111111111111111111' }], recipients: { credRewards: '0x2222222222222222222222222222222222222222', swarmTreasury: '0x3333333333333333333333333333333333333333', publicDistribution: '0x4444444444444444444444444444444444444444' }, revenueAssets: ['0x0000000000000000000000000000000000000000'] };
+  await api.createLaunchExecutionPreview({ proposalId: 'proposal-1', csrfToken: 'csrf', body: executionBody });
   assert.deepEqual(calls.map(([url]) => url), [
     '/multipass-api/api/loopers/swarm-launch/consents',
     '/multipass-api/api/loopers/swarm-launch/consents/proposal-1',
     '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/challenge',
     '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/sign',
     '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/readiness',
+    '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/execution-preview',
   ]);
   assert.equal(calls[0][1].headers['x-csrf-token'], 'csrf');
   assert.equal(calls[1][1].headers['x-csrf-token'], undefined);
@@ -73,4 +76,6 @@ test('launch consent client uses fixed authenticated proposal routes and CSRF on
   assert.deepEqual(JSON.parse(calls[3][1].body), { signature: '0x' + 'aa'.repeat(65) });
   assert.deepEqual(JSON.parse(calls[4][1].body), {});
   assert.equal(calls[4][1].headers['x-csrf-token'], 'csrf');
+  assert.deepEqual(JSON.parse(calls[5][1].body), executionBody);
+  assert.equal(calls[5][1].headers['x-csrf-token'], 'csrf');
 });
