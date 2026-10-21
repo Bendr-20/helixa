@@ -148,6 +148,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   let consoleCreditAbortController = null;
   let consoleMissionAbortController = null;
   let consoleInvitationInboxAbortController = null;
+  let consoleLaunchExecutionAbortController = null;
   const consoleCodexCache = new Map();
   let consoleCodexArtifactHash = null;
   let preparedConsoleChallenge = null;
@@ -162,6 +163,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleImagePreview?.clear();
   };
   const clearConsoleSessionStateWithPreview = (currentState, options) => {
+    consoleLaunchExecutionAbortController?.abort();
+    consoleLaunchExecutionAbortController = null;
     consoleRestapNetworkAbortController?.abort();
     consoleRestapNetworkAbortController = null;
     consoleRestapNetworkMutationAbortController?.abort();
@@ -1982,7 +1985,8 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     const view = String(event?.currentTarget?.dataset?.consoleView ?? '').trim();
     if (!['chat', 'wallet', 'multipass', 'codex', 'network', 'credit', 'missions'].includes(view)) return;
     if (view !== 'missions' && !state.consoleSelectedAgentId) return;
-    state = { ...state, consoleWorkspaceView: view };
+    if (view !== 'missions') abortConsoleLaunchExecutionPreview();
+    state = { ...state, consoleWorkspaceView: view, ...(view === 'missions' ? {} : { consoleLaunchpad: { ...state.consoleLaunchpad, requestId: (state.consoleLaunchpad?.requestId ?? 0) + 1 } }) };
     render(root, state, handlers);
     if (view === 'missions' && ['idle', 'disabled', 'error'].includes(state.consoleMissions?.status)) void loadConsoleMissions();
     if (view === 'credit' && ['idle', 'error', 'blocked'].includes(state.consoleCredit?.status)) void refreshCredifiOwnerOptIn();
@@ -2284,6 +2288,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   }
 
   function openConsoleLaunchpad() {
+    abortConsoleLaunchExecutionPreview();
     const agents = Array.isArray(state.consoleOwnedAgents?.agents) ? state.consoleOwnedAgents.agents : [];
     const requestedIds = [...new Set([state.consoleSelectedAgentId, ...(state.consoleParticipantAgentIds ?? [])].filter(Boolean).map(String))].slice(0, 5);
     const selected = requestedIds.map((tokenId) => agents.find((agent) => String(agent?.tokenId ?? '') === tokenId)).filter(Boolean);
@@ -2531,6 +2536,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   }
 
   async function createConsoleLaunchReadiness() {
+    abortConsoleLaunchExecutionPreview();
     const proposalId = state.consoleLaunchpad?.proposal?.proposalId;
     if (!proposalId || state.consoleLaunchpad?.proposal?.status !== 'SIGNATURES_COLLECTED' || !state.consoleCsrfToken) return;
     try {
@@ -2546,17 +2552,34 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   async function createConsoleLaunchExecutionReview(event) {
     const proposalId = state.consoleLaunchpad?.proposal?.proposalId;
     const readiness = state.consoleLaunchpad?.readiness;
-    if (!proposalId || !readiness || !state.consoleCsrfToken) return;
+    const readinessHash = readiness?.packetSha256;
+    if (!proposalId || !readinessHash || !state.consoleCsrfToken) return;
+    abortConsoleLaunchExecutionPreview();
+    const controller = new AbortController();
+    consoleLaunchExecutionAbortController = controller;
+    const requestId = (state.consoleLaunchpad?.requestId ?? 0) + 1;
+    const isCurrentRequest = () => (
+      !controller.signal.aborted
+      && consoleLaunchExecutionAbortController === controller
+      && state.consoleLaunchpad?.requestId === requestId
+      && state.consoleLaunchpad?.proposal?.proposalId === proposalId
+      && state.consoleLaunchpad?.readiness?.packetSha256 === readinessHash
+      && state.consoleMissions?.view === 'launchpad'
+      && state.consoleWorkspaceView === 'missions'
+    );
     try {
       const body = normalizeSwarmLaunchExecutionReviewForm(new FormData(event.currentTarget), readiness);
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'building_execution_review', executionPreview: null, error: null } }; render(root, state, handlers);
-      const response = await activeMissionApi.createLaunchExecutionPreview({ proposalId, csrfToken: state.consoleCsrfToken, body });
-      if (state.consoleLaunchpad?.readiness?.packetSha256 !== readiness.packetSha256) throw new Error('Readiness packet changed during execution review.');
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'building_execution_review', requestId, executionPreview: null, error: null } }; render(root, state, handlers);
+      const response = await activeMissionApi.createLaunchExecutionPreview({ proposalId, csrfToken: state.consoleCsrfToken, body, signal: controller.signal });
+      if (!isCurrentRequest()) return;
       const executionPreview = await validateSwarmLaunchExecutionPreview(response.executionPreview, readiness);
-      if (state.consoleLaunchpad?.readiness?.packetSha256 !== readiness.packetSha256) throw new Error('Readiness packet changed during execution review.');
+      if (!isCurrentRequest()) return;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', executionPreview, error: null } };
     } catch (error) {
+      if (!isCurrentRequest()) return;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', executionPreview: null, error: String(error?.message ?? 'Execution review failed.') } };
+    } finally {
+      if (consoleLaunchExecutionAbortController === controller) consoleLaunchExecutionAbortController = null;
     }
     render(root, state, handlers);
   }
@@ -2575,6 +2598,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   }
 
   async function openLaunchConsentFromLocation() {
+    abortConsoleLaunchExecutionPreview();
     const proposalId = new URL(window.location.href).searchParams.get('launch_consent');
     if (!proposalId || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(proposalId) || !state.consoleAuthenticatedWallet) return;
     try {
@@ -2592,8 +2616,13 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   function launchRequestBody(draft) { const economics = draft.economics ?? SWARM_LAUNCH_DEFAULT_ECONOMICS; return { members: draft.members.map(({ tokenId, ownerAddress, role, contributionBps }) => ({ tokenId, ownerAddress, role, contributionBps })), app: { ...draft.app }, token: { ...draft.token }, economics: { agentVestingBps: economics.agentVestingBps ?? economics.agentVesting?.allocationBps, credRewardsBps: economics.credRewardsBps ?? economics.credRewards?.allocationBps, swarmTreasuryBps: economics.swarmTreasuryBps ?? economics.swarmTreasury?.allocationBps, publicDistributionBps: economics.publicDistributionBps ?? economics.publicDistribution?.allocationBps, agentCliffMonths: economics.agentCliffMonths ?? economics.agentVesting?.cliffMonths, agentVestingMonths: economics.agentVestingMonths ?? economics.agentVesting?.durationMonths } }; }
   function launchConsentUrl(proposalId) { const url = new URL(window.location.href); url.searchParams.set('launch_consent', proposalId); return url.href; }
+  function abortConsoleLaunchExecutionPreview() {
+    consoleLaunchExecutionAbortController?.abort();
+    consoleLaunchExecutionAbortController = null;
+  }
 
   function closeConsoleMission() {
+    abortConsoleLaunchExecutionPreview();
     state = { ...state, consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'board', mission: null, error: null }, consoleLaunchpad: { ...state.consoleLaunchpad, requestId: (state.consoleLaunchpad?.requestId ?? 0) + 1 } };
     render(root, state, handlers);
   }

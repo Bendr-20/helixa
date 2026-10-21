@@ -8249,6 +8249,110 @@ test('RESTAP unchanged send retries reuse identity and substantive edits rotate 
   assert.deepEqual(issued, keys);
 });
 
+function createDeferredResult() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => { resolve = onResolve; reject = onReject; });
+  return { promise, resolve, reject };
+}
+
+function createExecutionReviewRaceFixture({ deferred }) {
+  const owner = '0x27e3286c2c1783f67d06f2ff4e3ab41f8e1c91ea';
+  const members = ['1', '2', '3'].map((tokenId, index) => ({
+    identity: { tokenId, erc8004Id: '8453:' + tokenId }, consentAuthority: owner,
+    name: 'Looper #' + tokenId, role: 'Member ' + tokenId, contributionBps: [4000, 3500, 2500][index],
+    cred: { status: 'available', score: 70, tier: 'QUALIFIED', coverage: { score: 80, label: 'STRONG' }, freshness: { stale: false }, methodologyVersion: 'looper-cred-v1', computedAt: '2026-10-21T00:00:00Z' },
+  }));
+  const manifest = {
+    execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, members,
+    app: { name: 'Race Swarm', pitch: 'Race-safe review.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' },
+    token: { name: 'Race Swarm', ticker: 'RACE', supply: '1000000000', curve: 'bonding_curve_to_dex' },
+    economics: { agentVesting: { allocationBps: 4500, cliffMonths: 6, durationMonths: 18 }, credRewards: { allocationBps: 1500 }, swarmTreasury: { allocationBps: 1500 }, publicDistribution: { allocationBps: 2500 } },
+  };
+  const proposal = {
+    proposalId: 'proposal-race', status: 'SIGNATURES_COLLECTED', deploymentAuthorized: false,
+    manifestSha256: '0x' + 'a'.repeat(64), manifest,
+    participants: [{ wallet: owner, tokenIds: ['1', '2', '3'], consentedAt: 1 }],
+  };
+  const readiness = {
+    packetSha256: '0x' + 'b'.repeat(64),
+    packet: {
+      schema: 'multipass.swarm-launch-readiness.v1',
+      sourceConsent: { manifestSha256: proposal.manifestSha256 },
+      execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 },
+      agentVesting: { cliffMonths: 6, durationMonths: 18, allocations: members.map((member) => ({ tokenId: member.identity.tokenId, consentAuthority: owner, shareBps: member.contributionBps })) },
+    },
+  };
+  let previewInput;
+  return {
+    owner,
+    readiness,
+    get previewInput() { return previewInput; },
+    api: {
+      async getLaunchConsent() { return { proposal }; },
+      async createLaunchReadiness() { return { readiness }; },
+      async createLaunchExecutionPreview(input) { previewInput = input; return deferred.promise; },
+      async listPublic() { return { missions: [], nextCursor: null }; },
+    },
+  };
+}
+
+async function beginDeferredExecutionReview(t, deferred) {
+  const root = setupDom('https://helixa.xyz/multipass/console?launch_consent=proposal-race');
+  const originalFormData = globalThis.FormData;
+  globalThis.FormData = window.FormData;
+  t.after(() => { globalThis.FormData = originalFormData; });
+  const fixture = createExecutionReviewRaceFixture({ deferred });
+  const app = createApp({
+    root, loadDemo: async () => sampleData(), missionApi: fixture.api,
+    walletClient: createWalletClientFixture({ snapshot: { connected: true, address: fixture.owner, label: 'owner' } }),
+    fetchImpl: createConsoleOwnedAgentsFetch({ wallet: fixture.owner, tokenIds: [617] }),
+    claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) },
+  });
+  await app.start(); await flushAsyncEvents(40);
+  assert.ok(root.querySelector('[data-swarm-launch-readiness-create]'));
+  root.querySelector('[data-swarm-launch-readiness-create]').click();
+  await flushAsyncEvents(20);
+  const form = root.querySelector('[data-swarm-launch-execution-review-form]');
+  assert.ok(form);
+  ['1', '2', '3'].forEach((tokenId, index) => { form.elements.namedItem('beneficiary_' + tokenId).value = '0x' + String(index + 1).repeat(40); });
+  form.elements.namedItem('cred_rewards_recipient').value = '0x' + '4'.repeat(40);
+  form.elements.namedItem('swarm_treasury_recipient').value = '0x' + '5'.repeat(40);
+  form.elements.namedItem('public_distribution_recipient').value = '0x' + '6'.repeat(40);
+  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await flushAsyncEvents();
+  assert.ok(fixture.previewInput?.signal instanceof window.AbortSignal || fixture.previewInput?.signal instanceof AbortSignal);
+  return { root, fixture };
+}
+
+test('execution preview ignores deferred success after navigating away and aborts the request', async (t) => {
+  const deferred = createDeferredResult();
+  const { root, fixture } = await beginDeferredExecutionReview(t, deferred);
+  root.querySelector('[data-mission-action="back"]').click();
+  await flushAsyncEvents();
+  assert.equal(fixture.previewInput.signal.aborted, true);
+  const writes = captureInnerHtmlWrites(root);
+  deferred.resolve({ executionPreview: null });
+  await flushAsyncEvents(20);
+  assert.equal(writes.length, 0);
+  assert.ok(root.querySelector('[data-mission-action="launchpad"]'));
+});
+
+test('execution preview ignores deferred failure after switching to a new launch', async (t) => {
+  const deferred = createDeferredResult();
+  const { root, fixture } = await beginDeferredExecutionReview(t, deferred);
+  root.querySelector('[data-mission-action="back"]').click();
+  root.querySelector('[data-mission-action="launchpad"]').click();
+  await flushAsyncEvents();
+  const writes = captureInnerHtmlWrites(root);
+  deferred.reject(new Error('stale execution review failure'));
+  await flushAsyncEvents(20);
+  assert.equal(fixture.previewInput.signal.aborted, true);
+  assert.equal(writes.length, 0);
+  assert.doesNotMatch(root.textContent, /stale execution review failure/i);
+  assert.ok(root.querySelector('[data-swarm-launch-submit]'));
+});
+
 test('Swarm Command loads live missions and creates a recruiting mission through the Console', async () => {
   const root = setupDom('https://helixa.xyz/multipass/console');
   const owner = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';

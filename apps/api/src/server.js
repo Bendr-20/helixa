@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { open } from 'node:fs/promises';
 import http from 'node:http';
 import { isIP } from 'node:net';
@@ -87,6 +87,7 @@ export function parseServerOptions(argv = [], env = process.env) {
     missionsDatabasePath: env.MULTIPASS_MISSIONS_DB_PATH || null,
     swarmLaunchFactoryAddress: normalizeOptionalAddress(env.MULTIPASS_SWARM_LAUNCH_FACTORY_ADDRESS, 'MULTIPASS_SWARM_LAUNCH_FACTORY_ADDRESS'),
     swarmLaunchExecutionArtifactsPath: parseOptionalBoundedString(env.MULTIPASS_SWARM_LAUNCH_ARTIFACTS_PATH, 'MULTIPASS_SWARM_LAUNCH_ARTIFACTS_PATH', 4096),
+    swarmLaunchExecutionArtifactsSha256: normalizeOptionalSha256(env.MULTIPASS_SWARM_LAUNCH_ARTIFACTS_SHA256, 'MULTIPASS_SWARM_LAUNCH_ARTIFACTS_SHA256'),
     loopersAllowlistRegistrationPaused: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_PAUSED, 'MULTIPASS_LOOPERS_ALLOWLIST_PAUSED') ?? false,
     loopersAllowlistRequireBrowserOrigin: parseOptionalBoolean(env.MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN, 'MULTIPASS_LOOPERS_ALLOWLIST_REQUIRE_BROWSER_ORIGIN') ?? false,
     loopersAllowlistBlockedSources: parseStringList(env.MULTIPASS_LOOPERS_ALLOWLIST_BLOCKED_SOURCES),
@@ -170,6 +171,7 @@ export function parseServerOptions(argv = [], env = process.env) {
     }
   }
 
+  assertSwarmLaunchExecutionConfiguration(options);
   return options;
 }
 
@@ -192,6 +194,7 @@ export async function startServer(options = {}) {
     missionsDatabasePath: options.missionsDatabasePath ?? null,
     swarmLaunchFactoryAddress: normalizeOptionalAddress(options.swarmLaunchFactoryAddress, 'swarmLaunchFactoryAddress'),
     swarmLaunchExecutionArtifactsPath: parseOptionalBoundedString(options.swarmLaunchExecutionArtifactsPath, 'swarmLaunchExecutionArtifactsPath', 4096),
+    swarmLaunchExecutionArtifactsSha256: normalizeOptionalSha256(options.swarmLaunchExecutionArtifactsSha256, 'swarmLaunchExecutionArtifactsSha256'),
     loopersAllowlistRegistrationPaused: Boolean(options.loopersAllowlistRegistrationPaused),
     loopersAllowlistRequireBrowserOrigin: Boolean(options.loopersAllowlistRequireBrowserOrigin),
     loopersAllowlistBlockedSources: options.loopersAllowlistBlockedSources ?? [],
@@ -249,10 +252,11 @@ export async function startServer(options = {}) {
     loopersPublicClients: options.loopersPublicClients,
     fetchImpl: options.fetchImpl,
   };
+  assertSwarmLaunchExecutionConfiguration(parsed);
   const swarmLaunchExecutionArtifactsLoader = options.swarmLaunchExecutionArtifactsLoader ?? loadPinnedSwarmLaunchExecutionArtifacts;
-  const swarmLaunchExecutionArtifacts = options.swarmLaunchExecutionArtifacts ?? (parsed.swarmLaunchExecutionArtifactsPath
-    ? await swarmLaunchExecutionArtifactsLoader(parsed.swarmLaunchExecutionArtifactsPath)
-    : null);
+  const swarmLaunchExecutionArtifacts = parsed.swarmLaunchExecutionArtifactsPath
+    ? await swarmLaunchExecutionArtifactsLoader(parsed.swarmLaunchExecutionArtifactsPath, parsed.swarmLaunchExecutionArtifactsSha256)
+    : null;
   const { store, fixtureName } = await loadFixtureStore({ fixture: parsed.fixture });
   if (parsed.credifiOwnerOptInEnabled && !parsed.databasePath) {
     throw new Error('MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED requires MULTIPASS_DB_PATH.');
@@ -1002,15 +1006,35 @@ function normalizeOptionalAddress(value, source) {
   return normalized;
 }
 
-export async function loadPinnedSwarmLaunchExecutionArtifacts(filePath) {
+function normalizeOptionalSha256(value, source) {
+  if (value === undefined || value === null || value === '') return null;
+  const normalized = String(value).trim();
+  if (!/^[0-9a-f]{64}$/u.test(normalized)) throw new Error(`Invalid SHA-256 digest for ${source}.`);
+  return normalized;
+}
+
+function assertSwarmLaunchExecutionConfiguration(options) {
+  const configured = [
+    options.swarmLaunchFactoryAddress,
+    options.swarmLaunchExecutionArtifactsPath,
+    options.swarmLaunchExecutionArtifactsSha256,
+  ].map((value) => value !== null && value !== undefined);
+  if (configured.some(Boolean) && !configured.every(Boolean)) throw new Error('Swarm launch factory address, artifact path, and artifact SHA-256 must be configured together.');
+}
+
+export async function loadPinnedSwarmLaunchExecutionArtifacts(filePath, expectedSha256) {
   const normalized = parseOptionalBoundedString(filePath, 'swarm launch execution artifact path', 4096);
   if (!normalized) throw new Error('Swarm launch execution artifact path is required.');
+  const trustedSha256 = normalizeOptionalSha256(expectedSha256, 'swarm launch execution artifact SHA-256');
+  if (!trustedSha256) throw new Error('Swarm launch execution artifact SHA-256 is required.');
   const handle = await open(normalized, 'r');
   try {
     const stat = await handle.stat();
     if (!stat.isFile() || stat.size < 2 || stat.size > MAX_SWARM_EXECUTION_ARTIFACT_BYTES) throw new Error('Swarm launch execution artifact file size is invalid.');
     const bytes = await handle.readFile();
     if (bytes.byteLength > MAX_SWARM_EXECUTION_ARTIFACT_BYTES) throw new Error('Swarm launch execution artifact file is too large.');
+    const actualSha256 = createHash('sha256').update(bytes).digest('hex');
+    if (actualSha256 !== trustedSha256) throw new Error('Swarm launch execution artifact SHA-256 mismatch.');
     try {
       const parsed = JSON.parse(bytes.toString('utf8'));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.compilerVersion !== '0.8.24' || !/^[0-9a-f]{64}$/u.test(parsed.sourceHash ?? '') || !parsed.contracts || typeof parsed.contracts !== 'object') throw new Error('invalid object');
