@@ -19,6 +19,7 @@ const {
     verifyHmacSignature,
 } = require('./internal-auth');
 const { getXBearerToken } = require('./services/runtime-secrets');
+const { createLooperCredRouter } = require('./cred-looper-live/router');
 const blocktronicsTokenMetrics = require('./services/blocktronics-token-metrics');
 const { resolveAuraSourceWithFallback } = require('./services/aura-fallback');
 const {
@@ -9215,6 +9216,8 @@ app.get('/api/v2/agent/:id/card/image', async (req, res) => {
         res.status(404).json({ error: 'Agent not found', detail: e.message });
     }
 });
+
+app.use('/api/v2/looper', createLooperCredRouter({ expressModule: express }));
 
 // 404 handler
 app.use((req, res) => {

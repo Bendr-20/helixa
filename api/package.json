@@ -32,7 +32,8 @@
     "cred:payments:cron:remove": "node scripts/launch-looper-payment-operation.js cron-remove",
     "cred:payments:cron:preview": "node scripts/manage-looper-payment-cron.js preview",
     "cred:payments:review": "node scripts/launch-looper-payment-operation.js review",
-    "cred:payments:archive": "node scripts/launch-looper-payment-operation.js archive"
+    "cred:payments:archive": "node scripts/launch-looper-payment-operation.js archive",
+    "test:cred-looper-live": "node --test test/cred-looper-live/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.77.0",
