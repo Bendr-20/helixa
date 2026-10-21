@@ -30,7 +30,7 @@ export async function previewSwarmLaunch({ owner, input, loadOwnedAgents } = {})
       erc8004Id: SWARM_LAUNCH_CHAIN_ID + ':' + canonicalTokenId(agent.erc8004AgentId),
     };
   });
-  const manifest = buildSwarmLaunchManifest({ members, app: input.app, token: input.token });
+  const manifest = buildSwarmLaunchManifest({ members, app: input.app, token: input.token, economics: input.economics, workspace: input.workspace });
   const canonical = canonicalSwarmLaunchJson(manifest);
   return Object.freeze({
     schemaVersion: '0.1.0',

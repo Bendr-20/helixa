@@ -4,6 +4,15 @@ import test from 'node:test';
 import * as launch from '../src/swarm-launch.js';
 
 const OWNER = '0x1111111111111111111111111111111111111111';
+const WORKSPACE = {
+  schema: 'multipass.swarm-workspace.v1', mode: 'PREPARATION_ONLY', provider: 'TWIGPINE',
+  repository: { cardinality: 'ONE_PER_SWARM', slug: 'signal-swarm', visibility: 'PUBLIC', defaultBranch: 'main', protectedBranches: ['main'], provisioningStatus: 'NOT_PROVISIONED' },
+  members: [{ tokenId: '1', didKey: 'did:key:z6Mk11111111111111111111111111111111111111111', sharedKey: false }, { tokenId: '2', didKey: 'did:key:z6Mk22222222222222222222222222222222222222222', sharedKey: false }, { tokenId: '3', didKey: 'did:key:z6Mk33333333333333333333333333333333333333333', sharedKey: false }],
+  delegation: { protocol: 'UCAN', authorizationMode: 'OWNER_ONLY', capabilityStatus: 'REQUIRED_UNAVAILABLE', requiredScopes: ['repo:read', 'repo:write', 'pull_request:create', 'review:submit'], expirationRequired: true },
+  provenance: { signedPushes: 'REQUIRED', certificates: 'REQUIRED', pullRequests: 'REQUIRED', reviews: 'REQUIRED', verificationStatus: 'NOT_VERIFIED' },
+  githubMirror: { enabled: false, owner: null, repository: null },
+  authorityBoundary: { gitAuthorizesWallets: false, gitAuthorizesTransactions: false, gitAuthorizesDeployment: false, gitAuthorizesFinancialExecution: false, executionConsentAuthority: 'SWARM_COMMAND' },
+};
 
 test('normalizes a provider-neutral allocation and vesting plan totaling 10,000 bps', () => {
   assert.equal(typeof launch.normalizeSwarmLaunchEconomics, 'function');
@@ -41,6 +50,7 @@ test('builds a deterministic simulation-only readiness packet from unanimously c
     app: { name: 'Signal' },
     token: { name: 'Signal', ticker: 'SIGNAL', supply: '1000000000' },
     economics: launch.normalizeSwarmLaunchEconomics({ agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 }),
+    workspace: WORKSPACE,
     members: [
       { identity: { tokenId: '1' }, consentAuthority: OWNER, contributionBps: 4000 },
       { identity: { tokenId: '2' }, consentAuthority: OWNER, contributionBps: 3500 },
@@ -54,6 +64,10 @@ test('builds a deterministic simulation-only readiness packet from unanimously c
   assert.deepEqual(first.execution, { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, onchainTargets: [], transactionCount: 0, requiresSeparateExecutionConsent: true });
   assert.deepEqual(first.agentVesting.allocations.map((entry) => entry.shareBps), [4000, 3500, 2500]);
   assert.equal(first.allocations.totalBps, 10_000);
+  assert.deepEqual(first.workspace, WORKSPACE);
+  assert.equal(first.requiredGates.includes('PROVISION_TWIGPINE_REPOSITORY'), true);
+  assert.equal(first.requiredGates.includes('VERIFY_TWIGPINE_CERTIFICATES_AND_PROVENANCE'), true);
+  assert.equal(first.requiredGates.includes('ENABLE_SCOPED_EXPIRING_UCAN_DELEGATION'), true);
   assert.deepEqual(first.requiredPrimitives, { contributionRegistry: { weights: 'CONSENTED_CONTRIBUTION_BPS', mutable: false, address: null }, agentVesting: { implementation: 'AUDITED_EXTERNAL_STREAMS_REQUIRED', transferable: false, addresses: [] }, revenueSplitter: { mode: 'PULL_MULTI_ASSET', weights: 'CONSENTED_CONTRIBUTION_BPS', implementation: 'UNSELECTED', address: null }, swapHook: { required: false, implementation: 'UNSELECTED', address: null } });
   assert.equal(launch.canonicalSwarmLaunchJson(first), launch.canonicalSwarmLaunchJson(second));
   assert.equal(JSON.stringify(first).match(/pantheon|openlaunch|mosh/iu), null);
@@ -77,9 +91,16 @@ test('includes allocation and vesting economics inside the consented launch mani
     app: { name: 'Signal', pitch: 'Ship.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' },
     token: { name: 'Signal', ticker: 'SIGNAL', supply: '1000000000', curve: 'bonding_curve_to_dex' },
     economics: { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 },
+    workspace: { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: WORKSPACE.members.map(({ tokenId, didKey }) => ({ tokenId, didKey })), githubMirror: { enabled: false, owner: null, repository: null } },
   });
   const manifest = launch.buildSwarmLaunchManifest(draft);
   assert.equal(manifest.economics.totalAllocationBps, 10_000);
   assert.equal(manifest.economics.credRewards.provider, 'UNSELECTED');
   assert.equal(manifest.execution.deploymentAuthorized, false);
+  assert.deepEqual(manifest.workspace, WORKSPACE);
+});
+
+test('readiness rejects altered or open workspace manifests', () => {
+  const proposal = { proposalId: 'consent-1', status: 'SIGNATURES_COLLECTED', manifestSha256: '0x' + 'a'.repeat(64), expiresAt: 2_000, manifest: { schema: launch.SWARM_LAUNCH_SCHEMA, chainId: 8453, execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false }, economics: launch.normalizeSwarmLaunchEconomics({ agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 }), members: [{ identity: { tokenId: '1' }, consentAuthority: OWNER, contributionBps: 4000 }, { identity: { tokenId: '2' }, consentAuthority: OWNER, contributionBps: 3500 }, { identity: { tokenId: '3' }, consentAuthority: OWNER, contributionBps: 2500 }], workspace: { ...WORKSPACE, unknown: true } } };
+  assert.throws(() => launch.buildSwarmLaunchReadinessPacket({ proposal, now: 1_000 }), /workspace.*unknown/i);
 });

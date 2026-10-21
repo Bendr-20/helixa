@@ -3,6 +3,7 @@ export const SWARM_LAUNCH_CHAIN_ID = 8453;
 export const SWARM_LAUNCH_LOOPERS_COLLECTION = '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a';
 export const SWARM_LAUNCH_LIMITS = Object.freeze({ minimumMembers: 3, maximumMembers: 5, minimumAverageCred: 65, totalContributionBps: 10_000 });
 export const SWARM_LAUNCH_DEFAULT_ECONOMICS = Object.freeze({ agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 });
+export const SWARM_LAUNCH_WORKSPACE_SCHEMA = 'multipass.swarm-workspace.v1';
 export const SWARM_LAUNCH_OPTIONS = Object.freeze({
   supplies: Object.freeze(['100000000', '1000000000', '10000000000']),
   curves: Object.freeze(['bonding_curve_to_dex', 'fixed_price_to_curve']),
@@ -16,6 +17,8 @@ const CURVES = new Set(SWARM_LAUNCH_OPTIONS.curves);
 const TEMPLATES = new Set(SWARM_LAUNCH_OPTIONS.templates);
 const REVENUE_MODELS = new Set(SWARM_LAUNCH_OPTIONS.revenueModels);
 const SHIP_TARGETS = new Set(SWARM_LAUNCH_OPTIONS.shipTargets);
+const WORKSPACE_VISIBILITIES = new Set(['PUBLIC', 'PRIVATE', 'WITHHELD']);
+const WORKSPACE_SCOPES = Object.freeze(['repo:read', 'repo:write', 'pull_request:create', 'review:submit']);
 
 export function evaluateSwarmLaunchGate(input = {}) {
   const members = Array.isArray(input.members) ? input.members : [];
@@ -51,7 +54,7 @@ export function normalizeSwarmLaunchDraft(input = {}) {
   const members = normalizeMembers(input.members);
   const gate = evaluateSwarmLaunchGate({ members });
   if (!gate.eligible) throw new TypeError(gate.blockers[0]);
-  return Object.freeze({ members, app: normalizeApp(input.app), token: normalizeToken(input.token), economics: normalizeSwarmLaunchEconomics(input.economics ?? SWARM_LAUNCH_DEFAULT_ECONOMICS), gate });
+  return Object.freeze({ members, app: normalizeApp(input.app), token: normalizeToken(input.token), economics: normalizeSwarmLaunchEconomics(input.economics ?? SWARM_LAUNCH_DEFAULT_ECONOMICS), workspace: normalizeWorkspaceRequest(input.workspace, members), gate });
 }
 
 export function normalizeSwarmLaunchRequestForm(formData, memberSlots = []) {
@@ -67,7 +70,7 @@ export function normalizeSwarmLaunchRequestForm(formData, memberSlots = []) {
   const normalized = members.map((member) => deepFreeze({ tokenId: positiveUint(member.tokenId, 'Looper token ID'), ownerAddress: normalizeAddress(member.ownerAddress), role: bounded(member.role, 1, 96, 'member role'), contributionBps: integer(member.contributionBps, 1, SWARM_LAUNCH_LIMITS.totalContributionBps, 'contribution') }));
   if (new Set(normalized.map((member) => member.tokenId)).size !== normalized.length) throw new TypeError('Swarm contains a duplicate Looper identity.');
   if (normalized.reduce((sum, member) => sum + member.contributionBps, 0) !== SWARM_LAUNCH_LIMITS.totalContributionBps) throw new TypeError('Contribution weights must total exactly 10,000 bps.');
-  return deepFreeze({ members: normalized, app: normalizeApp({ name: get('app_name'), pitch: get('app_pitch'), template: get('app_template'), revenueModel: get('revenue_model'), shipTarget: get('ship_target') }), token: normalizeToken({ name: get('token_name'), ticker: get('token_ticker').toUpperCase(), supply: get('token_supply'), curve: get('token_curve') }), economics: normalizeSwarmLaunchEconomics({ agentVestingBps: Number(get('agent_vesting_bps')), credRewardsBps: Number(get('cred_rewards_bps')), swarmTreasuryBps: Number(get('swarm_treasury_bps')), publicDistributionBps: Number(get('public_distribution_bps')), agentCliffMonths: Number(get('agent_cliff_months')), agentVestingMonths: Number(get('agent_vesting_months')) }) });
+  return deepFreeze({ members: normalized, app: normalizeApp({ name: get('app_name'), pitch: get('app_pitch'), template: get('app_template'), revenueModel: get('revenue_model'), shipTarget: get('ship_target') }), token: normalizeToken({ name: get('token_name'), ticker: get('token_ticker').toUpperCase(), supply: get('token_supply'), curve: get('token_curve') }), economics: normalizeSwarmLaunchEconomics({ agentVestingBps: Number(get('agent_vesting_bps')), credRewardsBps: Number(get('cred_rewards_bps')), swarmTreasuryBps: Number(get('swarm_treasury_bps')), publicDistributionBps: Number(get('public_distribution_bps')), agentCliffMonths: Number(get('agent_cliff_months')), agentVestingMonths: Number(get('agent_vesting_months')) }), workspace: normalizeWorkspaceForm(get, normalized, (_, index) => 'member_' + index + '_did_key') });
 }
 
 export function normalizeSwarmLaunchForm(formData, verifiedMembers = []) {
@@ -78,6 +81,7 @@ export function normalizeSwarmLaunchForm(formData, verifiedMembers = []) {
     app: { name: get('app_name'), pitch: get('app_pitch'), template: get('app_template'), revenueModel: get('revenue_model'), shipTarget: get('ship_target') },
     token: { name: get('token_name'), ticker: get('token_ticker').toUpperCase(), supply: get('token_supply'), curve: get('token_curve') },
     economics: { agentVestingBps: Number(get('agent_vesting_bps')), credRewardsBps: Number(get('cred_rewards_bps')), swarmTreasuryBps: Number(get('swarm_treasury_bps')), publicDistributionBps: Number(get('public_distribution_bps')), agentCliffMonths: Number(get('agent_cliff_months')), agentVestingMonths: Number(get('agent_vesting_months')) },
+    workspace: normalizeWorkspaceForm(get, verifiedMembers, (member) => 'member_' + member.tokenId + '_did_key'),
   });
 }
 
@@ -89,7 +93,7 @@ export function buildSwarmLaunchManifest(input = {}) {
     identity: { type: 'looper_erc721', chainId: SWARM_LAUNCH_CHAIN_ID, registry: SWARM_LAUNCH_LOOPERS_COLLECTION },
     execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, requiresSeparateApproval: true },
     gate: { minimumMembers: SWARM_LAUNCH_LIMITS.minimumMembers, maximumMembers: SWARM_LAUNCH_LIMITS.maximumMembers, minimumAverageCred: SWARM_LAUNCH_LIMITS.minimumAverageCred, observedAverageCred: draft.gate.averageCred, methodologyVersions: [...new Set(draft.members.map((member) => member.cred.methodologyVersion))].sort() },
-    app: { ...draft.app }, token: { ...draft.token }, economics: draft.economics,
+    app: { ...draft.app }, token: { ...draft.token }, economics: draft.economics, workspace: draft.workspace,
     members: draft.members.map((member) => ({ identity: { type: 'looper_erc721', chainId: SWARM_LAUNCH_CHAIN_ID, registry: SWARM_LAUNCH_LOOPERS_COLLECTION, tokenId: member.tokenId, erc8004Id: member.erc8004Id }, consentAuthority: member.ownerAddress, name: member.name, role: member.role, contributionBps: member.contributionBps, cred: { ...member.cred }, vault: { status: 'UNPREPARED', kind: 'UNSPECIFIED', address: null } })),
   });
 }
@@ -138,10 +142,12 @@ export function buildSwarmLaunchReadinessPacket({ proposal, now } = {}) {
     beneficiaryAddress: null,
   }));
   if (new Set(allocations.map((entry) => entry.tokenId)).size !== allocations.length || allocations.reduce((sum, entry) => sum + entry.shareBps, 0) !== SWARM_LAUNCH_LIMITS.totalContributionBps) throw new TypeError('Consented contribution split is invalid.');
+  const workspace = normalizeWorkspaceManifest(manifest.workspace, allocations.map((entry) => entry.tokenId));
   return deepFreeze({
     schema: 'multipass.swarm-launch-readiness.v1',
     chainId: SWARM_LAUNCH_CHAIN_ID,
     sourceConsent: { proposalId, manifestSha256, expiresAt },
+    workspace,
     execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, onchainTargets: [], transactionCount: 0, requiresSeparateExecutionConsent: true },
     allocations: {
       agentVestingBps: economics.agentVesting.allocationBps,
@@ -164,6 +170,9 @@ export function buildSwarmLaunchReadinessPacket({ proposal, now } = {}) {
       'REVALIDATE_LOOPER_OWNERSHIP',
       'REVALIDATE_LOOPER_CONTROLLERS',
       'REVALIDATE_CRED',
+      'PROVISION_TWIGPINE_REPOSITORY',
+      'VERIFY_TWIGPINE_CERTIFICATES_AND_PROVENANCE',
+      'ENABLE_SCOPED_EXPIRING_UCAN_DELEGATION',
       'SELECT_AND_REVIEW_EXECUTION_PROVIDER',
       'RESOLVE_VESTING_BENEFICIARIES',
       'SIMULATE_ON_BASE_FORK',
@@ -171,6 +180,92 @@ export function buildSwarmLaunchReadinessPacket({ proposal, now } = {}) {
     ]
   });
 }
+
+function normalizeWorkspaceForm(get, members, didField) {
+  const mirrorEnabled = ['true', 'on', '1'].includes(get('workspace_github_mirror_enabled').toLowerCase());
+  return {
+    provider: get('workspace_provider') || 'TWIGPINE',
+    repository: { slug: get('workspace_repo_slug'), visibility: get('workspace_visibility') || 'PUBLIC' },
+    members: members.map((member, index) => ({ tokenId: String(member.tokenId), didKey: get(didField(member, index)) })),
+    githubMirror: { enabled: mirrorEnabled, owner: mirrorEnabled ? get('workspace_github_owner') : null, repository: mirrorEnabled ? get('workspace_github_repository') : null },
+  };
+}
+
+function normalizeWorkspaceRequest(value, members) {
+  exactObject(value, ['provider', 'repository', 'members', 'githubMirror'], 'workspace');
+  if (value.provider !== 'TWIGPINE') throw new TypeError('Workspace provider is invalid.');
+  exactObject(value.repository, ['slug', 'visibility'], 'workspace repository');
+  const slug = workspaceSlug(value.repository.slug);
+  const visibility = closed(value.repository.visibility ?? 'PUBLIC', WORKSPACE_VISIBILITIES, 'workspace visibility');
+  if (!Array.isArray(value.members) || value.members.length !== members.length) throw new TypeError('Workspace member identities are invalid.');
+  const expected = members.map((member) => member.tokenId);
+  const identities = value.members.map((member, index) => {
+    exactObject(member, ['tokenId', 'didKey'], 'workspace member');
+    const tokenId = canonicalUint(member.tokenId, 'workspace member token ID');
+    if (tokenId !== expected[index]) throw new TypeError('Workspace member identities must match the swarm roster order.');
+    return { tokenId, didKey: didKey(member.didKey), sharedKey: false };
+  });
+  if (new Set(identities.map((member) => member.didKey)).size !== identities.length) throw new TypeError('Workspace did:key identities must be unique; shared keys are prohibited.');
+  const githubMirror = normalizeGithubMirror(value.githubMirror);
+  return deepFreeze({
+    schema: SWARM_LAUNCH_WORKSPACE_SCHEMA,
+    mode: 'PREPARATION_ONLY',
+    provider: 'TWIGPINE',
+    repository: { cardinality: 'ONE_PER_SWARM', slug, visibility, defaultBranch: 'main', protectedBranches: ['main'], provisioningStatus: 'NOT_PROVISIONED' },
+    members: identities,
+    delegation: { protocol: 'UCAN', authorizationMode: 'OWNER_ONLY', capabilityStatus: 'REQUIRED_UNAVAILABLE', requiredScopes: [...WORKSPACE_SCOPES], expirationRequired: true },
+    provenance: { signedPushes: 'REQUIRED', certificates: 'REQUIRED', pullRequests: 'REQUIRED', reviews: 'REQUIRED', verificationStatus: 'NOT_VERIFIED' },
+    githubMirror,
+    authorityBoundary: { gitAuthorizesWallets: false, gitAuthorizesTransactions: false, gitAuthorizesDeployment: false, gitAuthorizesFinancialExecution: false, executionConsentAuthority: 'SWARM_COMMAND' },
+  });
+}
+
+function normalizeWorkspaceManifest(value, tokenIds) {
+  exactObject(value, ['schema', 'mode', 'provider', 'repository', 'members', 'delegation', 'provenance', 'githubMirror', 'authorityBoundary'], 'workspace manifest');
+  exactObject(value.repository, ['cardinality', 'slug', 'visibility', 'defaultBranch', 'protectedBranches', 'provisioningStatus'], 'workspace repository');
+  exactObject(value.delegation, ['protocol', 'authorizationMode', 'capabilityStatus', 'requiredScopes', 'expirationRequired'], 'workspace delegation');
+  exactObject(value.provenance, ['signedPushes', 'certificates', 'pullRequests', 'reviews', 'verificationStatus'], 'workspace provenance');
+  exactObject(value.authorityBoundary, ['gitAuthorizesWallets', 'gitAuthorizesTransactions', 'gitAuthorizesDeployment', 'gitAuthorizesFinancialExecution', 'executionConsentAuthority'], 'workspace authority boundary');
+  const request = {
+    provider: value.provider,
+    repository: { slug: value.repository.slug, visibility: value.repository.visibility },
+    members: Array.isArray(value.members) ? value.members.map((member) => {
+      exactObject(member, ['tokenId', 'didKey', 'sharedKey'], 'workspace member');
+      if (member.sharedKey !== false) throw new TypeError('Workspace shared keys are prohibited.');
+      return { tokenId: member.tokenId, didKey: member.didKey };
+    }) : value.members,
+    githubMirror: value.githubMirror,
+  };
+  const normalized = normalizeWorkspaceRequest(request, tokenIds.map((tokenId) => ({ tokenId })));
+  if (value.schema !== normalized.schema || value.mode !== normalized.mode
+    || value.repository.cardinality !== 'ONE_PER_SWARM' || value.repository.defaultBranch !== 'main'
+    || !Array.isArray(value.repository.protectedBranches) || value.repository.protectedBranches.length !== 1 || value.repository.protectedBranches[0] !== 'main'
+    || value.repository.provisioningStatus !== 'NOT_PROVISIONED'
+    || value.delegation.protocol !== 'UCAN' || value.delegation.authorizationMode !== 'OWNER_ONLY' || value.delegation.capabilityStatus !== 'REQUIRED_UNAVAILABLE'
+    || value.delegation.expirationRequired !== true || !sameStrings(value.delegation.requiredScopes, WORKSPACE_SCOPES)
+    || value.provenance.signedPushes !== 'REQUIRED' || value.provenance.certificates !== 'REQUIRED' || value.provenance.pullRequests !== 'REQUIRED' || value.provenance.reviews !== 'REQUIRED' || value.provenance.verificationStatus !== 'NOT_VERIFIED'
+    || value.authorityBoundary.gitAuthorizesWallets !== false || value.authorityBoundary.gitAuthorizesTransactions !== false || value.authorityBoundary.gitAuthorizesDeployment !== false || value.authorityBoundary.gitAuthorizesFinancialExecution !== false || value.authorityBoundary.executionConsentAuthority !== 'SWARM_COMMAND') throw new TypeError('Consented workspace manifest is invalid.');
+  return normalized;
+}
+
+function normalizeGithubMirror(value) {
+  exactObject(value, ['enabled', 'owner', 'repository'], 'workspace GitHub mirror');
+  if (typeof value.enabled !== 'boolean') throw new TypeError('Workspace GitHub mirror state is invalid.');
+  if (!value.enabled) {
+    if (value.owner !== null || value.repository !== null) throw new TypeError('Disabled workspace GitHub mirror metadata must be null.');
+    return { enabled: false, owner: null, repository: null };
+  }
+  const owner = bounded(value.owner, 1, 39, 'workspace GitHub mirror owner');
+  const repository = bounded(value.repository, 1, 100, 'workspace GitHub mirror repository');
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u.test(owner)) throw new TypeError('Workspace GitHub mirror owner is invalid.');
+  if (!/^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,98}[A-Za-z0-9])?$/u.test(repository)) throw new TypeError('Workspace GitHub mirror repository is invalid.');
+  return { enabled: true, owner, repository };
+}
+
+function workspaceSlug(value) { const text = bounded(value, 1, 64, 'workspace repository slug'); if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u.test(text)) throw new TypeError('Workspace repository slug is invalid.'); return text; }
+function didKey(value) { const text = bounded(value, 24, 140, 'workspace did:key'); if (!/^did:key:z[1-9A-HJ-NP-Za-km-z]+$/u.test(text)) throw new TypeError('Workspace did:key is invalid.'); return text; }
+function exactObject(value, keys, name) { if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new TypeError(name + ' is invalid.'); const unknown = Object.keys(value).filter((key) => !keys.includes(key)); const missing = keys.filter((key) => !Object.hasOwn(value, key)); if (unknown.length || missing.length) throw new TypeError(name + (unknown.length ? ' contains unknown fields.' : ' is missing required fields.')); }
+function sameStrings(value, expected) { return Array.isArray(value) && value.length === expected.length && value.every((entry, index) => entry === expected[index]); }
 
 function normalizeReadinessEconomics(value) {
   if (!value || value.model !== 'PROVIDER_NEUTRAL_V1') throw new TypeError('Consented launch economics are invalid.');

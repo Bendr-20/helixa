@@ -112,6 +112,14 @@ Pantheon's whitepaper also describes private-presale USDC sent to a receiving ad
 
 Neither party should be able to replace recipients, allocations, sale terms, vesting, fees, or launch contracts after unanimous authorization without invalidating the packet and collecting fresh consent.
 
+### Proposed Twigpine/GitLawb collaboration and provenance layer
+
+Swarm Command's preparation manifest now defines a deterministic, closed-schema workspace contract for one Twigpine repository per swarm. The contract fixes `main` as the default/protected branch, requires a unique `did:key` identity for every Looper with no shared keys, requires signed pushes and repository certificates, and preserves pull-request and review provenance. Public visibility is the v1 default. Twigpine's private mode does not federate, and privacy in all modes remains node-operator policy. An optional GitHub mirror records only bounded owner/repository metadata and is not the authority of record.
+
+This layer is preparation-only. It does not install GitLawb tooling, generate keys, contact Twigpine, provision or push a repository, or grant execution authority. Current Twigpine push authorization is owner-only: GLIP-10's scoped, expiring UCAN delegation is required by the proposed production contract but is not implemented. Packets therefore record it as `REQUIRED_UNAVAILABLE`, and production stays blocked until scoped delegation plus repository certificate/signature/provenance verification are implemented and independently reviewed.
+
+Git provenance can support auditability for Pantheon adapter work, launch-parameter review, and post-launch evidence, but it never authorizes wallets, transactions, deployments, token launches, or financial execution. Swarm Command's unanimous, expiry-bound execution consent remains the sole execution authority.
+
 ## 4. CRED model available to Pantheon
 
 ### 4.1 Current Looper CRED response
@@ -572,6 +580,7 @@ Commercial:
 - Deterministic no-broadcast token-genesis code and tests.
 - Pantheon Base registry endpoint, 26 assets, pinned StakingVault, active CRED pool, four current CRED reward assets, V8 implementation, 5% shared fee, and 2-of-6 owner Safe as observed on 2026-10-21.
 - Existing Looper-wallet CRED stake/add-to-stake preparation and verification flow.
+- Repository-tested closed-schema Twigpine workspace preparation contract, including manifest/readiness hash lineage and explicit provisioning, certificate/provenance, and unavailable-UCAN gates; no live Twigpine provisioning was performed.
 
 ### Pantheon-published claims requiring production confirmation
 

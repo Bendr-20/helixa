@@ -11,7 +11,8 @@ const agents = [
   { ...canonical, tokenId: '57', name: 'Cheryl', role: 'Builder', erc8004AgentId: '57', cred: cred(66) },
   { ...canonical, tokenId: '74', name: 'Axiom', role: 'Operator', erc8004AgentId: '74', cred: cred(79, 'PRIME') },
 ];
-const input = { members: [{ tokenId: '1', role: 'Lead', contributionBps: 4000 }, { tokenId: '57', role: 'Builder', contributionBps: 3500 }, { tokenId: '74', role: 'Operator', contributionBps: 2500 }], app: { name: 'Signal Swarm', pitch: 'Ship analytics.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' } };
+const workspace = { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: [{ tokenId: '1', didKey: 'did:key:z6Mk11111111111111111111111111111111111111111' }, { tokenId: '57', didKey: 'did:key:z6Mk22222222222222222222222222222222222222222' }, { tokenId: '74', didKey: 'did:key:z6Mk33333333333333333333333333333333333333333' }], githubMirror: { enabled: false, owner: null, repository: null } };
+const input = { members: [{ tokenId: '1', role: 'Lead', contributionBps: 4000 }, { tokenId: '57', role: 'Builder', contributionBps: 3500 }, { tokenId: '74', role: 'Operator', contributionBps: 2500 }], app: { name: 'Signal Swarm', pitch: 'Ship analytics.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' }, workspace };
 
 test('preview reloads authoritative owned Loopers and returns a hashed preparation-only manifest', async () => {
   const calls = [];
@@ -22,6 +23,14 @@ test('preview reloads authoritative owned Loopers and returns a hashed preparati
   assert.equal(result.manifest.members[0].name, 'Bendr');
   assert.equal(result.manifest.members[0].identity.erc8004Id, '8453:18531');
   assert.equal(result.manifest.execution.deploymentAuthorized, false);
+  assert.equal(result.manifest.workspace.provider, 'TWIGPINE');
+  assert.equal(result.manifest.workspace.delegation.capabilityStatus, 'REQUIRED_UNAVAILABLE');
+});
+
+test('preview rejects browser-supplied workspace capabilities and unsafe or unbounded repository metadata', async () => {
+  await assert.rejects(() => previewSwarmLaunch({ owner: OWNER, input: { ...input, workspace: { ...workspace, delegation: { capabilityStatus: 'AVAILABLE' } } }, loadOwnedAgents: async () => agents }), /workspace.*unknown|delegation/i);
+  await assert.rejects(() => previewSwarmLaunch({ owner: OWNER, input: { ...input, workspace: { ...workspace, repository: { ...workspace.repository, slug: '../escape' } } }, loadOwnedAgents: async () => agents }), /slug/i);
+  await assert.rejects(() => previewSwarmLaunch({ owner: OWNER, input: { ...input, workspace: { ...workspace, githubMirror: { enabled: true, owner: 'x'.repeat(40), repository: 'repo' } } }, loadOwnedAgents: async () => agents }), /mirror owner/i);
 });
 
 test('preview rejects non-owned, stale, duplicate, and browser-invented member evidence', async () => {
