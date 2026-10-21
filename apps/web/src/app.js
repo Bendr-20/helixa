@@ -2554,6 +2554,14 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     const readiness = state.consoleLaunchpad?.readiness;
     const readinessHash = readiness?.packetSha256;
     if (!proposalId || !readinessHash || !state.consoleCsrfToken) return;
+    let body;
+    try {
+      body = normalizeSwarmLaunchExecutionReviewForm(new FormData(event.currentTarget), readiness);
+    } catch (error) {
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'prepared', executionPreview: null, error: String(error?.message ?? 'Execution review failed.') } };
+      render(root, state, handlers);
+      return;
+    }
     abortConsoleLaunchExecutionPreview();
     const controller = new AbortController();
     consoleLaunchExecutionAbortController = controller;
@@ -2568,7 +2576,6 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       && state.consoleWorkspaceView === 'missions'
     );
     try {
-      const body = normalizeSwarmLaunchExecutionReviewForm(new FormData(event.currentTarget), readiness);
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'building_execution_review', requestId, executionPreview: null, error: null } }; render(root, state, handlers);
       const response = await activeMissionApi.createLaunchExecutionPreview({ proposalId, csrfToken: state.consoleCsrfToken, body, signal: controller.signal });
       if (!isCurrentRequest()) return;

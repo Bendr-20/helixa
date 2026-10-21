@@ -8297,7 +8297,7 @@ function createExecutionReviewRaceFixture({ deferred }) {
   };
 }
 
-async function beginDeferredExecutionReview(t, deferred) {
+async function prepareExecutionReviewForm(t, deferred) {
   const root = setupDom('https://helixa.xyz/multipass/console?launch_consent=proposal-race');
   const originalFormData = globalThis.FormData;
   globalThis.FormData = window.FormData;
@@ -8319,10 +8319,29 @@ async function beginDeferredExecutionReview(t, deferred) {
   form.elements.namedItem('cred_rewards_recipient').value = '0x' + '4'.repeat(40);
   form.elements.namedItem('swarm_treasury_recipient').value = '0x' + '5'.repeat(40);
   form.elements.namedItem('public_distribution_recipient').value = '0x' + '6'.repeat(40);
-  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  return { root, fixture, form };
+}
+
+async function beginDeferredExecutionReview(t, deferred) {
+  const prepared = await prepareExecutionReviewForm(t, deferred);
+  prepared.form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
   await flushAsyncEvents();
-  assert.ok(fixture.previewInput?.signal instanceof window.AbortSignal || fixture.previewInput?.signal instanceof AbortSignal);
-  return { root, fixture };
+  assert.ok(prepared.fixture.previewInput?.signal instanceof window.AbortSignal || prepared.fixture.previewInput?.signal instanceof AbortSignal);
+  return prepared;
+}
+
+for (const invalid of [
+  { name: 'duplicate', mutate(form) { form.elements.namedItem('public_distribution_recipient').value = form.elements.namedItem('cred_rewards_recipient').value; }, error: /recipients must be distinct/i },
+  { name: 'zero', mutate(form) { form.elements.namedItem('swarm_treasury_recipient').value = '0x' + '0'.repeat(40); }, error: /swarm treasury recipient is invalid/i },
+]) {
+  test(`execution review renders ${invalid.name} recipient validation errors without calling the API`, async (t) => {
+    const { root, fixture, form } = await prepareExecutionReviewForm(t, createDeferredResult());
+    invalid.mutate(form);
+    form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    await flushAsyncEvents();
+    assert.equal(fixture.previewInput, undefined);
+    assert.match(root.querySelector('.mission-alert')?.textContent ?? '', invalid.error);
+  });
 }
 
 test('execution preview ignores deferred success after navigating away and aborts the request', async (t) => {
