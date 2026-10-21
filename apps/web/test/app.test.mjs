@@ -8277,7 +8277,7 @@ function createExecutionReviewRaceFixture({ deferred }) {
   const readiness = {
     packetSha256: '0x' + 'b'.repeat(64),
     packet: {
-      schema: 'multipass.swarm-launch-readiness.v1',
+      schema: 'multipass.swarm-launch-readiness.v2',
       sourceConsent: { manifestSha256: proposal.manifestSha256 },
       execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 },
       agentVesting: { cliffMonths: 6, durationMonths: 18, allocations: members.map((member) => ({ tokenId: member.identity.tokenId, consentAuthority: owner, shareBps: member.contributionBps })) },

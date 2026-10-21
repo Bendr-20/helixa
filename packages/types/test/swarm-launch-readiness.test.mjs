@@ -7,8 +7,8 @@ const OWNER = '0x1111111111111111111111111111111111111111';
 const WORKSPACE = {
   schema: 'multipass.swarm-workspace.v1', mode: 'PREPARATION_ONLY', provider: 'TWIGPINE',
   repository: { cardinality: 'ONE_PER_SWARM', slug: 'signal-swarm', visibility: 'PUBLIC', defaultBranch: 'main', protectedBranches: ['main'], provisioningStatus: 'NOT_PROVISIONED' },
-  members: [{ tokenId: '1', didKey: 'did:key:z6Mk11111111111111111111111111111111111111111', sharedKey: false }, { tokenId: '2', didKey: 'did:key:z6Mk22222222222222222222222222222222222222222', sharedKey: false }, { tokenId: '3', didKey: 'did:key:z6Mk33333333333333333333333333333333333333333', sharedKey: false }],
-  delegation: { protocol: 'UCAN', authorizationMode: 'OWNER_ONLY', capabilityStatus: 'REQUIRED_UNAVAILABLE', requiredScopes: ['repo:read', 'repo:write', 'pull_request:create', 'review:submit'], expirationRequired: true },
+  members: [{ tokenId: '1', didKey: 'did:key:z6MkeXBLjYiSvqnhFb6D7sHm8yKm4jV45wwBFRaatf1cfZ76', sharedKey: false }, { tokenId: '2', didKey: 'did:key:z6Mkeb6dsrBTX95vPgLiZAcgRr6XJthFm1czoqFEx34DQtRo', sharedKey: false }, { tokenId: '3', didKey: 'did:key:z6Mkef1w29eU7SP9XmbDzTwbiisHZ3uTS5JpNEuu1R6pADkW', sharedKey: false }],
+  delegation: { protocol: 'UCAN', authorizationMode: 'OWNER_ONLY', capabilityStatus: 'REQUIRED_UNAVAILABLE', requiredScopes: ['git/fetch', 'git/push', 'pr/open', 'pr/review'], expirationRequired: true },
   provenance: { signedPushes: 'REQUIRED', certificates: 'REQUIRED', pullRequests: 'REQUIRED', reviews: 'REQUIRED', verificationStatus: 'NOT_VERIFIED' },
   githubMirror: { enabled: false, owner: null, repository: null },
   authorityBoundary: { gitAuthorizesWallets: false, gitAuthorizesTransactions: false, gitAuthorizesDeployment: false, gitAuthorizesFinancialExecution: false, executionConsentAuthority: 'SWARM_COMMAND' },
@@ -60,7 +60,7 @@ test('builds a deterministic simulation-only readiness packet from unanimously c
   const proposal = { proposalId: 'consent-1', status: 'SIGNATURES_COLLECTED', manifestSha256: '0x' + 'a'.repeat(64), manifest, expiresAt: 2_000 };
   const first = launch.buildSwarmLaunchReadinessPacket({ proposal, now: 1_000 });
   const second = launch.buildSwarmLaunchReadinessPacket({ proposal, now: 1_500 });
-  assert.equal(first.schema, 'multipass.swarm-launch-readiness.v1');
+  assert.equal(first.schema, 'multipass.swarm-launch-readiness.v2');
   assert.deepEqual(first.execution, { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, onchainTargets: [], transactionCount: 0, requiresSeparateExecutionConsent: true });
   assert.deepEqual(first.agentVesting.allocations.map((entry) => entry.shareBps), [4000, 3500, 2500]);
   assert.equal(first.allocations.totalBps, 10_000);
@@ -77,6 +77,11 @@ test('readiness packet fails closed before unanimous live consent', () => {
   const proposal = { proposalId: 'consent-1', status: 'COLLECTING_CONSENT', manifestSha256: '0x' + 'a'.repeat(64), manifest: { execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false } }, expiresAt: 2_000 };
   assert.throws(() => launch.buildSwarmLaunchReadinessPacket({ proposal, now: 1_000 }), /unanimous/i);
   assert.throws(() => launch.buildSwarmLaunchReadinessPacket({ proposal: { ...proposal, status: 'SIGNATURES_COLLECTED' }, now: 2_000 }), /expired/i);
+});
+
+test('legacy v1 launch manifests require recreation with a workspace-bound v2 hash', () => {
+  const proposal = { proposalId: 'legacy-1', status: 'SIGNATURES_COLLECTED', manifestSha256: '0x' + 'a'.repeat(64), expiresAt: 2_000, manifest: { schema: 'multipass.swarm-launch.v1', chainId: 8453, execution: { mode: 'PREPARATION_ONLY', deploymentAuthorized: false } } };
+  assert.throws(() => launch.buildSwarmLaunchReadinessPacket({ proposal, now: 1_000 }), /legacy|recreated|workspace/i);
 });
 
 const cred = (score) => ({ status: 'available', score, tier: 'QUALIFIED', coverage: { score: 80, label: 'STRONG' }, freshness: { stale: false }, methodologyVersion: 'looper-cred-v1', computedAt: '2026-10-20T00:00:00.000Z' });

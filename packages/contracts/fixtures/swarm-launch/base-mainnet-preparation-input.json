@@ -1,13 +1,13 @@
 {
   "chainId": 8453,
   "factoryAddress": "0x1000000000000000000000000000000000000001",
-  "readinessPacketSha256": "0x8e64701084f87647e7cb1c567e9b32ba498ce7b7ed62a0da9703eefadeac6ffb",
+  "readinessPacketSha256": "0xfe0cd1a54e46828b2a4176ac87395c6f85fa3065dee2bb3c48ec354d9ca8f0de",
   "readinessManifest": {
-    "schema": "multipass.swarm-launch-readiness.v1",
+    "schema": "multipass.swarm-launch-readiness.v2",
     "chainId": 8453,
     "sourceConsent": {
       "proposalId": "swarm-signal-consent-v1",
-      "manifestSha256": "0xf0c7e1752d5ade35284ba98fa5c46332c0f601651eac4077bbfda3ee01d15d60",
+      "manifestSha256": "0x14a27f6fa6ef8cd091e8decb55e004d71012ee5eddf8c33838dabeab038763f6",
       "expiresAt": 1899913600
     },
     "execution": {
@@ -93,14 +93,80 @@
       "REVALIDATE_LOOPER_OWNERSHIP",
       "REVALIDATE_LOOPER_CONTROLLERS",
       "REVALIDATE_CRED",
+      "PROVISION_TWIGPINE_REPOSITORY",
+      "VERIFY_TWIGPINE_CERTIFICATES_AND_PROVENANCE",
+      "ENABLE_SCOPED_EXPIRING_UCAN_DELEGATION",
       "SELECT_AND_REVIEW_EXECUTION_PROVIDER",
       "RESOLVE_VESTING_BENEFICIARIES",
       "SIMULATE_ON_BASE_FORK",
       "COLLECT_SEPARATE_EXECUTION_CONSENT"
-    ]
+    ],
+    "workspace": {
+      "schema": "multipass.swarm-workspace.v1",
+      "mode": "PREPARATION_ONLY",
+      "provider": "TWIGPINE",
+      "repository": {
+        "cardinality": "ONE_PER_SWARM",
+        "slug": "swarm-signal",
+        "visibility": "PUBLIC",
+        "defaultBranch": "main",
+        "protectedBranches": [
+          "main"
+        ],
+        "provisioningStatus": "NOT_PROVISIONED"
+      },
+      "members": [
+        {
+          "tokenId": "1",
+          "didKey": "did:key:z6MkeXBLjYiSvqnhFb6D7sHm8yKm4jV45wwBFRaatf1cfZ76",
+          "sharedKey": false
+        },
+        {
+          "tokenId": "2",
+          "didKey": "did:key:z6Mkeb6dsrBTX95vPgLiZAcgRr6XJthFm1czoqFEx34DQtRo",
+          "sharedKey": false
+        },
+        {
+          "tokenId": "3",
+          "didKey": "did:key:z6Mkef1w29eU7SP9XmbDzTwbiisHZ3uTS5JpNEuu1R6pADkW",
+          "sharedKey": false
+        }
+      ],
+      "delegation": {
+        "protocol": "UCAN",
+        "authorizationMode": "OWNER_ONLY",
+        "capabilityStatus": "REQUIRED_UNAVAILABLE",
+        "requiredScopes": [
+          "git/fetch",
+          "git/push",
+          "pr/open",
+          "pr/review"
+        ],
+        "expirationRequired": true
+      },
+      "provenance": {
+        "signedPushes": "REQUIRED",
+        "certificates": "REQUIRED",
+        "pullRequests": "REQUIRED",
+        "reviews": "REQUIRED",
+        "verificationStatus": "NOT_VERIFIED"
+      },
+      "githubMirror": {
+        "enabled": false,
+        "owner": null,
+        "repository": null
+      },
+      "authorityBoundary": {
+        "gitAuthorizesWallets": false,
+        "gitAuthorizesTransactions": false,
+        "gitAuthorizesDeployment": false,
+        "gitAuthorizesFinancialExecution": false,
+        "executionConsentAuthority": "SWARM_COMMAND"
+      }
+    }
   },
   "consentManifest": {
-    "schema": "multipass.swarm-launch.v1",
+    "schema": "multipass.swarm-launch.v2",
     "chainId": 8453,
     "identity": {
       "type": "looper_erc721",
@@ -255,11 +321,74 @@
           "address": null
         }
       }
-    ]
+    ],
+    "workspace": {
+      "schema": "multipass.swarm-workspace.v1",
+      "mode": "PREPARATION_ONLY",
+      "provider": "TWIGPINE",
+      "repository": {
+        "cardinality": "ONE_PER_SWARM",
+        "slug": "swarm-signal",
+        "visibility": "PUBLIC",
+        "defaultBranch": "main",
+        "protectedBranches": [
+          "main"
+        ],
+        "provisioningStatus": "NOT_PROVISIONED"
+      },
+      "members": [
+        {
+          "tokenId": "1",
+          "didKey": "did:key:z6MkeXBLjYiSvqnhFb6D7sHm8yKm4jV45wwBFRaatf1cfZ76",
+          "sharedKey": false
+        },
+        {
+          "tokenId": "2",
+          "didKey": "did:key:z6Mkeb6dsrBTX95vPgLiZAcgRr6XJthFm1czoqFEx34DQtRo",
+          "sharedKey": false
+        },
+        {
+          "tokenId": "3",
+          "didKey": "did:key:z6Mkef1w29eU7SP9XmbDzTwbiisHZ3uTS5JpNEuu1R6pADkW",
+          "sharedKey": false
+        }
+      ],
+      "delegation": {
+        "protocol": "UCAN",
+        "authorizationMode": "OWNER_ONLY",
+        "capabilityStatus": "REQUIRED_UNAVAILABLE",
+        "requiredScopes": [
+          "git/fetch",
+          "git/push",
+          "pr/open",
+          "pr/review"
+        ],
+        "expirationRequired": true
+      },
+      "provenance": {
+        "signedPushes": "REQUIRED",
+        "certificates": "REQUIRED",
+        "pullRequests": "REQUIRED",
+        "reviews": "REQUIRED",
+        "verificationStatus": "NOT_VERIFIED"
+      },
+      "githubMirror": {
+        "enabled": false,
+        "owner": null,
+        "repository": null
+      },
+      "authorityBoundary": {
+        "gitAuthorizesWallets": false,
+        "gitAuthorizesTransactions": false,
+        "gitAuthorizesDeployment": false,
+        "gitAuthorizesFinancialExecution": false,
+        "executionConsentAuthority": "SWARM_COMMAND"
+      }
+    }
   },
   "conversion": {
     "schema": "multipass.swarm-launch-execution-conversion.v1",
-    "parentReadinessSha256": "0x8e64701084f87647e7cb1c567e9b32ba498ce7b7ed62a0da9703eefadeac6ffb",
+    "parentReadinessSha256": "0xfe0cd1a54e46828b2a4176ac87395c6f85fa3065dee2bb3c48ec354d9ca8f0de",
     "timing": {
       "policy": "SOURCE_CONSENT_EXPIRY_PLUS_7D_30D_MONTHS_V1",
       "authorizationDeadline": 1899913600,

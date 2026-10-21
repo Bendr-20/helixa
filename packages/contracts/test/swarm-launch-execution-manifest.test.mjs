@@ -30,12 +30,12 @@ function fixture(signers) {
 }
 function input(signers, artifacts, factoryAddress = FACTORY) { return { ...fixture(signers), factoryAddress, artifacts }; }
 
-test('builds deterministic canonical Base preparation from readiness v1 lineage', async () => {
+test('builds deterministic canonical Base preparation from readiness v2 workspace lineage', async () => {
   const signers = wallets(); const artifacts = await artifactsPromise;
   const first = buildSwarmLaunchExecutionReadiness(input(signers.map((wallet) => wallet.address), artifacts));
   const second = buildSwarmLaunchExecutionReadiness(input(signers.map((wallet) => wallet.address), artifacts));
   assert.equal(first.manifestSha256, second.manifestSha256);
-  assert.equal(first.manifest.sourceReadiness.schema, 'multipass.swarm-launch-readiness.v1');
+  assert.equal(first.manifest.sourceReadiness.schema, 'multipass.swarm-launch-readiness.v2');
   assert.equal(first.manifest.conversion.schema, 'multipass.swarm-launch-execution-conversion.v1');
   assert.equal(first.manifest.execution.mode, 'PREPARATION_ONLY');
   assert.equal(first.manifest.execution.deploymentAuthorized, false);

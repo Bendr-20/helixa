@@ -1,4 +1,5 @@
-export const SWARM_LAUNCH_SCHEMA = 'multipass.swarm-launch.v1';
+export const SWARM_LAUNCH_SCHEMA = 'multipass.swarm-launch.v2';
+export const SWARM_LAUNCH_READINESS_SCHEMA = 'multipass.swarm-launch-readiness.v2';
 export const SWARM_LAUNCH_CHAIN_ID = 8453;
 export const SWARM_LAUNCH_LOOPERS_COLLECTION = '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a';
 export const SWARM_LAUNCH_LIMITS = Object.freeze({ minimumMembers: 3, maximumMembers: 5, minimumAverageCred: 65, totalContributionBps: 10_000 });
@@ -18,7 +19,7 @@ const TEMPLATES = new Set(SWARM_LAUNCH_OPTIONS.templates);
 const REVENUE_MODELS = new Set(SWARM_LAUNCH_OPTIONS.revenueModels);
 const SHIP_TARGETS = new Set(SWARM_LAUNCH_OPTIONS.shipTargets);
 const WORKSPACE_VISIBILITIES = new Set(['PUBLIC', 'PRIVATE', 'WITHHELD']);
-const WORKSPACE_SCOPES = Object.freeze(['repo:read', 'repo:write', 'pull_request:create', 'review:submit']);
+const WORKSPACE_SCOPES = Object.freeze(['git/fetch', 'git/push', 'pr/open', 'pr/review']);
 
 export function evaluateSwarmLaunchGate(input = {}) {
   const members = Array.isArray(input.members) ? input.members : [];
@@ -130,7 +131,8 @@ export function buildSwarmLaunchReadinessPacket({ proposal, now } = {}) {
   const manifestSha256 = String(proposal.manifestSha256 ?? '').toLowerCase();
   if (!/^0x[0-9a-f]{64}$/u.test(manifestSha256)) throw new TypeError('Consent manifest hash is invalid.');
   const manifest = proposal.manifest;
-  if (!manifest || manifest.schema !== SWARM_LAUNCH_SCHEMA || manifest.chainId !== SWARM_LAUNCH_CHAIN_ID || manifest.execution?.mode !== 'PREPARATION_ONLY' || manifest.execution?.deploymentAuthorized !== false) throw new TypeError('Consented launch manifest is invalid.');
+  if (!manifest || manifest.chainId !== SWARM_LAUNCH_CHAIN_ID || manifest.execution?.mode !== 'PREPARATION_ONLY' || manifest.execution?.deploymentAuthorized !== false) throw new TypeError('Consented launch manifest is invalid.');
+  if (manifest.schema !== SWARM_LAUNCH_SCHEMA) throw new TypeError('Legacy swarm launch manifests must be recreated with a Twigpine workspace.');
   const economics = normalizeReadinessEconomics(manifest.economics);
   const members = Array.isArray(manifest.members) ? manifest.members : [];
   if (members.length < SWARM_LAUNCH_LIMITS.minimumMembers || members.length > SWARM_LAUNCH_LIMITS.maximumMembers) throw new TypeError('Consented swarm roster is invalid.');
@@ -142,9 +144,9 @@ export function buildSwarmLaunchReadinessPacket({ proposal, now } = {}) {
     beneficiaryAddress: null,
   }));
   if (new Set(allocations.map((entry) => entry.tokenId)).size !== allocations.length || allocations.reduce((sum, entry) => sum + entry.shareBps, 0) !== SWARM_LAUNCH_LIMITS.totalContributionBps) throw new TypeError('Consented contribution split is invalid.');
-  const workspace = normalizeWorkspaceManifest(manifest.workspace, allocations.map((entry) => entry.tokenId));
+  const workspace = normalizeSwarmLaunchWorkspaceManifest(manifest.workspace, allocations.map((entry) => entry.tokenId));
   return deepFreeze({
-    schema: 'multipass.swarm-launch-readiness.v1',
+    schema: SWARM_LAUNCH_READINESS_SCHEMA,
     chainId: SWARM_LAUNCH_CHAIN_ID,
     sourceConsent: { proposalId, manifestSha256, expiresAt },
     workspace,
@@ -220,7 +222,7 @@ function normalizeWorkspaceRequest(value, members) {
   });
 }
 
-function normalizeWorkspaceManifest(value, tokenIds) {
+export function normalizeSwarmLaunchWorkspaceManifest(value, tokenIds) {
   exactObject(value, ['schema', 'mode', 'provider', 'repository', 'members', 'delegation', 'provenance', 'githubMirror', 'authorityBoundary'], 'workspace manifest');
   exactObject(value.repository, ['cardinality', 'slug', 'visibility', 'defaultBranch', 'protectedBranches', 'provisioningStatus'], 'workspace repository');
   exactObject(value.delegation, ['protocol', 'authorizationMode', 'capabilityStatus', 'requiredScopes', 'expirationRequired'], 'workspace delegation');
@@ -263,7 +265,31 @@ function normalizeGithubMirror(value) {
 }
 
 function workspaceSlug(value) { const text = bounded(value, 1, 64, 'workspace repository slug'); if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u.test(text)) throw new TypeError('Workspace repository slug is invalid.'); return text; }
-function didKey(value) { const text = bounded(value, 24, 140, 'workspace did:key'); if (!/^did:key:z[1-9A-HJ-NP-Za-km-z]+$/u.test(text)) throw new TypeError('Workspace did:key is invalid.'); return text; }
+function didKey(value) {
+  const text = bounded(value, 24, 140, 'workspace did:key');
+  if (!text.startsWith('did:key:z')) throw new TypeError('Workspace did:key is invalid.');
+  const decoded = decodeBase58btc(text.slice('did:key:z'.length));
+  if (decoded.length !== 34 || decoded[0] !== 0xed || decoded[1] !== 0x01) throw new TypeError('Workspace did:key must be an Ed25519 public key.');
+  return text;
+}
+function decodeBase58btc(value) {
+  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  if (!value) throw new TypeError('Workspace did:key is invalid.');
+  const bytes = [0];
+  for (const char of value) {
+    const digit = alphabet.indexOf(char);
+    if (digit < 0) throw new TypeError('Workspace did:key is invalid.');
+    let carry = digit;
+    for (let index = 0; index < bytes.length; index += 1) {
+      carry += bytes[index] * 58;
+      bytes[index] = carry & 0xff;
+      carry >>= 8;
+    }
+    while (carry > 0) { bytes.push(carry & 0xff); carry >>= 8; }
+  }
+  for (let index = 0; index < value.length - 1 && value[index] === '1'; index += 1) bytes.push(0);
+  return Uint8Array.from(bytes.reverse());
+}
 function exactObject(value, keys, name) { if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new TypeError(name + ' is invalid.'); const unknown = Object.keys(value).filter((key) => !keys.includes(key)); const missing = keys.filter((key) => !Object.hasOwn(value, key)); if (unknown.length || missing.length) throw new TypeError(name + (unknown.length ? ' contains unknown fields.' : ' is missing required fields.')); }
 function sameStrings(value, expected) { return Array.isArray(value) && value.length === expected.length && value.every((entry, index) => entry === expected[index]); }
 

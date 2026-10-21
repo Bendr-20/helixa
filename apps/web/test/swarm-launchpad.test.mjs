@@ -25,7 +25,7 @@ const members = [
   { tokenId: '57', ownerAddress: '0x1111111111111111111111111111111111111111', name: 'Cheryl', role: 'Builder', contributionBps: 3500, cred: freshCred(66, 'QUALIFIED'), erc8004Id: '8453:57' },
   { tokenId: '74', ownerAddress: '0x1111111111111111111111111111111111111111', name: 'Axiom', role: 'Operator', contributionBps: 2500, cred: freshCred(79), erc8004Id: '8453:74' },
 ];
-const workspace = { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: [{ tokenId: '1', didKey: 'did:key:z6Mk11111111111111111111111111111111111111111' }, { tokenId: '57', didKey: 'did:key:z6Mk22222222222222222222222222222222222222222' }, { tokenId: '74', didKey: 'did:key:z6Mk33333333333333333333333333333333333333333' }], githubMirror: { enabled: false, owner: null, repository: null } };
+const workspace = { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: [{ tokenId: '1', didKey: 'did:key:z6MkeXBLjYiSvqnhFb6D7sHm8yKm4jV45wwBFRaatf1cfZ76' }, { tokenId: '57', didKey: 'did:key:z6Mkeb6dsrBTX95vPgLiZAcgRr6XJthFm1czoqFEx34DQtRo' }, { tokenId: '74', didKey: 'did:key:z6Mkef1w29eU7SP9XmbDzTwbiisHZ3uTS5JpNEuu1R6pADkW' }], githubMirror: { enabled: false, owner: null, repository: null } };
 
 function draft(overrides = {}) {
   return {
@@ -78,7 +78,7 @@ test('form normalization binds editable roles and contribution weights to the ve
 test('manifest is deterministic, preparation-only, Base-bound, and contains no third-party settlement assumptions', () => {
   const normalized = normalizeSwarmLaunchDraft(draft());
   const manifest = buildSwarmLaunchManifest(normalized);
-  assert.equal(manifest.schema, 'multipass.swarm-launch.v1');
+  assert.equal(manifest.schema, 'multipass.swarm-launch.v2');
   assert.equal(manifest.chainId, 8453);
   assert.equal(manifest.execution.mode, 'PREPARATION_ONLY');
   assert.equal('settlement' in manifest, false);
@@ -146,7 +146,7 @@ test('unanimous consent unlocks a simulation-only readiness packet without selec
   assert.match(collected, /Build readiness packet/i);
   assert.match(collected, /unanimous preparation consent/i);
 
-  const readiness = { packet: { schema: 'multipass.swarm-launch-readiness.v1', execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 }, allocations: { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, totalBps: 10000 } }, packetSha256: '0x' + 'b'.repeat(64) };
+  const readiness = { packet: { schema: 'multipass.swarm-launch-readiness.v2', execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 }, allocations: { agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, totalBps: 10000 } }, packetSha256: '0x' + 'b'.repeat(64) };
   const rendered = renderSwarmLaunchpad({ status: 'prepared', draft: draft(), manifest, manifestSha256: proposal.manifestSha256, proposal, readiness, authenticatedWallet: members[0].ownerAddress });
   assert.match(rendered, /Simulation-only readiness packet/i);
   assert.match(rendered, new RegExp(readiness.packetSha256));

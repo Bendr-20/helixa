@@ -13,11 +13,11 @@ import {
   verifyTypedData,
 } from 'ethers';
 
-import { canonicalSwarmLaunchJson } from '../../types/src/swarm-launch.js';
+import { SWARM_LAUNCH_READINESS_SCHEMA, SWARM_LAUNCH_SCHEMA, canonicalSwarmLaunchJson, normalizeSwarmLaunchWorkspaceManifest } from '../../types/src/swarm-launch.js';
 
-const SCHEMA = 'multipass.swarm-token-launch-packet.v1';
-const READINESS_SCHEMA = 'multipass.swarm-launch-readiness.v1';
-const CONSENT_SCHEMA = 'multipass.swarm-launch.v1';
+const SCHEMA = 'multipass.swarm-token-launch-packet.v2';
+const READINESS_SCHEMA = SWARM_LAUNCH_READINESS_SCHEMA;
+const CONSENT_SCHEMA = SWARM_LAUNCH_SCHEMA;
 const CONVERSION_SCHEMA = 'multipass.swarm-launch-execution-conversion.v1';
 const TIMING_POLICY = 'SOURCE_CONSENT_EXPIRY_PLUS_7D_30D_MONTHS_V1';
 const CHAIN_ID = 8453;
@@ -148,7 +148,7 @@ function envelope(manifest, domain, message) {
 }
 
 function normalizeReadiness(value) {
-  exactKeys(value, ['schema', 'chainId', 'sourceConsent', 'execution', 'allocations', 'agentVesting', 'credRewards', 'swarmTreasury', 'publicDistribution', 'requiredPrimitives', 'requiredGates'], 'readiness artifact');
+  exactKeys(value, ['schema', 'chainId', 'sourceConsent', 'workspace', 'execution', 'allocations', 'agentVesting', 'credRewards', 'swarmTreasury', 'publicDistribution', 'requiredPrimitives', 'requiredGates'], 'readiness artifact');
   if (value.schema !== READINESS_SCHEMA || value.chainId !== CHAIN_ID) throw new TypeError('Canonical readiness artifact is invalid.');
   exactKeys(value.sourceConsent, ['proposalId', 'manifestSha256', 'expiresAt'], 'readiness sourceConsent');
   const sourceConsent = { proposalId: bounded(value.sourceConsent.proposalId, 1, 128, 'proposalId'), manifestSha256: bytes32(value.sourceConsent.manifestSha256, 'consent manifest hash'), expiresAt: integer(value.sourceConsent.expiresAt, 1, Number.MAX_SAFE_INTEGER, 'consent expiry') };
@@ -173,13 +173,14 @@ function normalizeReadiness(value) {
     return deepFreeze({ tokenId: uintString(entry.tokenId, 'tokenId'), consentAuthority: address(entry.consentAuthority, false, 'consent authority'), shareBps: integer(entry.shareBps, 1, TOTAL_BPS, 'share bps'), beneficiaryStatus: 'UNRESOLVED', beneficiaryAddress: null });
   });
   if (new Set(memberAllocations.map((entry) => entry.tokenId)).size !== memberAllocations.length || memberAllocations.reduce((sum, entry) => sum + entry.shareBps, 0) !== TOTAL_BPS) throw new TypeError('Readiness member lineage is invalid.');
+  const workspace = normalizeSwarmLaunchWorkspaceManifest(value.workspace, memberAllocations.map((entry) => entry.tokenId));
   exactObject(value.credRewards, { beneficiary: 'CRED_STAKERS', provider: 'UNSELECTED', stakingAsset: 'CRED', targetAddress: null }, 'readiness credRewards');
   exactObject(value.swarmTreasury, { control: 'SWARM_MULTISIG_REQUIRED', address: null }, 'readiness swarmTreasury');
   exactObject(value.publicDistribution, { mechanism: 'UNSELECTED', adapter: null }, 'readiness publicDistribution');
   validatePrimitives(value.requiredPrimitives);
-  const gates = ['REVALIDATE_LOOPER_OWNERSHIP', 'REVALIDATE_LOOPER_CONTROLLERS', 'REVALIDATE_CRED', 'SELECT_AND_REVIEW_EXECUTION_PROVIDER', 'RESOLVE_VESTING_BENEFICIARIES', 'SIMULATE_ON_BASE_FORK', 'COLLECT_SEPARATE_EXECUTION_CONSENT'];
+  const gates = ['REVALIDATE_LOOPER_OWNERSHIP', 'REVALIDATE_LOOPER_CONTROLLERS', 'REVALIDATE_CRED', 'PROVISION_TWIGPINE_REPOSITORY', 'VERIFY_TWIGPINE_CERTIFICATES_AND_PROVENANCE', 'ENABLE_SCOPED_EXPIRING_UCAN_DELEGATION', 'SELECT_AND_REVIEW_EXECUTION_PROVIDER', 'RESOLVE_VESTING_BENEFICIARIES', 'SIMULATE_ON_BASE_FORK', 'COLLECT_SEPARATE_EXECUTION_CONSENT'];
   if (canonicalSwarmLaunchJson(value.requiredGates) !== canonicalSwarmLaunchJson(gates)) throw new TypeError('Readiness required gates are invalid.');
-  return deepFreeze({ schema: READINESS_SCHEMA, chainId: CHAIN_ID, sourceConsent, execution: value.execution, allocations, agentVesting: { cliffMonths, durationMonths, allocations: memberAllocations }, credRewards: value.credRewards, swarmTreasury: value.swarmTreasury, publicDistribution: value.publicDistribution, requiredPrimitives: value.requiredPrimitives, requiredGates: gates });
+  return deepFreeze({ schema: READINESS_SCHEMA, chainId: CHAIN_ID, sourceConsent, workspace, execution: value.execution, allocations, agentVesting: { cliffMonths, durationMonths, allocations: memberAllocations }, credRewards: value.credRewards, swarmTreasury: value.swarmTreasury, publicDistribution: value.publicDistribution, requiredPrimitives: value.requiredPrimitives, requiredGates: gates });
 }
 
 function validatePrimitives(value) {
@@ -191,7 +192,7 @@ function validatePrimitives(value) {
 }
 
 function normalizeConsentManifest(value) {
-  exactKeys(value, ['schema', 'chainId', 'identity', 'execution', 'gate', 'app', 'token', 'economics', 'members'], 'consent manifest');
+  exactKeys(value, ['schema', 'chainId', 'identity', 'execution', 'gate', 'app', 'token', 'economics', 'workspace', 'members'], 'consent manifest');
   if (value.schema !== CONSENT_SCHEMA || value.chainId !== CHAIN_ID) throw new TypeError('Consent manifest is invalid.');
   exactKeys(value.identity, ['type', 'chainId', 'registry'], 'consent identity');
   if (value.identity.type !== 'looper_erc721' || value.identity.chainId !== CHAIN_ID) throw new TypeError('Consent identity is invalid.');
@@ -223,10 +224,12 @@ function normalizeConsentManifest(value) {
     if (member.identity.type !== 'looper_erc721' || member.identity.chainId !== CHAIN_ID || address(member.identity.registry, false, 'member registry') !== registry) throw new TypeError('Consent member identity is invalid.');
     return { tokenId: uintString(member.identity.tokenId, 'member tokenId'), consentAuthority: address(member.consentAuthority, false, 'member consent authority'), contributionBps: integer(member.contributionBps, 1, TOTAL_BPS, 'member contribution') };
   });
-  return deepFreeze({ ...value, identity: { ...value.identity, registry }, members: value.members.map((entry, index) => ({ ...entry, identity: { ...entry.identity, registry }, consentAuthority: members[index].consentAuthority })) });
+  const workspace = normalizeSwarmLaunchWorkspaceManifest(value.workspace, members.map((entry) => entry.tokenId));
+  return deepFreeze({ ...value, identity: { ...value.identity, registry }, workspace, members: value.members.map((entry, index) => ({ ...entry, identity: { ...entry.identity, registry }, consentAuthority: members[index].consentAuthority })) });
 }
 
 function assertConsentLineage(consent, readiness) {
+  if (canonicalSwarmLaunchJson(consent.workspace) !== canonicalSwarmLaunchJson(readiness.workspace)) throw new TypeError('Readiness workspace lineage mismatch.');
   const economics = consent.economics;
   const expected = [economics.agentVesting.allocationBps, economics.credRewards.allocationBps, economics.swarmTreasury.allocationBps, economics.publicDistribution.allocationBps];
   const observed = [readiness.allocations.agentVestingBps, readiness.allocations.credRewardsBps, readiness.allocations.swarmTreasuryBps, readiness.allocations.publicDistributionBps];

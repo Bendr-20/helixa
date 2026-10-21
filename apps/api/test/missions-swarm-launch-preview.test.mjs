@@ -11,7 +11,7 @@ const agents = [
   { ...canonical, tokenId: '57', name: 'Cheryl', role: 'Builder', erc8004AgentId: '57', cred: cred(66) },
   { ...canonical, tokenId: '74', name: 'Axiom', role: 'Operator', erc8004AgentId: '74', cred: cred(79, 'PRIME') },
 ];
-const workspace = { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: [{ tokenId: '1', didKey: 'did:key:z6Mk11111111111111111111111111111111111111111' }, { tokenId: '57', didKey: 'did:key:z6Mk22222222222222222222222222222222222222222' }, { tokenId: '74', didKey: 'did:key:z6Mk33333333333333333333333333333333333333333' }], githubMirror: { enabled: false, owner: null, repository: null } };
+const workspace = { provider: 'TWIGPINE', repository: { slug: 'signal-swarm', visibility: 'PUBLIC' }, members: [{ tokenId: '1', didKey: 'did:key:z6MkeXBLjYiSvqnhFb6D7sHm8yKm4jV45wwBFRaatf1cfZ76' }, { tokenId: '57', didKey: 'did:key:z6Mkeb6dsrBTX95vPgLiZAcgRr6XJthFm1czoqFEx34DQtRo' }, { tokenId: '74', didKey: 'did:key:z6Mkef1w29eU7SP9XmbDzTwbiisHZ3uTS5JpNEuu1R6pADkW' }], githubMirror: { enabled: false, owner: null, repository: null } };
 const input = { members: [{ tokenId: '1', role: 'Lead', contributionBps: 4000 }, { tokenId: '57', role: 'Builder', contributionBps: 3500 }, { tokenId: '74', role: 'Operator', contributionBps: 2500 }], app: { name: 'Signal Swarm', pitch: 'Ship analytics.', template: 'web_app', revenueModel: 'subscription', shipTarget: '30_days' }, token: { name: 'Signal Swarm', ticker: 'SIGSWARM', supply: '1000000000', curve: 'bonding_curve_to_dex' }, workspace };
 
 test('preview reloads authoritative owned Loopers and returns a hashed preparation-only manifest', async () => {

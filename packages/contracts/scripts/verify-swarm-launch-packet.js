@@ -20,7 +20,7 @@ const ALLOWED_RPC_METHODS = new Set(['eth_chainId', 'eth_getCode', 'eth_call']);
 
 export async function verifySwarmLaunchPacket(packet, { artifacts, rpcUrl, fetchImpl = globalThis.fetch } = {}) {
   exactKeys(packet, ['manifest', 'manifestSha256', 'typedData'], 'launch packet envelope');
-  if (!packet?.manifest || packet.manifest.schema !== 'multipass.swarm-token-launch-packet.v1') throw new TypeError('Launch packet schema is invalid.');
+  if (!packet?.manifest || packet.manifest.schema !== 'multipass.swarm-token-launch-packet.v2') throw new TypeError('Launch packet schema is invalid.');
   const manifest = packet.manifest;
   if (manifest.chainId !== BASE_CHAIN_ID) throw new TypeError('Launch packet must target Base chain ID 8453.');
   const calculatedHash = '0x' + createHash('sha256').update(canonicalSwarmLaunchJson(manifest)).digest('hex');

@@ -10,7 +10,7 @@ const CONSENT_HASH = '0x' + 'a'.repeat(64);
 const readiness = {
   packetSha256: HASH,
   packet: {
-    schema: 'multipass.swarm-launch-readiness.v1', chainId: 8453,
+    schema: 'multipass.swarm-launch-readiness.v2', chainId: 8453,
     sourceConsent: { proposalId: 'proposal-1', manifestSha256: CONSENT_HASH, expiresAt: 2_000_000_000 },
     execution: { mode: 'SIMULATION_ONLY', deploymentAuthorized: false, providerSelected: false, transactionCount: 0 },
     agentVesting: { cliffMonths: 6, durationMonths: 18, allocations: [
@@ -21,7 +21,7 @@ const readiness = {
   },
 };
 const packet = {
-  schema: 'multipass.swarm-token-launch-packet.v1', chainId: 8453,
+  schema: 'multipass.swarm-token-launch-packet.v2', chainId: 8453,
   sourceReadiness: { sha256: HASH, artifact: { sourceConsent: { manifestSha256: CONSENT_HASH } } },
   plan: {
     token: { name: 'Signal Swarm', symbol: 'SIG', decimals: 18, totalSupply: '100000000000000000000000000' },
