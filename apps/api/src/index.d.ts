@@ -93,6 +93,7 @@ export interface MultipassApiOptions {
   loopersOwnedMetadataBaseUrl?: string;
   loopersPublicClients?: unknown[];
   loopersAuthorizer?: (input: { tokenId: string; wallet: string }) => Promise<Record<string, unknown>>;
+  looperCanonicalWalletResolver?: (input: { tokenId: string }) => Promise<Record<string, unknown>>;
   consoleAuthStore?: unknown;
   consoleCreditService?: ConsoleCreditService | null;
   consoleRuntimeRegistry?: unknown;

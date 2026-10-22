@@ -51,6 +51,10 @@ import {
 import { parseStrictJsonObject } from './strict-json-envelope.js';
 import { deriveReleasedLooperAccount } from './looper-account.js';
 import {
+  LooperCanonicalWalletError,
+  createCanonicalLooperWalletResolver,
+} from './looper-canonical-wallet-resolver.js';
+import {
   createLooperCredClient,
   enrichOwnedLoopersWithCred,
 } from './looper-cred-client.js';
@@ -96,6 +100,7 @@ const JSON_HEADERS = {
 const MANAGER_COOKIE_NAME = 'multipass_manager';
 const CONSOLE_COOKIE_NAME = 'multipass_console';
 const SUPPORTED_HYDRATED_SOURCE_TYPES = new Set([HELIXA_SOURCE_TYPE, ERC8004_SOURCE_TYPE]);
+const LOOPERS_CANONICAL_WALLET_GLOBAL_RATE_LIMIT = { limit: 120, windowMs: 60_000 };
 const LOOPERS_ALLOWLIST_RATE_LIMIT = {
   limit: 1,
   windowMs: 600_000,
@@ -266,6 +271,7 @@ export function createMultipassApi({
   loopersOwnedMetadataBaseUrl,
   loopersPublicClients,
   loopersAuthorizer,
+  looperCanonicalWalletResolver,
   looperNameStore,
   looperCredClient,
   loopersCredApiBaseUrl,
@@ -360,12 +366,11 @@ export function createMultipassApi({
       appVersion: consoleXmtpAppVersion,
     }),
   });
-  const looperClients = loopersOwnedAgentLoader && loopersAuthorizer
-    ? null
-    : createLoopersPublicClients({
-      rpcUrl: loopersOwnedRpcUrl,
-      publicClients: loopersPublicClients,
-    });
+  const looperClients = Array.isArray(loopersPublicClients) && loopersPublicClients.length > 0
+    ? createLoopersPublicClients({ publicClients: loopersPublicClients })
+    : loopersOwnedAgentLoader && loopersAuthorizer
+      ? null
+      : createLoopersPublicClients({ rpcUrl: loopersOwnedRpcUrl });
   const authorizedOwnedLoopersLoader = loopersOwnedAgentLoader ?? createLoopersOwnedAgentLoader({
     fetchImpl,
     publicClients: looperClients,
@@ -388,6 +393,9 @@ export function createMultipassApi({
     )
     : authorizedOwnedLoopersLoader;
   const authorizeLooper = loopersAuthorizer ?? ((input) => authorizeLooperControl({ ...input, publicClients: looperClients }));
+  const canonicalWalletResolver = looperCanonicalWalletResolver ?? (supportsCanonicalWalletResolution(looperClients)
+    ? createCanonicalLooperWalletResolver({ publicClients: looperClients })
+    : null);
   const walletContextLoader = consoleWalletContextLoader ?? (looperClients
     ? createLooperWalletReadContextLoader({ publicClients: looperClients })
     : null);
@@ -418,6 +426,7 @@ export function createMultipassApi({
     loopersAllowlistBlockedSources: new Set(loopersAllowlistBlockedSources.map(normalizeLooperAllowlistSource).filter(Boolean)),
     loopersAllowlistRateLimiter: createFixedWindowRateLimiter(loopersAllowlistRateLimit ?? LOOPERS_ALLOWLIST_RATE_LIMIT),
     loopersAllowlistSubnetRateLimiter: createFixedWindowRateLimiter(loopersAllowlistSubnetRateLimit ?? LOOPERS_ALLOWLIST_SUBNET_RATE_LIMIT),
+    loopersCanonicalWalletGlobalRateLimiter: createFixedWindowRateLimiter(LOOPERS_CANONICAL_WALLET_GLOBAL_RATE_LIMIT),
     loopersAllowlistGlobalRateLimiter: createFixedWindowRateLimiter(loopersAllowlistGlobalRateLimit ?? LOOPERS_ALLOWLIST_GLOBAL_RATE_LIMIT),
     loopersTurnstileSecretKey: String(loopersTurnstileSecretKey ?? '').trim() || null,
     looperMarketplaceListingsLoader: typeof looperMarketplaceListingsLoader === 'function'
@@ -431,6 +440,7 @@ export function createMultipassApi({
       : null,
     loopersOwnedAgentLoader: ownedLoopersLoader,
     loopersAuthorizer: authorizeLooper,
+    looperCanonicalWalletResolver: canonicalWalletResolver,
     looperNameStore: looperNameStore ?? createSqliteLooperNameStore(),
     consoleRuntimeRegistry: consoleRuntimeRegistry ?? createLooperRuntimeRegistry(),
     restapNetworkActivationLeases: restapNetworkActivationLeases ?? null,
@@ -1634,6 +1644,30 @@ async function handleLooperPost(request, parts, context) {
 }
 
 async function handleLooperRead(request, url, parts, context) {
+  if (parts[2] && parts[3] === 'wallet' && parts.length === 4) {
+    if (!/^[1-9]\d{0,3}$/u.test(parts[2]) || BigInt(parts[2]) > 7_777n) {
+      return errorResponse(400, 'invalid_token_id', 'Looper token ID must be between 1 and 7777.');
+    }
+    const globalRateLimit = context.loopersCanonicalWalletGlobalRateLimiter.check('global');
+    if (!globalRateLimit.allowed) {
+      return errorResponse(429, 'rate_limited', 'Canonical Looper wallet resolution is busy. Try again shortly.', undefined, {
+        'retry-after': String(globalRateLimit.retryAfterSeconds),
+        'cache-control': 'no-store',
+      });
+    }
+    if (!context.looperCanonicalWalletResolver) {
+      return errorResponse(503, 'not_configured', 'Canonical Looper wallet resolution is not configured.');
+    }
+    try {
+      const result = await context.looperCanonicalWalletResolver({ tokenId: parts[2] });
+      return jsonResponse(result, 200, { 'cache-control': 'public, max-age=30' });
+    } catch (error) {
+      if (error instanceof LooperCanonicalWalletError) {
+        return errorResponse(error.status, error.code, error.message);
+      }
+      throw error;
+    }
+  }
   if (parts[2] === 'swarm-launch' && parts[3] === 'consents' && parts[4] && parts.length === 5) {
     const service = context.swarmLaunchConsentService;
     if (!service) return errorResponse(503, 'not_configured', 'Swarm launch consent is not configured.');
@@ -3301,6 +3335,16 @@ function jsonOrNotFound(value, message) {
   return jsonResponse(value);
 }
 
+function supportsCanonicalWalletResolution(clients) {
+  return Array.isArray(clients) && clients.length >= 2 && clients.every((client) => (
+    typeof client?.getBytecode === 'function'
+    && typeof client?.readContract === 'function'
+    && typeof client?.getChainId === 'function'
+    && typeof client?.getBlock === 'function'
+    && /^https:\/\//u.test(String(client?.transport?.url ?? '').trim())
+  ));
+}
+
 function createFixedWindowRateLimiter({ limit, windowMs, now = () => Date.now() } = {}) {
   const normalizedLimit = Number.isInteger(limit) && limit > 0 ? limit : LOOPERS_ALLOWLIST_RATE_LIMIT.limit;
   const normalizedWindowMs = Number.isInteger(windowMs) && windowMs > 0 ? windowMs : LOOPERS_ALLOWLIST_RATE_LIMIT.windowMs;
@@ -3627,6 +3671,7 @@ function createOpenApiDocument(baseUrl) {
       '/api/multipass/resolve': { get: { summary: 'Resolve a Helixa AgentDNA or Base ERC-8004 source identity to a hydrated profile or activation preview', parameters: [queryParameter('source', 'Source identity. Supports Helixa AgentDNA forms like {tokenId}, 8453:{tokenId}, helixa-agentdna:8453:{tokenId}, and Base ERC-8004 forms like erc8004:8453:{tokenId} or eip155:8453:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432:{tokenId}.')], responses: { 200: { description: 'Canonical source resolution result' } } } },
       '/api/search': { get: { summary: 'Conservative exact or prefix search over public profile summaries', parameters: [queryParameter('q')], responses: { 200: { description: 'Search matches' } } } },
       '/api/loopers/allowlist/proof': { get: { summary: 'Fetch a frozen Loopers allowlist Merkle proof for one wallet address', parameters: [queryParameter('address')], responses: { 200: { description: 'Loopers allowlist proof response' } } } },
+      '/api/loopers/{token_id}/wallet': { get: { summary: 'Resolve one verified activated Looper wallet', description: 'Returns a transfer destination only after distinct Base providers agree at one finalized block on deployment, runtime, NFT binding, and owner verification. Unactivated or conflicting evidence fails closed without a destination.', parameters: [pathParameter('token_id')], responses: { 200: { description: 'Verified canonical Looper wallet' }, 400: { description: 'Token ID is outside the Loopers collection range' }, 404: { description: 'Looper wallet is not activated' }, 409: { description: 'Wallet evidence mismatch' }, 429: { description: 'Resolver request limit reached' }, 503: { description: 'Wallet verification unavailable' } } } },
     },
     components: {
       schemas: {
