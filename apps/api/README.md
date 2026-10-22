@@ -85,13 +85,14 @@ The feature is disabled by default:
 
 ```bash
 MULTIPASS_CREDIT_ENABLED=true
+MULTIPASS_CREDIT_ALLOWED_TOKEN_IDS=2431
 MULTIPASS_CREDIFI_API_BASE_URL=https://backend.credi.fi
 MULTIPASS_CREDIT_CRED_BASE_URL=https://helixa.xyz
 MULTIPASS_CREDIT_MIN_CRED=40
 MULTIPASS_CREDIT_TIMEOUT_MS=10000
 ```
 
-No static Credifi API key is configured. The owner signs a fresh Credifi challenge that the server binds to the exact Looper account, `credi.fi`, and Base; the resulting bearer token remains in bounded server memory for the authenticated Console session. Logout revokes that local session. The beta accepts only Base USDC (`0x833589fcd6edb6e08f4c7c32d4f71b54bda02913`) in the exact vouched vault. The EVC permission is broad across all subaccounts sharing the wallet prefix; the Console displays that scope, validates canonical calldata, and re-fetches the live configuration immediately before wallet broadcast. Quotes are single-use, concurrent vouch/borrow submissions are serialized, and an uncertain loan result locks new borrowing for operator reconciliation instead of permitting a retry.
+Enabling the beta without at least one canonical token ID in `MULTIPASS_CREDIT_ALLOWED_TOKEN_IDS` fails startup; a Looper not in that server-side allowlist is rejected before any CRED or Credifi request. No static Credifi API key is configured. The owner signs a fresh Credifi challenge that the server binds to the exact Looper account, `credi.fi`, and Base; the resulting bearer token remains in bounded server memory for the authenticated Console session. Logout revokes that local session. The beta accepts only Base USDC (`0x833589fcd6edb6e08f4c7c32d4f71b54bda02913`) in the exact vouched vault. The EVC permission is broad across all subaccounts sharing the wallet prefix; the Console displays that scope, validates canonical calldata, and re-fetches the live configuration immediately before wallet broadcast. Quotes are single-use, concurrent vouch/borrow submissions are serialized, and an uncertain loan result locks new borrowing for operator reconciliation instead of permitting a retry.
 
 Advertise a production URL while listening locally:
 

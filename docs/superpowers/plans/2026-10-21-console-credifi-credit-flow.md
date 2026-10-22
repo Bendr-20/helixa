@@ -7,7 +7,7 @@ Let the authenticated owner of a selected Looper borrow through Multipass Consol
 ## Locked decisions
 
 - The Looper ERC-6551 account is the borrower, vouch recipient, disbursement address, EVC caller, token owner, and repayment caller. The controller EOA is never substituted as borrower.
-- Private beta CRED floor is 40. A missing, stale, mismatched, or below-floor score fails closed. This gate controls access to the Console flow; Credifi remains the lender and final eligibility authority.
+- Private beta CRED floor is 40. A missing, stale, mismatched, or below-floor score fails closed. A separate server-side Looper allowlist is mandatory and is checked before any CRED or Credifi request. These gates control access to the Console flow; Credifi remains the lender and final eligibility authority.
 - Credifi bearer tokens remain in bounded in-memory server storage and are never returned to the browser, logged, or persisted.
 - Signing into Credifi, accepting a vouch, EVC authorization, 2FA, quote creation, and loan creation are distinct states.
 - Vouch acceptance, EVC authorization broadcast, 2FA requests, and loan creation require separate explicit owner actions.

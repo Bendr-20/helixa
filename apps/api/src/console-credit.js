@@ -43,6 +43,7 @@ export function createConsoleCreditService({
   apiBaseUrl = DEFAULT_CREDIFI_API_BASE_URL,
   credBaseUrl = DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
   minCredScore = DEFAULT_LOOPER_CREDIT_MIN_CRED,
+  allowedTokenIds,
   now = () => Date.now(),
   requestTimeoutMs = REQUEST_TIMEOUT_MS,
 } = {}) {
@@ -51,6 +52,7 @@ export function createConsoleCreditService({
   const credBase = normalizeBaseUrl(credBaseUrl, 'CRED API base URL');
   const minimumScore = boundedInteger(minCredScore, 'minimum CRED score', 0, 100);
   const timeoutMs = boundedInteger(requestTimeoutMs, 'credit request timeout', 100, 30_000);
+  const allowedTokenIdSet = normalizeAllowedTokenIds(allowedTokenIds);
   const pendingChallenges = new Map();
   const sessions = new Map();
   const quotes = new Map();
@@ -65,6 +67,9 @@ export function createConsoleCreditService({
 
   function subject(identity) {
     const normalized = normalizeIdentity(identity);
+    if (!allowedTokenIdSet.has(normalized.tokenId)) {
+      throw new ConsoleCreditError('credit_private_beta_restricted', 'Credit is not enabled for this Looper.', { status: 403 });
+    }
     return { ...normalized, account: deriveReleasedLooperAccount(normalized.tokenId).toLowerCase() };
   }
 
@@ -608,6 +613,10 @@ function normalizeBaseUrl(value, label) {
 }
 function normalizeSessionKey(value) { return boundedText(value, 'Console credit session key', 8, 256); }
 function canonicalId(value, label) { const text = String(value ?? ''); if (!/^[1-9]\d*$/u.test(text)) throw new TypeError(label + ' is invalid.'); return text; }
+function normalizeAllowedTokenIds(value) {
+  if (!Array.isArray(value) || value.length === 0) throw new TypeError('Allowed Looper token IDs are required.');
+  return new Set(value.map((tokenId) => canonicalId(tokenId, 'Allowed Looper token ID')));
+}
 function boundedId(value, label) { const text = boundedText(value, label, 1, 128); if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(text)) throw new ConsoleCreditError('invalid_request', label + ' is invalid.'); return text; }
 function normalizeAddress(value, label) { try { return getAddress(String(value)).toLowerCase(); } catch { throw new ConsoleCreditError('invalid_response', label + ' is invalid.', { status: 502 }); } }
 function boundedText(value, label, min, max) { const text = String(value ?? '').trim(); if (text.length < min || text.length > max) throw new ConsoleCreditError('invalid_response', label + ' is invalid.', { status: 502 }); return text; }

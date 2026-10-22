@@ -98,6 +98,7 @@ export function parseServerOptions(argv = [], env = process.env) {
     loopersCredTimeoutMs: parseBoundedPositiveInteger(env.MULTIPASS_LOOPER_CRED_TIMEOUT_MS, DEFAULT_LOOPER_CRED_TIMEOUT_MS, 'MULTIPASS_LOOPER_CRED_TIMEOUT_MS', 30_000),
     loopersCredConcurrency: parseBoundedPositiveInteger(env.MULTIPASS_LOOPER_CRED_CONCURRENCY, DEFAULT_LOOPER_CRED_CONCURRENCY, 'MULTIPASS_LOOPER_CRED_CONCURRENCY', 16),
     consoleCreditEnabled: parseStrictBoolean(env.MULTIPASS_CREDIT_ENABLED, 'MULTIPASS_CREDIT_ENABLED') ?? false,
+    consoleCreditAllowedLoopers: parseCanonicalTokenIdList(env.MULTIPASS_CREDIT_ALLOWED_TOKEN_IDS, 'MULTIPASS_CREDIT_ALLOWED_TOKEN_IDS'),
     consoleCreditApiBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_CREDIFI_API_BASE_URL, 'MULTIPASS_CREDIFI_API_BASE_URL') ?? DEFAULT_CREDIFI_API_BASE_URL,
     consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_CREDIT_CRED_BASE_URL, 'MULTIPASS_CREDIT_CRED_BASE_URL') ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
     consoleCreditMinCred: parseBoundedNonnegativeInteger(env.MULTIPASS_CREDIT_MIN_CRED, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'MULTIPASS_CREDIT_MIN_CRED', 100),
@@ -190,6 +191,7 @@ export async function startServer(options = {}) {
     loopersCredTimeoutMs: parseBoundedPositiveInteger(options.loopersCredTimeoutMs, DEFAULT_LOOPER_CRED_TIMEOUT_MS, 'loopersCredTimeoutMs', 30_000),
     loopersCredConcurrency: parseBoundedPositiveInteger(options.loopersCredConcurrency, DEFAULT_LOOPER_CRED_CONCURRENCY, 'loopersCredConcurrency', 16),
     consoleCreditEnabled: options.consoleCreditEnabled === true,
+    consoleCreditAllowedLoopers: parseCanonicalTokenIdList(options.consoleCreditAllowedLoopers, 'consoleCreditAllowedLoopers'),
     consoleCreditApiBaseUrl: normalizeOptionalBaseUrl(options.consoleCreditApiBaseUrl ?? DEFAULT_CREDIFI_API_BASE_URL, 'consoleCreditApiBaseUrl'),
     consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(options.consoleCreditCredBaseUrl ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL, 'consoleCreditCredBaseUrl'),
     consoleCreditMinCred: parseBoundedNonnegativeInteger(options.consoleCreditMinCred, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'consoleCreditMinCred', 100),
@@ -280,6 +282,7 @@ export async function startServer(options = {}) {
       apiBaseUrl: parsed.consoleCreditApiBaseUrl,
       credBaseUrl: parsed.consoleCreditCredBaseUrl,
       minCredScore: parsed.consoleCreditMinCred,
+      allowedTokenIds: parsed.consoleCreditAllowedLoopers,
       requestTimeoutMs: parsed.consoleCreditTimeoutMs,
     })
     : null);
@@ -904,6 +907,18 @@ function parseStringList(value) {
     .split(',')
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function parseCanonicalTokenIdList(value, source) {
+  const entries = Array.isArray(value) ? value : parseStringList(value);
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of entries) {
+    const tokenId = String(entry ?? '').trim();
+    if (!/^[1-9]\d*$/u.test(tokenId)) throw new Error('Invalid Looper token ID for ' + source + ': ' + entry);
+    if (!seen.has(tokenId)) { seen.add(tokenId); normalized.push(tokenId); }
+  }
+  return normalized;
 }
 
 function normalizeOptionalBaseUrl(value, source) {

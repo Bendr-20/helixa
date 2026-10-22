@@ -92,16 +92,30 @@ async function login(service) {
   assert.equal(JSON.stringify(result).includes('secret-bearer-token'), false);
 }
 
+test('private beta allowlist fails closed before any CRED or Credifi request', async () => {
+  const fixture = createFetchFixture();
+  assert.throws(
+    () => createConsoleCreditService({ allowedTokenIds: [], fetchImpl: fixture.fetchImpl }),
+    /allowed Looper token IDs/i,
+  );
+  const service = createConsoleCreditService({ allowedTokenIds: ['3802'], fetchImpl: fixture.fetchImpl });
+  await assert.rejects(
+    () => service.requestLoginChallenge({ sessionKey: 'session-1', identity: identity() }),
+    error => error.code === 'credit_private_beta_restricted' && error.status === 403,
+  );
+  assert.deepEqual(fixture.calls, []);
+});
+
 test('CRED gate binds the exact Looper identity and fails closed below the beta floor', async () => {
   const fixture = createFetchFixture({ score: 39 });
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await assert.rejects(() => service.requestLoginChallenge({ sessionKey: 'session-1', identity: identity() }), error => error.code === 'cred_gate_failed' && error.status === 403);
   assert.equal(fixture.calls.some(call => call.key.includes('/api/auth/wallet-login')), false);
 });
 
 test('Credifi login keeps the bearer token server-side and overview returns bounded borrower state', async () => {
   const fixture = createFetchFixture();
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const overview = await service.getOverview({ sessionKey: 'session-1', identity: identity() });
   assert.equal(overview.cred.score, 42);
@@ -117,7 +131,7 @@ test('Credifi login keeps the bearer token server-side and overview returns boun
 
 test('vouch acceptance validates the offered commitment and rereads accepted state', async () => {
   const fixture = createFetchFixture();
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const accepted = await service.acceptVouch({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1' });
   assert.equal(accepted.status, 'accepted');
@@ -126,7 +140,7 @@ test('vouch acceptance validates the offered commitment and rereads accepted sta
 
 test('EVC preparation validates live config and wraps the broad permission through the Looper account', async () => {
   const fixture = createFetchFixture(); fixture.setCommitmentStatus('accepted');
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const prepared = await service.prepareAuthorization({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1' });
   assert.equal(prepared.required, true);
@@ -143,7 +157,7 @@ test('EVC preparation validates live config and wraps the broad permission throu
 
 test('quote and borrow are separate and loan creation reuses the reviewed unexpired quote exactly once', async () => {
   const fixture = createFetchFixture({ authorization: true }); fixture.setCommitmentStatus('accepted');
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const preview = await service.previewLoan({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1', amount: 5, maxAprPercent: 25 });
   assert.equal(preview.quote.quoteId, 'quote-1');
@@ -159,7 +173,7 @@ test('quote and borrow are separate and loan creation reuses the reviewed unexpi
 
 test('Credifi challenge must bind the exact Looper, domain, Base chain, fresh nonce, and timestamp', async () => {
   const fixture = createFetchFixture({ challengeMessage: loginMessage('0x3333333333333333333333333333333333333333') });
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await assert.rejects(
     () => service.requestLoginChallenge({ sessionKey: 'session-1', identity: identity() }),
     error => error.code === 'login_challenge_mismatch' && error.status === 422,
@@ -169,7 +183,7 @@ test('Credifi challenge must bind the exact Looper, domain, Base chain, fresh no
 test('authorization rejects non-canonical calldata and non-Base-USDC vault identity', async () => {
   const trailingFixture = createFetchFixture({ authorizationData: TXN_DATA + '00'.repeat(32) });
   trailingFixture.setCommitmentStatus('accepted');
-  const trailingService = createConsoleCreditService({ fetchImpl: trailingFixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const trailingService = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: trailingFixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(trailingService);
   await assert.rejects(
     () => trailingService.prepareAuthorization({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1' }),
@@ -178,7 +192,7 @@ test('authorization rejects non-canonical calldata and non-Base-USDC vault ident
 
   const assetFixture = createFetchFixture({ assetAddress: '0x4444444444444444444444444444444444444444' });
   assetFixture.setCommitmentStatus('accepted');
-  const assetService = createConsoleCreditService({ fetchImpl: assetFixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const assetService = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: assetFixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(assetService);
   await assert.rejects(
     () => assetService.prepareAuthorization({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1' }),
@@ -193,7 +207,7 @@ test('concurrent borrow requests consume a quote atomically before any provider 
   const pending = new Promise((resolve) => { releaseCreate = resolve; });
   const fixture = createFetchFixture({ authorization: true, createLoanImpl: async () => { enteredCreate(); await pending; return json({ loan: { id: 'loan-1', status: 'approved', amount: 5, marketId: market().marketId, disburseTo: ACCOUNT, disbursement: { chainId: 8453, marketId: market().marketId, loanOwner: ACCOUNT, tokenAddress: USDC } } }); } });
   fixture.setCommitmentStatus('accepted');
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const preview = await service.previewLoan({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1', amount: 5, maxAprPercent: 25 });
   const request = { sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1', quoteId: 'quote-1', quoteSha256: preview.quoteSha256, confirmBorrow: true };
@@ -208,7 +222,7 @@ test('concurrent borrow requests consume a quote atomically before any provider 
 test('an indeterminate borrow locks all later quotes for the Looper', async () => {
   const fixture = createFetchFixture({ authorization: true, createLoanImpl: async () => { throw new Error('provider connection dropped after submit'); } });
   fixture.setCommitmentStatus('accepted');
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const preview = await service.previewLoan({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1', amount: 5, maxAprPercent: 25 });
   await assert.rejects(
@@ -228,7 +242,7 @@ test('quote arithmetic must reconcile principal, proceeds, schedule, and total r
   inconsistent.fee.netProceedsMicro = 4_999_999;
   const fixture = createFetchFixture({ authorization: true, quotePayload: inconsistent });
   fixture.setCommitmentStatus('accepted');
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   await assert.rejects(
     () => service.previewLoan({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1', amount: 5, maxAprPercent: 25 }),
@@ -243,7 +257,7 @@ test('concurrent vouch acceptance is serialized before provider mutation', async
   const entered = new Promise((resolve) => { enteredAction = resolve; });
   const pending = new Promise((resolve) => { releaseAction = resolve; });
   const fixture = createFetchFixture({ vouchActionImpl: async () => { enteredAction(); await pending; } });
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   const first = service.acceptVouch({ sessionKey: 'session-1', identity: identity(), commitmentId: 'vouch-1' });
   await entered;
@@ -259,7 +273,7 @@ test('concurrent vouch acceptance is serialized before provider mutation', async
 
 test('provider-controlled errors are projected locally without bearer or diagnostic leakage', async () => {
   const fixture = createFetchFixture({ failFlags: true });
-  const service = createConsoleCreditService({ fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
+  const service = createConsoleCreditService({ allowedTokenIds: ['2431'], fetchImpl: fixture.fetchImpl, now: () => Date.parse('2026-10-21T22:30:00.000Z') });
   await login(service);
   await assert.rejects(
     () => service.getOverview({ sessionKey: 'session-1', identity: identity() }),
