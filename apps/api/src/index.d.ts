@@ -58,6 +58,19 @@ export interface MultipassLogger {
   warn?(event: Record<string, unknown>): void;
 }
 
+export interface ConsoleCreditService {
+  requestLoginChallenge(input: Record<string, unknown>): Promise<unknown>;
+  verifyLogin(input: Record<string, unknown>): Promise<unknown>;
+  getOverview(input: Record<string, unknown>): Promise<unknown>;
+  acceptVouch(input: Record<string, unknown>): Promise<unknown>;
+  prepareAuthorization(input: Record<string, unknown>): Promise<unknown>;
+  requestTwoFactor(input: Record<string, unknown>): Promise<unknown>;
+  verifyTwoFactor(input: Record<string, unknown>): Promise<unknown>;
+  previewLoan(input: Record<string, unknown>): Promise<unknown>;
+  createLoan(input: Record<string, unknown>): Promise<unknown>;
+  revokeAll?(input: { sessionKey: string }): void;
+}
+
 export interface MultipassApiOptions {
   store: MemoryStore;
   baseUrl?: string;
@@ -81,6 +94,7 @@ export interface MultipassApiOptions {
   loopersPublicClients?: unknown[];
   loopersAuthorizer?: (input: { tokenId: string; wallet: string }) => Promise<Record<string, unknown>>;
   consoleAuthStore?: unknown;
+  consoleCreditService?: ConsoleCreditService | null;
   consoleRuntimeRegistry?: unknown;
   bankrLlmKey?: string | null;
   bankrLlmModel?: string | null;

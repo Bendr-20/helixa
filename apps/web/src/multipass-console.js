@@ -9,6 +9,7 @@ import { renderMissionEditor } from './missions/mission-editor.js';
 import { renderMissionWorkspace } from './missions/mission-workspace.js';
 import { renderMissionSettlement } from './missions/mission-settlement.js';
 import { renderSwarmLaunchpad } from './missions/swarm-launchpad.js';
+import { renderConsoleCreditPanel } from './console-credit.js';
 
 const CONSOLE_SAFETY_NOTE = 'Review-only operator surface. Your agent can brief and propose, but every action still waits for you.';
 const DEFAULT_CONSOLE_MISSION = 'Watch this agent, keep memory in Sibyl, and brief me before any proposal or outside action.';
@@ -78,7 +79,7 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
   const needsAgentSelection = walletAuthenticated && agentRoster.status === 'loaded' && activeAgentCount > 0 && !activeAgent?.tokenId;
   const showAgentGallery = walletAuthenticated && !activeAgent?.tokenId;
   const activeAgentWallet = activeAgent?.tokenId ? normalizeLooperAgentWallet(state.looperAgentWallet, activeAgent.tokenId) : null;
-  const requestedWorkspaceView = ['chat', 'wallet', 'multipass', 'codex', 'network', 'missions'].includes(state.consoleWorkspaceView)
+  const requestedWorkspaceView = ['chat', 'wallet', 'multipass', 'codex', 'network', 'credit', 'missions'].includes(state.consoleWorkspaceView)
     ? state.consoleWorkspaceView
     : null;
   const workspaceView = requestedWorkspaceView === 'missions'
@@ -150,6 +151,7 @@ export function createMultipassConsoleSnapshot({ state = {}, agents = [] } = {})
       selectedTokenId: activeAgent?.tokenId ?? null,
     }),
     restapNetwork: createConsoleRestapNetworkSnapshot(state.consoleRestapNetwork, activeAgent?.tokenId),
+    credit: state.consoleCredit ?? null,
     missions: state.consoleMissions ?? { status: 'disabled', missions: [] },
     launchpad: { ...(state.consoleLaunchpad ?? { status: 'idle', draft: { members: [], app: {}, token: {} }, manifest: null, error: null }), authenticatedWallet: state.consoleAuthenticatedWallet ?? null },
     rosterDrawers: {
@@ -301,6 +303,8 @@ function renderConsolePrimaryWorkspace(snapshot = {}) {
     workspace = renderIdentityCard(snapshot.identityCard);
   } else if (snapshot.workspaceView === 'network') {
     workspace = renderConsoleRestapNetworkPanel(snapshot.restapNetwork);
+  } else if (snapshot.workspaceView === 'credit') {
+    workspace = renderConsoleCreditPanel(snapshot.credit ?? {}, { tokenId: snapshot.session?.activeAgentId, agentName: snapshot.identityCard?.name, account: snapshot.identityCard?.agentWallet?.account });
   } else {
     workspace = shouldGateConsoleChat(snapshot.agentThread)
       ? renderConsoleActivationGate(snapshot)
@@ -374,7 +378,7 @@ function renderConsoleMainRosterDrawer(snapshot = {}) {
 function renderConsoleWorkspaceNav(snapshot = {}, { mobile = false } = {}) {
   const agentAvailable = Boolean(snapshot.session?.activeAgentId);
   const walletAvailable = Boolean(agentAvailable && snapshot.identityCard?.agentWallet);
-  const view = ['wallet', 'multipass', 'codex', 'network', 'missions'].includes(snapshot.workspaceView) ? snapshot.workspaceView : 'chat';
+  const view = ['wallet', 'multipass', 'codex', 'network', 'credit', 'missions'].includes(snapshot.workspaceView) ? snapshot.workspaceView : 'chat';
   const networkStatus = getConsoleRestapNetworkStatus(snapshot.restapNetwork);
   const placementClass = mobile ? 'console-workspace-nav-mobile' : 'console-workspace-nav-sidebar';
   return `
@@ -393,6 +397,9 @@ function renderConsoleWorkspaceNav(snapshot = {}, { mobile = false } = {}) {
       </button>
       <button type="button" data-action="set-console-workspace-view" data-console-view="multipass" ${view === 'multipass' ? 'aria-current="page"' : ''} ${agentAvailable ? '' : 'disabled'}>
         <span>Multipass</span><small>Manage</small>
+      </button>
+      <button type="button" data-action="set-console-workspace-view" data-console-view="credit" ${view === 'credit' ? 'aria-current="page"' : ''} ${agentAvailable ? '' : 'disabled'}>
+        <span>Credit</span><small>${agentAvailable ? 'Private beta' : 'Select agent'}</small>
       </button>
       <button type="button" class="console-network-nav console-network-nav-${networkStatus.key}" data-action="set-console-workspace-view" data-console-view="network" data-restap-focus-key="nav-network-${mobile ? 'mobile' : 'sidebar'}" aria-label="Network, RESTAP, ${networkStatus.label}" ${view === 'network' ? 'aria-current="page"' : ''} ${agentAvailable ? '' : 'disabled'}>
         <span>Network</span><small><i aria-hidden="true"></i>RESTAP <b>${networkStatus.label}</b></small>
