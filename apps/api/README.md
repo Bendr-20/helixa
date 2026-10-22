@@ -19,8 +19,9 @@ Activation and saved records:
 - `POST /api/multipass/activate` preview a live AgentDNA activation without saving it
 - `POST /api/multipass` activate and persist a public Multipass record
 
-Loopers launch intake:
+Loopers wallet and launch intake:
 
+- `GET /api/loopers/{token_id}/wallet` resolve one verified activated Looper wallet for an exact transfer recipient
 - `POST /api/loopers/allowlist/register` register one wallet address for the Loopers allowlist
 - `GET /api/loopers/allowlist/status?address={address}` check whether one wallet address is registered
 - `GET /api/loopers/allowlist/proof?address={address}` fetch a frozen mint proof from the final Merkle snapshot
@@ -62,6 +63,18 @@ pnpm api:bendr
 ```
 
 Default URL: `http://127.0.0.1:8787`.
+
+### Canonical activated Looper wallet
+
+`GET /api/loopers/{token_id}/wallet` is a public, read-only transfer resolver. It derives the reviewed released account, requires at least two distinct Base providers to agree at the same finalized block, verifies exact deployed proxy runtime, confirms the account's NFT binding and current owner, and compares it with the address currently advertised by the collection. It returns a recipient only when every check passes. Successful reads are briefly cached and concurrent reads are coalesced; token IDs, provider latency, global request rate, and resolver concurrency are bounded.
+
+The route fails closed without a destination when the released account is undeployed, provider evidence disagrees, runtime or binding evidence is wrong, or the current account owner does not match the NFT owner. Integrations must copy `transfer_policy.recipient` exactly and must not independently recalculate a wallet from the Looper token ID when `token_id_lookup_safe` is false. This route performs no transaction, wallet deployment, approval, or Pantheon action.
+
+Example:
+
+```bash
+curl https://api.helixa.xyz/api/loopers/1247/wallet
+```
 
 ### Canonical Looper CRED
 
@@ -139,6 +152,7 @@ Useful routes:
 - `POST /api/loopers/allowlist/register`
 - `GET /api/loopers/allowlist/status?address=0x...`
 - `GET /api/loopers/allowlist/proof?address=0x...`
+- `GET /api/loopers/1247/wallet`
 
 Bendr fixture routes use the same pattern with `bendr-2`.
 
