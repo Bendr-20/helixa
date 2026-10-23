@@ -19,7 +19,7 @@ function response() {
   };
 }
 
-test('GET /:id/cred serves the dedicated record and unsupported Loopers return 404', async () => {
+test('GET /:id/cred serves activated Looper records and unsupported Loopers return 404', async () => {
   const { module, router } = fakeExpress();
   const service = {
     async getByLooperId(id) {

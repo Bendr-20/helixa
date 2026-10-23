@@ -14,7 +14,7 @@ function createLooperCredRouter({ expressModule, service = createLooperCredServi
     } catch (error) {
       res.set('Cache-Control', 'no-store');
       if (error && error.code === 'UNSUPPORTED_LOOPER') {
-        return res.status(404).json({ error: 'UNSUPPORTED_LOOPER', detail: 'Looper is not in the closed live CRED pilot registry' });
+        return res.status(404).json({ error: 'UNSUPPORTED_LOOPER', detail: 'Looper does not have a verified activated released account' });
       }
       return res.status(503).json({
         error: 'LOOPER_CRED_UNAVAILABLE',
