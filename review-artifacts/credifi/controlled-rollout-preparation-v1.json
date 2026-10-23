@@ -126,12 +126,12 @@
   },
   "credifiDocs": {
     "url": "https://credi.fi/agent-docs",
-    "fetchedAt": "2026-10-23T19:43:45.709Z",
+    "fetchedAt": "2026-10-23T22:57:17.581Z",
     "erc1271LoginDocumented": true,
     "erc6551Documented": true,
     "vouchStatusAndAcceptanceDocumented": true,
-    "loanPreviewCreateChainInfoAndIndexerDocumented": false,
-    "compatibilityStatus": "BLOCKED_ON_PROVIDER_API_CONTRACT_CONFIRMATION"
+    "loanPreviewCreateChainInfoAndIndexerDocumented": true,
+    "compatibilityStatus": "DOCUMENTED_FLOW_MATCHED_PREPARATION_READY"
   },
   "rollout": {
     "currentProduction": {

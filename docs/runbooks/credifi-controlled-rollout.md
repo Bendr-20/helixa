@@ -4,9 +4,9 @@
 
 **PREPARATION ONLY.** The #2431 compatibility pilot already completed end to end on 2026-10-21 and must not be repeated as a prerequisite. Credit remains disabled in production. This package authorizes no authentication, invitation, vouch acceptance, EVC authorization, token approval, loan, repayment, deployment, or configuration change.
 
-## Current blocker
+## Current provider contract
 
-The live Credifi guide fetched on 2026-10-23 still documents deployed ERC-1271 login, ERC-6551 accounts, wallet-executed authorization/approvals/repayment, flags, and vouch discovery/acceptance. It no longer publishes the previously reviewed loan preview/create, chain-info, or indexer endpoints. Do not enable the rollout until Credifi confirms the current exact API contract or restores equivalent public documentation, and the implementation is reconciled against it.
+The live Credifi guide was re-fetched in full on 2026-10-23. It documents deployed ERC-1271 login, ERC-6551 accounts, wallet-executed authorization/approvals/repayment, flags, vouch discovery/acceptance, markets, quote preview, loan creation/listing, chain-info, indexer refresh, and repayment. The earlier blocker was a false result caused by inspecting truncated extracted content; the API reference at the end of the same page contains the endpoints. The reviewed implementation remains aligned with the documented direct ERC-6551 flow.
 
 ## Prepared invite cohort
 
@@ -29,7 +29,7 @@ The candidates have five distinct current owners. Selection used verified identi
 
 ## Promotion gates
 
-1. **Provider contract gate:** Credifi confirms the exact current login, flags, vouch, market, quote, authorization, 2FA, loan creation, loan listing, chain-info, indexing, and repayment contracts. Update code/tests for any drift.
+1. **Provider contract gate — passed for preparation:** the live guide documents the exact current login, flags, vouch, market, quote, authorization, 2FA, loan creation, loan listing, chain-info, indexing, and repayment paths. Re-fetch it immediately before each enrollment and stop on material drift.
 2. **Owner enrollment gate:** each current owner opts in. Reverify ownership, canonical released account runtime, `token()`, ERC-8004 controller, custody epoch, and public CRED at one fresh dual-provider block. Do not enroll transferred Loopers.
 3. **Signer compatibility gate:** the owner proves the exact fresh Credifi challenge is accepted through the Looper account's ERC-1271 path. Stop after flags and read-only borrower state on first contact.
 4. **Allowlist gate:** add only opted-in token IDs. Keep `MULTIPASS_CREDIT_ENABLED=false` while validating startup and denial boundaries.
@@ -43,4 +43,4 @@ Set `MULTIPASS_CREDIT_ENABLED=false`, preserve the explicit allowlist, restart t
 
 ## Next authorized action
 
-Resolve the provider API-contract blocker. After that, request explicit approval before contacting candidate owners or changing production configuration.
+Request explicit approval before contacting candidate owners. Owner outreach, authentication, allowlist changes, production enablement, and every financial action remain separately gated.

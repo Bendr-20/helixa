@@ -14,8 +14,8 @@ test('Credifi controlled rollout packet is preparation-only and owner-diverse', 
   assert.equal(packet.rollout.externalInviteAuthorized, false);
   assert.equal(packet.completedControl.tokenId, '2431');
   assert.equal(packet.completedControl.repeatPilot, false);
-  assert.equal(packet.credifiDocs.compatibilityStatus, 'BLOCKED_ON_PROVIDER_API_CONTRACT_CONFIRMATION');
-  assert.equal(packet.credifiDocs.loanPreviewCreateChainInfoAndIndexerDocumented, false);
+  assert.equal(packet.credifiDocs.compatibilityStatus, 'DOCUMENTED_FLOW_MATCHED_PREPARATION_READY');
+  assert.equal(packet.credifiDocs.loanPreviewCreateChainInfoAndIndexerDocumented, true);
   assert.deepEqual(packet.rollout.currentProduction, { enabled: false, allowedTokenIds: ['2431'] });
   assert.deepEqual(packet.rollout.proposedCohortTokenIds, ['11', '32', '46', '51', '70']);
   assert.equal(packet.candidates.length, 5);
