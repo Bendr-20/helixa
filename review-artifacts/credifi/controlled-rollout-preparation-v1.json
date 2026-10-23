@@ -1,0 +1,156 @@
+{
+  "schemaVersion": "credifi-looper-rollout-preparation-v1",
+  "preparedAt": "2026-10-23T19:43:36.711Z",
+  "chainId": 8453,
+  "block": {
+    "number": "52997613",
+    "hash": "0xb7bad3b39764c21414482073be1584d8ca69b6270ed68ef160f68d362eb638a8"
+  },
+  "providerHeads": [
+    {
+      "id": "base_publicnode",
+      "url": "https://base-rpc.publicnode.com",
+      "number": "52997633"
+    },
+    {
+      "id": "base_blastapi",
+      "url": "https://base-mainnet.public.blastapi.io",
+      "number": "52997633"
+    }
+  ],
+  "datasets": {
+    "liveCandidateEvidence": {
+      "blockNumber": "52997613",
+      "subjectCount": 5
+    },
+    "pantheonLooperMap": {
+      "blockNumber": "52995624",
+      "verifiedLooperStakers": 271
+    },
+    "publicScorePublication": {
+      "mode": "on-demand-live-endpoint",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "verifiedCandidateCount": 5
+    }
+  },
+  "selectionRules": {
+    "excludeCompletedControlTokenId": "2431",
+    "uniqueCurrentOwner": true,
+    "verifiedReleasedAccount": true,
+    "verifiedCurrentController": true,
+    "publicCredFloor": 40,
+    "activePantheonPosition": true,
+    "selectionOrder": "ascending_token_id_by_unique_owner",
+    "note": "Activity criteria only; not a creditworthiness or repayment-reliability claim."
+  },
+  "candidates": [
+    {
+      "subjectId": "looper:8453:0x1649cd37f4748807b4882fc48765ba0b2affa94a:11",
+      "tokenId": "11",
+      "account": "0xbaa56a2ef2dbabedaa0828c3c9c8c06b1ab46b3f",
+      "owner": "0x2027af123cc4c3ced6ad389081e532af47b4dd89",
+      "erc8004AgentId": "86180",
+      "score": 42,
+      "ratingStatus": "PROVISIONAL",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "activePantheonPosition": true,
+      "selectionStatus": "INVITE_PENDING_OWNER_OPT_IN",
+      "financialEligibilityClaim": false
+    },
+    {
+      "subjectId": "looper:8453:0x1649cd37f4748807b4882fc48765ba0b2affa94a:32",
+      "tokenId": "32",
+      "account": "0xd7482ca20ea6f42658344c040e8bd3d6a81fc857",
+      "owner": "0xdeed0d24889c65bd0165125043e1269c0d306536",
+      "erc8004AgentId": "86201",
+      "score": 42,
+      "ratingStatus": "PROVISIONAL",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "activePantheonPosition": true,
+      "selectionStatus": "INVITE_PENDING_OWNER_OPT_IN",
+      "financialEligibilityClaim": false
+    },
+    {
+      "subjectId": "looper:8453:0x1649cd37f4748807b4882fc48765ba0b2affa94a:46",
+      "tokenId": "46",
+      "account": "0xbb27f6337cc55b43547d4b6e0ef30afb2ddd87fb",
+      "owner": "0x36b67f9754ad8eda50d32b8f5725fc04a37b1618",
+      "erc8004AgentId": "86215",
+      "score": 42,
+      "ratingStatus": "PROVISIONAL",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "activePantheonPosition": true,
+      "selectionStatus": "INVITE_PENDING_OWNER_OPT_IN",
+      "financialEligibilityClaim": false
+    },
+    {
+      "subjectId": "looper:8453:0x1649cd37f4748807b4882fc48765ba0b2affa94a:51",
+      "tokenId": "51",
+      "account": "0xa209cf4063fcdc1927339ead0988b35e68897379",
+      "owner": "0x35c77eccd0e7f10df9bc46dbba1fc6368f8e853a",
+      "erc8004AgentId": "86220",
+      "score": 42,
+      "ratingStatus": "PROVISIONAL",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "activePantheonPosition": true,
+      "selectionStatus": "INVITE_PENDING_OWNER_OPT_IN",
+      "financialEligibilityClaim": false
+    },
+    {
+      "subjectId": "looper:8453:0x1649cd37f4748807b4882fc48765ba0b2affa94a:70",
+      "tokenId": "70",
+      "account": "0x71bc832652a2625cd30018ca49fcc697f3087a94",
+      "owner": "0xebca35ae43bc1b0739967c065b44b2ca770676d5",
+      "erc8004AgentId": "86241",
+      "score": 42,
+      "ratingStatus": "PROVISIONAL",
+      "methodologyId": "cred-looper-provisional-1.1.0",
+      "activePantheonPosition": true,
+      "selectionStatus": "INVITE_PENDING_OWNER_OPT_IN",
+      "financialEligibilityClaim": false
+    }
+  ],
+  "execution": {
+    "enabled": false,
+    "authenticationAuthorized": false,
+    "vouchAcceptanceAuthorized": false,
+    "evcAuthorizationAuthorized": false,
+    "borrowingAuthorized": false,
+    "repaymentAuthorized": false
+  },
+  "status": "PREPARATION_ONLY",
+  "completedControl": {
+    "tokenId": "2431",
+    "status": "COMPLETED_END_TO_END_2026-10-21",
+    "repeatPilot": false
+  },
+  "credifiDocs": {
+    "url": "https://credi.fi/agent-docs",
+    "fetchedAt": "2026-10-23T19:43:45.709Z",
+    "erc1271LoginDocumented": true,
+    "erc6551Documented": true,
+    "vouchStatusAndAcceptanceDocumented": true,
+    "loanPreviewCreateChainInfoAndIndexerDocumented": false,
+    "compatibilityStatus": "BLOCKED_ON_PROVIDER_API_CONTRACT_CONFIRMATION"
+  },
+  "rollout": {
+    "currentProduction": {
+      "enabled": false,
+      "allowedTokenIds": [
+        "2431"
+      ]
+    },
+    "proposedCohortTokenIds": [
+      "11",
+      "32",
+      "46",
+      "51",
+      "70"
+    ],
+    "enrollment": "OWNER_OPT_IN_REQUIRED",
+    "maxSimultaneousNewBorrowers": 1,
+    "releaseAuthorized": false,
+    "productionConfigChangeAuthorized": false,
+    "externalInviteAuthorized": false
+  }
+}
