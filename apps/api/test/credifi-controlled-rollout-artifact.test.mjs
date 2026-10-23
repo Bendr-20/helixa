@@ -17,14 +17,19 @@ test('Credifi controlled rollout packet is preparation-only and owner-diverse', 
   assert.equal(packet.credifiDocs.compatibilityStatus, 'DOCUMENTED_FLOW_MATCHED_PREPARATION_READY');
   assert.equal(packet.credifiDocs.loanPreviewCreateChainInfoAndIndexerDocumented, true);
   assert.deepEqual(packet.rollout.currentProduction, { enabled: false, allowedTokenIds: ['2431'] });
-  assert.deepEqual(packet.rollout.proposedCohortTokenIds, ['11', '32', '46', '51', '70']);
-  assert.equal(packet.candidates.length, 5);
-  assert.equal(new Set(packet.candidates.map(candidate => candidate.owner)).size, 5);
+  assert.deepEqual(packet.rollout.proposedCohortTokenIds, ["11","19","20","32","46","70","100","106","143","149","194","210","273","285","312","349","402","420","480","548","550","558","612","641","645","667","827","905","4151","941","1008","1090","1104","1169","1171","1442","1615","1687","1713","1787","1827","2015","2017","2150","2250","2285","2620","2653","2916","3328"]);
+  assert.equal(packet.rollout.preparedCohortSize, 50);
+  assert.equal(packet.rollout.distinctOwnerCount, 50);
+  assert.equal(packet.rollout.maxLoopersPerOwner, 1);
+  assert.equal(packet.rollout.maxSimultaneousNewBorrowers, 1);
+  assert.equal(packet.candidates.length, 50);
+  assert.equal(new Set(packet.candidates.map(candidate => candidate.owner)).size, 50);
+  assert.equal(packet.candidates.filter(candidate => candidate.activePantheonPosition).length, 17);
   for (const candidate of packet.candidates) {
-    assert.equal(candidate.score, 42);
+    assert.ok(candidate.score >= 40);
     assert.equal(candidate.ratingStatus, 'PROVISIONAL');
     assert.equal(candidate.methodologyId, 'cred-looper-provisional-1.1.0');
-    assert.equal(candidate.activePantheonPosition, true);
+    assert.equal(typeof candidate.activePantheonPosition, 'boolean');
     assert.equal(candidate.selectionStatus, 'INVITE_PENDING_OWNER_OPT_IN');
     assert.equal(candidate.financialEligibilityClaim, false);
   }

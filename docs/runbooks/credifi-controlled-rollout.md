@@ -10,21 +10,17 @@ The live Credifi guide was re-fetched in full on 2026-10-23. It documents deploy
 
 ## Prepared invite cohort
 
-The machine-readable packet is [controlled-rollout-preparation-v1.json](../../review-artifacts/credifi/controlled-rollout-preparation-v1.json). At Base block **52,997,613** (hash `0xb7bad3b39764c21414482073be1584d8ca69b6270ed68ef160f68d362eb638a8`), PublicNode and BlastAPI agreed on current NFT owner, ERC-6551 owner/token binding, ERC-8004 identity, and controller authority. The public CRED endpoint independently published methodology `cred-looper-provisional-1.1.0`, score 42, and an active Pantheon position for each candidate.
+The machine-readable packet is [controlled-rollout-preparation-v1.json](../../review-artifacts/credifi/controlled-rollout-preparation-v1.json). At Base block **53,004,584** (hash `0x1df094618665245be760888c1f864b5f700cbc0698b78eb885e8ec7a5ef09a70`), PublicNode and BlastAPI agreed on current NFT owner, ERC-6551 owner/token binding, ERC-8004 identity, and controller authority for **50 Loopers controlled by 50 distinct owners**. The live production scoring service independently produced methodology `cred-looper-provisional-1.1.0` with CRED >= 40 for every candidate.
 
-- Looper #11 — invite pending owner opt-in
-- Looper #32 — invite pending owner opt-in
-- Looper #46 — invite pending owner opt-in
-- Looper #51 — invite pending owner opt-in
-- Looper #70 — invite pending owner opt-in
+Prepared token IDs: #11, #19, #20, #32, #46, #70, #100, #106, #143, #149, #194, #210, #273, #285, #312, #349, #402, #420, #480, #548, #550, #558, #612, #641, #645, #667, #827, #905, #4151, #941, #1008, #1090, #1104, #1169, #1171, #1442, #1615, #1687, #1713, #1787, #1827, #2015, #2017, #2150, #2250, #2285, #2620, #2653, #2916, #3328.
 
-The candidates have five distinct current owners. Selection used verified identity, active Pantheon participation, CRED >= 40, one Looper per owner, and ascending token ID. These are reproducible activity/compatibility criteria, **not** claims of creditworthiness or repayment reliability. No owner has been contacted.
+Selection used verified released-v1 activation, current identity/controller proof, CRED >= 40, one Looper per owner, and ascending token ID. Pantheon participation is optional supporting evidence: 17 of 50 currently have an active position. Neither stake size nor selection is a claim of creditworthiness or repayment reliability. Every candidate remains invite-pending owner opt-in; no owner has been contacted.
 
 ## Dataset boundaries
 
-- **Live cohort identity evidence:** five candidates, block 52,997,613.
+- **Live cohort identity evidence:** 50 candidates controlled by 50 distinct owners, block 53,004,584.
 - **Pantheon-to-Looper map:** 271 verified Looper stakers, block 52,995,624. This is discovery evidence, not current Credifi eligibility.
-- **Public scores:** on-demand live records for the five candidates under `cred-looper-provisional-1.1.0`.
+- **Public scores:** direct live production-service records for all 50 candidates under `cred-looper-provisional-1.1.0`; public-edge batching is intentionally avoided because that surface is rate-limited.
 - **Completed control:** Looper #2431. It remains the only production allowlist entry while Credit is disabled.
 
 ## Promotion gates
