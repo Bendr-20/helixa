@@ -483,6 +483,7 @@ export async function startServer(options = {}) {
         store: swarmInvitationStore,
         authority: invitationAuthority,
         createId: (kind) => kind + '_' + randomBytes(32).toString('hex'),
+        verificationPaceMs: 5_000,
       });
     }
 
