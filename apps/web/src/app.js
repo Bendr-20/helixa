@@ -1977,7 +1977,59 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     state = { ...state, consoleWorkspaceView: view };
     render(root, state, handlers);
     if (view === 'missions' && ['idle', 'disabled', 'error'].includes(state.consoleMissions?.status)) void loadConsoleMissions();
-    if (view === 'credit' && ['idle', 'error', 'blocked'].includes(state.consoleCredit?.status)) void refreshConsoleCredit();
+    if (view === 'credit' && ['idle', 'error', 'blocked'].includes(state.consoleCredit?.status)) void refreshCredifiOwnerOptIn();
+  }
+
+  async function refreshCredifiOwnerOptIn() {
+    if (typeof activeConsoleCreditApi.optInStatus !== 'function') return refreshConsoleCredit();
+    let context;
+    try { context = createConsoleCreditContext(); } catch (error) {
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { status: 'error', record: null, error: error.message } } };
+      render(root, state, handlers);
+      return;
+    }
+    consoleCreditAbortController?.abort();
+    const controller = new AbortController();
+    consoleCreditAbortController = controller;
+    state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { status: 'loading', record: null, error: null } } };
+    render(root, state, handlers);
+    try {
+      const record = await activeConsoleCreditApi.optInStatus({ tokenId: context.tokenId, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { status: record.status === 'opted_in' ? 'opted_in' : 'eligible', record, error: null } } };
+    } catch (error) {
+      if (!isCurrentConsoleCreditContext(context) || error?.name === 'AbortError') return;
+      if (error?.status === 404 || error?.code === 'credifi_pilot_not_eligible') {
+        state = { ...state, consoleCredit: { ...state.consoleCredit, optIn: { status: 'unavailable', record: null, error: null } } };
+        consoleCreditAbortController = null;
+        return refreshConsoleCredit();
+      }
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { status: 'error', record: null, error: getConsoleCreditErrorMessage(error) } } };
+    } finally {
+      if (consoleCreditAbortController === controller) consoleCreditAbortController = null;
+      if (isCurrentConsoleCreditContext(context)) render(root, state, handlers);
+    }
+  }
+
+  async function submitCredifiOwnerOptIn() {
+    const context = createConsoleCreditContext();
+    if (state.consoleCredit?.optIn?.status !== 'eligible' || typeof activeConsoleCreditApi.submitOptIn !== 'function') return;
+    consoleCreditAbortController?.abort();
+    const controller = new AbortController();
+    consoleCreditAbortController = controller;
+    state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { ...state.consoleCredit.optIn, status: 'submitting', error: null } } };
+    render(root, state, handlers);
+    try {
+      const record = await activeConsoleCreditApi.submitOptIn({ tokenId: context.tokenId, csrfToken: context.csrfToken, signal: controller.signal });
+      if (!isCurrentConsoleCreditContext(context) || controller.signal.aborted) return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { status: 'opted_in', record, error: null } } };
+    } catch (error) {
+      if (!isCurrentConsoleCreditContext(context) || error?.name === 'AbortError') return;
+      state = { ...state, consoleCredit: { ...state.consoleCredit, status: 'idle', optIn: { ...state.consoleCredit.optIn, status: 'error', error: getConsoleCreditErrorMessage(error) } } };
+    } finally {
+      if (consoleCreditAbortController === controller) consoleCreditAbortController = null;
+      if (isCurrentConsoleCreditContext(context)) render(root, state, handlers);
+    }
   }
 
   function createConsoleCreditContext() {
@@ -3502,7 +3554,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -6152,6 +6204,7 @@ function bindProductHomeEvents(root, handlers, state) {
     cancel: handlers.cancelConsoleMissionEditor,
   });
   bindConsoleCredit(root, {
+    submitOptIn: handlers.submitCredifiOwnerOptIn,
     refresh: handlers.refreshConsoleCredit,
     login: handlers.loginConsoleCredit,
     acceptVouch: handlers.acceptConsoleCreditVouch,

@@ -1,4 +1,5 @@
 const CREDIT_PATH = '/api/multipass/console/credit';
+const CREDIFI_PILOT_OPT_IN_PATH = '/api/multipass/console/credifi-pilot/opt-in';
 
 export function createConsoleCreditApi({ fetchImpl = globalThis.fetch, apiBase = '' } = {}) {
   const post = async (action, body, csrfToken, signal) => {
@@ -19,7 +20,19 @@ export function createConsoleCreditApi({ fetchImpl = globalThis.fetch, apiBase =
     }
     return payload;
   };
+  const getOptInStatus = async ({ tokenId, signal }) => {
+    if (typeof fetchImpl !== 'function') throw new TypeError('Console credit fetch implementation is required.');
+    const query = new URLSearchParams({ tokenId: String(tokenId ?? '') });
+    const response = await fetchImpl(apiBase + CREDIFI_PILOT_OPT_IN_PATH + '?' + query, {
+      method: 'GET', headers: { accept: 'application/json' }, credentials: 'include', redirect: 'error', signal,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) throwConsoleCreditClientError(response, payload, 'Credifi pilot status request failed.');
+    return payload;
+  };
   return Object.freeze({
+    optInStatus: getOptInStatus,
+    submitOptIn: ({ tokenId, csrfToken, signal }) => postPilotOptIn({ fetchImpl, apiBase, tokenId, csrfToken, signal }),
     challenge: ({ tokenId, csrfToken, signal }) => post('challenge', { tokenId }, csrfToken, signal),
     verify: ({ tokenId, signature, csrfToken, signal }) => post('verify', { tokenId, signature }, csrfToken, signal),
     overview: ({ tokenId, csrfToken, signal }) => post('overview', { tokenId }, csrfToken, signal),
@@ -35,12 +48,16 @@ export function createConsoleCreditApi({ fetchImpl = globalThis.fetch, apiBase =
 export function createInitialConsoleCreditState(tokenId = null) {
   return Object.freeze({
     status: 'idle', selectedTokenId: tokenId == null ? null : String(tokenId), overview: null,
+    optIn: Object.freeze({ status: 'idle', record: null, error: null }),
     authorization: null, quote: null, error: null, notice: null,
   });
 }
 
 export function renderConsoleCreditPanel(credit = {}, context = {}) {
   const tokenId = String(context.tokenId ?? credit.selectedTokenId ?? '').trim();
+  const optIn = credit.optIn ?? { status: 'unavailable' };
+  const renderPilot = credit.status === 'idle' && optIn.status !== 'unavailable';
+  if (renderPilot) return renderCredifiPilotOptIn(optIn, { ...context, tokenId });
   const busy = ['loading', 'signing', 'mutating', 'authorizing', 'quoting', 'borrowing'].includes(credit.status);
   const overview = credit.overview;
   const cred = overview?.cred;
@@ -155,6 +172,7 @@ function isAuthorized(flags, market) {
 }
 
 export function bindConsoleCredit(root, handlers = {}) {
+  root.querySelector('[data-action="submit-credifi-owner-opt-in"]')?.addEventListener('click', () => handlers.submitOptIn?.());
   root.querySelector('[data-action="refresh-console-credit"]')?.addEventListener('click', () => handlers.refresh?.());
   root.querySelector('[data-action="login-console-credit"]')?.addEventListener('click', () => handlers.login?.());
   root.querySelectorAll('[data-action="accept-console-credit-vouch"]').forEach((button) => button.addEventListener('click', () => handlers.acceptVouch?.(button.dataset.commitmentId)));
@@ -173,3 +191,44 @@ function formatDate(value) { const time = Date.parse(String(value ?? '')); retur
 function shortAddress(value) { const text = String(value ?? ''); return text.length > 14 ? text.slice(0, 8) + '…' + text.slice(-6) : text; }
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
 function escapeAttribute(value) { return escapeHtml(value).replaceAll('\n', '&#10;').replaceAll('\r', '&#13;'); }
+
+
+async function postPilotOptIn({ fetchImpl, apiBase, tokenId, csrfToken, signal }) {
+  const response = await fetchImpl(apiBase + CREDIFI_PILOT_OPT_IN_PATH, {
+    method: 'POST',
+    headers: { accept: 'application/json', 'content-type': 'application/json', 'x-csrf-token': String(csrfToken ?? '') },
+    credentials: 'include', redirect: 'error', signal,
+    body: JSON.stringify({ tokenId: String(tokenId ?? ''), consent: true }),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throwConsoleCreditClientError(response, payload, 'Credifi pilot opt-in failed.');
+  return payload;
+}
+
+function throwConsoleCreditClientError(response, payload, fallback) {
+  const error = new Error(payload?.error?.message ?? fallback);
+  error.status = response.status;
+  error.code = payload?.error?.code ?? 'credit_unavailable';
+  error.details = payload?.error?.details;
+  throw error;
+}
+
+function renderCredifiPilotOptIn(optIn, context) {
+  const status = optIn?.status ?? 'idle';
+  const record = optIn?.record ?? null;
+  const tokenId = String(context.tokenId ?? '').trim();
+  const title = escapeHtml(context.agentName ?? ('Looper #' + tokenId));
+  if (status === 'loading') {
+    return '<section class="console-credit-workspace console-credifi-opt-in" aria-busy="true"><span class="console-gate-eyebrow">Preparation only · production disabled</span><h2>Verifying current owner</h2><p>Checking the authenticated wallet, current NFT ownership and controller authority, and the exact prepared cohort.</p></section>';
+  }
+  if (status === 'eligible' || status === 'submitting') {
+    return '<section class="console-credit-workspace console-credifi-opt-in" aria-busy="' + (status === 'submitting' ? 'true' : 'false') + '"><span class="console-gate-eyebrow">Preparation only · production disabled</span><h2>' + title + ' is invited to the prepared $50 Credifi pilot</h2><p>Record the current owner’s consent for Looper #' + escapeHtml(tokenId) + ' and its canonical released-v1 account. This does not accept a vouch, authorize EVC, request a quote, borrow funds, or enable Credit.</p><button type="button" data-action="submit-credifi-owner-opt-in" ' + (status === 'submitting' ? 'disabled' : '') + '>' + (status === 'submitting' ? 'Recording owner opt-in…' : 'Opt in to preparation') + '</button></section>';
+  }
+  if (status === 'opted_in') {
+    return '<section class="console-credit-workspace console-credifi-opt-in"><span class="console-gate-eyebrow">Preparation only · production disabled</span><h2>Owner opt-in recorded</h2><p>Consent for Looper #' + escapeHtml(tokenId) + ' is bound to the current owner and canonical released-v1 account for the prepared $' + escapeHtml(record?.amount_usd ?? '50.00') + ' cohort.</p><p>No vouch was accepted, no EVC permission was granted, no quote was requested, no funds were borrowed, and Credit remains disabled.</p><small>Recorded ' + escapeHtml(formatDate(record?.consented_at)) + '</small></section>';
+  }
+  if (status === 'error') {
+    return '<section class="console-credit-workspace console-credifi-opt-in"><span class="console-gate-eyebrow">Preparation only · production disabled</span><h2>Owner opt-in unavailable</h2><p role="alert">' + escapeHtml(optIn?.error ?? 'Eligibility could not be verified. Retry after confirming wallet ownership.') + '</p></section>';
+  }
+  return '<section class="console-credit-workspace console-credifi-opt-in"><span class="console-gate-eyebrow">Preparation only · production disabled</span><h2>Credifi pilot owner opt-in</h2><p>Authenticate and select an eligible prepared Looper before owner consent is available.</p></section>';
+}

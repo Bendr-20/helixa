@@ -8384,3 +8384,33 @@ test('Console credit keeps login, vouch, broad permission, quote, and borrow as 
   assert.equal(borrow.quoteId, 'quote-1');
   assert.equal(borrow.quoteSha256, 'a'.repeat(64));
 });
+
+test('Console loads prepared-cohort status and records consent without starting any credit action', async () => {
+  const root = setupDom('https://helixa.xyz/multipass/console');
+  const owner = '0x2027af123cc4c3ced6ad389081e532af47b4dd89';
+  const account = '0xbaa56a2ef2dbabedaa0828c3c9c8c06b1ab46b3f';
+  const calls = [];
+  const eligible = { schema_version: '1.0.0', token_id: '11', eligible: true, status: 'eligible', cohort_version: 'credifi-controlled-rollout-50-v1', amount_usd: '50.00', account, consented_at: null };
+  const consoleCreditApi = {
+    async optInStatus(input) { calls.push(['status', input]); return eligible; },
+    async submitOptIn(input) { calls.push(['opt-in', input]); return { ...eligible, status: 'opted_in', consented_at: '2026-10-24T02:00:00.000Z' }; },
+    async overview(input) { calls.push(['overview', input]); throw new Error('legacy credit must stay untouched'); },
+  };
+  const walletState = { mode: 'active', canTransact: true, tokenId: '11', owner, account, nativeWei: '0', tokens: [], activation: { state: 'idle' }, send: { state: 'idle' }, policy: { state: 'idle' } };
+  const walletClient = createWalletClientFixture({ snapshot: { connected: true, address: owner, label: 'owner' } });
+  const app = createApp({
+    root, loadDemo: async () => sampleData(), walletClient, consoleCreditApi,
+    fetchImpl: createConsoleOwnedAgentsFetch({ wallet: owner, tokenIds: [11] }),
+    looperWalletController: { getSnapshot: () => walletState, async select() { return walletState; } },
+    claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) },
+  });
+  await app.start(); await flushAsyncEvents(30);
+  root.querySelector('[data-console-view="credit"]')?.click(); await flushAsyncEvents(30);
+  assert.match(root.textContent, /prepared \$50 Credifi pilot/i);
+  assert.deepEqual(calls.map(([name]) => name), ['status']);
+  root.querySelector('[data-action="submit-credifi-owner-opt-in"]')?.click(); await flushAsyncEvents(30);
+  assert.match(root.textContent, /Owner opt-in recorded/u);
+  assert.deepEqual(calls.map(([name]) => name), ['status', 'opt-in']);
+  assert.equal(calls[1][1].tokenId, '11');
+  assert.equal(calls[1][1].csrfToken, 'test-csrf');
+});

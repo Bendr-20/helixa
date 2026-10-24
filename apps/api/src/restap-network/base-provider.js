@@ -120,8 +120,10 @@ export function createRestapNetworkBaseProvider({
       safeBlock: publicBlock(anchor),
       safeOwner: safeAuthority.owner,
       safeController: safeAuthority.controller,
+      safeErc8004AgentId: safeAuthority.erc8004AgentId,
       latestOwner: latestAuthority.owner,
       latestController: latestAuthority.controller,
+      latestErc8004AgentId: latestAuthority.erc8004AgentId,
       canonicalAccount: deriveReleasedAccount({ tokenId, release }),
       range: { fromBlock, toBlock },
       events,
@@ -229,6 +231,7 @@ async function readIntegrityAt({ publicClient, release, collection, tokenId, anc
     implementationCode,
     accountToken,
     owner: authority.owner,
+    erc8004AgentId: authority.erc8004AgentId,
     accountOwner,
     controller: authority.controller,
     moduleRegistry,
@@ -252,7 +255,7 @@ async function readAuthorityAt({ publicClient, release, collection, tokenId, anc
   if (binding.standard !== 0 || binding.tokenContract !== collection || binding.tokenId !== tokenId) throw new Error('RESTAP Base controller binding is mismatched.');
   const controlled = await readContract(publicClient, { address: release.controllerSource, abi: CONTROLLER_ABI, functionName: 'isController', args: [agentId, owner], blockNumber });
   if (controlled !== true) throw new Error('RESTAP Base controller proof failed.');
-  return { owner, controller: owner };
+  return { owner, controller: owner, erc8004AgentId: agentId.toString() };
 }
 
 async function readTransfers({ publicClient, collection, tokenId, fromBlock, toBlock }) {

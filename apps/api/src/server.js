@@ -9,6 +9,7 @@ import { activateHelixaRecord } from './activation-records.js';
 import { readAllowlistFile } from './allowlist-snapshot.js';
 import { createJsonAllowlistStore, createMemoryAllowlistStore } from './allowlist-store.js';
 import { createConsoleProductionBootstrap } from './console-production-bootstrap.js';
+import { createCredifiOwnerOptInProviders, createCredifiOwnerOptInStore, createCredifiOwnerOptInVerifier } from './credifi-owner-opt-in.js';
 import {
   DEFAULT_CREDIFI_API_BASE_URL,
   DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
@@ -103,6 +104,7 @@ export function parseServerOptions(argv = [], env = process.env) {
     consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(env.MULTIPASS_CREDIT_CRED_BASE_URL, 'MULTIPASS_CREDIT_CRED_BASE_URL') ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL,
     consoleCreditMinCred: parseBoundedNonnegativeInteger(env.MULTIPASS_CREDIT_MIN_CRED, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'MULTIPASS_CREDIT_MIN_CRED', 100),
     consoleCreditTimeoutMs: parseBoundedPositiveInteger(env.MULTIPASS_CREDIT_TIMEOUT_MS, 10_000, 'MULTIPASS_CREDIT_TIMEOUT_MS', 30_000),
+    credifiOwnerOptInEnabled: parseStrictBoolean(env.MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED, 'MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED') ?? false,
     bankrLlmKey: env.BANKR_LLM_KEY || env.BANKR_API_KEY || null,
     bankrReadonlyApiKey: env.BANKR_READONLY_API_KEY || null,
     bankrLlmModel: env.MULTIPASS_AGENT_LLM_MODEL || null,
@@ -196,6 +198,7 @@ export async function startServer(options = {}) {
     consoleCreditCredBaseUrl: normalizeOptionalBaseUrl(options.consoleCreditCredBaseUrl ?? DEFAULT_LOOPER_CREDIT_CRED_BASE_URL, 'consoleCreditCredBaseUrl'),
     consoleCreditMinCred: parseBoundedNonnegativeInteger(options.consoleCreditMinCred, DEFAULT_LOOPER_CREDIT_MIN_CRED, 'consoleCreditMinCred', 100),
     consoleCreditTimeoutMs: parseBoundedPositiveInteger(options.consoleCreditTimeoutMs, 10_000, 'consoleCreditTimeoutMs', 30_000),
+    credifiOwnerOptInEnabled: options.credifiOwnerOptInEnabled === true,
     bankrLlmKey: options.bankrLlmKey ?? null,
     bankrReadonlyApiKey: options.bankrReadonlyApiKey ?? null,
     bankrLlmModel: options.bankrLlmModel ?? null,
@@ -237,7 +240,19 @@ export async function startServer(options = {}) {
     fetchImpl: options.fetchImpl,
   };
   const { store, fixtureName } = await loadFixtureStore({ fixture: parsed.fixture });
+  if (parsed.credifiOwnerOptInEnabled && !parsed.databasePath) {
+    throw new Error('MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED requires MULTIPASS_DB_PATH.');
+  }
   const ownsSavedRecords = Boolean(parsed.databasePath && !options.savedRecords);
+  const ownsCredifiOwnerOptInService = Boolean(parsed.credifiOwnerOptInEnabled && parsed.databasePath && !options.credifiOwnerOptInService);
+  const credifiOwnerOptInVerifier = parsed.credifiOwnerOptInEnabled
+    ? (options.credifiOwnerOptInVerifier ?? createCredifiOwnerOptInVerifier({
+      providers: options.credifiOwnerOptInProviders ?? createCredifiOwnerOptInProviders(),
+    }))
+    : null;
+  const credifiOwnerOptInService = !parsed.credifiOwnerOptInEnabled ? null : (options.credifiOwnerOptInService ?? (ownsCredifiOwnerOptInService
+    ? createCredifiOwnerOptInStore({ databasePath: parsed.databasePath, custodyVerifier: credifiOwnerOptInVerifier })
+    : null));
   const savedRecords = options.savedRecords ?? (parsed.databasePath ? createSqliteSavedRecords({ databasePath: parsed.databasePath }) : null);
   const ownsLooperNameStore = !options.looperNameStore;
   const looperNameStore = options.looperNameStore ?? createSqliteLooperNameStore({ databasePath: parsed.databasePath ?? ':memory:' });
@@ -646,6 +661,8 @@ export async function startServer(options = {}) {
       loopersAuthorizer: consoleBootstrap.authorizeLooper,
       consoleAuthStore: options.consoleAuthStore,
       consoleCreditService,
+      credifiOwnerOptInService,
+      credifiOwnerOptInVerifier,
       consoleRuntimeRegistry: consoleBootstrap.runtimeRegistry,
       restapNetworkActivationLeases: consoleBootstrap.activationLeases,
       restapNetworkCustodyReconciler: consoleBootstrap.restapNetworkCustodyReconciler,
@@ -688,6 +705,8 @@ export async function startServer(options = {}) {
       restapNetworkService,
       savedRecords,
       ownsSavedRecords,
+      credifiOwnerOptInService,
+      ownsCredifiOwnerOptInService,
       looperNameStore,
       ownsLooperNameStore,
       missionStore,
@@ -724,6 +743,8 @@ export async function startServer(options = {}) {
           restapNetworkService,
           savedRecords,
           ownsSavedRecords,
+          credifiOwnerOptInService,
+          ownsCredifiOwnerOptInService,
           looperNameStore,
           ownsLooperNameStore,
           missionStore,
@@ -737,7 +758,7 @@ export async function startServer(options = {}) {
   };
 }
 
-async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore, swarmLaunchConsentStore, ownsSwarmLaunchConsentStore }) {
+async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, credifiOwnerOptInService, ownsCredifiOwnerOptInService, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore, swarmLaunchConsentStore, ownsSwarmLaunchConsentStore }) {
   const errors = [];
   for (const close of [
     () => closeHttpServer(nodeServer),
@@ -747,6 +768,7 @@ async function closeServerResources({ consoleBootstrap, nodeServer, restapPublic
     () => restapNewsStore?.close?.(),
     () => consoleBootstrap?.closeClient?.(),
     () => ownsSavedRecords ? savedRecords?.close?.() : undefined,
+    () => ownsCredifiOwnerOptInService ? credifiOwnerOptInService?.close?.() : undefined,
     () => ownsLooperNameStore ? looperNameStore?.close?.() : undefined,
     () => ownsMissionStore ? missionStore?.close?.() : undefined,
     () => ownsSwarmLaunchConsentStore ? swarmLaunchConsentStore?.close?.() : undefined,

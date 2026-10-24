@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-import { createConsoleCreditApi, createInitialConsoleCreditState, renderConsoleCreditPanel } from '../src/console-credit.js';
+import { bindConsoleCredit, createConsoleCreditApi, createInitialConsoleCreditState, renderConsoleCreditPanel } from '../src/console-credit.js';
 
 const TOKEN_ID = '2431';
 const OVERVIEW = {
@@ -73,4 +73,56 @@ test('credit workspace owns a high-contrast product surface and touch-safe contr
   assert.match(css, /\.console-credit-workspace :is\(button, input\)[^{]*\{[^}]*min-height: 44px/s);
   assert.match(css, /\.console-credit-workspace input:not\(\[type="checkbox"\]\)[^{]*\{[^}]*background:/s);
   assert.match(css, /\.console-credit-confirm input\[type="checkbox"\][^{]*\{[^}]*width: 20px/s);
+});
+
+
+test('Credifi pilot client uses owner-scoped GET and exact consent-only POST', async () => {
+  const calls = [];
+  const api = createConsoleCreditApi({ fetchImpl: async (url, init) => {
+    calls.push({ url, init });
+    return new Response(JSON.stringify({ schema_version: '1.0.0', status: 'eligible' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  } });
+  await api.optInStatus({ tokenId: '11' });
+  await api.submitOptIn({ tokenId: '11', csrfToken: 'csrf-1' });
+  assert.equal(calls[0].url, '/api/multipass/console/credifi-pilot/opt-in?tokenId=11');
+  assert.equal(calls[0].init.method, 'GET');
+  assert.equal(calls[0].init.body, undefined);
+  assert.equal(calls[1].url, '/api/multipass/console/credifi-pilot/opt-in');
+  assert.equal(calls[1].init.method, 'POST');
+  assert.deepEqual(JSON.parse(calls[1].init.body), { tokenId: '11', consent: true });
+  assert.equal(calls[1].init.headers['x-csrf-token'], 'csrf-1');
+});
+
+test('Credifi pilot UI is unavailable until authenticated eligibility is loaded', () => {
+  const idle = renderConsoleCreditPanel(createInitialConsoleCreditState('11'), { tokenId: '11', agentName: 'Looper 11' });
+  assert.match(idle, /Authenticate and select an eligible prepared Looper/i);
+  assert.doesNotMatch(idle, /data-action="submit-credifi-owner-opt-in"/u);
+  const loading = renderConsoleCreditPanel({ ...createInitialConsoleCreditState('11'), optIn: { status: 'loading' } }, { tokenId: '11' });
+  assert.match(loading, /Verifying current owner/u);
+  assert.doesNotMatch(loading, /data-action="submit-credifi-owner-opt-in"/u);
+});
+
+test('eligible and completed Credifi pilot UI states explain consent-only boundaries', () => {
+  const status = { token_id: '11', status: 'eligible', amount_usd: '50.00', cohort_version: 'cohort-v1', account: '0xbaa56a2ef2dbabedaa0828c3c9c8c06b1ab46b3f' };
+  const eligible = renderConsoleCreditPanel({ ...createInitialConsoleCreditState('11'), optIn: { status: 'eligible', record: status } }, { tokenId: '11' });
+  assert.match(eligible, /prepared \$50 Credifi pilot/i);
+  assert.match(eligible, /does not accept a vouch, authorize EVC, request a quote, borrow funds, or enable Credit/i);
+  assert.match(eligible, /data-action="submit-credifi-owner-opt-in"/u);
+  const completed = renderConsoleCreditPanel({ ...createInitialConsoleCreditState('11'), optIn: { status: 'opted_in', record: { ...status, status: 'opted_in', consented_at: '2026-10-24T02:00:00.000Z' } } }, { tokenId: '11' });
+  assert.match(completed, /Owner opt-in recorded/u);
+  assert.doesNotMatch(completed, /data-action="submit-credifi-owner-opt-in"/u);
+  assert.doesNotMatch(completed, /Accept vouch|Preview terms|Borrow to Looper account/u);
+});
+
+test('Credifi pilot UI binds its consent action once', () => {
+  let listener;
+  const button = { addEventListener(type, callback) { assert.equal(type, 'click'); listener = callback; } };
+  const root = {
+    querySelector(selector) { return selector === '[data-action="submit-credifi-owner-opt-in"]' ? button : null; },
+    querySelectorAll() { return []; },
+  };
+  let submitted = 0;
+  bindConsoleCredit(root, { submitOptIn: () => { submitted += 1; } });
+  listener();
+  assert.equal(submitted, 1);
 });

@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { parse as parseLosslessJson } from 'lossless-json';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +27,7 @@ import { createBankrLlmClient } from './bankr-llm/index.js';
 import { searchBankrMarketplaceSkills } from './bankr-marketplace-catalog.js';
 import { createConsoleAuthStore } from './console-auth.js';
 import { ConsoleCreditError } from './console-credit.js';
+import { CredifiOwnerOptInError } from './credifi-owner-opt-in.js';
 import {
   CONSOLE_IMAGE_REQUEST_MAX_BYTES,
   normalizeConsoleImageAttachment,
@@ -279,6 +281,8 @@ export function createMultipassApi({
   loopersCredConcurrency,
   consoleAuthStore,
   consoleCreditService,
+  credifiOwnerOptInService,
+  credifiOwnerOptInVerifier,
   consoleRuntimeRegistry,
   restapNetworkActivationLeases,
   restapNetworkCustodyReconciler,
@@ -416,6 +420,8 @@ export function createMultipassApi({
     consoleCookieName: CONSOLE_COOKIE_NAME,
     consoleAuthStore: consoleAuthStore ?? createConsoleAuthStore(),
     consoleCreditService: consoleCreditService ?? null,
+    credifiOwnerOptInService: credifiOwnerOptInService ?? null,
+    credifiOwnerOptInVerifier: credifiOwnerOptInVerifier ?? null,
     consoleCreditWalletRateLimiter: createFixedWindowRateLimiter(CONSOLE_CREDIT_WALLET_RATE_LIMIT),
     consoleCreditGlobalRateLimiter: createFixedWindowRateLimiter(CONSOLE_CREDIT_GLOBAL_RATE_LIMIT),
     fetchImpl,
@@ -486,10 +492,12 @@ export function createMultipassApi({
 
   return {
     async handleRequest(request) {
+      let credifiRoute = false;
       try {
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
         const method = request.method.toUpperCase();
+        credifiRoute = isCredifiOwnerOptInRoute(parts);
 
         const missionResponse = await handleMissionRequest(request, {
           service: context.missionService,
@@ -540,6 +548,11 @@ export function createMultipassApi({
           }
         }
 
+        if (parts[0] === 'api' && parts[1] === 'multipass' && parts[2] === 'console'
+          && parts[3] === 'credifi-pilot' && parts[4] === 'opt-in' && parts.length === 5) {
+          return await handleCredifiOwnerOptInStatus(request, url, context);
+        }
+
         if (parts[0] === 'api' && parts[1] === 'multipass' && parts[2] === 'console' && parts[3] === 'skills' && parts.length === 4) {
           const requestedLimit = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
           return jsonResponse(searchBankrMarketplaceSkills(url.searchParams.get('q') ?? '', {
@@ -574,17 +587,18 @@ export function createMultipassApi({
 
         return handlePublicRead(parts, context);
       } catch (error) {
+        const noStore = credifiRoute ? { 'cache-control': 'no-store' } : {};
         if (error instanceof ApiInputError) {
-          return errorResponse(error.status ?? 400, error.code, error.message);
+          return errorResponse(error.status ?? 400, error.code, error.message, undefined, noStore);
         }
         if (error instanceof ApiUnauthorizedError) {
-          return errorResponse(401, 'unauthorized', error.message);
+          return errorResponse(401, 'unauthorized', error.message, undefined, noStore);
         }
         if (error instanceof ApiForbiddenError) {
-          return errorResponse(403, 'forbidden', error.message);
+          return errorResponse(403, 'forbidden', error.message, undefined, noStore);
         }
         if (error instanceof ApiNotFoundError) {
-          return errorResponse(404, 'not_found', error.message);
+          return errorResponse(404, 'not_found', error.message, undefined, noStore);
         }
         if (error instanceof ConsentError) {
           return errorResponse(error.status ?? 400, error.code, error.message);
@@ -595,16 +609,24 @@ export function createMultipassApi({
         if (error instanceof ConsoleCreditError) {
           return errorResponse(error.status ?? 400, error.code, error.message, error.details);
         }
+        if (error instanceof CredifiOwnerOptInError || (credifiRoute && error?.code && Number.isInteger(error?.status))) {
+          return errorResponse(error.status ?? 400, error.code, error.message, undefined, noStore);
+        }
         if (error instanceof AllowlistInputError) {
           return errorResponse(400, error.code, error.message);
         }
         if (error instanceof TypeError) {
-          return errorResponse(400, 'invalid_request', error.message);
+          return errorResponse(400, credifiRoute ? 'credifi_opt_in_invalid_request' : 'invalid_request', error.message, undefined, noStore);
         }
+        if (credifiRoute) return errorResponse(500, 'credifi_opt_in_server_error', 'Credifi owner opt-in is temporarily unavailable.', undefined, noStore);
         throw error;
       }
     },
   };
+}
+
+function isCredifiOwnerOptInRoute(parts) {
+  return parts[0] === 'api' && parts[1] === 'multipass' && parts[2] === 'console' && parts[3] === 'credifi-pilot' && parts[4] === 'opt-in' && parts.length === 5;
 }
 
 async function handleRestapNetworkConsoleRequest(request, method, parts, context) {
@@ -1109,6 +1131,10 @@ async function handlePostRequest(request, parts, context) {
     return handleConsoleCreditAction(request, parts[4], context);
   }
 
+  if (parts[2] === 'console' && parts[3] === 'credifi-pilot' && parts[4] === 'opt-in' && parts.length === 5) {
+    return handleCredifiOwnerOptInMutation(request, context);
+  }
+
   if (parts[2] === 'console' && parts[3] === 'agent' && parts[4] === 'activate' && parts.length === 5) {
 
     return handleConsoleAgentActivate(request, context);
@@ -1217,6 +1243,56 @@ function handleConsoleSessionLogout(request, context) {
     context.consoleAuthStore.revokeSession(sessionId);
   }
   return jsonResponse({ schema_version: '0.1.0', ok: true }, 200, { 'set-cookie': clearConsoleSessionCookie(context) });
+}
+
+async function handleCredifiOwnerOptInStatus(request, url, context) {
+  if (!context.credifiOwnerOptInService) return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });
+  assertCredifiTrustedBrowserRequest(request, context, { allowSameOriginReferer: true });
+  const session = requireConsoleSession(request, context, { requireCsrf: false });
+  const keys = [...url.searchParams.keys()];
+  if (keys.length !== 1 || keys[0] !== 'tokenId' || url.searchParams.getAll('tokenId').length !== 1) {
+    throw new ApiInputError('credifi_opt_in_invalid_schema', 'Credifi pilot status requires exactly one tokenId query parameter.');
+  }
+  const tokenId = normalizeCredifiTokenId(url.searchParams.get('tokenId'));
+  const identity = await authorizeCredifiOwnerOptIn({ tokenId, wallet: session.wallet, context });
+  const result = await context.credifiOwnerOptInService.getStatus({ identity });
+  return jsonResponse(projectCredifiOwnerOptIn(result), 200, { 'cache-control': 'no-store' });
+}
+
+async function handleCredifiOwnerOptInMutation(request, context) {
+  if (!context.credifiOwnerOptInService) return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });
+  assertCredifiTrustedBrowserRequest(request, context, { allowSameOriginReferer: false });
+  const session = requireConsoleSession(request, context, { requireCsrf: true });
+  const body = await readBoundedCredifiJsonBody(request, CONSOLE_CREDIT_REQUEST_MAX_BYTES);
+  assertExactCredifiRequest(body, ['consent', 'tokenId']);
+  if (body.consent !== true) throw new ApiInputError('credifi_opt_in_consent_required', 'Explicit owner consent is required.');
+  const tokenId = normalizeCredifiTokenId(body.tokenId);
+  const identity = await authorizeCredifiOwnerOptIn({ tokenId, wallet: session.wallet, context });
+  const result = await context.credifiOwnerOptInService.optIn({ identity });
+  return jsonResponse(projectCredifiOwnerOptIn(result), 200, { 'cache-control': 'no-store' });
+}
+
+function projectCredifiOwnerOptIn(value) {
+  if (!value || value.eligible !== true) throw new Error('Invalid Credifi owner opt-in service response.');
+  const tokenId = normalizeLooperTokenId(value.tokenId);
+  const account = String(value.canonicalAccount ?? '').toLowerCase();
+  const cohortVersion = String(value.cohortVersion ?? '');
+  const amountUsd = String(value.amountUsd ?? '');
+  const optedIn = value.optedIn === true;
+  const consentedAt = optedIn ? new Date(value.consentedAt).toISOString() : null;
+  if (!/^0x[a-f0-9]{40}$/u.test(account) || !/^[a-z0-9][a-z0-9._-]{0,127}$/u.test(cohortVersion) || !/^\d+\.\d{2}$/u.test(amountUsd)) {
+    throw new Error('Invalid Credifi owner opt-in service response.');
+  }
+  return {
+    schema_version: '1.0.0',
+    token_id: tokenId,
+    eligible: true,
+    status: optedIn ? 'opted_in' : 'eligible',
+    cohort_version: cohortVersion,
+    amount_usd: amountUsd,
+    account,
+    consented_at: consentedAt,
+  };
 }
 
 async function handleConsoleCreditAction(request, action, context) {
@@ -2220,6 +2296,15 @@ function requireConsoleSession(request, context, { requireCsrf = false } = {}) {
   }
 }
 
+async function authorizeCredifiOwnerOptIn({ tokenId, wallet, context }) {
+  if (typeof context.credifiOwnerOptInVerifier?.verify !== 'function') throw new CredifiOwnerOptInError('credifi_opt_in_unavailable', 'Credifi owner verification is unavailable.', { status: 503 });
+  const identity = await context.credifiOwnerOptInVerifier.verify({ tokenId, wallet });
+  if (String(identity?.tokenId ?? '') !== tokenId || String(identity?.owner ?? '').toLowerCase() !== String(wallet).toLowerCase()) {
+    throw new ApiForbiddenError('Credifi owner/controller verification failed.');
+  }
+  return identity;
+}
+
 async function authorizeConsoleLooper({ tokenId, wallet, context }) {
   try {
     const identity = await context.loopersAuthorizer({ tokenId, wallet });
@@ -2294,6 +2379,13 @@ function normalizeSwarmConsentProposalId(value) {
   const text = String(value ?? '');
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u.test(text)) throw new ApiInputError('invalid_request', 'Consent proposal ID is invalid.');
   return text;
+}
+
+function normalizeCredifiTokenId(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/u.test(value) || BigInt(value) > 7_777n) {
+    throw new ApiInputError('credifi_opt_in_invalid_token_id', 'Credifi tokenId must be a canonical decimal string.');
+  }
+  return value;
 }
 
 function normalizeLooperTokenId(value) {
@@ -3250,6 +3342,45 @@ async function readJsonBody(request) {
   return parseJsonBody(raw);
 }
 
+async function readBoundedCredifiJsonBody(request, maxBytes) {
+  const declared = request.headers.get('content-length');
+  if (declared !== null && (/^\d+$/u.test(declared) === false || Number(declared) > maxBytes)) {
+    throw new ApiInputError('credifi_opt_in_request_too_large', `Credifi request body must be at most ${maxBytes} bytes.`, 413);
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > maxBytes) {
+    throw new ApiInputError('credifi_opt_in_request_too_large', `Credifi request body must be at most ${maxBytes} bytes.`, 413);
+  }
+  try {
+    const seenKeys = new Set();
+    for (const match of raw.matchAll(/"((?:\\.|[^"\\])*)"\s*:/gu)) {
+      const key = JSON.parse('"' + match[1] + '"');
+      if (seenKeys.has(key)) throw new Error('duplicate:' + key);
+      seenKeys.add(key);
+    }
+    return parseLosslessJson(raw || '{}', null, {
+      parseNumber: Number,
+      onDuplicateKey: ({ key }) => { throw new Error('duplicate:' + key); },
+    });
+  } catch (error) {
+    if (String(error?.message ?? '').startsWith('duplicate:')) {
+      throw new ApiInputError('credifi_opt_in_duplicate_key', 'Credifi request must not contain duplicate JSON keys.');
+    }
+    throw new ApiInputError('credifi_opt_in_invalid_json', 'Credifi request body must be valid JSON.');
+  }
+}
+
+function assertExactCredifiRequest(body, expectedFields) {
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.getPrototypeOf(body) !== Object.prototype) {
+    throw new ApiInputError('credifi_opt_in_invalid_schema', 'Credifi request must be a JSON object.');
+  }
+  const actual = Object.keys(body).sort();
+  const expected = [...expectedFields].sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    throw new ApiInputError('credifi_opt_in_invalid_schema', 'Credifi request contains unknown or missing fields.');
+  }
+}
+
 async function readBoundedJsonBody(request, maxBytes) {
   const declared = request.headers.get('content-length');
   if (declared !== null && (/^\d+$/u.test(declared) === false || Number(declared) > maxBytes)) {
@@ -3783,6 +3914,19 @@ function assertTrustedOrigin(request, context) {
   if (!context.allowedOrigins.has(origin)) {
     throw new ApiForbiddenError('Request origin is not allowed for Multipass manager writes.');
   }
+}
+
+function assertCredifiTrustedBrowserRequest(request, context, { allowSameOriginReferer }) {
+  const origin = request.headers.get('origin');
+  if (origin) {
+    if (context.allowedOrigins.has(origin)) return;
+    throw new ApiForbiddenError('Trusted browser origin is required for Credifi owner opt-in.');
+  }
+  const refererOrigin = originFromReferer(request.headers.get('referer'));
+  const requestOrigin = new URL(request.url).origin;
+  if (allowSameOriginReferer && request.headers.get('sec-fetch-site') === 'same-origin'
+    && refererOrigin === requestOrigin && context.allowedOrigins.has(refererOrigin)) return;
+  throw new ApiForbiddenError('Trusted browser origin is required for Credifi owner opt-in.');
 }
 
 function isTrustedBrowserOrigin(request, context) {

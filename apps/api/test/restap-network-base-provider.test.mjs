@@ -132,6 +132,7 @@ test('reads a complete safe-block account-integrity observation and proves the E
   assert.equal(observation.account, ACCOUNT);
   assert.equal(observation.accountCode, ACCOUNT_CODE);
   assert.equal(observation.owner, A);
+  assert.equal(observation.erc8004AgentId, '87069');
   assert.equal(observation.accountOwner, A);
   assert.equal(observation.controller, A);
   assert.deepEqual(observation.latest, { owner: A, controller: A });

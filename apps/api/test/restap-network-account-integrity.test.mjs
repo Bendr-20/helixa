@@ -39,6 +39,7 @@ function observation(overrides = {}) {
     implementationCode: IMPLEMENTATION_CODE,
     accountToken: { chainId: RELEASE.chainId, collection: RELEASE.collection, tokenId },
     owner: OWNER,
+    erc8004AgentId: '87069',
     accountOwner: OWNER,
     controller: CONTROLLER,
     moduleRegistry: RELEASE.moduleRegistry,
@@ -104,6 +105,7 @@ test('returns one deeply frozen exact proof only when both approved providers ag
   assert.equal(result.eligible, true);
   assert.equal(result.status, 'ready');
   assert.equal(result.proof.account, deriveReleasedAccount({ tokenId: '617', release: RELEASE }));
+  assert.equal(result.proof.erc8004AgentId, '87069');
   assert.equal(result.proof.accountRuntimeSha256, sha256(result.proof.accountCode));
   assert.equal(result.proof.implementationRuntimeSha256, RELEASE.implementationRuntimeSha256);
   assert.equal(result.proof.moduleRegistryRuntimeSha256, RELEASE.moduleRegistryRuntimeSha256);

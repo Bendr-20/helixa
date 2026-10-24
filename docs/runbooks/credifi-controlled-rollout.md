@@ -16,6 +16,21 @@ Prepared token IDs: #11, #19, #20, #32, #46, #70, #100, #106, #143, #149, #194, 
 
 Selection used verified released-v1 activation, current identity/controller proof, CRED >= 40, one Looper per owner, and ascending token ID. Pantheon participation is optional supporting evidence: 17 of 50 currently have an active position. Neither stake size nor selection is a claim of creditworthiness or repayment reliability. Every candidate remains invite-pending owner opt-in; no owner has been contacted.
 
+## Prepared owner opt-in surface
+
+The Console implementation is staged but **disabled by default** behind `MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED=false`. Enabling it later also requires the existing `MULTIPASS_DB_PATH`; no separate consent database or production configuration was added.
+
+- `GET /api/multipass/console/credifi-pilot/opt-in?tokenId=<id>` requires an authenticated Console session and either an explicit allowed `Origin`, or the normal same-origin browser shape: an allowed same-origin `Referer` together with `Sec-Fetch-Site: same-origin`. `POST` always requires an explicit allowed `Origin` plus the Console CSRF token.
+- `POST /api/multipass/console/credifi-pilot/opt-in` accepts exactly `{ "tokenId": "<canonical-decimal-string>", "consent": true }`. Numeric, plus-prefixed, non-canonical, unknown-field, missing-field, and duplicate-key payloads fail with Credifi-specific schema errors.
+- Every GET/POST response on this route, including authentication, origin, input, eligibility, provider, and internal errors, carries `Cache-Control: no-store`.
+- Eligibility is compiled to the exact 50 token IDs in the preparation artifact. Authorization does not use the Console's generic any-provider authorizer: the dedicated verifier requires the reviewed dRPC primary plus Blast secondary to agree at one common finalized block on the block hash, NFT owner, ERC-8004 agent/controller binding, deployed released-v1 proxy runtime, ERC-6551 account owner, and `token()` binding.
+- Consent is persisted to the runtime SQLite database with a finalized block number/hash and monotonically increasing custody epoch, in addition to token ID, canonical account, owner, ERC-8004 identity, cohort, fixed $50 amount, and timestamp.
+- **Bounded validity:** status checks scan finalized `Transfer` events after the consent anchor for at most 20 blocks, using dRPC as the primary event source and requiring exact Blast agreement on event evidence, block hashes, and current authority. Any intervening transfer—including A→B→A—permanently invalidates that epoch and requires fresh consent. A gap over 20 finalized blocks expires the epoch without an unbounded scan and also requires fresh consent. Provider errors or disagreement fail closed; old consent is never silently treated as active.
+- The startup flag dominates injected services: `MULTIPASS_CREDIFI_OWNER_OPT_IN_ENABLED=false` exposes neither service nor verifier. Direct `createMultipassApi` injection exists only as a unit-test seam.
+- This action records preparation consent only. It cannot accept a vouch, authorize EVC, request a quote, borrow, or enable Credit. `MULTIPASS_CREDIT_ENABLED` remains false and no production settings were changed.
+
+No consent has been collected by this implementation work; no owner was contacted.
+
 ## Dataset boundaries
 
 - **Live cohort identity evidence:** 50 candidates controlled by 50 distinct owners, block 53,004,584.

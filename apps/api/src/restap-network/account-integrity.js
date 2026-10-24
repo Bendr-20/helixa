@@ -160,6 +160,8 @@ function validateObservation(value, { tokenId, release, allowUndeployedAccount }
       return invalid('binding_mismatch');
     }
     const owner = getAddress(value.owner);
+    const erc8004AgentId = normalizeUint(value.erc8004AgentId);
+    if (erc8004AgentId === '0') return invalid('binding_mismatch');
     const accountOwner = getAddress(value.accountOwner);
     const controller = getAddress(value.controller);
     if (accountOwner !== owner) return invalid('ownership_mismatch');
@@ -207,6 +209,7 @@ function validateObservation(value, { tokenId, release, allowUndeployedAccount }
         implementationRuntimeSha256: sha256(implementationCode),
         accountToken,
         owner,
+        erc8004AgentId,
         accountOwner,
         controller,
         moduleRegistry,
