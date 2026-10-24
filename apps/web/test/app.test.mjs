@@ -8310,8 +8310,9 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1/);
   assert.match(root.querySelector('[data-swarm-invite-copy]')?.closest('label')?.textContent ?? '', /Individual invitation link/);
   root.querySelector('[data-swarm-draft-close]')?.click(); await flushAsyncEvents(20);
-  assert.ok(root.querySelector('[data-swarm-draft-create]'));
+  assert.equal(root.querySelector('[data-swarm-draft-create]'), null);
   assert.doesNotMatch(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1/);
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Invitation for Looper #420/);
   root.querySelector('[data-swarm-invite-open]')?.click(); await flushAsyncEvents(20);
   assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #420 is invited/);
   assert.ok(root.querySelector('[data-swarm-invite-accept]'));

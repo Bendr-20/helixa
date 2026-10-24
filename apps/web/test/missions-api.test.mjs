@@ -24,8 +24,8 @@ test('uses fixed public/authenticated routes and never accepts ad-hoc route cons
   const api = createMissionApi({ fetchImpl: async (...args) => { calls.push(args); return response({ schema_version: '0.1.0', mission: { missionId: 'mission-1' } }); } });
   await api.listPublic({ state: 'recruiting', limit: 10 });
   await api.getWorkspace({ missionId: 'mission-1' });
-  assert.equal(calls[0][0], '/api/multipass/missions?state=recruiting&limit=10');
-  assert.equal(calls[1][0], '/api/multipass/missions/mission-1/workspace');
+  assert.equal(calls[0][0], '/multipass-api/api/multipass/missions?state=recruiting&limit=10');
+  assert.equal(calls[1][0], '/multipass-api/api/multipass/missions/mission-1/workspace');
   assert.equal(Object.hasOwn(api, 'request'), false);
   assert.equal(Object.hasOwn(api, 'remote'), false);
 });
@@ -43,7 +43,7 @@ test('launch preview uses the fixed authenticated CSRF route without mutation re
   const api = createMissionApi({ fetchImpl: async (...args) => { calls.push(args); return response({ schema_version: '0.1.0', status: 'PREPARATION_ONLY', manifest: {}, manifest_sha256: '0x' + 'a'.repeat(64) }); } });
   await api.previewSwarmLaunch({ csrfToken: 'preview-csrf', body: { members: [], app: {}, token: {} } });
   const [url, init] = calls[0];
-  assert.equal(url, '/api/loopers/swarm-launch/preview');
+  assert.equal(url, '/multipass-api/api/loopers/swarm-launch/preview');
   assert.equal(init.method, 'POST');
   assert.equal(init.headers['x-csrf-token'], 'preview-csrf');
   assert.equal(init.headers['if-match'], undefined);
@@ -61,11 +61,11 @@ test('launch consent client uses fixed authenticated proposal routes and CSRF on
   await api.signLaunchConsent({ proposalId: 'proposal-1', csrfToken: 'csrf', signature: '0x' + 'aa'.repeat(65) });
   await api.createLaunchReadiness({ proposalId: 'proposal-1', csrfToken: 'csrf' });
   assert.deepEqual(calls.map(([url]) => url), [
-    '/api/loopers/swarm-launch/consents',
-    '/api/loopers/swarm-launch/consents/proposal-1',
-    '/api/loopers/swarm-launch/consents/proposal-1/challenge',
-    '/api/loopers/swarm-launch/consents/proposal-1/sign',
-    '/api/loopers/swarm-launch/consents/proposal-1/readiness',
+    '/multipass-api/api/loopers/swarm-launch/consents',
+    '/multipass-api/api/loopers/swarm-launch/consents/proposal-1',
+    '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/challenge',
+    '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/sign',
+    '/multipass-api/api/loopers/swarm-launch/consents/proposal-1/readiness',
   ]);
   assert.equal(calls[0][1].headers['x-csrf-token'], 'csrf');
   assert.equal(calls[1][1].headers['x-csrf-token'], undefined);

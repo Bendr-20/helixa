@@ -26,6 +26,13 @@ export function renderSwarmLaunchpad(state = {}) {
     const error = state.error ? '<div class="mission-alert" role="alert">' + escapeHtml(state.error) + '</div>' : '';
     return '<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">Review provisional invitation</h2><p>This review is separate from binding launch preparation.</p></header>' + error + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button></div></section>';
   }
+  const pendingInvitations = Array.isArray(state.invitationInbox?.invitations)
+    ? state.invitationInbox.invitations.filter((item) => item?.status === 'pending')
+    : [];
+  if (!state.invitationDraft && pendingInvitations.length) {
+    const invitations = renderSwarmInvitationPanel({ inbox: { leadDraft: null, invitations: pendingInvitations }, mode: 'lead' });
+    return '<section class="swarm-launchpad swarm-launchpad-inbox" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">You have a pending swarm invitation.</h2><p>Review the invitation first. Nothing is binding until you explicitly accept, and no launch or transaction is authorized.</p></header>' + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button></div></section>';
+  }
   const draft = state.draft ?? { members: [], app: {}, token: {} };
   const members = Array.isArray(draft.members) ? draft.members.slice(0, MAX_MEMBERS) : [];
   const gate = evaluateSwarmLaunchGate({ members });

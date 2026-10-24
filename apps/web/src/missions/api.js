@@ -7,10 +7,10 @@ export class MissionApiError extends Error {
   constructor(status, code) { super(status === 409 ? 'Mission changed. Refresh and retry.' : status === 401 || status === 403 ? 'Wallet authorization is required.' : 'Swarm Command is unavailable.'); this.name = 'MissionApiError'; this.status = status; this.code = code || 'mission_unavailable'; }
 }
 
-export function createMissionApi({ fetchImpl, apiBase = '' } = {}) {
+export function createMissionApi({ fetchImpl, apiBase = '/multipass-api' } = {}) {
   const activeFetch = fetchImpl ?? ((...args) => globalThis.fetch(...args));
   if (typeof activeFetch !== 'function') throw new TypeError('fetchImpl must be a function.');
-  const base = String(apiBase).replace(/\/$/u, '');
+  const base = String(apiBase || '/multipass-api').replace(/\/$/u, '');
 
   async function call(path, { method = 'GET', body, revision, idempotencyKey, csrfToken, csrfOnly = false, signal } = {}) {
     const headers = { accept: 'application/json' };
