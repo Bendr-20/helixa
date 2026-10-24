@@ -21,9 +21,11 @@ import {
   updateConsoleAgentName as defaultUpdateConsoleAgentName,
 } from './console-agent-api.js';
 import {
+  createXmtpWalletClient as defaultCreateXmtpWalletClient,
   ensureXmtpWalletRegistration as defaultEnsureXmtpWalletRegistration,
   isXmtpRegistrationRequiredError,
 } from './xmtp-wallet-registration.js';
+import { findSwarmRoom, readSwarmRoomMessages, sendSwarmRoomMessage } from './missions/swarm-room.js';
 import { bindRouteManager, compactRouteInput, compactRoutePatch, getPublicRouteFragments, renderPublicRoutesManagerPanel, renderPublicRoutesPanel } from './route-manager.js';
 import { createOwnerCommandCenterSnapshot, renderOwnerCommandCenterSnapshot } from './command-center.js';
 import { createMultipassConsoleSnapshot, renderMultipassConsole } from './multipass-console.js';
@@ -149,6 +151,9 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   let consoleMissionAbortController = null;
   let consoleInvitationInboxAbortController = null;
   let consoleLaunchExecutionAbortController = null;
+  let consoleSwarmRoomClient = null;
+  let consoleSwarmRoomConversation = null;
+  const closeConsoleSwarmRoom = () => { consoleSwarmRoomConversation = null; const client = consoleSwarmRoomClient; consoleSwarmRoomClient = null; void client?.close?.(); };
   const consoleCodexCache = new Map();
   let consoleCodexArtifactHash = null;
   let preparedConsoleChallenge = null;
@@ -163,6 +168,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleImagePreview?.clear();
   };
   const clearConsoleSessionStateWithPreview = (currentState, options) => {
+    closeConsoleSwarmRoom();
     consoleLaunchExecutionAbortController?.abort();
     consoleLaunchExecutionAbortController = null;
     consoleRestapNetworkAbortController?.abort();
@@ -2453,6 +2459,43 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     render(root, state, handlers);
   }
 
+  async function openConsoleSwarmRoom() {
+    const draftId = state.consoleLaunchpad?.invitationDraft?.draftId ?? state.consoleLaunchpad?.invitation?.draftId;
+    const wallet = String(state.consoleAuthenticatedWallet ?? '').toLowerCase();
+    if (!draftId || !wallet) return;
+    const generation = state.consoleSessionGeneration;
+    state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, swarmRoom: { status: 'loading', messages: [], error: null } } };
+    render(root, state, handlers);
+    try {
+      closeConsoleSwarmRoom();
+      const createClient = claimApi.createXmtpWalletClient ?? defaultCreateXmtpWalletClient;
+      const client = await createClient({ wallet, signMessage: (message) => activeWalletClient.signMessage(message), getAccountCode: (address) => activeWalletClient.request({ method: 'eth_getCode', params: [address, 'latest'] }), getChainId: () => activeWalletClient.request({ method: 'eth_chainId' }) });
+      const found = await findSwarmRoom({ client, draftId });
+      const messages = await readSwarmRoomMessages({ client, conversation: found.conversation });
+      if (generation !== state.consoleSessionGeneration || wallet !== String(state.consoleAuthenticatedWallet ?? '').toLowerCase()) { await client.close?.(); return; }
+      consoleSwarmRoomClient = client;
+      consoleSwarmRoomConversation = found.conversation;
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, swarmRoom: { status: 'open', acceptedTokenIds: found.acceptedTokenIds, messages, error: null } } };
+    } catch (error) {
+      closeConsoleSwarmRoom();
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, swarmRoom: { status: 'error', messages: [], error: String(error?.message ?? 'Swarm chat could not be opened.') } } };
+    }
+    render(root, state, handlers);
+  }
+
+  async function sendConsoleSwarmRoom(form) {
+    if (!consoleSwarmRoomClient || !consoleSwarmRoomConversation) return;
+    try {
+      const message = String(form.get('message') ?? '').trim();
+      await sendSwarmRoomMessage({ conversation: consoleSwarmRoomConversation, message });
+      const messages = await readSwarmRoomMessages({ client: consoleSwarmRoomClient, conversation: consoleSwarmRoomConversation });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, swarmRoom: { ...state.consoleLaunchpad.swarmRoom, status: 'open', messages, error: null } } };
+    } catch (error) {
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, swarmRoom: { ...state.consoleLaunchpad.swarmRoom, status: 'error', error: String(error?.message ?? 'Swarm message failed.') } } };
+    }
+    render(root, state, handlers);
+  }
+
   async function revokeConsoleInvitation(inviteId) {
     const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
     if (!draftId || !state.consoleCsrfToken) return;
@@ -3771,7 +3814,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, continueConsoleInvitationLaunch, revokeConsoleInvitation, closeConsoleInvitationDraft, respondConsoleInvitation, openConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, createConsoleLaunchExecutionReview, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, continueConsoleInvitationLaunch, openConsoleSwarmRoom, sendConsoleSwarmRoom, revokeConsoleInvitation, closeConsoleInvitationDraft, respondConsoleInvitation, openConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, createConsoleLaunchExecutionReview, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -6449,6 +6492,8 @@ function bindProductHomeEvents(root, handlers, state) {
     openInvitation: handlers.openConsoleInvitation,
     copyInvitation: handlers.copyConsoleInvitation,
     continueInvitationLaunch: handlers.continueConsoleInvitationLaunch,
+    openSwarmRoom: handlers.openConsoleSwarmRoom,
+    sendSwarmRoom: handlers.sendConsoleSwarmRoom,
     createExecutionReview: handlers.createConsoleLaunchExecutionReview,
     back: handlers.closeConsoleMission,
   });

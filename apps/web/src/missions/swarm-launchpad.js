@@ -59,7 +59,7 @@ export function serializeSwarmLaunchRequest(draft = {}) {
 
 export function renderSwarmLaunchpad(state = {}) {
   if (state.invitation) {
-    const invitations = renderSwarmInvitationPanel({ invitation: state.invitation, mode: 'invitee', responding: state.status === 'responding_invitation', decision: state.invitationDecision });
+    const invitations = renderSwarmInvitationPanel({ invitation: state.invitation, room: state.swarmRoom, mode: 'invitee', responding: state.status === 'responding_invitation', decision: state.invitationDecision });
     const error = state.error ? '<div class="mission-alert" role="alert">' + escapeHtml(state.error) + '</div>' : '';
     const returnLabel = state.invitation.status === 'accepted' ? 'Return to missions' : 'Back to missions';
     return '<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">Review provisional invitation</h2><p>This review is separate from binding launch preparation.</p></header>' + error + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">' + returnLabel + '</button></div></section>';
@@ -68,7 +68,7 @@ export function renderSwarmLaunchpad(state = {}) {
     ? state.invitationInbox.invitations.filter((item) => item?.status === 'pending')
     : [];
   if (!state.invitationDraft && pendingInvitations.length) {
-    const invitations = renderSwarmInvitationPanel({ inbox: { leadDraft: null, invitations: pendingInvitations }, mode: 'lead' });
+    const invitations = renderSwarmInvitationPanel({ inbox: { leadDraft: null, invitations: pendingInvitations }, room: state.swarmRoom, mode: 'lead' });
     return '<section class="swarm-launchpad swarm-launchpad-inbox" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">You have a pending swarm invitation.</h2><p>Review the invitation first. Nothing is binding until you explicitly accept, and no launch or transaction is authorized.</p></header>' + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button></div></section>';
   }
   const draft = state.draft ?? { members: [], app: {}, token: {} };
@@ -97,7 +97,7 @@ export function renderSwarmLaunchpad(state = {}) {
   const error = state.error ? `<div class="mission-alert" role="alert">${escapeHtml(state.error)}</div>` : '';
   const consent = renderConsent(state);
   const readiness = renderReadiness(state);
-  const invitations = renderSwarmInvitationPanel({ draft: state.invitationDraft, invitation: state.invitation, inbox: state.invitationInbox, mode: state.invitation ? 'invitee' : 'lead' });
+  const invitations = renderSwarmInvitationPanel({ draft: state.invitationDraft, invitation: state.invitation, inbox: state.invitationInbox, room: state.swarmRoom, mode: state.invitation ? 'invitee' : 'lead' });
   const executionReview = renderExecutionReview(state);
   return `<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title">
     <header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Launchpad</span><h2 id="swarm-launchpad-title">Form a swarm. Build an app. <em>Launch its token.</em></h2><p>Use verified Looper identities and CRED, define the product, set an exact contribution split, then prepare the Base launch packet.</p></header>
@@ -132,7 +132,7 @@ export function bindSwarmLaunchpad(root, handlers = {}) {
   root.querySelector('[data-swarm-launch-consent-create]')?.addEventListener('click', () => handlers.createConsent?.());
   root.querySelector('[data-swarm-launch-consent-sign]')?.addEventListener('click', () => handlers.signConsent?.());
   root.querySelector('[data-swarm-launch-readiness-create]')?.addEventListener('click', () => handlers.createReadiness?.());
-  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation, open: handlers.openInvitation, continueLaunch: handlers.continueInvitationLaunch });
+  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation, open: handlers.openInvitation, continueLaunch: handlers.continueInvitationLaunch, openRoom: handlers.openSwarmRoom, sendRoom: handlers.sendSwarmRoom });
   root.querySelector('[data-swarm-launch-execution-review-form]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.createExecutionReview?.(event); });
 }
 

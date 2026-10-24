@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   XmtpWalletRegistrationError,
+  createXmtpWalletClient,
   ensureXmtpWalletRegistration,
   isXmtpRegistrationRequiredError,
 } from '../src/xmtp-wallet-registration.js';
@@ -87,6 +88,16 @@ test('XMTP wallet onboarding registers a smart-contract wallet with an SCW signe
   assert.equal(capturedSigner?.type, 'SCW');
   assert.equal(capturedSigner?.getChainId(), 8453n);
   assert.equal(result instanceof XmtpWalletRegistrationError, true);
+});
+
+test('creates a browser XMTP client that remains open for direct wallet group access', async () => {
+  const expected = { inboxId: 'wallet-inbox' };
+  const client = await createXmtpWalletClient({
+    wallet: WALLET,
+    signMessage: async () => `0x${'11'.repeat(65)}`,
+    sdkLoader: async () => ({ Client: { create: async (signer, options) => { assert.equal(signer.type, 'EOA'); assert.equal(options.env, 'production'); return expected; } } }),
+  });
+  assert.equal(client, expected);
 });
 
 test('XMTP wallet onboarding recognizes the live raw AddressNotFound failure', () => {

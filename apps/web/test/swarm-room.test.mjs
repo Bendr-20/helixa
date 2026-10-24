@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { findSwarmRoom, readSwarmRoomMessages, sendSwarmRoomMessage } from '../src/missions/swarm-room.js';
+const draftId='draft_'+ 'a'.repeat(64);
+function fixture(){const sent=[];const group={id:'conversation-1',appData:JSON.stringify({helixaSwarmDraft:{draftId,acceptedTokenIds:['2431','1','3802','420'],launchAuthorized:false}}),async sync(){},async messages(){return[{id:'m1',senderInboxId:'other',content:'Room ready.'}]},async sendText(value){sent.push(value);return 'm2';}};const client={inboxId:'mine',conversations:{async syncAll(){},async sync(){},async listGroups(){return[group]}}};return{client,group,sent};}
+test('finds exactly one draft-bound XMTP room and keeps conversation authority client-side',async()=>{const f=fixture();const room=await findSwarmRoom({client:f.client,draftId});assert.equal(room.conversation,f.group);assert.deepEqual(room.acceptedTokenIds,['2431','1','3802','420']);assert.equal(room.launchAuthorized,false);assert.equal('conversationId' in room,false);});
+test('reads bounded text messages and labels the connected wallet installation',async()=>{const f=fixture();const messages=await readSwarmRoomMessages({client:f.client,conversation:f.group});assert.deepEqual(messages,[{id:'m1',sender:'member',text:'Room ready.'}]);});
+test('sends bounded text directly through the wallet XMTP conversation',async()=>{const f=fixture();await sendSwarmRoomMessage({conversation:f.group,message:'Hello swarm'});assert.deepEqual(f.sent,['Hello swarm']);await assert.rejects(()=>sendSwarmRoomMessage({conversation:f.group,message:' '.repeat(4)}),/message/i);});

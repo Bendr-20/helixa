@@ -34,18 +34,18 @@ export function deriveSwarmLaunchDraftFromInvitation(draft = {}) {
   };
 }
 
-export function renderSwarmInvitationPanel({ draft = null, invitation = null, inbox = null, mode = draft ? 'lead' : 'invitee', responding = false, decision = null } = {}) {
+export function renderSwarmInvitationPanel({ draft = null, invitation = null, inbox = null, room = null, mode = draft ? 'lead' : 'invitee', responding = false, decision = null } = {}) {
   if (mode === 'invitee' && invitation) {
     const pendingLabel = decision === 'declined' ? 'Declining invitation…' : 'Accepting and verifying ownership…';
     const actions = invitation.status === 'pending' ? (responding
       ? '<div class="swarm-invitation-progress" role="status" aria-live="polite" aria-busy="true">' + pendingLabel + '</div><button type="button" data-swarm-invite-accept disabled aria-disabled="true">' + pendingLabel + '</button><button type="button" data-swarm-invite-decline disabled aria-disabled="true">Decline</button>'
       : '<button type="button" data-swarm-invite-accept>Accept non-binding invitation</button><button type="button" data-swarm-invite-decline>Decline</button>') : '';
     const terminal = invitation.status === 'accepted' ? '<div class="swarm-invitation-confirmation" role="status"><strong>Invitation accepted.</strong><p>Looper #' + html(invitation.tokenId) + ' is now part of this provisional swarm. No launch or transaction has been authorized.</p></div><div class="swarm-invitation-next"><h4>What happens next</h4><ol><li>The lead waits until enough invitations are accepted for a 3–5 member roster.</li><li>The lead prepares roles, contribution splits, app details, and token terms.</li><li>Every binding step still requires separate review and wallet approval.</li></ol></div>' : invitation.status === 'declined' ? '<div class="swarm-invitation-confirmation" role="status"><strong>Invitation declined.</strong></div>' : '';
-    return '<section class="swarm-invitations" aria-labelledby="swarm-invitations-title"><h3 id="swarm-invitations-title">Non-binding invitation</h3><p>Looper #' + html(invitation.tokenId) + ' is invited to a provisional swarm led by Looper #' + html(invitation.lead?.tokenId ?? '') + '.</p><p>' + SAFETY + '</p><p>Status: <strong>' + html(invitation.status) + '</strong></p>' + terminal + actions + '</section>';
+    return '<section class="swarm-invitations" aria-labelledby="swarm-invitations-title"><h3 id="swarm-invitations-title">Non-binding invitation</h3><p>Looper #' + html(invitation.tokenId) + ' is invited to a provisional swarm led by Looper #' + html(invitation.lead?.tokenId ?? '') + '.</p><p>' + SAFETY + '</p><p>Status: <strong>' + html(invitation.status) + '</strong></p>' + terminal + actions + (invitation.status === 'accepted' ? renderSwarmRoom(room, invitation.draftId) : '') + '</section>';
   }
   const leadDraft = draft ?? inbox?.leadDraft ?? null;
   const incoming = Array.isArray(inbox?.invitations) ? inbox.invitations : [];
-  const lead = leadDraft ? renderLeadDraft(leadDraft) : '';
+  const lead = leadDraft ? renderLeadDraft(leadDraft, room) : '';
   const received = incoming.length ? '<div class="swarm-invitation-inbox"><h4>Action required</h4><ul>' + incoming.map((item) => '<li class="swarm-invitation-card"><span class="swarm-invitation-status">' + html(item.status) + '</span><strong>Invitation for Looper #' + html(item.tokenId) + '</strong><span>Invited by Looper #' + html(item.lead?.tokenId ?? '') + '</span><button type="button" data-swarm-invite-open="' + attr(item.inviteId) + '">Review invitation</button></li>').join('') + '</ul></div>' : '';
   const create = leadDraft || incoming.length ? '' : '<form data-swarm-draft-create><label>Lead Looper<input name="lead_token_id" inputmode="numeric" pattern="[1-9][0-9]*" required></label><label>Invitee Looper IDs (1–4, comma-separated)<input name="invitee_token_ids" required></label><button type="submit">Create non-binding invitations</button></form>';
   const empty = !leadDraft && incoming.length === 0 ? '<p>No invitations yet. Create a provisional owner invitation to begin.</p>' : '';
@@ -62,9 +62,12 @@ export function bindSwarmInvitationPanel(root, handlers = {}) {
   root.querySelectorAll('[data-swarm-invite-copy]').forEach((button) => button.addEventListener('click', () => handlers.copy?.(button.dataset.swarmInviteCopy)));
   root.querySelectorAll('[data-swarm-invite-open]').forEach((button) => button.addEventListener('click', () => handlers.open?.(button.dataset.swarmInviteOpen)));
   root.querySelector('[data-swarm-invite-continue]')?.addEventListener('click', () => handlers.continueLaunch?.());
+  root.querySelector('[data-swarm-room-open]')?.addEventListener('click', () => handlers.openRoom?.());
+  root.querySelector('[data-swarm-room-send]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.sendRoom?.(formData(event.currentTarget)); });
 }
 
-function renderLeadDraft(draft) {
+
+function renderLeadDraft(draft, room) {
   const slots = Number(draft.openSlots ?? 0);
   const draftOpen = draft.status !== 'closed';
   const acceptedInvitees = (draft.invites ?? []).filter((item) => item.status === 'accepted').length;
@@ -81,7 +84,16 @@ function renderLeadDraft(draft) {
   const slotText = draftOpen ? (slots === 1 ? 'one slot open' : slots + ' slots open') : 'Roster no longer accepting invitations';
   const add = draftOpen && slots > 0 ? '<form data-swarm-invite-add><label>Invite another Looper<input name="token_id" inputmode="numeric" pattern="[1-9][0-9]*" required></label><button type="submit">Add invitation</button></form>' : '';
   const close = draftOpen ? '<button type="button" data-swarm-draft-close>Close provisional draft</button>' : '<p>Draft closed.</p>';
-  return '<div class="swarm-invitation-lead"><h4>Lead draft · Looper #' + html(draft.lead?.tokenId ?? '') + '</h4>' + readiness + '<p>' + slotText + '</p><ul>' + rows + '</ul>' + add + close + '</div>';
+  return '<div class="swarm-invitation-lead"><h4>Lead draft · Looper #' + html(draft.lead?.tokenId ?? '') + '</h4>' + readiness + renderSwarmRoom(room, draft.draftId, needed === 0) + '<p>' + slotText + '</p><ul>' + rows + '</ul>' + add + close + '</div>';
+}
+
+function renderSwarmRoom(room, draftId, ready = true) {
+  if (!ready || !draftId) return '';
+  if (room?.status === 'loading') return '<section class="swarm-room" aria-live="polite"><h4>Swarm chat</h4><p>Opening wallet-encrypted XMTP room…</p></section>';
+  if (room?.status === 'error') return '<section class="swarm-room"><h4>Swarm chat</h4><p role="alert">' + html(room.error) + '</p><button type="button" data-swarm-room-open>Retry swarm chat</button></section>';
+  if (room?.status !== 'open') return '<section class="swarm-room"><h4>Swarm chat</h4><p>The accepted-roster XMTP room is ready.</p><button type="button" data-swarm-room-open>Open swarm chat</button></section>';
+  const messages = (room.messages ?? []).map((message) => '<li><strong>' + (message.sender === 'you' ? 'You' : 'Swarm member') + '</strong><p>' + html(message.text) + '</p></li>').join('');
+  return '<section class="swarm-room"><h4>Multipass App Store swarm</h4><p>Wallet-encrypted XMTP · coordination only · launch authorized: false</p><p>Accepted Loopers: ' + (room.acceptedTokenIds ?? []).map((id) => '#' + html(id)).join(', ') + '</p><ul class="swarm-room-messages">' + (messages || '<li>No messages yet.</li>') + '</ul><form data-swarm-room-send><label>Message<textarea name="message" maxlength="2000" required></textarea></label><button type="submit">Send to swarm</button></form></section>';
 }
 
 function formData(form) { const FormDataConstructor = form?.ownerDocument?.defaultView?.FormData ?? globalThis.FormData; return new FormDataConstructor(form); }

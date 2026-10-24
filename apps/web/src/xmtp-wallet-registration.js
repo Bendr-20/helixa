@@ -13,6 +13,30 @@ export class XmtpWalletRegistrationError extends Error {
   }
 }
 
+export async function createXmtpWalletClient({ wallet, signMessage, getAccountCode, getChainId, sdkLoader = () => import('@xmtp/browser-sdk') } = {}) {
+  const normalizedWallet = normalizeWallet(wallet);
+  if (!normalizedWallet || typeof signMessage !== 'function') throw new XmtpWalletRegistrationError('Connect the Looper owner wallet before opening XMTP.');
+  try {
+    const { Client } = await sdkLoader();
+    if (!Client?.create) throw new Error('XMTP browser client is unavailable.');
+    const identifier = { identifier: normalizedWallet, identifierKind: ETHEREUM_IDENTIFIER_KIND };
+    const accountCode = typeof getAccountCode === 'function' ? String(await getAccountCode(normalizedWallet) ?? '').trim() : '0x';
+    const isSmartContractWallet = accountCode !== '' && !EMPTY_ACCOUNT_CODE.test(accountCode);
+    const chainId = isSmartContractWallet ? normalizeChainId(await getChainId?.()) : null;
+    if (isSmartContractWallet && chainId == null) throw new Error('XMTP smart-contract wallet chain is unavailable.');
+    const signer = {
+      type: isSmartContractWallet ? 'SCW' : 'EOA',
+      getIdentifier: () => identifier,
+      async signMessage(message) { const signed = await signMessage(message); return hexToBytes(typeof signed === 'string' ? signed : signed?.signature); },
+      ...(isSmartContractWallet ? { getChainId: () => chainId } : {}),
+    };
+    return await Client.create(signer, { env: XMTP_ENV, appVersion: 'multipass-swarm-room' });
+  } catch (error) {
+    if (error instanceof XmtpWalletRegistrationError) throw error;
+    throw new XmtpWalletRegistrationError('XMTP room setup did not finish. Sign the wallet prompts, then try again.', { cause: error });
+  }
+}
+
 export function isXmtpRegistrationRequiredError(error) {
   const message = String(error?.message ?? error ?? '');
   return /AddressNotFound|Addresses not found|not reachable on XMTP|xmtp_registration_required/i.test(message);
