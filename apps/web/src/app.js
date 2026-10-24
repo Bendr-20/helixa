@@ -2316,6 +2316,21 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       },
     };
     render(root, state, handlers);
+    void refreshConsoleInvitationInbox(state.consoleLaunchpad.requestId);
+  }
+
+  async function refreshConsoleInvitationInbox(requestId) {
+    if (!state.consoleAuthenticatedWallet || typeof activeMissionApi.getSwarmInvitationInbox !== 'function') return;
+    try {
+      const response = await activeMissionApi.getSwarmInvitationInbox({});
+      if (state.consoleMissions?.view !== 'launchpad' || state.consoleLaunchpad?.requestId !== requestId) return;
+      const leadDraft = response.inbox?.leadDraft ? invitationShareLinks(response.inbox.leadDraft) : null;
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: leadDraft, invitationInbox: { leadDraft, invitations: response.inbox?.invitations ?? [] }, error: null } };
+    } catch (error) {
+      if (state.consoleMissions?.view !== 'launchpad' || state.consoleLaunchpad?.requestId !== requestId) return;
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationInbox: { leadDraft: null, invitations: [] }, error: String(error?.message ?? 'Invitation inbox failed.') } };
+    }
+    render(root, state, handlers);
   }
 
   async function prepareConsoleSwarmLaunch(event) {
@@ -2415,6 +2430,14 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       const response = await activeMissionApi.respondSwarmInvite({ inviteId, decision, csrfToken: state.consoleCsrfToken });
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
     } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation response failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function openConsoleInvitation(inviteId) {
+    try {
+      const response = await activeMissionApi.getSwarmInvite({ inviteId });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation is unavailable.') } }; }
     render(root, state, handlers);
   }
 
@@ -3633,7 +3656,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, revokeConsoleInvitation, closeConsoleInvitationDraft, respondConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, revokeConsoleInvitation, closeConsoleInvitationDraft, respondConsoleInvitation, openConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -6306,6 +6329,7 @@ function bindProductHomeEvents(root, handlers, state) {
     revokeInvitation: handlers.revokeConsoleInvitation,
     closeInvitationDraft: handlers.closeConsoleInvitationDraft,
     respondInvitation: handlers.respondConsoleInvitation,
+    openInvitation: handlers.openConsoleInvitation,
     copyInvitation: handlers.copyConsoleInvitation,
     back: handlers.closeConsoleMission,
   });

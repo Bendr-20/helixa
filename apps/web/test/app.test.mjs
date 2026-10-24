@@ -8249,6 +8249,8 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   let mission = null;
   const missionApi = {
     async listPublic(input) { calls.push(['list', input]); return { missions: mission ? [mission] : [], nextCursor: null }; },
+    async getSwarmInvitationInbox(input) { calls.push(['inbox', input]); return { inbox: { leadDraft: { draftId: 'draft_' + 'a'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'b'.repeat(64), tokenId: '1', status: 'pending' }] }, invitations: [{ inviteId: 'invite_' + 'c'.repeat(64), draftId: 'draft_' + 'd'.repeat(64), tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' }] } }; },
+    async getSwarmInvite(input) { calls.push(['invite', input]); return { invitation: { inviteId: input.inviteId, tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' } }; },
     async create(input) { calls.push(['create', input]); return { result: { missionId: input.body.mission_id, revision: 0, state: 'draft' } }; },
     async getPublic(input) { calls.push(['get', input]); return { mission }; },
     async publish(input) {
@@ -8295,8 +8297,16 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   root.querySelector('[data-mission-action="back"]')?.click();
   assert.ok(root.querySelector('.mission-card'));
   root.querySelector('[data-mission-action="launchpad"]')?.click();
-  await flushAsyncEvents();
+  await flushAsyncEvents(20);
   assert.ok(root.querySelector('.swarm-launchpad'));
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1/);
+  assert.match(root.querySelector('[data-swarm-invite-copy]')?.closest('label')?.textContent ?? '', /Individual invitation link/);
+  root.querySelector('[data-swarm-invite-open]')?.click(); await flushAsyncEvents(20);
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #420 is invited/);
+  assert.ok(root.querySelector('[data-swarm-invite-accept]'));
+  root.querySelector('[data-mission-action="back"]')?.click();
+  assert.match(root.querySelector('.mission-surface-header')?.textContent ?? '', /Swarm Command/);
+  root.querySelector('[data-mission-action="launchpad"]')?.click(); await flushAsyncEvents(20);
   assert.match(root.querySelector('.swarm-launch-gate')?.textContent ?? '', /at least three Loopers/i);
   assert.equal(root.querySelector('[data-swarm-launch-submit]')?.disabled, true);
 });

@@ -1640,9 +1640,11 @@ async function handleSwarmInvitationPost(request, parts, context) {
 async function handleSwarmInvitationRead(request, parts, context) {
   const service = context.swarmInvitationService;
   if (!service) return errorResponse(503, 'not_configured', 'Swarm invitation service is not configured.', undefined, { 'cache-control': 'no-store' });
+  if (parts.length === 3 && !isTrustedBrowserOrigin(request, context)) throw new ApiForbiddenError('Trusted browser origin is required for the invitation inbox.');
   const session = requireConsoleSession(request, context);
   const throttle = checkSwarmLaunchRateLimit(session.wallet, context, { code: 'swarm_invitation_rate_limited', message: 'Swarm invitation request limit exceeded.' });
   if (throttle) return throttle;
+  if (parts.length === 3) return jsonResponse({ schema_version: '0.1.0', inbox: await service.readInbox({ actorAddress: session.wallet }) }, 200, { 'cache-control': 'no-store' });
   if (parts[3] === 'drafts' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', draft: await service.readDraft({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft') }) }, 200, { 'cache-control': 'no-store' });
   if (parts[3] === 'invites' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', invitation: await service.readInvite({ actorAddress: session.wallet, inviteId: strictOpaqueInvitationId(parts[4], 'invite') }) }, 200, { 'cache-control': 'no-store' });
   return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });

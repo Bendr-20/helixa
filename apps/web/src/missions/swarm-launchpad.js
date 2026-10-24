@@ -40,7 +40,7 @@ export function renderSwarmLaunchpad(state = {}) {
   const error = state.error ? `<div class="mission-alert" role="alert">${escapeHtml(state.error)}</div>` : '';
   const consent = renderConsent(state);
   const readiness = renderReadiness(state);
-  const invitations = renderSwarmInvitationPanel({ draft: state.invitationDraft, invitation: state.invitation, mode: state.invitation ? 'invitee' : 'lead' });
+  const invitations = renderSwarmInvitationPanel({ draft: state.invitationDraft, invitation: state.invitation, inbox: state.invitationInbox, mode: state.invitation ? 'invitee' : 'lead' });
   return `<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title">
     <header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Launchpad</span><h2 id="swarm-launchpad-title">Form a swarm. Build an app. <em>Launch its token.</em></h2><p>Use verified Looper identities and CRED, define the product, set an exact contribution split, then prepare the Base launch packet.</p></header>
     <nav class="swarm-launch-steps" aria-label="Launch stages"><span>1 · Form swarm</span><span>2 · Spec app</span><span>3 · Set split</span><span>4 · Prepare token</span></nav>
@@ -66,7 +66,7 @@ export function bindSwarmLaunchpad(root, handlers = {}) {
   root.querySelector('[data-swarm-launch-consent-create]')?.addEventListener('click', () => handlers.createConsent?.());
   root.querySelector('[data-swarm-launch-consent-sign]')?.addEventListener('click', () => handlers.signConsent?.());
   root.querySelector('[data-swarm-launch-readiness-create]')?.addEventListener('click', () => handlers.createReadiness?.());
-  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation });
+  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation, open: handlers.openInvitation });
 }
 
 

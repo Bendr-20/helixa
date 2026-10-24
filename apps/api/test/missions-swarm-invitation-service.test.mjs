@@ -51,5 +51,13 @@ test('adding an invite reverifies the lead and new subject while existing invite
 
 test('lead can close a draft after fresh authority verification and closed history remains owner-readable',async()=>{const {store,service}=setup();const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1'],idempotencyKey:'close-12345678'});await assert.rejects(()=>service.closeDraft({actorAddress:a,draftId:draft.draftId}),/lead owner/i);const closed=await service.closeDraft({actorAddress:lead,draftId:draft.draftId});assert.equal(closed.status,'closed');assert.equal(closed.invites[0].status,'revoked');assert.equal((await service.readDraft({actorAddress:lead,draftId:draft.draftId})).status,'closed');const invite=await service.readInvite({actorAddress:a,inviteId:draft.invites[0].inviteId});assert.equal(invite.draftStatus,'closed');await assert.rejects(()=>service.respond({actorAddress:a,inviteId:draft.invites[0].inviteId,decision:'accepted'}),(error)=>error.code==='swarm_invitation_conflict'&&error.status===409);store.close();});
 
+test('inbox discovery is owner-scoped and performs no authority-provider reads',async()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'});let n=0;const calls=[];
+ const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>{calls.push(tokenId);return identity(tokenId);}},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z')});
+ const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1'],idempotencyKey:'inbox-12345678'});calls.length=0;
+ const leadInbox=await service.readInbox({actorAddress:lead});const inviteeInbox=await service.readInbox({actorAddress:a});
+ assert.equal(leadInbox.leadDraft.draftId,draft.draftId);assert.equal(inviteeInbox.invitations[0].inviteId,draft.invites[0].inviteId);assert.deepEqual(calls,[]);store.close();
+});
+
 import { createSwarmInvitationAuthorityVerifier } from '../src/missions/swarm-invitations.js';
 test('authority verifier only accepts the reviewed dual-provider set',()=>{assert.throws(()=>createSwarmInvitationAuthorityVerifier({providers:[{id:'evil',approved:true},{id:'fake',approved:true}],accountIntegrityReader:{read:async()=>({})}}),/reviewed/i);});
