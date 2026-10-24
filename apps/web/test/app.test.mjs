@@ -190,11 +190,18 @@ test('Console session clearing drops owner-scoped RESTAP policy state', () => {
       status: 'ready', selectedTokenId: '617', requestId: 9,
       policy: { tokenId: '617', networkEnabled: true }, sendResult: { reply: 'private reply' }, error: null,
     },
+    consoleMissions: { status: 'loaded', view: 'launchpad', missions: [{ missionId: 'private' }] },
+    consoleLaunchpad: { status: 'editing', requestId: 12, invitationDraft: { draftId: 'draft_private', invites: [{ inviteId: 'invite_private' }] }, invitationInbox: { invitations: [{ inviteId: 'invite_private' }] } },
   }, { walletSnapshot: { connected: true, address: '0x2222222222222222222222222222222222222222' } });
   assert.equal(cleared.consoleRestapNetwork.status, 'idle');
   assert.equal(cleared.consoleRestapNetwork.selectedTokenId, null);
   assert.equal(cleared.consoleRestapNetwork.policy, null);
   assert.equal(cleared.consoleRestapNetwork.sendResult, null);
+  assert.deepEqual(cleared.consoleMissions, { status: 'idle', view: 'board', filter: null, missions: [], error: null });
+  assert.equal(cleared.consoleLaunchpad.status, 'idle');
+  assert.equal(cleared.consoleLaunchpad.requestId, 13);
+  assert.equal(cleared.consoleLaunchpad.invitationDraft, undefined);
+  assert.equal(cleared.consoleLaunchpad.invitationInbox, undefined);
 });
 
 test('Console RESTAP forms invoke save send stop and refresh through real DOM bindings', async () => {
@@ -8251,6 +8258,7 @@ test('Swarm Command loads live missions and creates a recruiting mission through
     async listPublic(input) { calls.push(['list', input]); return { missions: mission ? [mission] : [], nextCursor: null }; },
     async getSwarmInvitationInbox(input) { calls.push(['inbox', input]); return { inbox: { leadDraft: { draftId: 'draft_' + 'a'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'b'.repeat(64), tokenId: '1', status: 'pending' }] }, invitations: [{ inviteId: 'invite_' + 'c'.repeat(64), draftId: 'draft_' + 'd'.repeat(64), tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' }] } }; },
     async getSwarmInvite(input) { calls.push(['invite', input]); return { invitation: { inviteId: input.inviteId, tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' } }; },
+    async closeSwarmDraft(input) { calls.push(['close-invitations', input]); return { draft: { draftId: input.draftId, status: 'closed', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 4, invites: [] } }; },
     async create(input) { calls.push(['create', input]); return { result: { missionId: input.body.mission_id, revision: 0, state: 'draft' } }; },
     async getPublic(input) { calls.push(['get', input]); return { mission }; },
     async publish(input) {
@@ -8301,6 +8309,9 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   assert.ok(root.querySelector('.swarm-launchpad'));
   assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1/);
   assert.match(root.querySelector('[data-swarm-invite-copy]')?.closest('label')?.textContent ?? '', /Individual invitation link/);
+  root.querySelector('[data-swarm-draft-close]')?.click(); await flushAsyncEvents(20);
+  assert.ok(root.querySelector('[data-swarm-draft-create]'));
+  assert.doesNotMatch(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1/);
   root.querySelector('[data-swarm-invite-open]')?.click(); await flushAsyncEvents(20);
   assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #420 is invited/);
   assert.ok(root.querySelector('[data-swarm-invite-accept]'));
@@ -8309,6 +8320,51 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   root.querySelector('[data-mission-action="launchpad"]')?.click(); await flushAsyncEvents(20);
   assert.match(root.querySelector('.swarm-launch-gate')?.textContent ?? '', /at least three Loopers/i);
   assert.equal(root.querySelector('[data-swarm-launch-submit]')?.disabled, true);
+});
+
+test('Swarm invitation mutation invalidates a delayed inbox snapshot', async () => {
+  const root = setupDom('https://helixa.xyz/multipass/console');
+  const owner = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
+  let resolveInbox;
+  const pendingInbox = new Promise((resolve) => { resolveInbox = resolve; });
+  const missionApi = {
+    async listPublic() { return { missions: [], nextCursor: null }; },
+    async getSwarmInvitationInbox() { return pendingInbox; },
+    async createSwarmDraft() { return { draft: { draftId: 'draft_' + 'e'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'f'.repeat(64), tokenId: '452', status: 'pending' }] } }; },
+  };
+  const app = createApp({ root, loadDemo: async () => sampleData(), missionApi, walletClient: createWalletClientFixture({ snapshot: { connected: true, address: owner, label: 'owner' } }), fetchImpl: createConsoleOwnedAgentsFetch({ tokenIds: [617] }), claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) } });
+  await app.start(); await flushAsyncEvents(30);
+  root.querySelector('[data-console-view="missions"]')?.click(); await flushAsyncEvents(20);
+  root.querySelector('[data-mission-action="launchpad"]')?.click(); await flushAsyncEvents();
+  const form = root.querySelector('[data-swarm-draft-create]');
+  form.elements.namedItem('lead_token_id').value = '2431';
+  form.elements.namedItem('invitee_token_ids').value = '452';
+  form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+  await flushAsyncEvents(20);
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #452/);
+  resolveInbox({ inbox: { leadDraft: { draftId: 'draft_' + 'a'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'b'.repeat(64), tokenId: '1', status: 'pending' }] }, invitations: [] } });
+  await flushAsyncEvents(20);
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #452/);
+  assert.doesNotMatch(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #1(?:\D|$)/);
+});
+
+test('Swarm invitation state cannot cross a wallet session boundary', async () => {
+  const root = setupDom('https://helixa.xyz/multipass/console');
+  const firstOwner = '0x27E3286c2c1783F67d06f2ff4e3ab41f8e1C91Ea';
+  const walletClient = createWalletClientFixture({ snapshot: { connected: true, address: firstOwner, label: 'first' } });
+  let resolveInbox;
+  const pendingInbox = new Promise((resolve) => { resolveInbox = resolve; });
+  const missionApi = { async listPublic() { return { missions: [], nextCursor: null }; }, async getSwarmInvitationInbox() { return pendingInbox; } };
+  const app = createApp({ root, loadDemo: async () => sampleData(), missionApi, walletClient, fetchImpl: createConsoleOwnedAgentsFetch({ tokenIds: [617] }), claimApi: { loadConsoleCodexBundle: async ({ selectedTokenId }) => createConsoleCodexBundle(selectedTokenId) } });
+  await app.start(); await flushAsyncEvents(30);
+  root.querySelector('[data-console-view="missions"]')?.click(); await flushAsyncEvents(20);
+  root.querySelector('[data-mission-action="launchpad"]')?.click(); await flushAsyncEvents();
+  walletClient.setSnapshot({ connected: true, address: '0x709D8d528D2c0C8A408107E74b38a01Fa14e44aE', label: 'second' }, { notify: true });
+  await flushAsyncEvents();
+  resolveInbox({ inbox: { leadDraft: { draftId: 'draft_' + 'a'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'b'.repeat(64), tokenId: '1', status: 'pending' }] }, invitations: [] } });
+  await flushAsyncEvents(20);
+  assert.doesNotMatch(root.textContent ?? '', /invite_[a-f0-9]{64}|Looper #1(?:\D|$)/);
+  assert.match(root.querySelector('.console-auth-gate')?.textContent ?? '', /Sign in to Console/i);
 });
 
 test('Console credit keeps login, vouch, broad permission, quote, and borrow as separate owner actions', async () => {

@@ -48,3 +48,18 @@ test('owner inbox restores the latest active lead draft and bounded privacy-safe
  assert.equal(store.readInbox(wallets[0]).leadDraft,null);
  store.close();
 });
+
+test('lead inbox keeps every active invitation and at most sixteen terminal records',()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'});
+ const owner=(value)=>'0x'+value.toString(16).padStart(40,'0');
+ const draft=store.createDraft({draftId:'draft_'+ 'f'.repeat(64),idempotencyKey:'bounded-12345678',requestHash:'e'.repeat(64),lead:identity('2431',wallets[0]),invitees:[identity('1',owner(1001)),identity('2',owner(1002))],createdAt:'2026-10-24T04:00:00.000Z',createInviteId:(id)=>'invite_'+Number(id).toString(16).padStart(64,'0')});
+ store.respond({inviteId:draft.invites[0].inviteId,owner:owner(1001),decision:'accepted',at:'2026-10-24T04:00:01.000Z'});
+ store.revoke({draftId:draft.draftId,inviteId:draft.invites[1].inviteId,owner:wallets[0],at:'2026-10-24T04:00:02.000Z'});
+ for(let tokenId=3;tokenId<=102;tokenId+=1){const inviteId='invite_'+tokenId.toString(16).padStart(64,'0');store.addInvite({draftId:draft.draftId,inviteId,identity:identity(String(tokenId),owner(1000+tokenId)),owner:wallets[0],at:new Date(Date.UTC(2026,9,24,4,0,tokenId)).toISOString()});store.revoke({draftId:draft.draftId,inviteId,owner:wallets[0],at:new Date(Date.UTC(2026,9,24,4,2,tokenId)).toISOString()});}
+ const inbox=store.readInbox(wallets[0]);
+ assert.equal(inbox.leadDraft.invites.length,17);
+ assert.equal(inbox.leadDraft.invites.filter((entry)=>entry.status==='accepted').length,1);
+ assert.equal(inbox.leadDraft.invites.some((entry)=>entry.tokenId==='1'),true);
+ assert.equal(inbox.leadDraft.openSlots,3);
+ store.close();
+});

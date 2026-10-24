@@ -147,6 +147,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   let consoleRestapNetworkMutationAbortController = null;
   let consoleCreditAbortController = null;
   let consoleMissionAbortController = null;
+  let consoleInvitationInboxAbortController = null;
   const consoleCodexCache = new Map();
   let consoleCodexArtifactHash = null;
   let preparedConsoleChallenge = null;
@@ -167,6 +168,10 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     consoleRestapNetworkMutationAbortController = null;
     consoleCreditAbortController?.abort();
     consoleCreditAbortController = null;
+    consoleMissionAbortController?.abort();
+    consoleMissionAbortController = null;
+    consoleInvitationInboxAbortController?.abort();
+    consoleInvitationInboxAbortController = null;
     clearConsoleImagePreview();
     consoleCodexCache.clear();
     consoleCodexArtifactHash = null;
@@ -2319,16 +2324,46 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     void refreshConsoleInvitationInbox(state.consoleLaunchpad.requestId);
   }
 
+  function captureConsoleInvitationContext(requestId = state.consoleLaunchpad?.requestId) {
+    return {
+      requestId,
+      sessionGeneration: state.consoleSessionGeneration,
+      wallet: String(state.consoleAuthenticatedWallet ?? '').toLowerCase(),
+    };
+  }
+
+  function isCurrentConsoleInvitationContext(context) {
+    return Boolean(context?.wallet)
+      && context.wallet === String(state.consoleAuthenticatedWallet ?? '').toLowerCase()
+      && context.sessionGeneration === state.consoleSessionGeneration
+      && context.requestId === state.consoleLaunchpad?.requestId
+      && state.consoleMissions?.view === 'launchpad';
+  }
+
+  function beginConsoleInvitationMutation() {
+    consoleInvitationInboxAbortController?.abort();
+    consoleInvitationInboxAbortController = null;
+    const requestId = Number(state.consoleLaunchpad?.requestId ?? 0) + 1;
+    state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, requestId } };
+    return captureConsoleInvitationContext(requestId);
+  }
+
   async function refreshConsoleInvitationInbox(requestId) {
     if (!state.consoleAuthenticatedWallet || typeof activeMissionApi.getSwarmInvitationInbox !== 'function') return;
+    consoleInvitationInboxAbortController?.abort();
+    const controller = new AbortController();
+    consoleInvitationInboxAbortController = controller;
+    const context = captureConsoleInvitationContext(requestId);
     try {
-      const response = await activeMissionApi.getSwarmInvitationInbox({});
-      if (state.consoleMissions?.view !== 'launchpad' || state.consoleLaunchpad?.requestId !== requestId) return;
+      const response = await activeMissionApi.getSwarmInvitationInbox({ signal: controller.signal });
+      if (controller.signal.aborted || !isCurrentConsoleInvitationContext(context)) return;
       const leadDraft = response.inbox?.leadDraft ? invitationShareLinks(response.inbox.leadDraft) : null;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: leadDraft, invitationInbox: { leadDraft, invitations: response.inbox?.invitations ?? [] }, error: null } };
     } catch (error) {
-      if (state.consoleMissions?.view !== 'launchpad' || state.consoleLaunchpad?.requestId !== requestId) return;
+      if (error?.name === 'AbortError' || controller.signal.aborted || !isCurrentConsoleInvitationContext(context)) return;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationInbox: { leadDraft: null, invitations: [] }, error: String(error?.message ?? 'Invitation inbox failed.') } };
+    } finally {
+      if (consoleInvitationInboxAbortController === controller) consoleInvitationInboxAbortController = null;
     }
     render(root, state, handlers);
   }
@@ -2380,64 +2415,79 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   async function createConsoleInvitationDraft(form) {
     if (!state.consoleCsrfToken) return;
+    const context = beginConsoleInvitationMutation();
     try {
       const lead = String(form.get('lead_token_id') ?? '').trim();
       const invitees = String(form.get('invitee_token_ids') ?? '').split(',').map((value) => value.trim()).filter(Boolean);
       const idempotencyKey = swarmDraftRetryState.keyFor({ leadTokenId: lead, inviteeTokenIds: invitees });
       const response = await activeMissionApi.createSwarmDraft({ csrfToken: state.consoleCsrfToken, body: { lead_token_id: lead, invitee_token_ids: invitees, idempotency_key: idempotencyKey } });
+      if (!isCurrentConsoleInvitationContext(context)) return;
       swarmDraftRetryState.succeeded();
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), invitation: null, error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation draft failed.') } }; }
+      const leadDraft = invitationShareLinks(response.draft);
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: leadDraft, invitationInbox: { leadDraft, invitations: state.consoleLaunchpad?.invitationInbox?.invitations ?? [] }, invitation: null, error: null } };
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation draft failed.') } }; }
     render(root, state, handlers);
   }
 
   async function addConsoleInvitation(form) {
     const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
     if (!draftId || !state.consoleCsrfToken) return;
+    const context = beginConsoleInvitationMutation();
     try {
       await activeMissionApi.addSwarmInvite({ draftId, csrfToken: state.consoleCsrfToken, body: { token_id: String(form.get('token_id') ?? '').trim() } });
       const response = await activeMissionApi.getSwarmDraft({ draftId });
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Adding invitation failed.') } }; }
+      if (!isCurrentConsoleInvitationContext(context)) return;
+      const leadDraft = invitationShareLinks(response.draft);
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: leadDraft, invitationInbox: { leadDraft, invitations: state.consoleLaunchpad?.invitationInbox?.invitations ?? [] }, error: null } };
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Adding invitation failed.') } }; }
     render(root, state, handlers);
   }
 
   async function revokeConsoleInvitation(inviteId) {
     const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
     if (!draftId || !state.consoleCsrfToken) return;
+    const context = beginConsoleInvitationMutation();
     try {
       await activeMissionApi.revokeSwarmInvite({ draftId, inviteId, csrfToken: state.consoleCsrfToken });
       const response = await activeMissionApi.getSwarmDraft({ draftId });
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Revoking invitation failed.') } }; }
+      if (!isCurrentConsoleInvitationContext(context)) return;
+      const leadDraft = invitationShareLinks(response.draft);
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: leadDraft, invitationInbox: { leadDraft, invitations: state.consoleLaunchpad?.invitationInbox?.invitations ?? [] }, error: null } };
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Revoking invitation failed.') } }; }
     render(root, state, handlers);
   }
 
   async function closeConsoleInvitationDraft() {
     const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
     if (!draftId || !state.consoleCsrfToken) return;
+    const context = beginConsoleInvitationMutation();
     try {
-      const response = await activeMissionApi.closeSwarmDraft({ draftId, csrfToken: state.consoleCsrfToken });
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Closing invitation draft failed.') } }; }
+      await activeMissionApi.closeSwarmDraft({ draftId, csrfToken: state.consoleCsrfToken });
+      if (!isCurrentConsoleInvitationContext(context)) return;
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: null, invitationInbox: { leadDraft: null, invitations: state.consoleLaunchpad?.invitationInbox?.invitations ?? [] }, error: null } };
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Closing invitation draft failed.') } }; }
     render(root, state, handlers);
   }
 
   async function respondConsoleInvitation(decision) {
     const inviteId = state.consoleLaunchpad?.invitation?.inviteId;
     if (!inviteId || !state.consoleCsrfToken) return;
+    const context = beginConsoleInvitationMutation();
     try {
       const response = await activeMissionApi.respondSwarmInvite({ inviteId, decision, csrfToken: state.consoleCsrfToken });
+      if (!isCurrentConsoleInvitationContext(context)) return;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation response failed.') } }; }
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation response failed.') } }; }
     render(root, state, handlers);
   }
 
   async function openConsoleInvitation(inviteId) {
+    const context = captureConsoleInvitationContext();
     try {
       const response = await activeMissionApi.getSwarmInvite({ inviteId });
+      if (!isCurrentConsoleInvitationContext(context)) return;
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
-    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation is unavailable.') } }; }
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation is unavailable.') } }; }
     render(root, state, handlers);
   }
 
@@ -2454,11 +2504,16 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   async function openSwarmInviteFromLocation() {
     const inviteId = new URL(window.location.href).searchParams.get('swarm_invite');
     if (!inviteId || !/^invite_[a-f0-9]{64}$/u.test(inviteId) || !state.consoleAuthenticatedWallet) return;
+    const context = { sessionGeneration: state.consoleSessionGeneration, wallet: String(state.consoleAuthenticatedWallet).toLowerCase() };
     try {
       const response = await activeMissionApi.getSwarmInvite({ inviteId });
+      if (context.sessionGeneration !== state.consoleSessionGeneration || context.wallet !== String(state.consoleAuthenticatedWallet ?? '').toLowerCase()) return;
       if (state.consoleMissions?.view !== 'launchpad') openConsoleLaunchpad();
       state = { ...state, consoleWorkspaceView: 'missions', consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'launchpad', error: null }, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, invitationDraft: null, error: null } };
-    } catch (error) { state = { ...state, consoleMissions: { ...state.consoleMissions, error: String(error?.message ?? 'Invitation is unavailable.') } }; }
+    } catch (error) {
+      if (context.sessionGeneration !== state.consoleSessionGeneration || context.wallet !== String(state.consoleAuthenticatedWallet ?? '').toLowerCase()) return;
+      state = { ...state, consoleMissions: { ...state.consoleMissions, error: String(error?.message ?? 'Invitation is unavailable.') } };
+    }
     render(root, state, handlers);
   }
 
@@ -4043,6 +4098,8 @@ export function clearConsoleSessionState(state = {}, { walletSnapshot = {}, stat
     consoleCodex: createInitialConsoleCodexState(),
     consoleRestapNetwork: createInitialConsoleRestapNetworkState(),
     consoleCredit: createInitialConsoleCreditState(),
+    consoleMissions: { status: 'idle', view: 'board', filter: null, missions: [], error: null },
+    consoleLaunchpad: { status: 'idle', requestId: Number(state.consoleLaunchpad?.requestId ?? 0) + 1, draft: { members: [], app: {}, token: {} }, manifest: null, error: null },
     looperAgentWallet: {
       mode: 'read_only',
       reason: 'not_selected',

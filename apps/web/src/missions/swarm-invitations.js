@@ -15,8 +15,8 @@ export function renderSwarmInvitationPanel({ draft = null, invitation = null, in
 }
 
 export function bindSwarmInvitationPanel(root, handlers = {}) {
-  root.querySelector('[data-swarm-draft-create]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.create?.(new FormData(event.currentTarget)); });
-  root.querySelector('[data-swarm-invite-add]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.add?.(new FormData(event.currentTarget)); });
+  root.querySelector('[data-swarm-draft-create]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.create?.(formData(event.currentTarget)); });
+  root.querySelector('[data-swarm-invite-add]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.add?.(formData(event.currentTarget)); });
   root.querySelectorAll('[data-swarm-invite-revoke]').forEach((button) => button.addEventListener('click', () => handlers.revoke?.(button.dataset.swarmInviteRevoke)));
   root.querySelector('[data-swarm-draft-close]')?.addEventListener('click', () => handlers.close?.());
   root.querySelector('[data-swarm-invite-accept]')?.addEventListener('click', () => handlers.respond?.('accepted'));
@@ -39,5 +39,6 @@ function renderLeadDraft(draft) {
   return '<div class="swarm-invitation-lead"><h4>Lead draft · Looper #' + html(draft.lead?.tokenId ?? '') + '</h4><p>' + slotText + '</p><ul>' + rows + '</ul>' + add + close + '</div>';
 }
 
+function formData(form) { const FormDataConstructor = form?.ownerDocument?.defaultView?.FormData ?? globalThis.FormData; return new FormDataConstructor(form); }
 function html(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('\"', '&quot;').replaceAll("'", '&#039;'); }
 function attr(value) { return html(value); }
