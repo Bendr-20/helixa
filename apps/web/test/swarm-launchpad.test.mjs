@@ -1,13 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { JSDOM } from 'jsdom';
 
 import {
+  bindSwarmLaunchpad,
   buildSwarmLaunchManifest,
   canonicalSwarmLaunchJson,
+  deriveSwarmLaunchDraftFromInvitation,
   evaluateSwarmLaunchGate,
   normalizeSwarmLaunchDraft,
   normalizeSwarmLaunchForm,
   renderSwarmLaunchpad,
+  serializeSwarmLaunchRequest,
 } from '../src/missions/swarm-launchpad.js';
 
 const freshCred = (score, tier = 'PRIME') => ({
@@ -114,6 +118,52 @@ test('Launchpad keeps preparation blocked until repository and did:key workspace
   const html = renderSwarmLaunchpad({ status: 'editing', draft: draft({ workspace: undefined }) });
   assert.match(html, /Launch preparation blocked/i);
   assert.match(html, /data-swarm-launch-submit disabled/i);
+});
+
+test('Launchpad blocks preparation for duplicate, non-Ed25519 DID keys and incomplete app or token terms', () => {
+  const duplicateDid = { ...workspace, members: workspace.members.map((member) => ({ ...member, didKey: workspace.members[0].didKey })) };
+  assert.match(renderSwarmLaunchpad({ status: 'editing', draft: draft({ workspace: duplicateDid }) }), /data-swarm-launch-submit disabled/i);
+  const invalidDid = { ...workspace, members: workspace.members.map((member, index) => index === 2 ? { ...member, didKey: 'did:key:zThisLooksLongEnoughButIsNotEd25519' } : member) };
+  assert.match(renderSwarmLaunchpad({ status: 'editing', draft: draft({ workspace: invalidDid }) }), /data-swarm-launch-submit disabled/i);
+  assert.match(renderSwarmLaunchpad({ status: 'editing', draft: draft({ app: { ...draft().app, template: '' } }) }), /data-swarm-launch-submit disabled/i);
+  assert.match(renderSwarmLaunchpad({ status: 'editing', draft: draft({ token: { ...draft().token, ticker: '' } }) }), /data-swarm-launch-submit disabled/i);
+});
+
+test('launch request serialization includes the complete canonical workspace for preview and consent', () => {
+  const source = draft({
+    members: members.map((member) => ({ ...member, ownerAddress: member.ownerAddress.toUpperCase().replace('0X', '0x'), role: '  ' + member.role + '  ' })),
+    workspace: { ...workspace, repository: { slug: '  signal-swarm  ', visibility: 'PUBLIC' }, members: [...workspace.members].reverse() },
+  });
+  const body = serializeSwarmLaunchRequest(source);
+  assert.deepEqual(body.members.map((member) => member.ownerAddress), members.map((member) => member.ownerAddress));
+  assert.deepEqual(body.members.map((member) => member.role), members.map((member) => member.role));
+  assert.deepEqual(body.workspace, {
+    provider: 'TWIGPINE',
+    repository: { slug: 'signal-swarm', visibility: 'PUBLIC' },
+    members: workspace.members,
+    githubMirror: { enabled: false, owner: null, repository: null },
+  });
+  assert.notEqual(body.workspace, source.workspace);
+  const canonical = normalizeSwarmLaunchDraft({ ...body, members: source.members.map((member, index) => ({ ...member, ...body.members[index] })) });
+  assert.equal(canonical.workspace.schema, 'multipass.swarm-workspace.v1');
+  assert.equal(canonical.workspace.mode, 'PREPARATION_ONLY');
+  assert.equal(canonical.workspace.repository.slug, 'signal-swarm');
+  assert.deepEqual(canonical.workspace.members.map(({ tokenId, didKey }) => ({ tokenId, didKey })), workspace.members);
+});
+
+test('Launchpad enables preparation after the lead completes every required handoff field', () => {
+  const invitationDraft = { lead: { tokenId: '2431', owner: '0x' + '1'.repeat(40) }, invites: [{ tokenId: '3802', owner: '0x' + '2'.repeat(40), status: 'accepted' }, { tokenId: '420', owner: '0x' + '3'.repeat(40), status: 'accepted' }] };
+  const dom = new JSDOM('<!doctype html><div id="root"></div>');
+  const root = dom.window.document.querySelector('#root');
+  root.innerHTML = renderSwarmLaunchpad({ status: 'editing', draft: deriveSwarmLaunchDraftFromInvitation(invitationDraft) });
+  bindSwarmLaunchpad(root, {});
+  const submit = root.querySelector('[data-swarm-launch-submit]');
+  assert.equal(submit.disabled, true);
+  const values = { app_template: 'web_app', revenue_model: 'marketplace', ship_target: '30_days', token_name: 'Multipass App Store', token_ticker: 'mpapp', token_supply: '1000000000', token_curve: 'bonding_curve_to_dex', workspace_visibility: 'PUBLIC', member_0_did_key: workspace.members[0].didKey, member_1_did_key: workspace.members[1].didKey, member_2_did_key: workspace.members[2].didKey };
+  for (const [name, value] of Object.entries(values)) root.querySelector('[name="' + name + '"]').value = value;
+  root.querySelector('[data-swarm-launch-form]').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  assert.equal(submit.disabled, false);
+  assert.equal(submit.hasAttribute('aria-disabled'), false);
 });
 
 test('Launchpad exposes editable multi-wallet roster fields before server verification', () => {

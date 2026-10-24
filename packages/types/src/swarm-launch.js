@@ -222,6 +222,10 @@ function normalizeWorkspaceRequest(value, members) {
   });
 }
 
+export function normalizeSwarmLaunchWorkspaceRequest(value, members = []) {
+  return normalizeWorkspaceRequest(value, members);
+}
+
 export function normalizeSwarmLaunchWorkspaceManifest(value, tokenIds) {
   exactObject(value, ['schema', 'mode', 'provider', 'repository', 'members', 'delegation', 'provenance', 'githubMirror', 'authorityBoundary'], 'workspace manifest');
   exactObject(value.repository, ['cardinality', 'slug', 'visibility', 'defaultBranch', 'protectedBranches', 'provisioningStatus'], 'workspace repository');

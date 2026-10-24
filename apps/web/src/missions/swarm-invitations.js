@@ -1,5 +1,39 @@
 const SAFETY = 'No launch terms, allocation, token, or transaction is authorized.';
 
+const PILOT_ROLES = Object.freeze({
+  '2431': 'Lead: scope, architecture, integration, and acceptance',
+  '3802': 'Product/operator review and end-user workflow',
+  '420': 'Implementation and existing-work inventory',
+});
+
+export function deriveSwarmLaunchDraftFromInvitation(draft = {}) {
+  const accepted = Array.isArray(draft.invites) ? draft.invites.filter((item) => item?.status === 'accepted') : [];
+  const roster = [draft.lead, ...accepted].filter(Boolean);
+  if (roster.length < 3 || roster.length > 5) throw new TypeError('Three to five accepted members are required to continue launch preparation.');
+  const baseBps = Math.floor(10_000 / roster.length);
+  const remainder = 10_000 - (baseBps * roster.length);
+  const members = roster.map((member, index) => ({
+    tokenId: String(member.tokenId ?? ''),
+    ownerAddress: String(member.owner ?? ''),
+    name: 'Looper #' + String(member.tokenId ?? ''),
+    role: PILOT_ROLES[String(member.tokenId ?? '')] ?? '',
+    contributionBps: baseBps + (index < remainder ? 1 : 0),
+    cred: null,
+    erc8004Id: member.erc8004AgentId ? '8453:' + String(member.erc8004AgentId) : null,
+  }));
+  return {
+    members,
+    app: { name: 'Multipass App Store', pitch: 'Build the Multipass App Store.', template: '', revenueModel: '', shipTarget: '' },
+    token: { name: '', ticker: '', supply: '', curve: '' },
+    workspace: {
+      provider: 'TWIGPINE',
+      repository: { slug: 'multipass-app-store', visibility: '' },
+      members: members.map((member) => ({ tokenId: member.tokenId, didKey: '' })),
+      githubMirror: { enabled: false, owner: null, repository: null },
+    },
+  };
+}
+
 export function renderSwarmInvitationPanel({ draft = null, invitation = null, inbox = null, mode = draft ? 'lead' : 'invitee', responding = false, decision = null } = {}) {
   if (mode === 'invitee' && invitation) {
     const pendingLabel = decision === 'declined' ? 'Declining invitation…' : 'Accepting and verifying ownership…';
@@ -27,6 +61,7 @@ export function bindSwarmInvitationPanel(root, handlers = {}) {
   root.querySelector('[data-swarm-invite-decline]')?.addEventListener('click', () => handlers.respond?.('declined'));
   root.querySelectorAll('[data-swarm-invite-copy]').forEach((button) => button.addEventListener('click', () => handlers.copy?.(button.dataset.swarmInviteCopy)));
   root.querySelectorAll('[data-swarm-invite-open]').forEach((button) => button.addEventListener('click', () => handlers.open?.(button.dataset.swarmInviteOpen)));
+  root.querySelector('[data-swarm-invite-continue]')?.addEventListener('click', () => handlers.continueLaunch?.());
 }
 
 function renderLeadDraft(draft) {
@@ -36,7 +71,7 @@ function renderLeadDraft(draft) {
   const readyMembers = 1 + acceptedInvitees;
   const needed = Math.max(0, 3 - readyMembers);
   const readiness = needed === 0
-    ? '<div class="swarm-invitation-readiness ready"><strong>' + readyMembers + ' members ready.</strong><p>The minimum 3-member roster is available for the lead to continue launch preparation.</p></div>'
+    ? '<div class="swarm-invitation-readiness ready"><strong>' + readyMembers + ' members ready.</strong><p>The minimum 3-member roster is available for the lead to continue launch preparation.</p><button type="button" data-swarm-invite-continue>Continue launch preparation</button><p>This copies the server-recorded accepted roster into editable fields. The preview still revalidates ownership, controller, and CRED for every member.</p></div>'
     : '<div class="swarm-invitation-readiness"><strong>' + readyMembers + ' of 3 minimum members ready.</strong><p>Waiting for ' + (needed === 1 ? 'one more accepted invitee' : html(needed) + ' more accepted invitees') + '.</p></div>';
   const rows = (draft.invites ?? []).map((item) => {
     const link = item.shareUrl ? '<label>Individual invitation link<input readonly value="' + attr(item.shareUrl) + '"><button type="button" data-swarm-invite-copy="' + attr(item.inviteId) + '">Copy/share link</button></label>' : '';

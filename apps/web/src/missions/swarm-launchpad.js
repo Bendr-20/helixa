@@ -8,10 +8,11 @@ import {
   normalizeSwarmLaunchDraft,
   normalizeSwarmLaunchForm,
   normalizeSwarmLaunchRequestForm,
+  normalizeSwarmLaunchWorkspaceRequest,
 } from '../../../../packages/types/src/swarm-launch.js';
-import { bindSwarmInvitationPanel, renderSwarmInvitationPanel } from './swarm-invitations.js';
+import { bindSwarmInvitationPanel, deriveSwarmLaunchDraftFromInvitation, renderSwarmInvitationPanel } from './swarm-invitations.js';
 
-export { SWARM_LAUNCH_DEFAULT_ECONOMICS, buildSwarmLaunchManifest, canonicalSwarmLaunchJson, evaluateSwarmLaunchGate, normalizeSwarmLaunchDraft, normalizeSwarmLaunchForm, normalizeSwarmLaunchRequestForm };
+export { SWARM_LAUNCH_DEFAULT_ECONOMICS, buildSwarmLaunchManifest, canonicalSwarmLaunchJson, deriveSwarmLaunchDraftFromInvitation, evaluateSwarmLaunchGate, normalizeSwarmLaunchDraft, normalizeSwarmLaunchForm, normalizeSwarmLaunchRequestForm };
 
 const MAX_MEMBERS = SWARM_LAUNCH_LIMITS.maximumMembers;
 const ALLOWED_SUPPLIES = new Set(SWARM_LAUNCH_OPTIONS.supplies);
@@ -19,6 +20,41 @@ const ALLOWED_CURVES = new Set(SWARM_LAUNCH_OPTIONS.curves);
 const ALLOWED_TEMPLATES = new Set(SWARM_LAUNCH_OPTIONS.templates);
 const ALLOWED_REVENUE_MODELS = new Set(SWARM_LAUNCH_OPTIONS.revenueModels);
 const ALLOWED_SHIP_TARGETS = new Set(SWARM_LAUNCH_OPTIONS.shipTargets);
+
+export function serializeSwarmLaunchRequest(draft = {}) {
+  const members = Array.isArray(draft.members) ? draft.members.map((member) => ({
+    tokenId: String(member?.tokenId ?? '').trim(),
+    ownerAddress: String(member?.ownerAddress ?? '').trim().toLowerCase(),
+    role: String(member?.role ?? '').trim(),
+    contributionBps: Number(member?.contributionBps),
+  })) : [];
+  const economics = draft.economics ?? SWARM_LAUNCH_DEFAULT_ECONOMICS;
+  const workspace = draft.workspace ?? {};
+  const workspaceMembers = Array.isArray(workspace.members) ? workspace.members : [];
+  const mirrorEnabled = workspace.githubMirror?.enabled === true;
+  return {
+    members,
+    app: { name: String(draft.app?.name ?? '').trim(), pitch: String(draft.app?.pitch ?? '').trim(), template: String(draft.app?.template ?? '').trim(), revenueModel: String(draft.app?.revenueModel ?? '').trim(), shipTarget: String(draft.app?.shipTarget ?? '').trim() },
+    token: { name: String(draft.token?.name ?? '').trim(), ticker: String(draft.token?.ticker ?? '').trim().toUpperCase(), supply: String(draft.token?.supply ?? '').trim(), curve: String(draft.token?.curve ?? '').trim() },
+    economics: {
+      agentVestingBps: economics.agentVestingBps ?? economics.agentVesting?.allocationBps,
+      credRewardsBps: economics.credRewardsBps ?? economics.credRewards?.allocationBps,
+      swarmTreasuryBps: economics.swarmTreasuryBps ?? economics.swarmTreasury?.allocationBps,
+      publicDistributionBps: economics.publicDistributionBps ?? economics.publicDistribution?.allocationBps,
+      agentCliffMonths: economics.agentCliffMonths ?? economics.agentVesting?.cliffMonths,
+      agentVestingMonths: economics.agentVestingMonths ?? economics.agentVesting?.durationMonths,
+    },
+    workspace: {
+      provider: String(workspace.provider ?? '').trim(),
+      repository: { slug: String(workspace.repository?.slug ?? '').trim(), visibility: String(workspace.repository?.visibility ?? '').trim() },
+      members: members.map((member) => {
+        const identity = workspaceMembers.find((entry) => String(entry?.tokenId ?? '').trim() === member.tokenId);
+        return { tokenId: member.tokenId, didKey: String(identity?.didKey ?? '').trim() };
+      }),
+      githubMirror: { enabled: mirrorEnabled, owner: mirrorEnabled ? String(workspace.githubMirror?.owner ?? '').trim() : null, repository: mirrorEnabled ? String(workspace.githubMirror?.repository ?? '').trim() : null },
+    },
+  };
+}
 
 export function renderSwarmLaunchpad(state = {}) {
   if (state.invitation) {
@@ -43,12 +79,18 @@ export function renderSwarmLaunchpad(state = {}) {
   const workspaceMembers = Array.isArray(workspace.members) ? workspace.members : [];
   const githubMirror = workspace.githubMirror ?? { enabled: false, owner: null, repository: null };
   const locked = Boolean(state.manifest);
-  const workspaceReady = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u.test(String(workspaceRepository.slug ?? '')) && members.every((member) => /^did:key:z[1-9A-HJ-NP-Za-km-z]{16,}$/u.test(String(workspaceMembers.find((entry) => String(entry?.tokenId) === String(member?.tokenId))?.didKey ?? '')));
-  const structurallyReady = workspaceReady && members.length >= 3 && members.length <= 5 && members.every((member) => /^[1-9][0-9]*$/u.test(String(member?.tokenId ?? '')) && /^0x[0-9a-fA-F]{40}$/u.test(String(member?.ownerAddress ?? '')) && String(member?.role ?? '').trim() && Number.isInteger(member?.contributionBps) && member.contributionBps > 0) && members.reduce((sum, member) => sum + member.contributionBps, 0) === 10000;
-  const workspaceBlocker = workspaceReady ? [] : ['Complete the Twigpine repository slug and one unique did:key identity per member.'];
-  const gateMarkup = gate.eligible && workspaceReady
+  let workspaceReady = false;
+  try { normalizeSwarmLaunchWorkspaceRequest(workspace, members.map((member) => ({ tokenId: String(member?.tokenId ?? '') }))); workspaceReady = true; } catch {}
+  const appReady = String(draft.app?.name ?? '').trim().length > 0 && String(draft.app?.pitch ?? '').trim().length > 0 && ALLOWED_TEMPLATES.has(draft.app?.template) && ALLOWED_REVENUE_MODELS.has(draft.app?.revenueModel) && ALLOWED_SHIP_TARGETS.has(draft.app?.shipTarget);
+  const tokenReady = String(draft.token?.name ?? '').trim().length > 0 && /^[A-Z][A-Z0-9]{1,9}$/u.test(String(draft.token?.ticker ?? '').trim()) && ALLOWED_SUPPLIES.has(String(draft.token?.supply ?? '')) && ALLOWED_CURVES.has(draft.token?.curve);
+  const allocations = [economics.agentVestingBps ?? economics.agentVesting?.allocationBps, economics.credRewardsBps ?? economics.credRewards?.allocationBps, economics.swarmTreasuryBps ?? economics.swarmTreasury?.allocationBps, economics.publicDistributionBps ?? economics.publicDistribution?.allocationBps];
+  const economicsReady = allocations.every((value) => Number.isInteger(value) && value >= 0) && allocations.reduce((sum, value) => sum + value, 0) === 10000;
+  const structurallyReady = workspaceReady && appReady && tokenReady && economicsReady && members.length >= 3 && members.length <= 5 && members.every((member) => /^[1-9][0-9]*$/u.test(String(member?.tokenId ?? '')) && /^0x[0-9a-fA-F]{40}$/u.test(String(member?.ownerAddress ?? '')) && String(member?.role ?? '').trim() && Number.isInteger(member?.contributionBps) && member.contributionBps > 0) && members.reduce((sum, member) => sum + member.contributionBps, 0) === 10000;
+  const workspaceBlocker = workspaceReady ? [] : ['Complete the Twigpine repository slug, visibility, and one unique valid Ed25519 did:key identity per member.'];
+  const termsBlockers = [...(appReady ? [] : ['Complete all required app terms.']), ...(tokenReady ? [] : ['Complete all required token terms.']), ...(economicsReady ? [] : ['Token allocations must total exactly 10,000 bps.'])];
+  const gateMarkup = gate.eligible && structurallyReady
     ? `<div class="swarm-launch-gate passed" role="status"><strong>Gate passed.</strong> ${members.length} agents · avg CRED ${gate.averageCred}.</div>`
-    : `<div class="swarm-launch-gate ${structurallyReady ? 'pending' : ''}" role="status"><strong>${structurallyReady ? 'Ready for server verification' : 'Launch preparation blocked'}</strong><p>The server verifies ownership, controller, CRED, and workspace evidence before creating a manifest.</p>${structurallyReady ? '' : `<ul>${[...gate.blockers, ...workspaceBlocker].map((blocker) => `<li>${escapeHtml(blocker)}</li>`).join('')}</ul>`}</div>`;
+    : `<div class="swarm-launch-gate ${structurallyReady ? 'pending' : ''}" role="status"><strong>${structurallyReady ? 'Ready for server verification' : 'Launch preparation blocked'}</strong><p>The server verifies ownership, controller, CRED, and workspace evidence before creating a manifest.</p>${structurallyReady ? '' : `<ul>${[...gate.blockers, ...workspaceBlocker, ...termsBlockers].map((blocker) => `<li>${escapeHtml(blocker)}</li>`).join('')}</ul>`}</div>`;
   const cards = members.map((member, index) => renderMember(member, index, members.length, workspaceMembers.find((entry) => String(entry?.tokenId) === String(member?.tokenId)))).join('');
   const manifest = state.manifest ? `<section class="swarm-launch-preview-result"><p><strong>Server-verified preparation manifest</strong>${state.manifestSha256 ? ` · <code>${escapeHtml(state.manifestSha256)}</code>` : ''}</p><pre class="swarm-launch-manifest" data-swarm-launch-manifest>${escapeHtml(JSON.stringify(state.manifest, null, 2))}</pre></section>` : '';
   const error = state.error ? `<div class="mission-alert" role="alert">${escapeHtml(state.error)}</div>` : '';
@@ -61,9 +103,9 @@ export function renderSwarmLaunchpad(state = {}) {
     <nav class="swarm-launch-steps" aria-label="Launch stages"><span>1 · Form swarm</span><span>2 · Spec app</span><span>3 · Set split</span><span>4 · Prepare token</span></nav>
     ${error}${invitations}<form data-swarm-launch-form>
       <fieldset class="swarm-launch-editor" ${locked ? 'disabled' : ''}><section><h3>Swarm roster</h3><p>Nominate 3–5 Loopers and the wallet that currently owns and controls each identity. Start from your Console room or add partner-owned Loopers. The server verifies ownership, controller, and CRED evidence.</p><div class="swarm-launch-members">${cards || '<p>No Loopers selected.</p>'}</div><button type="button" data-swarm-launch-add ${members.length >= MAX_MEMBERS ? 'disabled aria-disabled="true"' : ''}>Add another Looper</button>${gateMarkup}</section>
-      <section><h3>App specification</h3><div class="swarm-launch-fields"><label>App name<input name="app_name" maxlength="64" value="${escapeAttribute(draft.app?.name ?? '')}" required></label><label>Template<select name="app_template">${options(ALLOWED_TEMPLATES, draft.app?.template)}</select></label><label>Pitch<textarea name="app_pitch" maxlength="1024" required>${escapeHtml(draft.app?.pitch ?? '')}</textarea></label><label>Revenue model<select name="revenue_model">${options(ALLOWED_REVENUE_MODELS, draft.app?.revenueModel)}</select></label><label>Ship target<select name="ship_target">${options(ALLOWED_SHIP_TARGETS, draft.app?.shipTarget)}</select></label></div></section>
-      <section><h3>Token preparation</h3><div class="swarm-launch-fields"><label>Token name<input name="token_name" maxlength="32" value="${escapeAttribute(draft.token?.name ?? '')}" required></label><label>Ticker<input name="token_ticker" maxlength="10" value="${escapeAttribute(draft.token?.ticker ?? '')}" required></label><label>Total supply<select name="token_supply">${options(ALLOWED_SUPPLIES, draft.token?.supply)}</select></label><label>Curve<select name="token_curve">${options(ALLOWED_CURVES, draft.token?.curve)}</select></label></div></section>
-      <section><h3>Twigpine workspace</h3><p>Prepare exactly one repository for this swarm. Public is the v1 default. Private mode is enforced by the node operator and does not federate. Withheld mode can encrypt selected paths, but GLIP-09 leaves the client-versus-node encryption point implementation-sensitive.</p><input type="hidden" name="workspace_provider" value="TWIGPINE"><div class="swarm-launch-fields"><label>Repository slug<input name="workspace_repo_slug" maxlength="64" pattern="[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?" value="${escapeAttribute(workspaceRepository.slug ?? '')}" required></label><label>Visibility<select name="workspace_visibility">${options(new Set(['PUBLIC', 'PRIVATE', 'WITHHELD']), workspaceRepository.visibility ?? 'PUBLIC')}</select></label><label>GitHub mirror enabled<input type="checkbox" name="workspace_github_mirror_enabled" value="true" ${githubMirror.enabled === true ? 'checked' : ''}></label><label>GitHub mirror owner (when enabled)<input name="workspace_github_owner" maxlength="39" value="${escapeAttribute(githubMirror.owner ?? '')}"></label><label>GitHub mirror repository (when enabled)<input name="workspace_github_repository" maxlength="100" value="${escapeAttribute(githubMirror.repository ?? '')}"></label></div><p><strong>Production blocker:</strong> Twigpine currently uses owner-only push authorization. Scoped, expiring UCAN delegation is required but unavailable. Signed pushes, certificates, pull requests, and review provenance must be verified before production use.</p><p><strong>Authority boundary:</strong> Git never authorizes wallets, transactions, deployment, or financial execution. Swarm Command remains the execution-consent authority.</p></section>
+      <section><h3>App specification</h3><div class="swarm-launch-fields"><label>App name<input name="app_name" maxlength="64" value="${escapeAttribute(draft.app?.name ?? '')}" required></label><label>Template<select name="app_template" required>${requiredOptions(ALLOWED_TEMPLATES, draft.app?.template)}</select></label><label>Pitch<textarea name="app_pitch" maxlength="1024" required>${escapeHtml(draft.app?.pitch ?? '')}</textarea></label><label>Revenue model<select name="revenue_model" required>${requiredOptions(ALLOWED_REVENUE_MODELS, draft.app?.revenueModel)}</select></label><label>Ship target<select name="ship_target" required>${requiredOptions(ALLOWED_SHIP_TARGETS, draft.app?.shipTarget)}</select></label></div></section>
+      <section><h3>Token preparation</h3><div class="swarm-launch-fields"><label>Token name<input name="token_name" maxlength="32" value="${escapeAttribute(draft.token?.name ?? '')}" required></label><label>Ticker<input name="token_ticker" maxlength="10" value="${escapeAttribute(draft.token?.ticker ?? '')}" required></label><label>Total supply<select name="token_supply" required>${requiredOptions(ALLOWED_SUPPLIES, draft.token?.supply)}</select></label><label>Curve<select name="token_curve" required>${requiredOptions(ALLOWED_CURVES, draft.token?.curve)}</select></label></div></section>
+      <section><h3>Twigpine workspace</h3><p>Prepare exactly one repository for this swarm. Public is the v1 default. Private mode is enforced by the node operator and does not federate. Withheld mode can encrypt selected paths, but GLIP-09 leaves the client-versus-node encryption point implementation-sensitive.</p><input type="hidden" name="workspace_provider" value="TWIGPINE"><div class="swarm-launch-fields"><label>Repository slug<input name="workspace_repo_slug" maxlength="64" pattern="[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?" value="${escapeAttribute(workspaceRepository.slug ?? '')}" required></label><label>Visibility<select name="workspace_visibility" required>${requiredOptions(new Set(['PUBLIC', 'PRIVATE', 'WITHHELD']), workspaceRepository.visibility)}</select></label><label>GitHub mirror enabled<input type="checkbox" name="workspace_github_mirror_enabled" value="true" ${githubMirror.enabled === true ? 'checked' : ''}></label><label>GitHub mirror owner (when enabled)<input name="workspace_github_owner" maxlength="39" value="${escapeAttribute(githubMirror.owner ?? '')}"></label><label>GitHub mirror repository (when enabled)<input name="workspace_github_repository" maxlength="100" value="${escapeAttribute(githubMirror.repository ?? '')}"></label></div><p><strong>Production blocker:</strong> Twigpine currently uses owner-only push authorization. Scoped, expiring UCAN delegation is required but unavailable. Signed pushes, certificates, pull requests, and review provenance must be verified before production use.</p><p><strong>Authority boundary:</strong> Git never authorizes wallets, transactions, deployment, or financial execution. Swarm Command remains the execution-consent authority.</p></section>
       <section><h3>Allocation and vesting</h3><p>These terms become part of the manifest every nominated wallet signs. They do not select a launch provider.</p><div class="swarm-launch-fields"><label>Agent vesting bps<input name="agent_vesting_bps" inputmode="numeric" value="${escapeAttribute(economics.agentVestingBps ?? economics.agentVesting?.allocationBps ?? 4500)}" required></label><label>CRED-staker rewards bps<input name="cred_rewards_bps" inputmode="numeric" value="${escapeAttribute(economics.credRewardsBps ?? economics.credRewards?.allocationBps ?? 1500)}" required></label><label>Swarm treasury bps<input name="swarm_treasury_bps" inputmode="numeric" value="${escapeAttribute(economics.swarmTreasuryBps ?? economics.swarmTreasury?.allocationBps ?? 1500)}" required></label><label>Public distribution bps<input name="public_distribution_bps" inputmode="numeric" value="${escapeAttribute(economics.publicDistributionBps ?? economics.publicDistribution?.allocationBps ?? 2500)}" required></label><label>Agent cliff months<input name="agent_cliff_months" inputmode="numeric" value="${escapeAttribute(economics.agentCliffMonths ?? economics.agentVesting?.cliffMonths ?? 6)}" required></label><label>Agent vesting months<input name="agent_vesting_months" inputmode="numeric" value="${escapeAttribute(economics.agentVestingMonths ?? economics.agentVesting?.durationMonths ?? 18)}" required></label></div><p>All allocations must total exactly 10,000 bps.</p></section>
       <p class="swarm-launch-safety"><strong>Preparation only.</strong> No token, vault, curve, or fee stream will be deployed. No external launch integration is selected; any launch infrastructure requires separate review and explicit owner approval.</p></fieldset>
       <div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button><button type="submit" data-swarm-launch-submit ${!locked && structurallyReady && state.status !== 'verifying' ? '' : 'disabled aria-disabled="true"'}>${state.status === 'verifying' ? 'Verifying launch evidence…' : locked ? 'Manifest prepared' : 'Prepare launch manifest'}</button></div>
@@ -72,17 +114,24 @@ export function renderSwarmLaunchpad(state = {}) {
 }
 
 export function bindSwarmLaunchpad(root, handlers = {}) {
-  root.querySelector('[data-swarm-launch-form]')?.addEventListener('submit', (event) => {
+  const launchForm = root.querySelector('[data-swarm-launch-form]');
+  launchForm?.addEventListener('submit', (event) => {
     event.preventDefault();
     handlers.prepare?.(event);
   });
+  if (launchForm) {
+    const sync = () => syncLaunchSubmitState(launchForm);
+    launchForm.addEventListener('input', sync);
+    launchForm.addEventListener('change', sync);
+    sync();
+  }
   root.querySelector('[data-mission-action="back"]')?.addEventListener('click', () => handlers.back?.());
   root.querySelector('[data-swarm-launch-add]')?.addEventListener('click', () => handlers.addMember?.());
   root.querySelectorAll('[data-swarm-launch-remove]').forEach((button) => button.addEventListener('click', () => handlers.removeMember?.(Number(button.dataset.swarmLaunchRemove))));
   root.querySelector('[data-swarm-launch-consent-create]')?.addEventListener('click', () => handlers.createConsent?.());
   root.querySelector('[data-swarm-launch-consent-sign]')?.addEventListener('click', () => handlers.signConsent?.());
   root.querySelector('[data-swarm-launch-readiness-create]')?.addEventListener('click', () => handlers.createReadiness?.());
-  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation, open: handlers.openInvitation });
+  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation, open: handlers.openInvitation, continueLaunch: handlers.continueInvitationLaunch });
   root.querySelector('[data-swarm-launch-execution-review-form]')?.addEventListener('submit', (event) => { event.preventDefault(); handlers.createExecutionReview?.(event); });
 }
 
@@ -127,6 +176,22 @@ export async function validateSwarmLaunchExecutionPreview(value, readiness) {
   return Object.freeze({ packet, packetSha256: value.packetSha256 });
 }
 
+
+function syncLaunchSubmitState(form) {
+  const submit = form.querySelector('[data-swarm-launch-submit]') ?? form.ownerDocument?.querySelector('[data-swarm-launch-submit]');
+  const fieldset = form.querySelector('.swarm-launch-editor');
+  if (!submit || fieldset?.disabled || /Verifying|Manifest prepared/u.test(submit.textContent ?? '')) return;
+  try {
+    const FormDataConstructor = form.ownerDocument?.defaultView?.FormData ?? globalThis.FormData;
+    const slots = Array.from(form.querySelectorAll('[data-swarm-member]'));
+    normalizeSwarmLaunchRequestForm(new FormDataConstructor(form), slots);
+    submit.disabled = false;
+    submit.removeAttribute('aria-disabled');
+  } catch {
+    submit.disabled = true;
+    submit.setAttribute('aria-disabled', 'true');
+  }
+}
 
 function renderMember(member = {}, index, count, workspaceMember = {}) {
   const score = Number.isInteger(member?.cred?.score) ? member.cred.score : 'unavailable';
@@ -183,6 +248,7 @@ function assertNoHiddenExecutionMaterial(value) {
 }
 function shortAddress(value) { const text=String(value??''); return text.length===42 ? text.slice(0,6)+'…'+text.slice(-4) : text; }
 function options(values, selected) { return [...values].map((value) => `<option value="${escapeAttribute(value)}" ${value === selected ? 'selected' : ''}>${escapeHtml(label(value))}</option>`).join(''); }
+function requiredOptions(values, selected) { return (values.has(selected) ? '' : '<option value="" selected disabled>Select…</option>') + options(values, selected); }
 function label(value) { return String(value).replaceAll('_', ' ').replace(/\b\w/gu, (char) => char.toUpperCase()); }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]); }
 function escapeAttribute(value) { return escapeHtml(value); }
