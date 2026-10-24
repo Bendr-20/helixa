@@ -13,6 +13,13 @@ test('lead owner creates a non-binding draft only after every distinct authority
  assert.equal(JSON.stringify(draft).includes('role'),false); assert.equal(JSON.stringify(draft).includes('economics'),false); store.close();
 });
 
+test('draft authority verification is sequential so bounded dual-RPC readers are not thrashed',async()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'}); let active=0,maxActive=0,n=0; const calls=[];
+ const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>{calls.push(tokenId);active+=1;maxActive=Math.max(maxActive,active);try{await new Promise((resolve)=>setTimeout(resolve,2));if(active>1)throw new Error('provider concurrency exceeded');return identity(tokenId);}finally{active-=1;}}},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z')});
+ const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1','3802','420'],idempotencyKey:'serial-12345678'});
+ assert.equal(draft.invites.length,3); assert.equal(maxActive,1); assert.deepEqual(calls,['2431','1','3802','420']); store.close();
+});
+
 test('duplicate tokens, owners, self-invites, and custody changes fail closed',async()=>{
  const {store,service}=setup();
  await assert.rejects(()=>service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1','1'],idempotencyKey:'create-12345678'}),SwarmInvitationError);
