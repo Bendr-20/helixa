@@ -44,5 +44,7 @@ test('owner inbox restores the latest active lead draft and bounded privacy-safe
  assert.equal(JSON.stringify(inviteeInbox).includes(wallets[0]),false);
  assert.equal(JSON.stringify(inviteeInbox).includes('account'),false);
  assert.deepEqual(store.readInbox('0x9999999999999999999999999999999999999999'),{leadDraft:null,invitations:[]});
+ store.closeDraft({draftId:draft.draftId,owner:wallets[0],at:'2026-10-24T05:00:00.000Z'});
+ assert.equal(store.readInbox(wallets[0]).leadDraft,null);
  store.close();
 });
