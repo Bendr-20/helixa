@@ -478,7 +478,7 @@ export async function startServer(options = {}) {
     }
     if (!swarmInvitationService && swarmInvitationStore) {
       const invitationProviders = options.swarmInvitationProviders ?? createCredifiOwnerOptInProviders();
-      const invitationAuthority = options.swarmInvitationAuthority ?? createSwarmInvitationAuthorityVerifier({ providers: invitationProviders });
+      const invitationAuthority = options.swarmInvitationAuthority ?? createSwarmInvitationAuthorityVerifier({ providers: invitationProviders, timeoutMs: 15_000 });
       swarmInvitationService = createSwarmInvitationService({
         store: swarmInvitationStore,
         authority: invitationAuthority,
