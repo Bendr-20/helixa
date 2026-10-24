@@ -181,7 +181,7 @@
     "gate": {
       "minimumMembers": 3,
       "maximumMembers": 5,
-      "minimumAverageCred": 65,
+      "minimumAverageCred": 40,
       "observedAverageCred": 71,
       "methodologyVersions": [
         "looper-cred-v1"

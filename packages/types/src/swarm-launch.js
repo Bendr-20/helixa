@@ -2,7 +2,8 @@ export const SWARM_LAUNCH_SCHEMA = 'multipass.swarm-launch.v2';
 export const SWARM_LAUNCH_READINESS_SCHEMA = 'multipass.swarm-launch-readiness.v2';
 export const SWARM_LAUNCH_CHAIN_ID = 8453;
 export const SWARM_LAUNCH_LOOPERS_COLLECTION = '0x1649CD37f4748807b4882FC48765bA0B2aFfa94a';
-export const SWARM_LAUNCH_LIMITS = Object.freeze({ minimumMembers: 3, maximumMembers: 5, minimumAverageCred: 65, totalContributionBps: 10_000 });
+export const SWARM_LAUNCH_CRED_POLICY = Object.freeze({ phase: 'BETA', minimumAverageCred: 40, standardMinimumAverageCred: 65 });
+export const SWARM_LAUNCH_LIMITS = Object.freeze({ minimumMembers: 3, maximumMembers: 5, minimumAverageCred: SWARM_LAUNCH_CRED_POLICY.minimumAverageCred, totalContributionBps: 10_000 });
 export const SWARM_LAUNCH_DEFAULT_ECONOMICS = Object.freeze({ agentVestingBps: 4500, credRewardsBps: 1500, swarmTreasuryBps: 1500, publicDistributionBps: 2500, agentCliffMonths: 6, agentVestingMonths: 18 });
 export const SWARM_LAUNCH_WORKSPACE_SCHEMA = 'multipass.swarm-workspace.v1';
 export const SWARM_LAUNCH_OPTIONS = Object.freeze({
@@ -45,7 +46,7 @@ export function evaluateSwarmLaunchGate(input = {}) {
   if (staleCred) blockers.push('Every member requires a fresh CRED observation.');
   const totalCred = scores.reduce((sum, score) => sum + score, 0);
   const averageCred = scores.length === members.length && scores.length ? Math.round(totalCred / scores.length) : null;
-  if (averageCred !== null && totalCred < SWARM_LAUNCH_LIMITS.minimumAverageCred * scores.length) blockers.push('Swarm average CRED must be at least 65.');
+  if (averageCred !== null && totalCred < SWARM_LAUNCH_LIMITS.minimumAverageCred * scores.length) blockers.push('Beta swarm average CRED must be at least ' + SWARM_LAUNCH_LIMITS.minimumAverageCred + '.');
   if (invalidContribution || totalContributionBps !== SWARM_LAUNCH_LIMITS.totalContributionBps) blockers.push('Contribution weights must be positive integers totaling exactly 10,000 bps.');
   return Object.freeze({ eligible: blockers.length === 0, averageCred, totalContributionBps, blockers: Object.freeze(blockers) });
 }

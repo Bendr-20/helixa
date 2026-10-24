@@ -1,4 +1,5 @@
 import {
+  SWARM_LAUNCH_CRED_POLICY,
   SWARM_LAUNCH_DEFAULT_ECONOMICS,
   SWARM_LAUNCH_LIMITS,
   SWARM_LAUNCH_OPTIONS,
@@ -89,7 +90,7 @@ export function renderSwarmLaunchpad(state = {}) {
   const workspaceBlocker = workspaceReady ? [] : ['Complete the Twigpine repository slug, visibility, and one unique valid Ed25519 did:key identity per member.'];
   const termsBlockers = [...(appReady ? [] : ['Complete all required app terms.']), ...(tokenReady ? [] : ['Complete all required token terms.']), ...(economicsReady ? [] : ['Token allocations must total exactly 10,000 bps.'])];
   const gateMarkup = gate.eligible && structurallyReady
-    ? `<div class="swarm-launch-gate passed" role="status"><strong>Gate passed.</strong> ${members.length} agents · avg CRED ${gate.averageCred}.</div>`
+    ? `<div class="swarm-launch-gate passed" role="status"><strong>Gate passed.</strong> ${members.length} agents · avg CRED ${gate.averageCred}. <span>Beta CRED floor ${SWARM_LAUNCH_CRED_POLICY.minimumAverageCred}; standard remains ${SWARM_LAUNCH_CRED_POLICY.standardMinimumAverageCred}.</span></div>`
     : `<div class="swarm-launch-gate ${structurallyReady ? 'pending' : ''}" role="status"><strong>${structurallyReady ? 'Ready for server verification' : 'Launch preparation blocked'}</strong><p>The server verifies ownership, controller, CRED, and workspace evidence before creating a manifest.</p>${structurallyReady ? '' : `<ul>${[...gate.blockers, ...workspaceBlocker, ...termsBlockers].map((blocker) => `<li>${escapeHtml(blocker)}</li>`).join('')}</ul>`}</div>`;
   const cards = members.map((member, index) => renderMember(member, index, members.length, workspaceMembers.find((entry) => String(entry?.tokenId) === String(member?.tokenId)))).join('');
   const manifest = state.manifest ? `<section class="swarm-launch-preview-result"><p><strong>Server-verified preparation manifest</strong>${state.manifestSha256 ? ` · <code>${escapeHtml(state.manifestSha256)}</code>` : ''}</p><pre class="swarm-launch-manifest" data-swarm-launch-manifest>${escapeHtml(JSON.stringify(state.manifest, null, 2))}</pre></section>` : '';

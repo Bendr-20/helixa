@@ -42,7 +42,7 @@ function draft(overrides = {}) {
   };
 }
 
-test('launch gate requires 3-5 fresh verified Loopers, average CRED 65, and exact 10,000 bps', () => {
+test('launch gate requires 3-5 fresh verified Loopers, beta average CRED 40, and exact 10,000 bps', () => {
   const passed = evaluateSwarmLaunchGate(draft());
   assert.equal(passed.eligible, true);
   assert.equal(passed.averageCred, 73);
@@ -50,7 +50,7 @@ test('launch gate requires 3-5 fresh verified Loopers, average CRED 65, and exac
   assert.deepEqual(passed.blockers, []);
 
   assert.match(evaluateSwarmLaunchGate(draft({ members: members.slice(0, 2) })).blockers.join(' '), /three/i);
-  assert.match(evaluateSwarmLaunchGate(draft({ members: members.map((member) => ({ ...member, cred: freshCred(40, 'MARGINAL') })) })).blockers.join(' '), /average CRED/i);
+  assert.match(evaluateSwarmLaunchGate(draft({ members: members.map((member) => ({ ...member, cred: freshCred(39, 'MARGINAL') })) })).blockers.join(' '), /beta.*40/i);
   assert.match(evaluateSwarmLaunchGate(draft({ members: members.map((member, index) => ({ ...member, contributionBps: index === 0 ? 4500 : 2500 })) })).blockers.join(' '), /10,000/i);
   assert.match(evaluateSwarmLaunchGate(draft({ members: members.map((member, index) => index === 1 ? { ...member, cred: { ...member.cred, freshness: { stale: true } } } : member) })).blockers.join(' '), /fresh CRED/i);
 });
@@ -97,6 +97,8 @@ test('Launchpad renders verified CRED, split, token terms, and no live-launch cl
   assert.match(html, /Form a swarm/i);
   assert.match(html, /Launch its token/i);
   assert.match(html, /avg CRED 73/i);
+  assert.match(html, /Beta CRED floor[^<]*40/i);
+  assert.match(html, /standard[^<]*65/i);
   assert.doesNotMatch(html, /Mosh/i);
   assert.doesNotMatch(html, /bundle claims/i);
   assert.doesNotMatch(html, /third-party settlement/i);

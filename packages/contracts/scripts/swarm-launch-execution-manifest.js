@@ -199,7 +199,7 @@ function normalizeConsentManifest(value) {
   const registry = address(value.identity.registry, false, 'Looper registry');
   exactObject(value.execution, { mode: 'PREPARATION_ONLY', deploymentAuthorized: false, requiresSeparateApproval: true }, 'consent execution');
   exactKeys(value.gate, ['minimumMembers', 'maximumMembers', 'minimumAverageCred', 'observedAverageCred', 'methodologyVersions'], 'consent gate');
-  if (value.gate.minimumMembers !== 3 || value.gate.maximumMembers !== 5 || value.gate.minimumAverageCred !== 65 || !Number.isInteger(value.gate.observedAverageCred) || !Array.isArray(value.gate.methodologyVersions)) throw new TypeError('Consent gate is invalid.');
+  if (value.gate.minimumMembers !== 3 || value.gate.maximumMembers !== 5 || value.gate.minimumAverageCred !== 40 || !Number.isInteger(value.gate.observedAverageCred) || !Array.isArray(value.gate.methodologyVersions)) throw new TypeError('Consent gate is invalid.');
   exactKeys(value.app, ['name', 'pitch', 'template', 'revenueModel', 'shipTarget'], 'consent app');
   exactKeys(value.token, ['name', 'ticker', 'supply', 'supplyUnit', 'decimals', 'curve'], 'consent token');
   if (value.token.supplyUnit !== 'WHOLE_TOKENS' || value.token.decimals !== null || !/^[1-9][0-9]*$/u.test(value.token.supply) || !/^[A-Z][A-Z0-9]{1,9}$/u.test(value.token.ticker)) throw new TypeError('Consent token is invalid.');
