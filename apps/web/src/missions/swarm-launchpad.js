@@ -24,7 +24,8 @@ export function renderSwarmLaunchpad(state = {}) {
   if (state.invitation) {
     const invitations = renderSwarmInvitationPanel({ invitation: state.invitation, mode: 'invitee', responding: state.status === 'responding_invitation', decision: state.invitationDecision });
     const error = state.error ? '<div class="mission-alert" role="alert">' + escapeHtml(state.error) + '</div>' : '';
-    return '<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">Review provisional invitation</h2><p>This review is separate from binding launch preparation.</p></header>' + error + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button></div></section>';
+    const returnLabel = state.invitation.status === 'accepted' ? 'Return to missions' : 'Back to missions';
+    return '<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">Review provisional invitation</h2><p>This review is separate from binding launch preparation.</p></header>' + error + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">' + returnLabel + '</button></div></section>';
   }
   const pendingInvitations = Array.isArray(state.invitationInbox?.invitations)
     ? state.invitationInbox.invitations.filter((item) => item?.status === 'pending')
