@@ -1,9 +1,13 @@
 const SAFETY = 'No launch terms, allocation, token, or transaction is authorized.';
 
-export function renderSwarmInvitationPanel({ draft = null, invitation = null, inbox = null, mode = draft ? 'lead' : 'invitee' } = {}) {
+export function renderSwarmInvitationPanel({ draft = null, invitation = null, inbox = null, mode = draft ? 'lead' : 'invitee', responding = false, decision = null } = {}) {
   if (mode === 'invitee' && invitation) {
-    const actions = invitation.status === 'pending' ? '<button type="button" data-swarm-invite-accept>Accept non-binding invitation</button><button type="button" data-swarm-invite-decline>Decline</button>' : '';
-    return '<section class="swarm-invitations" aria-labelledby="swarm-invitations-title"><h3 id="swarm-invitations-title">Non-binding invitation</h3><p>Looper #' + html(invitation.tokenId) + ' is invited to a provisional swarm led by Looper #' + html(invitation.lead?.tokenId ?? '') + '.</p><p>' + SAFETY + '</p><p>Status: <strong>' + html(invitation.status) + '</strong></p>' + actions + '</section>';
+    const pendingLabel = decision === 'declined' ? 'Declining invitation…' : 'Accepting and verifying ownership…';
+    const actions = invitation.status === 'pending' ? (responding
+      ? '<div class="swarm-invitation-progress" role="status" aria-live="polite" aria-busy="true">' + pendingLabel + '</div><button type="button" data-swarm-invite-accept disabled aria-disabled="true">' + pendingLabel + '</button><button type="button" data-swarm-invite-decline disabled aria-disabled="true">Decline</button>'
+      : '<button type="button" data-swarm-invite-accept>Accept non-binding invitation</button><button type="button" data-swarm-invite-decline>Decline</button>') : '';
+    const terminal = invitation.status === 'accepted' ? '<div class="swarm-invitation-confirmation" role="status"><strong>Invitation accepted.</strong><p>Looper #' + html(invitation.tokenId) + ' is now part of this provisional swarm. No launch or transaction has been authorized.</p></div>' : invitation.status === 'declined' ? '<div class="swarm-invitation-confirmation" role="status"><strong>Invitation declined.</strong></div>' : '';
+    return '<section class="swarm-invitations" aria-labelledby="swarm-invitations-title"><h3 id="swarm-invitations-title">Non-binding invitation</h3><p>Looper #' + html(invitation.tokenId) + ' is invited to a provisional swarm led by Looper #' + html(invitation.lead?.tokenId ?? '') + '.</p><p>' + SAFETY + '</p><p>Status: <strong>' + html(invitation.status) + '</strong></p>' + terminal + actions + '</section>';
   }
   const leadDraft = draft ?? inbox?.leadDraft ?? null;
   const incoming = Array.isArray(inbox?.invitations) ? inbox.invitations : [];

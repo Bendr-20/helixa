@@ -21,10 +21,17 @@ test('draft authority verification is sequential so bounded dual-RPC readers are
 });
 
 test('configured verification pacing is applied between every serialized authority read',async()=>{
- const store=createSwarmInvitationStore({filename:':memory:'}); let n=0; const pauses=[];
- const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>identity(tokenId)},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z'),verificationPaceMs:5_000,pause:async(ms)=>{pauses.push(ms);}});
+ const store=createSwarmInvitationStore({filename:':memory:'}); let n=0,clock=0; const pauses=[];
+ const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>identity(tokenId)},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z'),verificationPaceMs:5_000,pacingClock:()=>clock,pause:async(ms)=>{pauses.push(ms);clock+=ms;}});
  await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1','3802','420'],idempotencyKey:'paced-12345678'});
  assert.deepEqual(pauses,[5_000,5_000,5_000]); store.close();
+});
+
+test('slow serialized authority reads satisfy the start pace without an extra fixed delay',async()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'}); let n=0,clock=0; const pauses=[];
+ const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>{clock+=7_000;return identity(tokenId);}},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z'),verificationPaceMs:5_000,pacingClock:()=>clock,pause:async(ms)=>{pauses.push(ms);clock+=ms;}});
+ await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1','3802'],idempotencyKey:'slow-paced-12345678'});
+ assert.deepEqual(pauses,[]); store.close();
 });
 
 test('duplicate tokens, owners, self-invites, and custody changes fail closed',async()=>{

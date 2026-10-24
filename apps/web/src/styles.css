@@ -12220,6 +12220,8 @@ h1 {
 .swarm-invitation-card>strong{font-size:1.05rem}.swarm-invitation-card>span:not(.swarm-invitation-status){grid-column:1/-1;color:var(--muted,#9aa58f)}
 .swarm-invitation-status{grid-column:2;grid-row:1;padding:.2rem .55rem;border-radius:999px;background:color-mix(in srgb,var(--lime,#a3e635) 14%,transparent);color:var(--lime,#a3e635);font-size:.72rem;font-weight:800;text-transform:uppercase}
 .swarm-invitation-card button{grid-column:1/-1;width:100%;min-height:44px;margin-top:.25rem;border:1px solid var(--lime,#a3e635);border-radius:.65rem;background:var(--lime,#a3e635);color:#10150d;font:inherit;font-weight:800}
+.swarm-invitation-progress,.swarm-invitation-confirmation{padding:.75rem;border:1px solid color-mix(in srgb,var(--lime,#a3e635) 45%,var(--line,#293326));border-radius:.65rem;background:color-mix(in srgb,var(--lime,#a3e635) 9%,transparent)}
+.swarm-invitation-confirmation p{margin:.35rem 0 0}.swarm-invitations button:disabled{cursor:wait;opacity:.72}
 .swarm-invitations form{display:grid;gap:.75rem;padding:.85rem;border:1px solid var(--line,#293326);border-radius:.75rem;background:var(--panel2,#171c13)}
 .swarm-invitations form label{display:grid;gap:.35rem;color:var(--ink,#eef2e4);font-size:.82rem;font-weight:700}.swarm-invitations form button{min-height:44px}
 .swarm-launch-manifest{max-height:28rem;overflow:auto;padding:1rem;border:1px solid var(--line,#293326);border-radius:.8rem;background:#070a07;color:#c8f169;font-size:.75rem;white-space:pre-wrap;word-break:break-word}

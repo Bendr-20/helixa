@@ -8258,6 +8258,7 @@ test('Swarm Command loads live missions and creates a recruiting mission through
     async listPublic(input) { calls.push(['list', input]); return { missions: mission ? [mission] : [], nextCursor: null }; },
     async getSwarmInvitationInbox(input) { calls.push(['inbox', input]); return { inbox: { leadDraft: { draftId: 'draft_' + 'a'.repeat(64), status: 'open', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 3, invites: [{ inviteId: 'invite_' + 'b'.repeat(64), tokenId: '1', status: 'pending' }] }, invitations: [{ inviteId: 'invite_' + 'c'.repeat(64), draftId: 'draft_' + 'd'.repeat(64), tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' }] } }; },
     async getSwarmInvite(input) { calls.push(['invite', input]); return { invitation: { inviteId: input.inviteId, tokenId: '420', status: 'pending', nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' } }; },
+    async respondSwarmInvite(input) { calls.push(['respond-invitation', input]); await new Promise((resolve) => setTimeout(resolve, 30)); return { invitation: { inviteId: input.inviteId, tokenId: '420', status: input.decision, nonBinding: true, lead: { tokenId: '9' }, draftStatus: 'open' } }; },
     async closeSwarmDraft(input) { calls.push(['close-invitations', input]); return { draft: { draftId: input.draftId, status: 'closed', nonBinding: true, lead: { tokenId: '2431' }, openSlots: 4, invites: [] } }; },
     async create(input) { calls.push(['create', input]); return { result: { missionId: input.body.mission_id, revision: 0, state: 'draft' } }; },
     async getPublic(input) { calls.push(['get', input]); return { mission }; },
@@ -8316,6 +8317,11 @@ test('Swarm Command loads live missions and creates a recruiting mission through
   root.querySelector('[data-swarm-invite-open]')?.click(); await flushAsyncEvents(20);
   assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Looper #420 is invited/);
   assert.ok(root.querySelector('[data-swarm-invite-accept]'));
+  const accept = root.querySelector('[data-swarm-invite-accept]'); accept.click(); accept.click(); await flushAsyncEvents();
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Accepting and verifying ownership/);
+  await new Promise((resolve) => setTimeout(resolve, 40)); await flushAsyncEvents();
+  assert.match(root.querySelector('.swarm-invitations')?.textContent ?? '', /Invitation accepted/);
+  assert.equal(calls.filter(([name]) => name === 'respond-invitation').length, 1);
   root.querySelector('[data-mission-action="back"]')?.click();
   assert.match(root.querySelector('.mission-surface-header')?.textContent ?? '', /Swarm Command/);
   root.querySelector('[data-mission-action="launchpad"]')?.click(); await flushAsyncEvents(20);

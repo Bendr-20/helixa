@@ -2471,13 +2471,15 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
 
   async function respondConsoleInvitation(decision) {
     const inviteId = state.consoleLaunchpad?.invitation?.inviteId;
-    if (!inviteId || !state.consoleCsrfToken) return;
+    if (!inviteId || !state.consoleCsrfToken || state.consoleLaunchpad?.status === 'responding_invitation') return;
     const context = beginConsoleInvitationMutation();
+    state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'responding_invitation', invitationDecision: decision, error: null } };
+    render(root, state, handlers);
     try {
       const response = await activeMissionApi.respondSwarmInvite({ inviteId, decision, csrfToken: state.consoleCsrfToken });
       if (!isCurrentConsoleInvitationContext(context)) return;
-      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
-    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation response failed.') } }; }
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'editing', invitationDecision: null, invitation: response.invitation, error: null } };
+    } catch (error) { if (!isCurrentConsoleInvitationContext(context)) return; state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, status: 'editing', invitationDecision: null, error: String(error?.message ?? 'Invitation response failed.') } }; }
     render(root, state, handlers);
   }
 
