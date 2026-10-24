@@ -44,6 +44,11 @@ test('lead can add and revoke pending invitations; invitee can read and respond 
  assert.equal((await service.revoke({actorAddress:lead,draftId:draft.draftId,inviteId:added.inviteId})).status,'revoked'); store.close();
 });
 
+test('adding an invite reverifies the lead and new subject while existing invitees remain response-gated',async()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'});let n=0;const calls=[];const service=createSwarmInvitationService({store,authority:{verify:async({tokenId})=>{calls.push(tokenId);return identity(tokenId);}},createId:(kind)=>kind+'_'+String(++n).padStart(64,'0'),now:()=>new Date('2026-10-24T04:00:00.000Z')});
+ const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1'],idempotencyKey:'scope-12345678'});calls.length=0;await service.addInvite({actorAddress:lead,draftId:draft.draftId,tokenId:'3802'});assert.deepEqual(calls,['2431','3802']);owners.set('1',b);await assert.rejects(()=>service.respond({actorAddress:a,inviteId:draft.invites[0].inviteId,decision:'accepted'}),(error)=>error.code==='swarm_invitation_stale');owners.set('1',a);store.close();
+});
+
 test('lead can close a draft after fresh authority verification and closed history remains owner-readable',async()=>{const {store,service}=setup();const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1'],idempotencyKey:'close-12345678'});await assert.rejects(()=>service.closeDraft({actorAddress:a,draftId:draft.draftId}),/lead owner/i);const closed=await service.closeDraft({actorAddress:lead,draftId:draft.draftId});assert.equal(closed.status,'closed');assert.equal(closed.invites[0].status,'revoked');assert.equal((await service.readDraft({actorAddress:lead,draftId:draft.draftId})).status,'closed');const invite=await service.readInvite({actorAddress:a,inviteId:draft.invites[0].inviteId});assert.equal(invite.draftStatus,'closed');await assert.rejects(()=>service.respond({actorAddress:a,inviteId:draft.invites[0].inviteId,decision:'accepted'}),(error)=>error.code==='swarm_invitation_conflict'&&error.status===409);store.close();});
 
 import { createSwarmInvitationAuthorityVerifier } from '../src/missions/swarm-invitations.js';
