@@ -40,6 +40,11 @@ export interface SavedRecordsStore extends MemoryStore {
 
 export type SignatureVerifier = (input: { wallet: string; message: string; signature: string }) => boolean | Promise<boolean>;
 
+export declare function createSwarmInvitationStore(options: { filename: string; maxActiveDraftsPerOwner?: number; maxActiveDrafts?: number }): Record<string, unknown>;
+export declare function createSwarmInvitationAuthorityVerifier(options: { providers: unknown[]; accountIntegrityReader?: { read(input: { tokenId: string }): Promise<unknown> }; timeoutMs?: number }): { verify(input: { tokenId: string }): Promise<Record<string, unknown>> };
+export declare function createSwarmInvitationService(options: { store: Record<string, unknown>; authority: { verify(input: { tokenId: string }): Promise<Record<string, unknown>> }; createId(kind: 'draft' | 'invite'): string; now?: () => Date | string }): Record<string, unknown>;
+export declare class SwarmInvitationError extends Error { code: string; status: number; }
+
 export interface LooperCodexRuntime {
   available: boolean;
   status: {
@@ -77,6 +82,7 @@ export interface MultipassApiOptions {
   savedRecords?: SavedRecordsStore;
   missionService?: MissionService;
   swarmLaunchConsentService?: { createProposal(input: Record<string, unknown>): Promise<unknown>; readProposal(input: Record<string, unknown>): Promise<unknown>; createReadinessPacket(input: Record<string, unknown>): Promise<unknown>; readChallenge(input: Record<string, unknown>): Promise<unknown>; recordConsent(input: Record<string, unknown>): Promise<unknown> };
+  swarmInvitationService?: { createDraft(input: Record<string, unknown>): Promise<unknown>; readDraft(input: Record<string, unknown>): Promise<unknown>; addInvite(input: Record<string, unknown>): Promise<unknown>; revoke(input: Record<string, unknown>): Promise<unknown>; readInvite(input: Record<string, unknown>): Promise<unknown>; respond(input: Record<string, unknown>): Promise<unknown> };
   activationService?: (agent: string) => Promise<unknown> | unknown;
   allowedOrigins?: string[];
   adminSecret?: string | null;

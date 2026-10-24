@@ -9,6 +9,7 @@ import {
   normalizeSwarmLaunchForm,
   normalizeSwarmLaunchRequestForm,
 } from '../../../../packages/types/src/swarm-launch.js';
+import { bindSwarmInvitationPanel, renderSwarmInvitationPanel } from './swarm-invitations.js';
 
 export { SWARM_LAUNCH_DEFAULT_ECONOMICS, buildSwarmLaunchManifest, canonicalSwarmLaunchJson, evaluateSwarmLaunchGate, normalizeSwarmLaunchDraft, normalizeSwarmLaunchForm, normalizeSwarmLaunchRequestForm };
 
@@ -34,10 +35,11 @@ export function renderSwarmLaunchpad(state = {}) {
   const error = state.error ? `<div class="mission-alert" role="alert">${escapeHtml(state.error)}</div>` : '';
   const consent = renderConsent(state);
   const readiness = renderReadiness(state);
+  const invitations = renderSwarmInvitationPanel({ draft: state.invitationDraft, invitation: state.invitation, mode: state.invitation ? 'invitee' : 'lead' });
   return `<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title">
     <header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Launchpad</span><h2 id="swarm-launchpad-title">Form a swarm. Build an app. <em>Launch its token.</em></h2><p>Use verified Looper identities and CRED, define the product, set an exact contribution split, then prepare the Base launch packet.</p></header>
     <nav class="swarm-launch-steps" aria-label="Launch stages"><span>1 · Form swarm</span><span>2 · Spec app</span><span>3 · Set split</span><span>4 · Prepare token</span></nav>
-    ${error}<form data-swarm-launch-form>
+    ${error}${invitations}<form data-swarm-launch-form>
       <fieldset class="swarm-launch-editor" ${locked ? 'disabled' : ''}><section><h3>Swarm roster</h3><p>Nominate 3–5 Loopers and the wallet that currently owns and controls each identity. Start from your Console room or add partner-owned Loopers. The server verifies ownership, controller, and CRED evidence.</p><div class="swarm-launch-members">${cards || '<p>No Loopers selected.</p>'}</div><button type="button" data-swarm-launch-add ${members.length >= MAX_MEMBERS ? 'disabled aria-disabled="true"' : ''}>Add another Looper</button>${gateMarkup}</section>
       <section><h3>App specification</h3><div class="swarm-launch-fields"><label>App name<input name="app_name" maxlength="64" value="${escapeAttribute(draft.app?.name ?? '')}" required></label><label>Template<select name="app_template">${options(ALLOWED_TEMPLATES, draft.app?.template)}</select></label><label>Pitch<textarea name="app_pitch" maxlength="1024" required>${escapeHtml(draft.app?.pitch ?? '')}</textarea></label><label>Revenue model<select name="revenue_model">${options(ALLOWED_REVENUE_MODELS, draft.app?.revenueModel)}</select></label><label>Ship target<select name="ship_target">${options(ALLOWED_SHIP_TARGETS, draft.app?.shipTarget)}</select></label></div></section>
       <section><h3>Token preparation</h3><div class="swarm-launch-fields"><label>Token name<input name="token_name" maxlength="32" value="${escapeAttribute(draft.token?.name ?? '')}" required></label><label>Ticker<input name="token_ticker" maxlength="10" value="${escapeAttribute(draft.token?.ticker ?? '')}" required></label><label>Total supply<select name="token_supply">${options(ALLOWED_SUPPLIES, draft.token?.supply)}</select></label><label>Curve<select name="token_curve">${options(ALLOWED_CURVES, draft.token?.curve)}</select></label></div></section>
@@ -59,6 +61,7 @@ export function bindSwarmLaunchpad(root, handlers = {}) {
   root.querySelector('[data-swarm-launch-consent-create]')?.addEventListener('click', () => handlers.createConsent?.());
   root.querySelector('[data-swarm-launch-consent-sign]')?.addEventListener('click', () => handlers.signConsent?.());
   root.querySelector('[data-swarm-launch-readiness-create]')?.addEventListener('click', () => handlers.createReadiness?.());
+  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, respond: handlers.respondInvitation, copy: handlers.copyInvitation });
 }
 
 

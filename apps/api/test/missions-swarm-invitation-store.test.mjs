@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createSwarmInvitationStore } from '../src/missions/swarm-invitation-store.js';
+
+const wallets=['0x1111111111111111111111111111111111111111','0x2222222222222222222222222222222222222222','0x3333333333333333333333333333333333333333'];
+const identity=(tokenId, owner, block=100)=>({chainId:8453,collection:'0x1649cd37f4748807b4882fc48765ba0b2affa94a',tokenId,owner,account:'0x'+String(tokenId).padStart(40,'0'),erc8004AgentId:String(90000+Number(tokenId)),finalizedBlock:{number:block,hash:'0x'+String(block).padStart(64,'0')}});
+
+test('store durably creates an idempotent bounded draft with auditable per-token invitations',()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'});
+ const input={draftId:'draft_'+ 'a'.repeat(64),idempotencyKey:'create-12345678',requestHash:'b'.repeat(64),lead:identity('2431',wallets[0]),invitees:[identity('1',wallets[1]),identity('3802',wallets[2])],createdAt:'2026-10-24T04:00:00.000Z',createInviteId:(tokenId)=>'invite_'+tokenId.padStart(64,'0')};
+ const first=store.createDraft(input); const replay=store.createDraft(input);
+ assert.equal(replay.draftId,first.draftId); assert.equal(first.status,'open'); assert.equal(first.nonBinding,true);
+ assert.deepEqual(first.invites.map(x=>[x.tokenId,x.status]),[['1','pending'],['3802','pending']]);
+ assert.equal(first.openSlots,2); assert.equal(first.invites[0].owner,wallets[1]); assert.equal(first.invites[0].anchor.blockNumber,100);
+ assert.throws(()=>store.createDraft({...input,draftId:'draft_'+ 'c'.repeat(64),requestHash:'d'.repeat(64)}),/idempotency/i);
+ store.close();
+});
+
+test('store transactionally adds, accepts, declines, and revokes without deleting accepted members',()=>{
+ const store=createSwarmInvitationStore({filename:':memory:'});
+ const base={draftId:'draft_'+ 'a'.repeat(64),idempotencyKey:'create-12345678',requestHash:'b'.repeat(64),lead:identity('2431',wallets[0]),invitees:[identity('1',wallets[1])],createdAt:'2026-10-24T04:00:00.000Z',createInviteId:(id)=>'invite_'+id.padStart(64,'0')};
+ let draft=store.createDraft(base); const first=draft.invites[0];
+ assert.equal(store.respond({inviteId:first.inviteId,owner:wallets[1],decision:'accepted',at:'2026-10-24T04:01:00.000Z'}).status,'accepted');
+ assert.throws(()=>store.revoke({draftId:draft.draftId,inviteId:first.inviteId,owner:wallets[0],at:'2026-10-24T04:02:00.000Z'}),/pending/i);
+ const added=store.addInvite({draftId:draft.draftId,inviteId:'invite_'+ 'c'.repeat(64),identity:identity('3802',wallets[2]),owner:wallets[0],at:'2026-10-24T04:03:00.000Z'});
+ assert.equal(store.revoke({draftId:draft.draftId,inviteId:added.inviteId,owner:wallets[0],at:'2026-10-24T04:04:00.000Z'}).status,'revoked');
+ assert.equal(store.readDraft(draft.draftId).invites.find(x=>x.tokenId==='1').status,'accepted');
+ store.close();
+});
+
+test('closed drafts reject later invitations without changing accepted members',()=>{const store=createSwarmInvitationStore({filename:':memory:'});const input={draftId:'draft_'+ 'a'.repeat(64),idempotencyKey:'close-12345678',requestHash:'b'.repeat(64),lead:identity('2431',wallets[0]),invitees:[identity('1',wallets[1])],createdAt:'2026-10-24T04:00:00.000Z',createInviteId:(id)=>'invite_'+id.padStart(64,'0')};const draft=store.createDraft(input);store.closeDraft({draftId:draft.draftId,owner:wallets[0],at:'2026-10-24T05:00:00.000Z'});assert.equal(store.readDraft(draft.draftId).status,'closed');assert.throws(()=>store.addInvite({draftId:draft.draftId,inviteId:'invite_'+ 'c'.repeat(64),identity:identity('3802',wallets[2]),owner:wallets[0],at:'2026-10-24T05:01:00.000Z'}),/closed/i);store.close();});
+
+test('decline is durable and idempotent',()=>{const store=createSwarmInvitationStore({filename:':memory:'});const draft=store.createDraft({draftId:'draft_'+ 'a'.repeat(64),idempotencyKey:'decline-12345678',requestHash:'b'.repeat(64),lead:identity('2431',wallets[0]),invitees:[identity('1',wallets[1])],createdAt:'2026-10-24T04:00:00.000Z',createInviteId:(id)=>'invite_'+id.padStart(64,'0')});const value={inviteId:draft.invites[0].inviteId,owner:wallets[1],decision:'declined',at:'2026-10-24T04:01:00.000Z'};assert.equal(store.respond(value).status,'declined');assert.equal(store.respond(value).status,'declined');store.close();});

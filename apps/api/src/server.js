@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import { isIP } from 'node:net';
 import os from 'node:os';
@@ -37,6 +37,8 @@ import { createMissionService } from './missions/service.js';
 import { createSwarmLaunchConsentService } from './missions/swarm-launch-consent.js';
 import { createSwarmLaunchConsentStore } from './missions/swarm-launch-consent-store.js';
 import { previewSwarmLaunch } from './missions/swarm-launch-preview.js';
+import { createSwarmInvitationStore } from './missions/swarm-invitation-store.js';
+import { createSwarmInvitationAuthorityVerifier, createSwarmInvitationService } from './missions/swarm-invitations.js';
 import { createSqliteSavedRecords } from './saved-records.js';
 import { verifyEthereumPersonalSignature } from './signature-verifier.js';
 import { buildRestap3802Discovery } from './restap-3802-contracts.js';
@@ -272,6 +274,10 @@ export async function startServer(options = {}) {
   const swarmLaunchConsentStore = options.swarmLaunchConsentStore ?? (ownsSwarmLaunchConsentStore
     ? createSwarmLaunchConsentStore({ filename: parsed.databasePath })
     : null);
+  const ownsSwarmInvitationStore = Boolean(parsed.databasePath && !options.savedRecords && !options.swarmInvitationService && !options.swarmInvitationStore);
+  const swarmInvitationStore = options.swarmInvitationStore ?? (ownsSwarmInvitationStore
+    ? createSwarmInvitationStore({ filename: parsed.databasePath })
+    : null);
   const activationService = options.activationService ?? activateHelixaRecord;
   const loopersAllowlist = options.loopersAllowlist
     ?? (parsed.loopersAllowlistPath
@@ -331,6 +337,7 @@ export async function startServer(options = {}) {
   let restapNetworkProductionFoundation;
   let restapVerifiedSendService = options.restapVerifiedSendService ?? null;
   let swarmLaunchConsentService = options.swarmLaunchConsentService ?? null;
+  let swarmInvitationService = options.swarmInvitationService ?? null;
   let closePromise = null;
 
   const nodeServer = http.createServer(async (req, res) => {
@@ -467,6 +474,15 @@ export async function startServer(options = {}) {
         authorizeLooper: consoleBootstrap.authorizeLooper,
         verifySignature: options.signatureVerifier ?? verifyEthereumPersonalSignature,
         createId: () => 'consent-' + randomUUID(),
+      });
+    }
+    if (!swarmInvitationService && swarmInvitationStore) {
+      const invitationProviders = options.swarmInvitationProviders ?? createCredifiOwnerOptInProviders();
+      const invitationAuthority = options.swarmInvitationAuthority ?? createSwarmInvitationAuthorityVerifier({ providers: invitationProviders });
+      swarmInvitationService = createSwarmInvitationService({
+        store: swarmInvitationStore,
+        authority: invitationAuthority,
+        createId: (kind) => kind + '_' + randomBytes(32).toString('hex'),
       });
     }
 
@@ -636,6 +652,7 @@ export async function startServer(options = {}) {
       savedRecords,
       missionService,
       swarmLaunchConsentService,
+      swarmInvitationService,
       looperNameStore,
       activationService,
       allowedOrigins: parsed.allowedOrigins,
@@ -713,6 +730,8 @@ export async function startServer(options = {}) {
       ownsMissionStore,
       swarmLaunchConsentStore,
       ownsSwarmLaunchConsentStore,
+      swarmInvitationStore,
+      ownsSwarmInvitationStore,
     }).catch(() => {});
     throw error;
   }
@@ -751,6 +770,8 @@ export async function startServer(options = {}) {
           ownsMissionStore,
           swarmLaunchConsentStore,
           ownsSwarmLaunchConsentStore,
+          swarmInvitationStore,
+          ownsSwarmInvitationStore,
         });
       }
       return closePromise;
@@ -758,7 +779,7 @@ export async function startServer(options = {}) {
   };
 }
 
-async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, credifiOwnerOptInService, ownsCredifiOwnerOptInService, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore, swarmLaunchConsentStore, ownsSwarmLaunchConsentStore }) {
+async function closeServerResources({ consoleBootstrap, nodeServer, restapPublicSessions, restapNewsStore, restapNetworkService, savedRecords, ownsSavedRecords, credifiOwnerOptInService, ownsCredifiOwnerOptInService, looperNameStore, ownsLooperNameStore, missionStore, ownsMissionStore, swarmLaunchConsentStore, ownsSwarmLaunchConsentStore, swarmInvitationStore, ownsSwarmInvitationStore }) {
   const errors = [];
   for (const close of [
     () => closeHttpServer(nodeServer),
@@ -772,6 +793,7 @@ async function closeServerResources({ consoleBootstrap, nodeServer, restapPublic
     () => ownsLooperNameStore ? looperNameStore?.close?.() : undefined,
     () => ownsMissionStore ? missionStore?.close?.() : undefined,
     () => ownsSwarmLaunchConsentStore ? swarmLaunchConsentStore?.close?.() : undefined,
+    () => ownsSwarmInvitationStore ? swarmInvitationStore?.close?.() : undefined,
   ]) {
     try {
       await close();

@@ -11,3 +11,5 @@ export { createMissionXmtpOutbox, MISSION_XMTP_EVENT_TYPES } from './xmtp-outbox
 export { createMissionLaunchCoordinator, MISSION_LAUNCH_OPERATION_STATES } from './launch-coordinator.js';
 export { createSwarmLaunchConsentService, buildSwarmLaunchConsentMessage, ConsentError } from './swarm-launch-consent.js';
 export { createSwarmLaunchConsentStore } from './swarm-launch-consent-store.js';
+export { createSwarmInvitationStore } from './swarm-invitation-store.js';
+export { createSwarmInvitationAuthorityVerifier, createSwarmInvitationService, SwarmInvitationError } from './swarm-invitations.js';

@@ -89,10 +89,12 @@ import { createDeferredXmtpAgentClient } from './xmtp-agent/index.js';
 import { handleMissionRequest } from './missions/routes.js';
 import { previewSwarmLaunch } from './missions/swarm-launch-preview.js';
 import { ConsentError } from './missions/swarm-launch-consent.js';
+import { SwarmInvitationError } from './missions/swarm-invitations.js';
 
 export {
   createMissionService, MissionServiceError, MISSION_REQUEST_MAX_BYTES, projectPrivateMission, projectPublicMission,
 } from './missions/index.js';
+export { createSwarmInvitationStore, createSwarmInvitationAuthorityVerifier, createSwarmInvitationService, SwarmInvitationError } from './missions/index.js';
 
 const SWARM_LAUNCH_WALLET_RATE_LIMIT = Object.freeze({ limit: 12, windowMs: 60_000 });
 const SWARM_LAUNCH_GLOBAL_RATE_LIMIT = Object.freeze({ limit: 120, windowMs: 60_000 });
@@ -250,6 +252,7 @@ export function createMultipassApi({
   savedRecords,
   missionService,
   swarmLaunchConsentService,
+  swarmInvitationService,
   activationService,
   allowedOrigins,
   adminSecret,
@@ -408,6 +411,7 @@ export function createMultipassApi({
     savedRecords,
     missionService: missionService ?? null,
     swarmLaunchConsentService: swarmLaunchConsentService ?? null,
+    swarmInvitationService: swarmInvitationService ?? null,
     swarmLaunchWalletRateLimiter: createFixedWindowRateLimiter(SWARM_LAUNCH_WALLET_RATE_LIMIT),
     swarmLaunchGlobalRateLimiter: createFixedWindowRateLimiter(SWARM_LAUNCH_GLOBAL_RATE_LIMIT),
     activationService,
@@ -493,11 +497,13 @@ export function createMultipassApi({
   return {
     async handleRequest(request) {
       let credifiRoute = false;
+      let swarmInvitationRoute = false;
       try {
         const url = new URL(request.url);
         const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
         const method = request.method.toUpperCase();
         credifiRoute = isCredifiOwnerOptInRoute(parts);
+        swarmInvitationRoute = parts[0] === 'api' && parts[1] === 'loopers' && parts[2] === 'swarm-invitations';
 
         const missionResponse = await handleMissionRequest(request, {
           service: context.missionService,
@@ -587,7 +593,7 @@ export function createMultipassApi({
 
         return handlePublicRead(parts, context);
       } catch (error) {
-        const noStore = credifiRoute ? { 'cache-control': 'no-store' } : {};
+        const noStore = credifiRoute || swarmInvitationRoute ? { 'cache-control': 'no-store' } : {};
         if (error instanceof ApiInputError) {
           return errorResponse(error.status ?? 400, error.code, error.message, undefined, noStore);
         }
@@ -602,6 +608,9 @@ export function createMultipassApi({
         }
         if (error instanceof ConsentError) {
           return errorResponse(error.status ?? 400, error.code, error.message);
+        }
+        if (error instanceof SwarmInvitationError) {
+          return errorResponse(error.status ?? 400, error.code, error.message, undefined, { 'cache-control': 'no-store' });
         }
         if (error instanceof GroupActivationError) {
           return errorResponse(error.status ?? 400, error.code, error.message, error.details ?? {});
@@ -618,6 +627,7 @@ export function createMultipassApi({
         if (error instanceof TypeError) {
           return errorResponse(400, credifiRoute ? 'credifi_opt_in_invalid_request' : 'invalid_request', error.message, undefined, noStore);
         }
+        if (swarmInvitationRoute) return errorResponse(500, 'swarm_invitation_server_error', 'Swarm invitations are temporarily unavailable.', undefined, noStore);
         if (credifiRoute) return errorResponse(500, 'credifi_opt_in_server_error', 'Credifi owner opt-in is temporarily unavailable.', undefined, noStore);
         throw error;
       }
@@ -1591,7 +1601,56 @@ async function handleConsoleAgentMessage(request, context) {
   }
 }
 
+async function handleSwarmInvitationPost(request, parts, context) {
+  const service = context.swarmInvitationService;
+  if (!service) return errorResponse(503, 'not_configured', 'Swarm invitation service is not configured.', undefined, { 'cache-control': 'no-store' });
+  const session = requireConsoleSession(request, context, { requireCsrf: true });
+  const body = await readBoundedJsonBody(request, 8 * 1024, { strict: true });
+  if (parts[3] === 'drafts' && parts.length === 4) {
+    exactInvitationObject(body, ['idempotency_key', 'invitee_token_ids', 'lead_token_id']);
+    const draft = await service.createDraft({ actorAddress: session.wallet, leadTokenId: strictInvitationToken(body.lead_token_id), inviteeTokenIds: strictInvitationTokens(body.invitee_token_ids), idempotencyKey: strictInvitationIdempotency(body.idempotency_key) });
+    return jsonResponse({ schema_version: '0.1.0', draft }, 201, { 'cache-control': 'no-store' });
+  }
+  if (parts[3] === 'drafts' && parts[4] && parts[5] === 'invites' && parts.length === 6) {
+    exactInvitationObject(body, ['token_id']);
+    const invitation = await service.addInvite({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft'), tokenId: strictInvitationToken(body.token_id) });
+    return jsonResponse({ schema_version: '0.1.0', invitation }, 201, { 'cache-control': 'no-store' });
+  }
+  if (parts[3] === 'drafts' && parts[4] && parts[5] === 'invites' && parts[6] && parts[7] === 'revoke' && parts.length === 8) {
+    exactInvitationObject(body, []);
+    const invitation = await service.revoke({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft'), inviteId: strictOpaqueInvitationId(parts[6], 'invite') });
+    return jsonResponse({ schema_version: '0.1.0', invitation }, 200, { 'cache-control': 'no-store' });
+  }
+  if (parts[3] === 'invites' && parts[4] && parts[5] === 'respond' && parts.length === 6) {
+    exactInvitationObject(body, ['decision']);
+    if (!['accepted', 'declined'].includes(body.decision)) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation decision must be accepted or declined.');
+    const invitation = await service.respond({ actorAddress: session.wallet, inviteId: strictOpaqueInvitationId(parts[4], 'invite'), decision: body.decision });
+    return jsonResponse({ schema_version: '0.1.0', invitation }, 200, { 'cache-control': 'no-store' });
+  }
+  return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });
+}
+
+async function handleSwarmInvitationRead(request, parts, context) {
+  const service = context.swarmInvitationService;
+  if (!service) return errorResponse(503, 'not_configured', 'Swarm invitation service is not configured.', undefined, { 'cache-control': 'no-store' });
+  const session = requireConsoleSession(request, context);
+  if (parts[3] === 'drafts' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', draft: await service.readDraft({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft') }) }, 200, { 'cache-control': 'no-store' });
+  if (parts[3] === 'invites' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', invitation: await service.readInvite({ actorAddress: session.wallet, inviteId: strictOpaqueInvitationId(parts[4], 'invite') }) }, 200, { 'cache-control': 'no-store' });
+  return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });
+}
+
+function exactInvitationObject(value, expected) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation request must be a JSON object.');
+  const keys = Object.keys(value).sort(); const wanted = [...expected].sort();
+  if (keys.length !== wanted.length || keys.some((key, index) => key !== wanted[index])) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation request contains unknown or missing fields.');
+}
+function strictInvitationToken(value) { if (typeof value !== 'string' || !/^[1-9][0-9]*$/u.test(value) || BigInt(value) > 7777n) throw new ApiInputError('swarm_invitation_invalid_request', 'Looper token ID must be canonical.'); return value; }
+function strictInvitationTokens(value) { if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitee roster must contain one to four Loopers.'); return value.map(strictInvitationToken); }
+function strictInvitationIdempotency(value) { if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/u.test(value)) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation idempotency key is invalid.'); return value; }
+function strictOpaqueInvitationId(value, kind) { const text = String(value ?? ''); if (!new RegExp('^' + kind + '_[a-f0-9]{64}$', 'u').test(text)) throw new ApiInputError('swarm_invitation_invalid_request', 'Invitation link ID is invalid.'); return text; }
+
 async function handleLooperPost(request, parts, context) {
+  if (parts[2] === 'swarm-invitations') return handleSwarmInvitationPost(request, parts, context);
   if (parts[2] === 'swarm-launch' && parts[3] === 'consents') {
     const service = context.swarmLaunchConsentService;
     if (!service) return errorResponse(503, 'not_configured', 'Swarm launch consent is not configured.');
@@ -1720,6 +1779,7 @@ async function handleLooperPost(request, parts, context) {
 }
 
 async function handleLooperRead(request, url, parts, context) {
+  if (parts[2] === 'swarm-invitations') return handleSwarmInvitationRead(request, parts, context);
   if (parts[2] && parts[3] === 'wallet' && parts.length === 4) {
     if (!/^[1-9]\d{0,3}$/u.test(parts[2]) || BigInt(parts[2]) > 7_777n) {
       return errorResponse(400, 'invalid_token_id', 'Looper token ID must be between 1 and 7777.');
@@ -3381,7 +3441,7 @@ function assertExactCredifiRequest(body, expectedFields) {
   }
 }
 
-async function readBoundedJsonBody(request, maxBytes) {
+async function readBoundedJsonBody(request, maxBytes, { strict = false } = {}) {
   const declared = request.headers.get('content-length');
   if (declared !== null && (/^\d+$/u.test(declared) === false || Number(declared) > maxBytes)) {
     throw new ApiInputError('request_too_large', `Request body must be at most ${maxBytes} bytes.`, 413);
@@ -3407,7 +3467,8 @@ async function readBoundedJsonBody(request, maxBytes) {
     offset += chunk.byteLength;
   }
   try {
-    return parseJsonBody(new TextDecoder('utf-8', { fatal: true }).decode(merged));
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(merged);
+    return strict ? parseStrictJsonObject(text) : parseJsonBody(text);
   } catch (error) {
     if (error instanceof ApiInputError) throw error;
     throw new ApiInputError('invalid_json', 'Request body must be valid UTF-8 JSON.');

@@ -884,6 +884,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       void loadConsoleOwnerProfile(currentWallet.address, sessionGeneration, authenticatingWallet);
       await refreshConsoleOwnedAgents({ walletSnapshot: currentWallet, skipLoadingState: true, sessionGeneration });
       await openLaunchConsentFromLocation();
+      await openSwarmInviteFromLocation();
     } catch (error) {
       if (state.consoleSessionGeneration !== sessionGeneration) return;
       if (isConsoleAuthorizationError(error)) {
@@ -2360,6 +2361,70 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     render(root, state, handlers);
   }
 
+  async function createConsoleInvitationDraft(form) {
+    if (!state.consoleCsrfToken) return;
+    try {
+      const lead = String(form.get('lead_token_id') ?? '').trim();
+      const invitees = String(form.get('invitee_token_ids') ?? '').split(',').map((value) => value.trim()).filter(Boolean);
+      const response = await activeMissionApi.createSwarmDraft({ csrfToken: state.consoleCsrfToken, body: { lead_token_id: lead, invitee_token_ids: invitees, idempotency_key: 'draft-' + (globalThis.crypto?.randomUUID?.() ?? String(Date.now())) } });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), invitation: null, error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation draft failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function addConsoleInvitation(form) {
+    const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
+    if (!draftId || !state.consoleCsrfToken) return;
+    try {
+      await activeMissionApi.addSwarmInvite({ draftId, csrfToken: state.consoleCsrfToken, body: { token_id: String(form.get('token_id') ?? '').trim() } });
+      const response = await activeMissionApi.getSwarmDraft({ draftId });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Adding invitation failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function revokeConsoleInvitation(inviteId) {
+    const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
+    if (!draftId || !state.consoleCsrfToken) return;
+    try {
+      await activeMissionApi.revokeSwarmInvite({ draftId, inviteId, csrfToken: state.consoleCsrfToken });
+      const response = await activeMissionApi.getSwarmDraft({ draftId });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Revoking invitation failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function respondConsoleInvitation(decision) {
+    const inviteId = state.consoleLaunchpad?.invitation?.inviteId;
+    if (!inviteId || !state.consoleCsrfToken) return;
+    try {
+      const response = await activeMissionApi.respondSwarmInvite({ inviteId, decision, csrfToken: state.consoleCsrfToken });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation response failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function copyConsoleInvitation(inviteId) {
+    const invite = state.consoleLaunchpad?.invitationDraft?.invites?.find((item) => item.inviteId === inviteId);
+    if (invite?.shareUrl && globalThis.navigator?.clipboard?.writeText) await globalThis.navigator.clipboard.writeText(invite.shareUrl);
+  }
+
+  function invitationShareLinks(draft) {
+    const invites = (draft?.invites ?? []).map((invite) => { const url = new URL(window.location.href); url.searchParams.delete('launch_consent'); url.searchParams.set('swarm_invite', invite.inviteId); return { ...invite, shareUrl: url.href }; });
+    return { ...draft, invites };
+  }
+
+  async function openSwarmInviteFromLocation() {
+    const inviteId = new URL(window.location.href).searchParams.get('swarm_invite');
+    if (!inviteId || !/^invite_[a-f0-9]{64}$/u.test(inviteId) || !state.consoleAuthenticatedWallet) return;
+    try {
+      const response = await activeMissionApi.getSwarmInvite({ inviteId });
+      if (state.consoleMissions?.view !== 'launchpad') openConsoleLaunchpad();
+      state = { ...state, consoleWorkspaceView: 'missions', consoleMissions: { ...state.consoleMissions, status: 'loaded', view: 'launchpad', error: null }, consoleLaunchpad: { ...state.consoleLaunchpad, invitation: response.invitation, invitationDraft: null, error: null } };
+    } catch (error) { state = { ...state, consoleMissions: { ...state.consoleMissions, error: String(error?.message ?? 'Invitation is unavailable.') } }; }
+    render(root, state, handlers);
+  }
+
   async function createConsoleLaunchConsent() {
     if (!state.consoleCsrfToken || !state.consoleLaunchpad?.manifest) return;
     try {
@@ -3554,7 +3619,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, revokeConsoleInvitation, respondConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -6222,6 +6287,11 @@ function bindProductHomeEvents(root, handlers, state) {
     createConsent: handlers.createConsoleLaunchConsent,
     signConsent: handlers.signConsoleLaunchConsent,
     createReadiness: handlers.createConsoleLaunchReadiness,
+    createInvitationDraft: handlers.createConsoleInvitationDraft,
+    addInvitation: handlers.addConsoleInvitation,
+    revokeInvitation: handlers.revokeConsoleInvitation,
+    respondInvitation: handlers.respondConsoleInvitation,
+    copyInvitation: handlers.copyConsoleInvitation,
     back: handlers.closeConsoleMission,
   });
   root.querySelector('[data-action="retry-console-agent-activation"]')?.addEventListener('click', () => handlers.retryConsoleAgentActivation?.());
