@@ -106,10 +106,14 @@ test('eligible and completed Credifi pilot UI states explain consent-only bounda
   const status = { token_id: '11', status: 'eligible', amount_usd: '50.00', cohort_version: 'cohort-v1', account: '0xbaa56a2ef2dbabedaa0828c3c9c8c06b1ab46b3f' };
   const eligible = renderConsoleCreditPanel({ ...createInitialConsoleCreditState('11'), optIn: { status: 'eligible', record: status } }, { tokenId: '11' });
   assert.match(eligible, /prepared \$50 Credifi pilot/i);
+  assert.match(eligible, /Pilot opt-in only · borrowing disabled/i);
+  assert.doesNotMatch(eligible, /production disabled/i);
   assert.match(eligible, /does not accept a vouch, authorize EVC, request a quote, borrow funds, or enable Credit/i);
   assert.match(eligible, /data-action="submit-credifi-owner-opt-in"/u);
   const completed = renderConsoleCreditPanel({ ...createInitialConsoleCreditState('11'), optIn: { status: 'opted_in', record: { ...status, status: 'opted_in', consented_at: '2026-10-24T02:00:00.000Z' } } }, { tokenId: '11' });
   assert.match(completed, /Owner opt-in recorded/u);
+  assert.match(completed, /Pilot opt-in only · borrowing disabled/i);
+  assert.doesNotMatch(completed, /production disabled/i);
   assert.doesNotMatch(completed, /data-action="submit-credifi-owner-opt-in"/u);
   assert.doesNotMatch(completed, /Accept vouch|Preview terms|Borrow to Looper account/u);
 });
