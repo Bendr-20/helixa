@@ -1605,6 +1605,8 @@ async function handleSwarmInvitationPost(request, parts, context) {
   const service = context.swarmInvitationService;
   if (!service) return errorResponse(503, 'not_configured', 'Swarm invitation service is not configured.', undefined, { 'cache-control': 'no-store' });
   const session = requireConsoleSession(request, context, { requireCsrf: true });
+  const throttle = checkSwarmLaunchRateLimit(session.wallet, context, { code: 'swarm_invitation_rate_limited', message: 'Swarm invitation request limit exceeded.' });
+  if (throttle) return throttle;
   const body = await readBoundedJsonBody(request, 8 * 1024, { strict: true });
   if (parts[3] === 'drafts' && parts.length === 4) {
     exactInvitationObject(body, ['idempotency_key', 'invitee_token_ids', 'lead_token_id']);
@@ -1615,6 +1617,11 @@ async function handleSwarmInvitationPost(request, parts, context) {
     exactInvitationObject(body, ['token_id']);
     const invitation = await service.addInvite({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft'), tokenId: strictInvitationToken(body.token_id) });
     return jsonResponse({ schema_version: '0.1.0', invitation }, 201, { 'cache-control': 'no-store' });
+  }
+  if (parts[3] === 'drafts' && parts[4] && parts[5] === 'close' && parts.length === 6) {
+    exactInvitationObject(body, []);
+    const draft = await service.closeDraft({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft') });
+    return jsonResponse({ schema_version: '0.1.0', draft }, 200, { 'cache-control': 'no-store' });
   }
   if (parts[3] === 'drafts' && parts[4] && parts[5] === 'invites' && parts[6] && parts[7] === 'revoke' && parts.length === 8) {
     exactInvitationObject(body, []);
@@ -1634,6 +1641,8 @@ async function handleSwarmInvitationRead(request, parts, context) {
   const service = context.swarmInvitationService;
   if (!service) return errorResponse(503, 'not_configured', 'Swarm invitation service is not configured.', undefined, { 'cache-control': 'no-store' });
   const session = requireConsoleSession(request, context);
+  const throttle = checkSwarmLaunchRateLimit(session.wallet, context, { code: 'swarm_invitation_rate_limited', message: 'Swarm invitation request limit exceeded.' });
+  if (throttle) return throttle;
   if (parts[3] === 'drafts' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', draft: await service.readDraft({ actorAddress: session.wallet, draftId: strictOpaqueInvitationId(parts[4], 'draft') }) }, 200, { 'cache-control': 'no-store' });
   if (parts[3] === 'invites' && parts[4] && parts.length === 5) return jsonResponse({ schema_version: '0.1.0', invitation: await service.readInvite({ actorAddress: session.wallet, inviteId: strictOpaqueInvitationId(parts[4], 'invite') }) }, 200, { 'cache-control': 'no-store' });
   return errorResponse(404, 'not_found', 'Route not found.', undefined, { 'cache-control': 'no-store' });
@@ -2427,12 +2436,12 @@ function rejectExecutableWalletContext(value, path = '') {
   }
 }
 
-function checkSwarmLaunchRateLimit(wallet, context) {
+function checkSwarmLaunchRateLimit(wallet, context, { code = 'swarm_launch_rate_limited', message = 'Swarm launch request limit exceeded.' } = {}) {
   const walletLimit = context.swarmLaunchWalletRateLimiter.check(String(wallet).toLowerCase());
   const globalLimit = context.swarmLaunchGlobalRateLimiter.check('global');
   if (walletLimit.allowed && globalLimit.allowed) return null;
   const retryAfter = Math.max(walletLimit.retryAfterSeconds ?? 1, globalLimit.retryAfterSeconds ?? 1);
-  return errorResponse(429, 'swarm_launch_rate_limited', 'Swarm launch request limit exceeded.', undefined, { 'retry-after': String(retryAfter) });
+  return errorResponse(429, code, message, undefined, { 'retry-after': String(retryAfter), 'cache-control': 'no-store' });
 }
 
 function normalizeSwarmConsentProposalId(value) {

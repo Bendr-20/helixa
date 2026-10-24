@@ -30,5 +30,7 @@ test('lead can add and revoke pending invitations; invitee can read and respond 
  assert.equal((await service.revoke({actorAddress:lead,draftId:draft.draftId,inviteId:added.inviteId})).status,'revoked'); store.close();
 });
 
+test('lead can close a draft after fresh authority verification and closed history remains owner-readable',async()=>{const {store,service}=setup();const draft=await service.createDraft({actorAddress:lead,leadTokenId:'2431',inviteeTokenIds:['1'],idempotencyKey:'close-12345678'});await assert.rejects(()=>service.closeDraft({actorAddress:a,draftId:draft.draftId}),/lead owner/i);const closed=await service.closeDraft({actorAddress:lead,draftId:draft.draftId});assert.equal(closed.status,'closed');assert.equal(closed.invites[0].status,'revoked');assert.equal((await service.readDraft({actorAddress:lead,draftId:draft.draftId})).status,'closed');const invite=await service.readInvite({actorAddress:a,inviteId:draft.invites[0].inviteId});assert.equal(invite.draftStatus,'closed');await assert.rejects(()=>service.respond({actorAddress:a,inviteId:draft.invites[0].inviteId,decision:'accepted'}),(error)=>error.code==='swarm_invitation_conflict'&&error.status===409);store.close();});
+
 import { createSwarmInvitationAuthorityVerifier } from '../src/missions/swarm-invitations.js';
 test('authority verifier only accepts the reviewed dual-provider set',()=>{assert.throws(()=>createSwarmInvitationAuthorityVerifier({providers:[{id:'evil',approved:true},{id:'fake',approved:true}],accountIntegrityReader:{read:async()=>({})}}),/reviewed/i);});

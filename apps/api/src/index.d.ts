@@ -82,7 +82,7 @@ export interface MultipassApiOptions {
   savedRecords?: SavedRecordsStore;
   missionService?: MissionService;
   swarmLaunchConsentService?: { createProposal(input: Record<string, unknown>): Promise<unknown>; readProposal(input: Record<string, unknown>): Promise<unknown>; createReadinessPacket(input: Record<string, unknown>): Promise<unknown>; readChallenge(input: Record<string, unknown>): Promise<unknown>; recordConsent(input: Record<string, unknown>): Promise<unknown> };
-  swarmInvitationService?: { createDraft(input: Record<string, unknown>): Promise<unknown>; readDraft(input: Record<string, unknown>): Promise<unknown>; addInvite(input: Record<string, unknown>): Promise<unknown>; revoke(input: Record<string, unknown>): Promise<unknown>; readInvite(input: Record<string, unknown>): Promise<unknown>; respond(input: Record<string, unknown>): Promise<unknown> };
+  swarmInvitationService?: { createDraft(input: Record<string, unknown>): Promise<unknown>; readDraft(input: Record<string, unknown>): Promise<unknown>; addInvite(input: Record<string, unknown>): Promise<unknown>; revoke(input: Record<string, unknown>): Promise<unknown>; closeDraft(input: Record<string, unknown>): Promise<unknown>; readInvite(input: Record<string, unknown>): Promise<unknown>; respond(input: Record<string, unknown>): Promise<unknown> };
   activationService?: (agent: string) => Promise<unknown> | unknown;
   allowedOrigins?: string[];
   adminSecret?: string | null;

@@ -21,6 +21,11 @@ const ALLOWED_REVENUE_MODELS = new Set(SWARM_LAUNCH_OPTIONS.revenueModels);
 const ALLOWED_SHIP_TARGETS = new Set(SWARM_LAUNCH_OPTIONS.shipTargets);
 
 export function renderSwarmLaunchpad(state = {}) {
+  if (state.invitation) {
+    const invitations = renderSwarmInvitationPanel({ invitation: state.invitation, mode: 'invitee' });
+    const error = state.error ? '<div class="mission-alert" role="alert">' + escapeHtml(state.error) + '</div>' : '';
+    return '<section class="swarm-launchpad" aria-labelledby="swarm-launchpad-title"><header class="swarm-launchpad-hero"><span class="mission-eyebrow">Swarm Command · Invitation</span><h2 id="swarm-launchpad-title">Review provisional invitation</h2><p>This review is separate from binding launch preparation.</p></header>' + error + invitations + '<div class="swarm-launch-actions"><button type="button" data-mission-action="back">Back to missions</button></div></section>';
+  }
   const draft = state.draft ?? { members: [], app: {}, token: {} };
   const members = Array.isArray(draft.members) ? draft.members.slice(0, MAX_MEMBERS) : [];
   const gate = evaluateSwarmLaunchGate({ members });
@@ -61,7 +66,7 @@ export function bindSwarmLaunchpad(root, handlers = {}) {
   root.querySelector('[data-swarm-launch-consent-create]')?.addEventListener('click', () => handlers.createConsent?.());
   root.querySelector('[data-swarm-launch-consent-sign]')?.addEventListener('click', () => handlers.signConsent?.());
   root.querySelector('[data-swarm-launch-readiness-create]')?.addEventListener('click', () => handlers.createReadiness?.());
-  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, respond: handlers.respondInvitation, copy: handlers.copyInvitation });
+  bindSwarmInvitationPanel(root, { create: handlers.createInvitationDraft, add: handlers.addInvitation, revoke: handlers.revokeInvitation, close: handlers.closeInvitationDraft, respond: handlers.respondInvitation, copy: handlers.copyInvitation });
 }
 
 

@@ -59,6 +59,7 @@ import { createImagePreview, prepareConsoleImage, preparedImageBlob } from './co
 import { resolveConsoleOwnerProfile } from './console-owner-profile.js';
 import { createConsoleRestapNetworkApi } from './console-restap-network-api.js';
 import { createMissionApi } from './missions/api.js';
+import { createSwarmDraftRetryState } from './missions/swarm-invitation-create-key.js';
 import { bindConsoleCredit, createConsoleCreditApi, createInitialConsoleCreditState } from './console-credit.js';
 import { bindMissionBoard } from './missions/mission-board.js';
 import { bindMissionEditor } from './missions/mission-editor.js';
@@ -106,6 +107,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
   const activeWalletClient = walletClient ?? (walletSigner ? createLegacyWalletClient(walletSigner) : createInjectedWalletClient());
   const activeRestapNetworkApi = consoleRestapNetworkApi ?? createConsoleRestapNetworkApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
   const activeMissionApi = missionApi ?? createMissionApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
+  const swarmDraftRetryState = createSwarmDraftRetryState({ createKey: () => 'draft-' + (globalThis.crypto?.randomUUID?.() ?? String(Date.now())) });
   const activeConsoleCreditApi = consoleCreditApi ?? createConsoleCreditApi({ fetchImpl: fetchImpl ?? globalThis.fetch, apiBase: '' });
   const activeLooperWalletReleaseConfig = looperWalletReleaseConfig ?? {
     implementation: REVIEWED_POLICY_ACCOUNT_IMPLEMENTATION,
@@ -2366,7 +2368,9 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     try {
       const lead = String(form.get('lead_token_id') ?? '').trim();
       const invitees = String(form.get('invitee_token_ids') ?? '').split(',').map((value) => value.trim()).filter(Boolean);
-      const response = await activeMissionApi.createSwarmDraft({ csrfToken: state.consoleCsrfToken, body: { lead_token_id: lead, invitee_token_ids: invitees, idempotency_key: 'draft-' + (globalThis.crypto?.randomUUID?.() ?? String(Date.now())) } });
+      const idempotencyKey = swarmDraftRetryState.keyFor({ leadTokenId: lead, inviteeTokenIds: invitees });
+      const response = await activeMissionApi.createSwarmDraft({ csrfToken: state.consoleCsrfToken, body: { lead_token_id: lead, invitee_token_ids: invitees, idempotency_key: idempotencyKey } });
+      swarmDraftRetryState.succeeded();
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), invitation: null, error: null } };
     } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Invitation draft failed.') } }; }
     render(root, state, handlers);
@@ -2391,6 +2395,16 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
       const response = await activeMissionApi.getSwarmDraft({ draftId });
       state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
     } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Revoking invitation failed.') } }; }
+    render(root, state, handlers);
+  }
+
+  async function closeConsoleInvitationDraft() {
+    const draftId = state.consoleLaunchpad?.invitationDraft?.draftId;
+    if (!draftId || !state.consoleCsrfToken) return;
+    try {
+      const response = await activeMissionApi.closeSwarmDraft({ draftId, csrfToken: state.consoleCsrfToken });
+      state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, invitationDraft: invitationShareLinks(response.draft), error: null } };
+    } catch (error) { state = { ...state, consoleLaunchpad: { ...state.consoleLaunchpad, error: String(error?.message ?? 'Closing invitation draft failed.') } }; }
     render(root, state, handlers);
   }
 
@@ -3619,7 +3633,7 @@ export function createApp({ root, loadDemo, loadLiveDemo, saveMultipass = defaul
     }
   }
 
-  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, revokeConsoleInvitation, respondConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
+  const handlers = { connectSwarmAdminWallet, approveSwarmSafeHash, resolveLiveAgent, refreshLooperMarketplace, setLooperMarketplaceView, setLooperMarketplaceSearch, setLooperMarketplaceSort, saveConsoleRestapNetworkPolicy, sendConsoleRestapNetworkTalk, stopConsoleRestapNetwork, retryConsoleRestapNetwork, refreshConsoleCredit, submitCredifiOwnerOptIn, loginConsoleCredit, acceptConsoleCreditVouch, prepareConsoleCreditAuthorization, submitConsoleCreditAuthorization, requestConsoleCreditTwoFactor, verifyConsoleCreditTwoFactor, previewConsoleCredit, borrowConsoleCredit, resetStaticDemo, saveCurrentMultipass, showGroupActivation, previewGroupActivation, saveGroupActivation, resetGroupActivation, registerLooperAllowlist, connectLooperAllowlistWallet, connectConsoleWallet, selectConsoleAgent, setConsoleWorkspaceView, loadConsoleMissions, openConsoleMission, closeConsoleMission, openConsoleLaunchpad, prepareConsoleSwarmLaunch, addConsoleLaunchMember, removeConsoleLaunchMember, createConsoleInvitationDraft, addConsoleInvitation, revokeConsoleInvitation, closeConsoleInvitationDraft, respondConsoleInvitation, copyConsoleInvitation, createConsoleLaunchConsent, createConsoleLaunchReadiness, signConsoleLaunchConsent, newConsoleMission, cancelConsoleMissionEditor, submitConsoleMission, updateConsoleAgentGallerySearch, updateConsoleAgentGallerySort, clearConsoleAgentGallerySearch, toggleConsoleRosterDrawer, refreshConsoleOwnedAgentsFromControl, retryConsoleAgentActivation, retryConsoleCodex, activateSelectedConsoleAgent, activateConsoleRoom, toggleConsoleAgentRoom, selectConsoleImage, removeConsoleImage, sendConsoleAgentMessage, updateConsoleAgentName, resetConsoleAgentName, resetConsoleSession, refreshLooperAgentWallet, activateLooperAgentWallet, sendLooperAgentWallet, loadPantheonCred, approvePantheonCred, submitPantheonCredApproval, stakePantheonCred, submitPantheonCredStake, acknowledgeLooperWalletOutcome, setLooperPolicyModule, connectLooperMintWallet, refreshLooperMint, submitLooperMint, claimWithWallet, submitManualReview, updatePublicProfile, createPublicFragment, updatePublicFragment, revokePublicFragment, createRoute: createPublicRoute, updateRoute: updatePublicRoute, revokeRoute: revokePublicRoute, createMarketplaceConnection, updateMarketplaceConnection, retireMarketplaceConnection, importBankrTool: importBankrToolMetadata, refreshTool: refreshToolMetadata, logoutManagerSession };
 
   return { start, refreshLooperMarketplace, selectConsoleAgentById, activateSelectedConsoleAgent, retryConsoleCodex, resetConsoleSession };
 }
@@ -6290,6 +6304,7 @@ function bindProductHomeEvents(root, handlers, state) {
     createInvitationDraft: handlers.createConsoleInvitationDraft,
     addInvitation: handlers.addConsoleInvitation,
     revokeInvitation: handlers.revokeConsoleInvitation,
+    closeInvitationDraft: handlers.closeConsoleInvitationDraft,
     respondInvitation: handlers.respondConsoleInvitation,
     copyInvitation: handlers.copyConsoleInvitation,
     back: handlers.closeConsoleMission,
