@@ -8,7 +8,9 @@ const METHODOLOGY_ID = 'cred-looper-provisional-1.1.0';
 const MAX_CACHE_TTL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 5_000;
 const MAX_RPC_RESPONSE_BYTES = 512 * 1024;
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 250;
+const MIN_PROVIDER_INTERVAL_MS = 250;
 const MIN_CONFIRMATIONS = 20n;
 const ALLOWED_RPC_METHODS = Object.freeze(new Set(['eth_chainId', 'eth_blockNumber', 'eth_getBlockByNumber', 'eth_getCode', 'eth_call', 'eth_getTransactionReceipt', 'eth_getTransactionByHash']));
 const PROVIDERS = Object.freeze([
@@ -105,7 +107,7 @@ async function boundedResponseBody(response) {
   }
   return Buffer.concat(chunks, total).toString('utf8');
 }
-async function defaultRpc(provider, method, params, { fetchImpl = globalThis.fetch } = {}) {
+async function defaultRpc(provider, method, params, { fetchImpl = globalThis.fetch, sleepImpl = sleep } = {}) {
   if (!PROVIDERS.includes(provider)) throw new TypeError('RPC provider must be an exact pinned provider object');
   if (!ALLOWED_RPC_METHODS.has(method)) throw new TypeError('RPC method is not read-only allowlisted');
   if (!Array.isArray(params)) throw new TypeError('RPC params must be an array');
@@ -114,7 +116,11 @@ async function defaultRpc(provider, method, params, { fetchImpl = globalThis.fet
     const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
       const response = await fetchImpl(provider.url, { method: 'POST', redirect: 'error', credentials: 'omit', headers: { accept: 'application/json', 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: controller.signal });
-      if (response.redirected || !response.ok) throw new Error('RPC HTTP ' + response.status);
+      if (response.redirected || !response.ok) {
+        const error = new Error('RPC HTTP ' + response.status);
+        error.statusCode = response.status;
+        throw error;
+      }
       const text = await boundedResponseBody(response); let envelope;
       try { envelope = JSON.parse(text); } catch { throw new SyntaxError('RPC returned invalid JSON'); }
       if (!envelope || typeof envelope !== 'object' || Array.isArray(envelope) || envelope.jsonrpc !== '2.0' || envelope.id !== 1 || Object.hasOwn(envelope, 'error') || !Object.hasOwn(envelope, 'result')) throw new Error('RPC returned invalid JSON-RPC envelope');
@@ -122,10 +128,33 @@ async function defaultRpc(provider, method, params, { fetchImpl = globalThis.fet
     } catch (error) {
       lastError = error;
       if (error instanceof RangeError || error instanceof SyntaxError || attempt === MAX_RETRIES) throw error;
-      await sleep(150);
+      await sleepImpl(RETRY_BASE_DELAY_MS * (2 ** attempt));
     } finally { clearTimeout(timer); }
   }
   throw lastError;
+}
+
+function createPacedRpc({ rpc = defaultRpc, now = Date.now, sleepImpl = sleep, minIntervalMs = MIN_PROVIDER_INTERVAL_MS } = {}) {
+  if (typeof rpc !== 'function') throw new TypeError('rpc must be a function');
+  if (typeof now !== 'function') throw new TypeError('now must be a function');
+  if (typeof sleepImpl !== 'function') throw new TypeError('sleepImpl must be a function');
+  if (!Number.isInteger(minIntervalMs) || minIntervalMs < 1 || minIntervalMs > 5_000) throw new RangeError('minIntervalMs must be between 1 and 5000');
+  const tails = new Map();
+  const nextStarts = new Map();
+  return async function pacedRpc(provider, method, params) {
+    if (!PROVIDERS.includes(provider)) throw new TypeError('RPC provider must be an exact pinned provider object');
+    const key = provider.id;
+    const prior = tails.get(key) ?? Promise.resolve();
+    const task = prior.catch(() => {}).then(async () => {
+      const waitMs = Math.max(0, (nextStarts.get(key) ?? 0) - now());
+      if (waitMs > 0) await sleepImpl(waitMs);
+      nextStarts.set(key, now() + minIntervalMs);
+      return rpc(provider, method, params);
+    });
+    tails.set(key, task);
+    task.finally(() => { if (tails.get(key) === task) tails.delete(key); }).catch(() => {});
+    return task;
+  };
 }
 function normalizeBlock(value, expectedNumber) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('block response is malformed');
@@ -236,7 +265,7 @@ function buildRecord(evidence, computedAtMs, ttlMs) {
   };
 }
 
-function createLooperCredService({ rpc = defaultRpc, now = Date.now, cacheTtlMs = MAX_CACHE_TTL_MS, maxConcurrent = 8 } = {}) {
+function createLooperCredService({ rpc = createPacedRpc(), now = Date.now, cacheTtlMs = MAX_CACHE_TTL_MS, maxConcurrent = 8 } = {}) {
   if (typeof rpc !== 'function') throw new TypeError('rpc must be a function');
   if (typeof now !== 'function') throw new TypeError('now must be a function');
   if (!Number.isInteger(cacheTtlMs) || cacheTtlMs < 1 || cacheTtlMs > MAX_CACHE_TTL_MS) throw new RangeError('cacheTtlMs must be between 1 and 60000');
@@ -260,4 +289,4 @@ function createLooperCredService({ rpc = defaultRpc, now = Date.now, cacheTtlMs 
   } });
 }
 
-module.exports = Object.freeze({ BASE_CHAIN_ID, MAX_LOOPER_TOKEN_ID, METHODOLOGY_ID, MAX_CACHE_TTL_MS, REQUEST_TIMEOUT_MS, MAX_RPC_RESPONSE_BYTES, MIN_CONFIRMATIONS, ALLOWED_RPC_METHODS, PROVIDERS, COLLECTION, PANTHEON, PILOT, SELECTORS, UnsupportedLooperError, deriveReleasedLooperAccount, buildReleasedLooperAccountRuntime, defaultRpc, createLooperCredService });
+module.exports = Object.freeze({ BASE_CHAIN_ID, MAX_LOOPER_TOKEN_ID, METHODOLOGY_ID, MAX_CACHE_TTL_MS, REQUEST_TIMEOUT_MS, MAX_RPC_RESPONSE_BYTES, MIN_CONFIRMATIONS, ALLOWED_RPC_METHODS, PROVIDERS, COLLECTION, PANTHEON, PILOT, SELECTORS, UnsupportedLooperError, deriveReleasedLooperAccount, buildReleasedLooperAccountRuntime, defaultRpc, createPacedRpc, createLooperCredService });

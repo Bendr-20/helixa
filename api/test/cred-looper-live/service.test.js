@@ -8,6 +8,8 @@ const {
   METHODOLOGY_ID,
   deriveReleasedLooperAccount,
   buildReleasedLooperAccountRuntime,
+  defaultRpc,
+  createPacedRpc,
   createLooperCredService,
 } = require('../../cred-looper-live/service');
 
@@ -64,6 +66,42 @@ function makeRpc({ tokenId = '2431', stake = stakeTuple(), overrides = {} } = {}
 function service(rpc, now = Date.parse('2026-10-21T20:45:00Z')) {
   return createLooperCredService({ rpc, now: () => now, cacheTtlMs: 60_000 });
 }
+
+test('retries HTTP 429 with bounded exponential backoff before accepting a valid RPC response', async () => {
+  const responses = [
+    new Response('', { status: 429 }),
+    new Response('', { status: 429 }),
+    new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: '0x2105' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+  ];
+  const waits = [];
+  const result = await defaultRpc(PROVIDERS[0], 'eth_chainId', [], {
+    fetchImpl: async () => responses.shift(),
+    sleepImpl: async ms => { waits.push(ms); },
+  });
+  assert.equal(result, '0x2105');
+  assert.deepEqual(waits, [250, 500]);
+});
+
+test('paces concurrent calls independently per provider to prevent public RPC bursts', async () => {
+  let now = 1_000;
+  const starts = [];
+  const rpc = async provider => { starts.push({ provider: provider.id, at: now }); return 'ok'; };
+  const paced = createPacedRpc({
+    rpc,
+    now: () => now,
+    sleepImpl: async ms => { now += ms; },
+    minIntervalMs: 250,
+  });
+  await Promise.all([
+    paced(PROVIDERS[0], 'eth_chainId', []),
+    paced(PROVIDERS[0], 'eth_blockNumber', []),
+    paced(PROVIDERS[0], 'eth_getCode', []),
+    paced(PROVIDERS[1], 'eth_chainId', []),
+    paced(PROVIDERS[1], 'eth_blockNumber', []),
+  ]);
+  assert.deepEqual(starts.filter(x => x.provider === PROVIDERS[0].id).map(x => x.at), [1_000, 1_250, 1_500]);
+  assert.deepEqual(starts.filter(x => x.provider === PROVIDERS[1].id).map(x => x.at), [1_000, 1_250]);
+});
 
 test('derives the released canonical account and runtime for every Looper token ID', () => {
   assert.equal(deriveReleasedLooperAccount('2431'), PILOT.account);
